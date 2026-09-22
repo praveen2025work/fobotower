@@ -12,7 +12,11 @@ narratives; the structural clustering below stays the deterministic core.
 
 from collections import defaultdict
 
+from sqlalchemy import select
+
 from app.contracts.models import PatternGroup
+from app.db.models_graph import BreakEvent
+from app.recon.reasons import reason_for
 from app.workflow.state import InvestigationState
 
 PATTERNS = {
@@ -61,13 +65,52 @@ def _approval_rate(priors: list[dict], pattern_code: str) -> float | None:
     return round(len(approved) / len(relevant), 2)
 
 
+
+async def _enrich_breaks(session, state, signatures: dict[str, str]) -> dict:
+    """Write reason wording and first-seen run onto each break row, and read
+    back the flags the group badges need.
+
+    first_seen_run_id is written once and never overwritten: the span between
+    it and the current run is what makes a break aged, and overwriting it
+    would silently reset the age every run.
+    """
+    run_id = state["run_id"]
+    reasons: dict[str, str] = {}
+    ungrounded: set[str] = set()
+    carried: dict[str, int] = {}
+
+    for bid, check in signatures.items():
+        reason = reason_for(check) if check is not None else "No cause identified"
+        reasons[bid] = reason
+
+        row = await session.scalar(
+            select(BreakEvent).where(BreakEvent.break_id == bid)
+        )
+        if row is None:
+            carried[bid] = 0
+            continue
+
+        row.reason_text = reason
+        if row.first_seen_run_id is None:
+            row.first_seen_run_id = run_id
+        if row.is_ungrounded:
+            ungrounded.add(bid)
+        carried[bid] = 0 if row.first_seen_run_id == run_id else 1
+
+    await session.commit()
+    return {"reasons": reasons, "ungrounded": ungrounded, "carried": carried}
+
+
 async def group(state: InvestigationState, *, session) -> dict:
+    signatures: dict[str, str | None] = {}
     clusters: dict[str, list[str]] = defaultdict(list)
     for brk in state["breaks"]:
         bid = brk["break_id"]
         sig = _signature(state["candidates"][bid])
+        signatures[bid] = sig
         clusters[sig if sig is not None else UNGROUPED].append(bid)
 
+    enriched = await _enrich_breaks(session, state, signatures)
     priors = _distinct_priors(state.get("priors", {}))
     session_id = state["investigation_session_id"]
 
@@ -99,4 +142,20 @@ async def group(state: InvestigationState, *, session) -> dict:
             )
         )
 
-    return {"pattern_groups": groups}
+    group_meta = {
+        g.group_id: {
+            "ungrounded_count": sum(
+                1 for b in g.break_ids if b in enriched["ungrounded"]
+            ),
+            "carried_runs": max(
+                (enriched["carried"].get(b, 0) for b in g.break_ids), default=0
+            ),
+        }
+        for g in groups
+    }
+
+    return {
+        "pattern_groups": groups,
+        "reasons": enriched["reasons"],
+        "group_meta": group_meta,
+    }

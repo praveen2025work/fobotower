@@ -26,7 +26,7 @@ export default function RunScheduleCard({ stats, regions, runWindows }) {
           className="text-xs font-bold tracking-wide"
           style={{
             color: 'var(--text-primary)',
-            fontFamily: 'Manrope, sans-serif',
+            fontFamily: 'var(--font-manrope), sans-serif',
           }}
         >
           RUN SCHEDULE — TODAY

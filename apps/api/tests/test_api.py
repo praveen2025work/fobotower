@@ -99,3 +99,11 @@ async def test_breaks_carry_their_delta(client):
     body = (await client.get("/api/breaks?session_id=sess-delta")).json()
     first = next(b for b in body["breaks"] if b["break_id"] == "b-01")
     assert first["delta"] == pytest.approx(2340.0)
+
+
+async def test_session_maps_breaks_to_their_books(client):
+    """Adjustment rows show the book a controller recognises, not b-01."""
+    await client.post("/api/sessions/sess-books/investigate")
+    body = (await client.get("/api/sessions/sess-books")).json()
+    assert body["break_books"]["b-01"] == "APAC-CASH-01"
+    assert len(body["break_books"]) == 14

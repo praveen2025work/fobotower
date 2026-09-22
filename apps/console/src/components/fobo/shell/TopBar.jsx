@@ -24,7 +24,7 @@ export default function TopBar({ stats, activeTab, onTabChange }) {
       <div className="min-w-0">
         <h1
           className="text-lg font-bold leading-tight truncate"
-          style={{ fontFamily: 'Manrope, system-ui, sans-serif' }}
+          style={{ fontFamily: 'var(--font-manrope), system-ui, sans-serif' }}
         >
           FOBO Control Tower
         </h1>

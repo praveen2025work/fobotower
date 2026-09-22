@@ -98,6 +98,9 @@ async def get_session_detail(session_id: str) -> dict:
         "draft": draft.model_dump() if draft else None,
         "pattern_groups": [g.model_dump() for g in v.get("pattern_groups", [])],
         "deltas": v.get("deltas", {}),
+        # break_id -> book_ref, so adjustment rows can show the book the
+        # controller recognises rather than an internal break id.
+        "break_books": {b["break_id"]: b["book_ref"] for b in v.get("breaks", [])},
         "pipeline_stage": "signoff" if parked_at_review else "analysis",
         "pipeline_stages": PIPELINE_STAGES,
         "evidence_gaps": v.get("evidence_gaps", []),

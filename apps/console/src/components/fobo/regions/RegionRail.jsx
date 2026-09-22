@@ -34,7 +34,7 @@ export default function RegionRail({ regions, selectedRecId, onSelectRec }) {
     <aside className="glass-card p-3 flex flex-col gap-3 self-start">
       <h2
         className="text-xs font-bold tracking-wide"
-        style={{ color: 'var(--text-primary)', fontFamily: 'Manrope, sans-serif' }}
+        style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-manrope), sans-serif' }}
       >
         REGIONS &amp; RECS
       </h2>

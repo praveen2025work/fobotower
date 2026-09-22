@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.routes import breaks, runs, sessions
+from api.routes import breaks, recs, runs, sessions
 from api.websocket import handler
 
 CONSOLE_ORIGIN = "http://localhost:3100"
@@ -18,6 +18,7 @@ def create_app() -> FastAPI:
     )
     app.include_router(runs.router)
     app.include_router(sessions.router)
+    app.include_router(recs.router)
     app.include_router(breaks.router)
     app.include_router(handler.router)
 

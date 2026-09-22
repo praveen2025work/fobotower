@@ -1,40 +1,58 @@
 import { create } from 'zustand';
 
-import { get, post } from '@/lib/apiClient';
+import { get } from '@/lib/apiClient';
 
-export const useFoboSessionStore = create((set) => ({
-  session: null,
+const EMPTY = {
+  state: null,
+  header: null,
   draft: null,
   patternGroups: [],
   deltas: {},
   breakBooks: {},
+  reasons: {},
+  groupMeta: {},
+  grounding: [],
   pipelineStages: [],
   pipelineStage: null,
   evidenceGaps: [],
   validationErrors: [],
   modelSkipped: null,
-  progress: null,
+};
+
+export const useFoboSessionStore = create((set, getState) => ({
+  ...EMPTY,
+  recId: null,
   loading: false,
   error: null,
+  progress: null,
 
   setProgress: (progress) => set({ progress }),
 
-  investigate: async (sessionId) => {
-    set({ loading: true, error: null });
+  /**
+   * Load one rec's case. Clears the previous rec first: leaving the old
+   * analysis on screen while the next one loads shows a controller the
+   * wrong rec's numbers under the right rec's name.
+   */
+  loadRec: async (recId) => {
+    if (!recId || getState().loading) return;
+    set({ ...EMPTY, recId, loading: true, error: null, progress: null });
     try {
-      await post(`/api/sessions/${sessionId}/investigate`);
-      const data = await get(`/api/sessions/${sessionId}`);
+      const d = await get(`/api/recs/${recId}`);
       set({
-        session: data.session,
-        draft: data.draft,
-        patternGroups: data.pattern_groups,
-        deltas: data.deltas,
-        breakBooks: data.break_books,
-        pipelineStages: data.pipeline_stages,
-        pipelineStage: data.pipeline_stage,
-        evidenceGaps: data.evidence_gaps,
-        validationErrors: data.validation_errors,
-        modelSkipped: data.model_skipped,
+        state: d.state,
+        header: d.header,
+        draft: d.draft,
+        patternGroups: d.pattern_groups,
+        deltas: d.deltas,
+        breakBooks: d.break_books,
+        reasons: d.reasons,
+        groupMeta: d.group_meta,
+        grounding: d.grounding,
+        pipelineStages: d.pipeline_stages,
+        pipelineStage: d.pipeline_stage,
+        evidenceGaps: d.evidence_gaps,
+        validationErrors: d.validation_errors,
+        modelSkipped: d.model_skipped,
         loading: false,
       });
     } catch (err) {

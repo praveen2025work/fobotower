@@ -11,6 +11,7 @@ export const useFoboRunStore = create((set) => ({
   loading: false,
   error: null,
 
+  // The page loads the case when this changes; the rail only chooses.
   selectRec: (recId) => set({ selectedRecId: recId }),
 
   loadRuns: async () => {

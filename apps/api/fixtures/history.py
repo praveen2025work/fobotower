@@ -79,6 +79,8 @@ async def load_history(session, *, commit: bool = True) -> None:
     await _load_history_books(session)
     await session.flush()
     await _load_resolved_breaks(session)
+    await session.flush()
+    await _load_open_rec_breaks(session)
     if commit:
         await session.commit()
 
@@ -96,6 +98,13 @@ async def _clear(session) -> None:
     await session.execute(delete(Run))
     await session.execute(delete(Reconciliation))
     await session.execute(delete(Node).where(Node.node_id.like("book:HIST-%")))
+    for prefix in ("EMEA-CREDIT", "EMEA-COLL"):
+        await session.execute(
+            delete(BreakEvent).where(BreakEvent.book_id.like(f"book:{prefix}-%"))
+        )
+        await session.execute(
+            delete(Node).where(Node.node_id.like(f"book:{prefix}-%"))
+        )
 
 
 async def _load_recs(session) -> None:
@@ -250,6 +259,82 @@ async def _load_resolved_breaks(session) -> None:
                         first_seen_run_id=run_id,
                     )
                 )
+
+
+# Recs with work waiting get their own break population, so switching recs
+# shows that rec's data rather than an empty panel. Cleared and scheduled
+# recs deliberately get none: that is what "cleared" means.
+OPEN_REC_BREAKS = {
+    "R-2010": [
+        ("C1", 4210.0), ("C1", 1890.0), ("C1", 2650.0),
+        ("C3", 11400.0), ("C3", 7320.0),
+        ("C4", 980.0), ("C4", 3115.0), ("C4", 1745.0),
+    ],
+    "R-2015": [
+        ("C2", 22400.0), ("C2", 8650.0),
+        ("C6", 5120.0), ("C6", 3380.0), ("C6", 1290.0),
+    ],
+}
+
+
+async def _load_open_rec_breaks(session) -> None:
+    """Books and breaks for the recs that are mid-flight."""
+    by_id = {r[0]: r for r in RECS}
+    for rec_id, rows in OPEN_REC_BREAKS.items():
+        _id, _name, _region, master_book, _sched, _total = by_id[rec_id]
+        run_id = _run_id(rec_id, COB)
+        for i, (cause, delta) in enumerate(rows, start=1):
+            book = f"{master_book}-{i:02d}"
+            session.add(
+                Node(
+                    node_id=f"book:{book}",
+                    node_type="Book",
+                    natural_key=book,
+                    legal_entity_id=ENTITY,
+                    valid_from=date(2020, 1, 1),
+                )
+            )
+        await session.flush()
+        for i, (cause, delta) in enumerate(rows, start=1):
+            book = f"{master_book}-{i:02d}"
+            session.add(
+                BreakEvent(
+                    break_id=f"{rec_id.lower()}-b{i:02d}",
+                    book_id=f"book:{book}",
+                    line_code="CASH",
+                    cob_date=COB,
+                    fo_value=100000.0 + delta,
+                    bo_value=100000.0,
+                    delta=delta,
+                    outcome=None,
+                    first_seen_run_id=run_id,
+                )
+            )
+
+
+def breaks_for_rec(rec_id: str) -> list[dict]:
+    """The break population an investigation of this rec should analyse."""
+    if rec_id == "R-1055":
+        # The mock's own population, defined in loader.py.
+        from fixtures.loader import read_breaks
+
+        return read_breaks()
+
+    by_id = {r[0]: r for r in RECS}
+    if rec_id not in OPEN_REC_BREAKS:
+        return []
+    master_book = by_id[rec_id][3]
+    return [
+        {
+            "break_id": f"{rec_id.lower()}-b{i:02d}",
+            "book_ref": f"{master_book}-{i:02d}",
+            "line_code": "CASH",
+            "fo_value": 100000.0 + delta,
+            "bo_value": 100000.0,
+            "cause": cause,
+        }
+        for i, (cause, delta) in enumerate(OPEN_REC_BREAKS[rec_id], start=1)
+    ]
 
 
 async def history_is_loaded(session) -> bool:

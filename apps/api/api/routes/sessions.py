@@ -18,6 +18,8 @@ router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 CAUSE_TO_SNAPSHOT = {
     "C1": {"fo_booking_ts": "2026-08-04T00:15:00Z"},
     "C2": {"mapping_present": False},
+    "C3": {"bo_dataset_id": "EOD-2026-08-02"},
+    "C4": {"fo_components": ["principal", "fee"]},
     "C5": {"fo_version": 2},
     "C6": {"bo_adjustments": ["manual-1"]},
 }

@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.routes import (
     analytics,
+    books,
     breaks,
     decisions,
     recs,
@@ -30,6 +31,7 @@ def create_app() -> FastAPI:
     app.include_router(decisions.router)
     app.include_router(worklist.router)
     app.include_router(analytics.router)
+    app.include_router(books.router)
     app.include_router(breaks.router)
     app.include_router(handler.router)
 

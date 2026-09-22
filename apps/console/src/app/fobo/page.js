@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import AnalyticsTab from '@/components/fobo/analytics/AnalyticsTab';
 import PatternGroupCard from '@/components/fobo/adjustments/PatternGroupCard';
+import BookDetailDrawer from '@/components/fobo/drawers/BookDetailDrawer';
 import GroundingPanel from '@/components/fobo/grounding/GroundingPanel';
 import PipelineRail from '@/components/fobo/pipeline/PipelineRail';
 import RegionRail from '@/components/fobo/regions/RegionRail';
@@ -26,6 +27,7 @@ const REGION_STYLE = {
 export default function FoboControlTower() {
   const [tab, setTab] = useState('pipeline');
   const [openPattern, setOpenPattern] = useState(null);
+  const [openBook, setOpenBook] = useState(null);
   const [navPinned, setNavPinned] = useState(false);
   const [navCollapsed, setNavCollapsed] = useState(false);
   // The rail closes when a controller picks a rec, not when the page
@@ -249,6 +251,7 @@ export default function FoboControlTower() {
                           decided={decisions.decided}
                           pending={decisions.pending}
                           onOpenPattern={setOpenPattern}
+                          onOpenBook={setOpenBook}
                           onDecide={handleDecide}
                         />
                       ))}
@@ -289,8 +292,13 @@ export default function FoboControlTower() {
           deltas={sess.deltas}
           breakBooks={sess.breakBooks}
           reasons={sess.reasons}
+          onOpenBook={setOpenBook}
           onClose={() => setOpenPattern(null)}
         />
+      )}
+
+      {openBook && (
+        <BookDetailDrawer bookRef={openBook} onClose={() => setOpenBook(null)} />
       )}
     </div>
   );
@@ -414,7 +422,7 @@ function AnalysisPanel({ draft, modelSkipped, evidenceGaps }) {
   );
 }
 
-function PatternDrawer({ group, deltas, breakBooks, reasons, onClose }) {
+function PatternDrawer({ group, deltas, breakBooks, reasons, onOpenBook, onClose }) {
   const total = group.break_ids.reduce((sum, b) => sum + (deltas[b] ?? 0), 0);
   return (
     <div
@@ -489,9 +497,14 @@ function PatternDrawer({ group, deltas, breakBooks, reasons, onClose }) {
                 style={{ borderTop: '1px solid var(--border-subtle)' }}
               >
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
+                  <button
+                    type="button"
+                    onClick={() => onOpenBook(breakBooks[b] ?? b)}
+                    className="text-sm text-left underline-offset-2 hover:underline"
+                    style={{ color: 'var(--clr-blue)' }}
+                  >
                     {breakBooks[b] ?? b}
-                  </span>
+                  </button>
                   <span
                     className="text-sm"
                     style={{

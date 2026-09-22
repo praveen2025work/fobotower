@@ -1,5 +1,9 @@
 'use client';
 
+import { useState } from 'react';
+
+import { ChevronDownIcon, ChevronRightIcon } from '@/components/fobo/icons';
+
 const money = (v) =>
   `$${Number(v ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
 
@@ -12,6 +16,7 @@ export default function PatternGroupCard({
   decided = {},
   pending = null,
   onOpenPattern,
+  onOpenBook,
   onDecide,
 }) {
   const total = group.break_ids.reduce((sum, b) => sum + (deltas[b] ?? 0), 0);
@@ -164,88 +169,139 @@ export default function PatternGroupCard({
 
       <ul className="mt-2 flex flex-col">
         {group.break_ids.map((breakId) => (
-          <li
+          <BreakRow
             key={breakId}
-            className="flex items-baseline gap-3 py-1"
-            style={{ borderTop: '1px solid var(--border-subtle)' }}
-          >
-            <span
-              className="text-xs font-medium shrink-0"
-              style={{ color: 'var(--text-primary)', minWidth: 120 }}
-            >
-              {breakBooks[breakId] ?? breakId}
-            </span>
-            <span
-              className="text-xs shrink-0"
-              style={{
-                color: 'var(--text-primary)',
-                fontFamily: 'var(--font-mono), monospace',
-                minWidth: 92,
-              }}
-            >
-              {money(deltas[breakId])}
-            </span>
-            <span
-              className="text-xs truncate"
-              style={{ color: 'var(--text-muted)' }}
-            >
-              {reasons[breakId] ?? ''}
-            </span>
-            <span className="ml-auto shrink-0 flex items-center gap-1">
-              {decided[breakId] ? (
-                <span
-                  className="text-xs font-semibold"
-                  style={{
-                    color:
-                      decided[breakId] === 'approved'
-                        ? 'var(--clr-green)'
-                        : 'var(--clr-red)',
-                  }}
-                >
-                  {decided[breakId] === 'approved' ? '✓' : '✕'}
-                </span>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    aria-label={`Approve ${breakBooks[breakId] ?? breakId}`}
-                    onClick={() =>
-                      onDecide({ action: 'approve', breakId })
-                    }
-                    className="rounded"
-                    style={{
-                      width: 20,
-                      height: 20,
-                      color: 'var(--clr-green)',
-                      border: '1px solid var(--border-subtle)',
-                      fontSize: 11,
-                      lineHeight: 1,
-                    }}
-                  >
-                    ✓
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={`Reject ${breakBooks[breakId] ?? breakId}`}
-                    onClick={() => onDecide({ action: 'reject', breakId })}
-                    className="rounded"
-                    style={{
-                      width: 20,
-                      height: 20,
-                      color: 'var(--clr-red)',
-                      border: '1px solid var(--border-subtle)',
-                      fontSize: 11,
-                      lineHeight: 1,
-                    }}
-                  >
-                    ✕
-                  </button>
-                </>
-              )}
-            </span>
-          </li>
+            breakId={breakId}
+            book={breakBooks[breakId] ?? breakId}
+            delta={deltas[breakId]}
+            reason={reasons[breakId]}
+            outcome={decided[breakId]}
+            onOpenBook={onOpenBook}
+            onDecide={onDecide}
+          />
         ))}
       </ul>
     </div>
+  );
+}
+
+function BreakRow({ breakId, book, delta, reason, outcome, onOpenBook, onDecide }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <li style={{ borderTop: '1px solid var(--border-subtle)' }}>
+      <div className="flex items-baseline gap-2 py-1">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          aria-label={open ? `Collapse ${book}` : `Expand ${book}`}
+          className="flex items-center shrink-0"
+          style={{ color: 'var(--text-muted)', width: 12 }}
+        >
+          {open ? <ChevronDownIcon /> : <ChevronRightIcon />}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onOpenBook(book)}
+          className="text-xs font-medium shrink-0 text-left underline-offset-2 hover:underline"
+          style={{ color: 'var(--clr-blue)', minWidth: 116 }}
+        >
+          {book}
+        </button>
+
+        <span
+          className="text-xs shrink-0"
+          style={{
+            color: 'var(--text-primary)',
+            fontFamily: 'var(--font-mono), monospace',
+            minWidth: 86,
+          }}
+        >
+          {money(delta)}
+        </span>
+
+        <span className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
+          {reason ?? ''}
+        </span>
+
+        <span className="ml-auto shrink-0 flex items-center gap-1">
+          {outcome ? (
+            <span
+              className="text-xs font-semibold"
+              style={{
+                color:
+                  outcome === 'approved' ? 'var(--clr-green)' : 'var(--clr-red)',
+              }}
+            >
+              {outcome === 'approved' ? '✓' : '✕'}
+            </span>
+          ) : (
+            <>
+              <button
+                type="button"
+                aria-label={`Approve ${book}`}
+                onClick={() => onDecide({ action: 'approve', breakId })}
+                className="rounded"
+                style={{
+                  width: 20,
+                  height: 20,
+                  color: 'var(--clr-green)',
+                  border: '1px solid var(--border-subtle)',
+                  fontSize: 11,
+                  lineHeight: 1,
+                }}
+              >
+                ✓
+              </button>
+              <button
+                type="button"
+                aria-label={`Reject ${book}`}
+                onClick={() => onDecide({ action: 'reject', breakId })}
+                className="rounded"
+                style={{
+                  width: 20,
+                  height: 20,
+                  color: 'var(--clr-red)',
+                  border: '1px solid var(--border-subtle)',
+                  fontSize: 11,
+                  lineHeight: 1,
+                }}
+              >
+                ✕
+              </button>
+            </>
+          )}
+        </span>
+      </div>
+
+      {open && (
+        <div
+          className="ml-6 mb-2 rounded-lg px-3 py-2 text-xs flex flex-col gap-1"
+          style={{ background: 'var(--bg-hover)' }}
+        >
+          <div style={{ color: 'var(--text-secondary)' }}>
+            {reason ?? 'No cause identified'}
+          </div>
+          <div
+            style={{
+              color: 'var(--text-muted)',
+              fontFamily: 'var(--font-mono), monospace',
+            }}
+          >
+            {breakId} · difference {money(delta)}
+          </div>
+          <button
+            type="button"
+            onClick={() => onOpenBook(book)}
+            className="self-start underline underline-offset-2"
+            style={{ color: 'var(--clr-blue)' }}
+          >
+            Open {book} detail
+          </button>
+        </div>
+      )}
+    </li>
   );
 }

@@ -9,3 +9,4 @@ packages/contracts/dist/
 .env
 .env.*
 .DS_Store
+package-lock.json

@@ -1,0 +1,219 @@
+/* Design tokens extracted verbatim from FoboControlTower (1).html.
+   Source material, not application code. apps/console/src/styles/tokens.css
+   is generated from this file. Do not edit by hand. */
+
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* ─────────────────────────────────────────────────────────────
+   Light mode — soft off-white ground, frosted glass cards,
+   Barclays brand accent.
+───────────────────────────────────────────────────────────── */
+:root {
+  /* Brand */
+  --barcl-midnight: #00395D;
+  --barcl-navy:     #002D5F;
+  --barcl-eagle:    #00AEEF;
+  --barcl-sky:      #D6F0FA;
+
+  /* Ground */
+  --bg-page:        #EEF2F7;
+  --bg-page-alt:    #E5EBF3;
+
+  /* Frosted card */
+  --bg-card:        rgba(255,255,255,0.72);
+  --bg-card-solid:  #FFFFFF;
+  --card-blur:      saturate(180%) blur(20px);
+  --card-border:    rgba(255,255,255,0.55);
+  --card-shadow:    0 2px 12px rgba(0,45,95,0.08), 0 1px 3px rgba(0,45,95,0.06);
+  --card-shadow-md: 0 4px 24px rgba(0,45,95,0.12), 0 2px 6px rgba(0,45,95,0.08);
+
+  /* Header — deep navy with subtle gradient */
+  --bg-header:      #002D5F;
+  --bg-header-deep: #001E45;
+  --header-grad:    linear-gradient(135deg, #002D5F 0%, #003F80 100%);
+
+  /* Muted surfaces */
+  --bg-muted:       rgba(240,244,250,0.8);
+  --bg-hover:       rgba(0,45,95,0.05);
+  --bg-active:      rgba(0,174,239,0.08);
+
+  /* Borders — near-invisible hairlines */
+  --border:         rgba(0,45,95,0.12);
+  --border-subtle:  rgba(0,45,95,0.07);
+  --border-card:    rgba(255,255,255,0.6);
+
+  /* Text */
+  --text-primary:   #0D1B2E;
+  --text-secondary: #3D5068;
+  --text-muted:     #7A90A8;
+  --text-on-brand:  #FFFFFF;
+  --text-on-brand2: #A8C4DC;
+
+  /* Status */
+  --clr-green:      #1A7A45;  --clr-green-bg:   rgba(26,122,69,0.09);
+  --clr-amber:      #A05C08;  --clr-amber-bg:   rgba(160,92,8,0.09);
+  --clr-amber-dot:  #C87D12;
+  --clr-red:        #B02020;  --clr-red-bg:     rgba(176,32,32,0.09);
+  --clr-blue:       #005F8C;  --clr-blue-bg:    rgba(0,95,140,0.09);
+  --clr-grey:       #5A6878;  --clr-grey-bg:    rgba(90,104,120,0.09);
+  --clr-purple:     #4E3C9A;  --clr-purple-bg:  rgba(78,60,154,0.09);
+
+  /* Regions */
+  --apac-bg:   rgba(0,174,239,0.10);  --apac-text: #005F8C;
+  --emea-bg:   rgba(78,60,154,0.10);  --emea-text: #4E3C9A;
+  --amer-bg:   rgba(160,92,8,0.10);   --amer-text: #A05C08;
+
+  /* Book bar */
+  --bar-auto:      #4E3C9A;
+  --bar-cleared:   #1A7A45;
+  --bar-awaiting:  #C87D12;
+  --bar-analysing: #0088C4;
+  --bar-blocked:   #B02020;
+  --bar-notopen:   #C8D5E4;
+
+  /* Misc */
+  --radius-card:    16px;
+  --radius-pill:    99px;
+  --radius-sm:      8px;
+  --transition:     0.18s ease;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Dark mode — true deep navy, stronger glass effect.
+───────────────────────────────────────────────────────────── */
+[data-theme="dark"] {
+  --bg-page:        #060F1F;
+  --bg-page-alt:    #091525;
+
+  --bg-card:        rgba(16,30,58,0.80);
+  --bg-card-solid:  #0E1E3A;
+  --card-border:    rgba(255,255,255,0.07);
+  --card-shadow:    0 2px 12px rgba(0,0,0,0.40), 0 1px 3px rgba(0,0,0,0.30);
+  --card-shadow-md: 0 6px 32px rgba(0,0,0,0.55);
+
+  --bg-header:      #020B18;
+  --bg-header-deep: #010710;
+  --header-grad:    linear-gradient(135deg, #020B18 0%, #03122A 100%);
+
+  --bg-muted:       rgba(8,20,42,0.80);
+  --bg-hover:       rgba(0,174,239,0.07);
+  --bg-active:      rgba(0,174,239,0.12);
+
+  --border:         rgba(255,255,255,0.08);
+  --border-subtle:  rgba(255,255,255,0.05);
+  --border-card:    rgba(255,255,255,0.07);
+
+  --text-primary:   #E2EBF5;
+  --text-secondary: #8DAAC4;
+  --text-muted:     #4E6880;
+  --text-on-brand:  #FFFFFF;
+  --text-on-brand2: #5A8AAA;
+
+  --clr-green:      #25A85A;  --clr-green-bg:   rgba(37,168,90,0.12);
+  --clr-amber:      #D4880E;  --clr-amber-bg:   rgba(212,136,14,0.12);
+  --clr-amber-dot:  #D4880E;
+  --clr-red:        #D83B3B;  --clr-red-bg:     rgba(216,59,59,0.12);
+  --clr-blue:       #00AEEF;  --clr-blue-bg:    rgba(0,174,239,0.12);
+  --clr-grey:       #6A8296;  --clr-grey-bg:    rgba(106,130,150,0.12);
+  --clr-purple:     #7B6CC8;  --clr-purple-bg:  rgba(123,108,200,0.12);
+
+  --apac-bg:   rgba(0,174,239,0.12);  --apac-text: #00AEEF;
+  --emea-bg:   rgba(123,108,200,0.12); --emea-text: #7B6CC8;
+  --amer-bg:   rgba(212,136,14,0.12); --amer-text: #D4880E;
+
+  --bar-auto:      #7B6CC8;
+  --bar-cleared:   #25A85A;
+  --bar-awaiting:  #D4880E;
+  --bar-analysing: #00AEEF;
+  --bar-blocked:   #D83B3B;
+  --bar-notopen:   #1A2E46;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Base reset + utility classes
+───────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  background: var(--bg-page);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Animated page gradient */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(0,174,239,0.12) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 110%, rgba(0,45,95,0.10) 0%, transparent 60%),
+    var(--bg-page);
+  pointer-events: none;
+}
+[data-theme="dark"] body::before {
+  background:
+    radial-gradient(ellipse 70% 40% at 15% -5%, rgba(0,174,239,0.08) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 35% at 85% 105%, rgba(0,45,95,0.15) 0%, transparent 55%),
+    var(--bg-page);
+}
+
+/* Glass card utility */
+.glass {
+  background: var(--bg-card);
+  -webkit-backdrop-filter: var(--card-blur);
+  backdrop-filter: var(--card-blur);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--card-shadow);
+  border-radius: var(--radius-card);
+}
+.glass-sm {
+  background: var(--bg-card);
+  -webkit-backdrop-filter: saturate(160%) blur(12px);
+  backdrop-filter: saturate(160%) blur(12px);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--card-shadow);
+  border-radius: var(--radius-sm);
+}
+
+/* Override Tailwind defaults for dark mode */
+[data-theme="dark"] .bg-white         { background-color: var(--bg-card-solid) !important; }
+[data-theme="dark"] .bg-slate-50      { background-color: var(--bg-muted) !important; }
+[data-theme="dark"] .bg-slate-100     { background-color: var(--bg-hover) !important; }
+[data-theme="dark"] .bg-slate-900     { background-color: var(--text-primary) !important; }
+[data-theme="dark"] .text-slate-800,
+[data-theme="dark"] .text-slate-700   { color: var(--text-primary) !important; }
+[data-theme="dark"] .text-slate-600   { color: var(--text-secondary) !important; }
+[data-theme="dark"] .text-slate-500,
+[data-theme="dark"] .text-slate-400   { color: var(--text-muted) !important; }
+[data-theme="dark"] .border-slate-200,
+[data-theme="dark"] .border-slate-100 { border-color: var(--border) !important; }
+[data-theme="dark"] .divide-slate-100 > * { border-color: var(--border-subtle) !important; }
+[data-theme="dark"] input             { background: var(--bg-muted) !important; color: var(--text-primary) !important; border-color: var(--border) !important; }
+[data-theme="dark"] select            { background: var(--bg-header-deep) !important; }
+[data-theme="dark"] .shadow-sm        { box-shadow: var(--card-shadow) !important; }
+
+/* Micro-interactions */
+button { transition: opacity var(--transition), transform var(--transition), box-shadow var(--transition); }
+button:active:not(:disabled) { transform: scale(0.97); }
+
+/* Pill utility */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Divider line */
+.divider { height: 1px; background: var(--border-subtle); }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }

@@ -107,3 +107,88 @@ async def test_session_maps_breaks_to_their_books(client):
     body = (await client.get("/api/sessions/sess-books")).json()
     assert body["break_books"]["b-01"] == "APAC-CASH-01"
     assert len(body["break_books"]) == 14
+
+
+async def test_concurrent_investigates_from_an_empty_graph(client):
+    """React StrictMode double-fires effects in dev, so the console issues
+    two investigates at once against a cold graph. A check-then-act seed
+    lets both see it empty and both insert, and one 500s.
+
+    The graph must be empty for this to reproduce — the client fixture
+    seeds, so truncate first.
+    """
+    import asyncio
+
+    from sqlalchemy import text
+
+    from tests.conftest import TABLES
+
+    async with get_session() as s:
+        await s.execute(text(f"TRUNCATE {', '.join(TABLES)} CASCADE"))
+        await s.commit()
+
+    results = await asyncio.gather(
+        client.post("/api/sessions/sess-cold-a/investigate"),
+        client.post("/api/sessions/sess-cold-b/investigate"),
+        return_exceptions=True,
+    )
+    for r in results:
+        assert not isinstance(r, Exception), r
+        assert r.status_code == 202, r.text
+
+
+async def test_concurrent_investigates_do_not_collide(client):
+    """React StrictMode double-fires effects in dev, so the console issues
+    two investigates at once. Both must succeed: a check-then-act seed
+    lets both see an empty graph and both insert."""
+    import asyncio
+
+    results = await asyncio.gather(
+        client.post("/api/sessions/sess-race/investigate"),
+        client.post("/api/sessions/sess-race/investigate"),
+        return_exceptions=True,
+    )
+    for r in results:
+        assert not isinstance(r, Exception), r
+        assert r.status_code == 202, r.text
+
+    body = (await client.get("/api/sessions/sess-race")).json()
+    assert len(body["pattern_groups"]) == 4
+
+
+async def test_investigate_is_idempotent(client):
+    """Calling it twice sequentially leaves one coherent session, not two."""
+    await client.post("/api/sessions/sess-idem/investigate")
+    first = (await client.get("/api/sessions/sess-idem")).json()
+    await client.post("/api/sessions/sess-idem/investigate")
+    second = (await client.get("/api/sessions/sess-idem")).json()
+    assert first["pattern_groups"] == second["pattern_groups"]
+    assert second["session"]["status"] == "awaiting_signoff"
+
+
+async def test_two_investigates_on_the_same_thread_from_a_cold_graph(client):
+    """The exact browser scenario: StrictMode fires the same effect twice,
+    so both calls target one session id against an empty graph."""
+    import asyncio
+
+    from sqlalchemy import text
+
+    from tests.conftest import TABLES
+
+    async with get_session() as s:
+        await s.execute(text(f"TRUNCATE {', '.join(TABLES)} CASCADE"))
+        await s.commit()
+
+    results = await asyncio.gather(
+        client.post("/api/sessions/sess-same/investigate"),
+        client.post("/api/sessions/sess-same/investigate"),
+        return_exceptions=True,
+    )
+    for r in results:
+        assert not isinstance(r, Exception), r
+        assert r.status_code == 202, r.text
+
+    body = (await client.get("/api/sessions/sess-same")).json()
+    assert len(body["pattern_groups"]) == 4
+    assert body["session"]["status"] == "awaiting_signoff"
+    assert len(body["break_books"]) == 14

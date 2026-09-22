@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import PipelineRail from '@/components/fobo/pipeline/PipelineRail';
 import RegionRail from '@/components/fobo/regions/RegionRail';
 import RunScheduleCard from '@/components/fobo/schedule/RunScheduleCard';
+import ConnectionError from '@/components/fobo/shell/ConnectionError';
 import TopBar from '@/components/fobo/shell/TopBar';
 import { useRunStream } from '@/hooks/useRunStream';
 import { useFoboRunStore } from '@/store/foboRunStore';
@@ -55,9 +56,13 @@ export default function FoboControlTower() {
   const error = runError ?? sessionError;
   if (error) {
     return (
-      <p className="p-6 text-sm" style={{ color: 'var(--clr-red)' }}>
-        {error} — is the API running on :8100?
-      </p>
+      <ConnectionError
+        message={error}
+        onRetry={() => {
+          loadRuns();
+          investigate(SESSION_ID);
+        }}
+      />
     );
   }
 
@@ -242,7 +247,7 @@ export default function FoboControlTower() {
   );
 }
 
-function PatternGroupCard({ group, deltas, breakBooks }) {
+function PatternGroupCard({ group, deltas = {}, breakBooks = {} }) {
   const total = group.break_ids.reduce((sum, b) => sum + (deltas[b] ?? 0), 0);
   const auto = group.mode === 'auto';
 

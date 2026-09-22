@@ -16,10 +16,33 @@ const STATUS_DOT = {
   scheduled: 'var(--bar-notopen)',
 };
 
-/** "CATS vs MOTIF — Rates" reads as "Rates" in the timeline: the column
- *  is narrow and the rec family is already implied by the region row. */
+const LANE_LABEL_WIDTH = 56;
+
+/** "CATS vs MOTIF — Rates" reads as "Rates" in a lane: the rec family is
+ *  already implied by the region it sits in. */
 function shortName(name) {
   return name.split('—').pop().trim();
+}
+
+function toMinutes(hhmm) {
+  const [h, m] = hhmm.split(':').map(Number);
+  return h * 60 + m;
+}
+
+/**
+ * Where a time sits along the lane, as a percentage.
+ *
+ * The lane spans the first run window to the last, with a margin at the end
+ * so a chip scheduled in the final window still has room to render rather
+ * than starting at the right edge.
+ */
+function positionFor(hhmm, windows) {
+  if (windows.length < 2) return 0;
+  const start = toMinutes(windows[0]);
+  const end = toMinutes(windows[windows.length - 1]);
+  const span = end - start || 1;
+  const ratio = (toMinutes(hhmm) - start) / span;
+  return Math.max(0, Math.min(1, ratio)) * 82;
 }
 
 export default function RunScheduleCard({
@@ -29,8 +52,8 @@ export default function RunScheduleCard({
   selectedRecId,
   onSelectRec,
 }) {
-  // One column for the region pill, then an equal column per run window.
-  const columns = `56px repeat(${runWindows.length}, minmax(0, 1fr))`;
+  const nowPercent =
+    stats.now && runWindows.length > 1 ? positionFor(stats.now, runWindows) : null;
 
   return (
     <section className="glass-card px-4 py-3">
@@ -44,10 +67,7 @@ export default function RunScheduleCard({
         >
           RUN SCHEDULE — TODAY
         </h2>
-        <span
-          className="text-xs shrink-0"
-          style={{ color: 'var(--text-muted)' }}
-        >
+        <span className="text-xs shrink-0" style={{ color: 'var(--text-muted)' }}>
           now {stats.now} {stats.timezone} · next {stats.next_run}
         </span>
         <div className="ml-auto">
@@ -55,84 +75,135 @@ export default function RunScheduleCard({
         </div>
       </div>
 
-      <div className="mt-3 grid gap-y-1.5" style={{ gridTemplateColumns: columns }}>
-        <div />
-        {runWindows.map((window, i) => (
-          <div
-            key={window}
-            className="text-xs pb-1 pl-2"
-            style={{
-              color: 'var(--text-muted)',
-              borderLeft: i === 0 ? 'none' : '1px solid var(--border-subtle)',
-            }}
-          >
-            {window}
-          </div>
-        ))}
+      <div className="mt-3">
+        {/* Time axis */}
+        <div
+          className="relative h-4"
+          style={{ marginLeft: LANE_LABEL_WIDTH }}
+        >
+          {runWindows.map((window) => (
+            <span
+              key={window}
+              className="absolute text-xs"
+              style={{
+                left: `${positionFor(window, runWindows)}%`,
+                color: 'var(--text-muted)',
+              }}
+            >
+              {window}
+            </span>
+          ))}
+        </div>
 
-        {regions.map(({ region, recs }) => (
-          <RegionRow
-            key={region}
-            region={region}
-            recs={recs}
-            runWindows={runWindows}
-            selectedRecId={selectedRecId}
-            onSelectRec={onSelectRec}
-          />
-        ))}
+        {/* Lanes, one per region */}
+        <div className="relative">
+          {/* Gridlines run the full height behind every lane. */}
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{ marginLeft: LANE_LABEL_WIDTH }}
+            aria-hidden="true"
+          >
+            {runWindows.map((window, i) =>
+              i === 0 ? null : (
+                <span
+                  key={window}
+                  className="absolute top-0 bottom-0"
+                  style={{
+                    left: `${positionFor(window, runWindows)}%`,
+                    width: 1,
+                    background: 'var(--border-subtle)',
+                  }}
+                />
+              ),
+            )}
+            {nowPercent !== null && (
+              <span
+                className="absolute top-0 bottom-0"
+                title={`now ${stats.now}`}
+                style={{
+                  left: `${nowPercent}%`,
+                  width: 1,
+                  background: 'var(--clr-blue)',
+                  opacity: 0.5,
+                }}
+              />
+            )}
+          </div>
+
+          <div className="relative flex flex-col gap-1.5">
+            {regions.map(({ region, recs }) => (
+              <Lane
+                key={region}
+                region={region}
+                recs={recs}
+                runWindows={runWindows}
+                selectedRecId={selectedRecId}
+                onSelectRec={onSelectRec}
+              />
+            ))}
+          </div>
+        </div>
       </div>
     </section>
   );
 }
 
-function RegionRow({ region, recs, runWindows, selectedRecId, onSelectRec }) {
+function Lane({ region, recs, runWindows, selectedRecId, onSelectRec }) {
+  // Recs sharing a window sit side by side rather than on top of each other,
+  // so each one is offset by the count already placed at that time.
+  const placed = new Map();
+
   return (
-    <>
-      <div className="pr-2 flex items-center">
+    <div className="flex items-center">
+      <div style={{ width: LANE_LABEL_WIDTH }} className="pr-2 shrink-0">
         <span
-          className="pill w-full text-center font-semibold"
+          className="pill w-full text-center font-semibold block"
           style={REGION_STYLE[region]}
         >
           {region}
         </span>
       </div>
-      {runWindows.map((window, i) => (
-        <div
-          key={window}
-          className="flex flex-wrap gap-1 py-0.5 pl-2"
-          style={{
-            borderLeft: i === 0 ? 'none' : '1px solid var(--border-subtle)',
-          }}
-        >
-          {recs
-            .filter((rec) => rec.scheduled === window)
-            .map((rec) => (
-              <RecChip
-                key={rec.rec_id}
-                rec={rec}
-                selected={rec.rec_id === selectedRecId}
-                onSelect={() => onSelectRec(rec.rec_id)}
-              />
-            ))}
-        </div>
-      ))}
-    </>
+
+      <div
+        className="relative flex-1 rounded-lg"
+        style={{ height: 26, background: 'var(--bg-muted)' }}
+      >
+        {recs.map((rec) => {
+          const seen = placed.get(rec.scheduled) ?? 0;
+          placed.set(rec.scheduled, seen + 1);
+          return (
+            <RecChip
+              key={rec.rec_id}
+              rec={rec}
+              left={positionFor(rec.scheduled, runWindows)}
+              stackIndex={seen}
+              selected={rec.rec_id === selectedRecId}
+              onSelect={() => onSelectRec(rec.rec_id)}
+            />
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
-function RecChip({ rec, selected, onSelect }) {
+function RecChip({ rec, left, stackIndex, selected, onSelect }) {
   return (
     <button
       type="button"
       onClick={onSelect}
       aria-pressed={selected}
-      title={`${rec.name} — ${rec.books_open}/${rec.books_total} open`}
-      className="pill flex items-center gap-1.5 transition"
+      title={`${rec.name} — ${rec.scheduled} IST · ${rec.books_open}/${rec.books_total} open`}
+      className="pill absolute flex items-center gap-1.5 transition whitespace-nowrap"
       style={{
+        left: `calc(${left}% + ${stackIndex * 8}px)`,
+        top: '50%',
+        transform: `translateY(-50%) translateX(${stackIndex * 100}%)`,
         background: selected ? 'var(--bg-active)' : 'var(--bg-card-solid)',
         border: `1px solid ${selected ? 'var(--clr-amber)' : 'var(--border-subtle)'}`,
         color: 'var(--text-secondary)',
         boxShadow: selected ? '0 0 0 2px var(--clr-amber-bg)' : 'none',
+        zIndex: selected ? 2 : 1,
       }}
     >
       <span
@@ -145,8 +216,8 @@ function RecChip({ rec, selected, onSelect }) {
           background: STATUS_DOT[rec.status],
         }}
       />
-      <span className="truncate">{shortName(rec.name)}</span>
-      <span className="shrink-0" style={{ color: 'var(--text-muted)' }}>
+      <span>{shortName(rec.name)}</span>
+      <span style={{ color: 'var(--text-muted)' }}>
         {rec.books_open}/{rec.books_total}
       </span>
     </button>

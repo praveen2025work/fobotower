@@ -1,0 +1,18 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: fobo
+      POSTGRES_PASSWORD: fobo
+      POSTGRES_DB: fobo
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fobo"]
+      interval: 5s
+      retries: 10
+    volumes:
+      - fobo_pg:/var/lib/postgresql/data
+
+volumes:
+  fobo_pg:

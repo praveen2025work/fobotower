@@ -1,3 +1,12 @@
+import {
+  ActivityIcon,
+  AlertIcon,
+  CheckIcon,
+  ClockIcon,
+  SendIcon,
+  UnlockIcon,
+} from '@/components/fobo/icons';
+
 const TONE = {
   green: 'var(--clr-green)',
   blue: 'var(--clr-blue)',
@@ -6,12 +15,12 @@ const TONE = {
 };
 
 const GLYPH = {
-  notified: '↗',
-  unlocked: '🔓',
-  cleared: '✓',
-  blocked: '!',
-  analysing: '◐',
-  awaiting: '⏱',
+  notified: SendIcon,
+  unlocked: UnlockIcon,
+  cleared: CheckIcon,
+  blocked: AlertIcon,
+  analysing: ActivityIcon,
+  awaiting: ClockIcon,
 };
 
 export default function ActivityFeed({ events }) {
@@ -42,12 +51,14 @@ export default function ActivityFeed({ events }) {
               style={{
                 width: 18,
                 height: 18,
-                fontSize: 9,
                 background: 'var(--bg-muted)',
                 color: TONE[e.tone],
               }}
             >
-              {GLYPH[e.kind] ?? '•'}
+              {(() => {
+                const Glyph = GLYPH[e.kind];
+                return Glyph ? <Glyph /> : null;
+              })()}
             </span>
             <div className="min-w-0">
               <div

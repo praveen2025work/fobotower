@@ -2,6 +2,14 @@
 
 import { useMemo, useState } from 'react';
 
+import {
+  ChevronDownIcon,
+  ChevronRightIcon,
+  ChevronsLeftIcon,
+  ChevronsRightIcon,
+  PinIcon,
+} from '@/components/fobo/icons';
+
 const REGION_STYLE = {
   APAC: { background: 'var(--apac-bg)', color: 'var(--apac-text)' },
   EMEA: { background: 'var(--emea-bg)', color: 'var(--emea-text)' },
@@ -56,7 +64,7 @@ export default function RegionRail({
           className="rounded p-1"
           style={{ color: 'var(--text-secondary)' }}
         >
-          »
+          <ChevronsRightIcon />
         </button>
         {regions.map(({ region }) => (
           <span
@@ -100,23 +108,23 @@ export default function RegionRail({
             aria-label="Pin nav"
             aria-pressed={pinned}
             title={pinned ? 'Unpin nav' : 'Pin nav'}
-            className="rounded px-1"
+            className="rounded p-1 flex items-center"
             style={{
               color: pinned ? 'var(--clr-blue)' : 'var(--text-muted)',
-              fontSize: 13,
+              background: pinned ? 'var(--bg-active)' : 'transparent',
             }}
           >
-            {pinned ? '📌' : '📍'}
+            <PinIcon filled={pinned} />
           </button>
           <button
             type="button"
             onClick={onToggleCollapse}
             aria-label="Collapse nav"
             title="Collapse nav"
-            className="rounded px-1"
-            style={{ color: 'var(--text-muted)', fontSize: 13 }}
+            className="rounded p-1 flex items-center"
+            style={{ color: 'var(--text-muted)' }}
           >
-            «
+            <ChevronsLeftIcon />
           </button>
         </div>
       </div>
@@ -138,7 +146,7 @@ export default function RegionRail({
         className="text-[11px] flex items-center gap-1"
         style={{ color: 'var(--text-muted)' }}
       >
-        <span aria-hidden="true">⌄</span>
+        <PinIcon size={11} filled={pinned} />
         {pinned
           ? 'Pinned. Stays open on select.'
           : 'Closes on select. Pin to keep open.'}
@@ -162,10 +170,10 @@ export default function RegionRail({
               className="flex items-center gap-2 w-full text-left py-0.5"
             >
               <span
-                aria-hidden="true"
-                style={{ color: 'var(--text-muted)', fontSize: 10, width: 10 }}
+                className="flex items-center shrink-0"
+                style={{ color: 'var(--text-muted)', width: 12 }}
               >
-                {closed ? '›' : '⌄'}
+                {closed ? <ChevronRightIcon /> : <ChevronDownIcon />}
               </span>
               <span
                 className="flex items-center justify-center rounded-full text-[10px] font-bold shrink-0"

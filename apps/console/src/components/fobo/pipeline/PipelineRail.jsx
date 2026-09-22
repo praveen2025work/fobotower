@@ -1,3 +1,11 @@
+import {
+  BellIcon,
+  CheckIcon,
+  LayersIcon,
+  SendIcon,
+  SparkIcon,
+} from '@/components/fobo/icons';
+
 const SEGMENTS = [
   { key: 'auto_posted', label: 'auto-posted', color: 'var(--bar-auto)' },
   {
@@ -32,11 +40,11 @@ const STATE_STYLE = {
  * so we do not claim anything is done.
  */
 const STAGE_GLYPH = {
-  mbr: '▦',
-  analysis: '◈',
-  signoff: '✓',
-  post: '↗',
-  notify: '🔔',
+  mbr: LayersIcon,
+  analysis: SparkIcon,
+  signoff: CheckIcon,
+  post: SendIcon,
+  notify: BellIcon,
 };
 
 function stageState(stages, currentStage, index) {
@@ -72,7 +80,11 @@ export default function PipelineRail({ stages, currentStage, counts }) {
                   className="flex items-center justify-center rounded-full shrink-0 text-sm font-semibold"
                   style={{ width: 34, height: 34, ...STATE_STYLE[state] }}
                 >
-                  {state === 'complete' ? '✓' : (STAGE_GLYPH[stage.key] ?? i + 1)}
+                  {(() => {
+                  if (state === 'complete') return <CheckIcon size={14} />;
+                  const Glyph = STAGE_GLYPH[stage.key];
+                  return Glyph ? <Glyph size={14} /> : i + 1;
+                })()}
                 </span>
                 <span
                   className="h-px flex-1"

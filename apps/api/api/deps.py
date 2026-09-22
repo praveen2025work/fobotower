@@ -7,6 +7,7 @@ from sqlalchemy import func, select, text
 
 from app.db.base import DATABASE_URL
 from app.db.models_graph import Node
+from fixtures.history import history_is_loaded, load_history
 from fixtures.loader import load_all
 
 # The checkpointer uses psycopg, not asyncpg.
@@ -25,21 +26,27 @@ async def checkpointer():
 
 @asynccontextmanager
 async def _seed_lock(session):
-    """Session-scoped Postgres advisory lock.
+    """Transaction-scoped Postgres advisory lock.
 
-    Session-scoped rather than transaction-scoped because load_all commits
-    internally, which would release a transaction lock half way through.
+    pg_advisory_xact_lock, not pg_advisory_lock: a session-scoped lock is held
+    by a connection, and a commit inside the seed can return that connection
+    to the pool — the matching unlock then runs on a different connection,
+    silently fails, and the lock leaks until the backend dies. Every later
+    request blocks forever on it.
+
+    A transaction lock is released by the commit or rollback that ends this
+    block, so it cannot outlive the work it guards. The seed therefore runs
+    commit-free and is committed once, here.
     """
     await session.execute(
-        text("SELECT pg_advisory_lock(:key)"), {"key": SEED_LOCK_KEY}
+        text("SELECT pg_advisory_xact_lock(:key)"), {"key": SEED_LOCK_KEY}
     )
     try:
         yield
-    finally:
-        await session.execute(
-            text("SELECT pg_advisory_unlock(:key)"), {"key": SEED_LOCK_KEY}
-        )
         await session.commit()
+    except Exception:
+        await session.rollback()
+        raise
 
 
 async def ensure_fixtures(session) -> None:
@@ -58,4 +65,6 @@ async def ensure_fixtures(session) -> None:
     async with _seed_lock(session):
         count = await session.scalar(select(func.count()).select_from(Node))
         if not count:
-            await load_all(session)
+            await load_all(session, commit=False)
+        if not await history_is_loaded(session):
+            await load_history(session, commit=False)

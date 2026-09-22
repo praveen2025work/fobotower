@@ -25,7 +25,7 @@ MOVED_BOOK = "APAC-CASH-05"
 MOVE_EFFECTIVE = date(2026, 7, 1)
 
 
-async def load_all(session) -> None:
+async def load_all(session, *, commit: bool = True) -> None:
     """Load in explicit FK layers: nodes, then edges, then events.
 
     Each layer is flushed before the next. Edges and break events both carry
@@ -38,7 +38,8 @@ async def load_all(session) -> None:
     await _load_edges(session)
     await _load_breaks(session)
     await _load_priors(session)
-    await session.commit()
+    if commit:
+        await session.commit()
 
 
 async def _clear(session) -> None:

@@ -69,7 +69,7 @@ P204_HISTORY = {
 }
 
 
-async def load_history(session) -> None:
+async def load_history(session, *, commit: bool = True) -> None:
     """Idempotent: clears its own rows first, then reseeds."""
     await _clear(session)
     await _load_recs(session)
@@ -79,7 +79,8 @@ async def load_history(session) -> None:
     await _load_history_books(session)
     await session.flush()
     await _load_resolved_breaks(session)
-    await session.commit()
+    if commit:
+        await session.commit()
 
 
 async def _clear(session) -> None:

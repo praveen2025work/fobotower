@@ -19,6 +19,14 @@ def _plural(n: int, singular: str, plural: str | None = None) -> str:
     return singular if n == 1 else (plural or f"{singular}s")
 
 
+# Percentages read aloud: 8, 11, 18 and the 80s take "an", the rest take "a".
+_AN_PREFIXES = ("8", "11", "18")
+
+
+def _article(percent: int) -> str:
+    return "an" if str(percent).startswith(_AN_PREFIXES) else "a"
+
+
 async def draft(state: InvestigationState, *, session) -> dict:
     groups = state["pattern_groups"]
     breaks = state["breaks"]
@@ -54,8 +62,8 @@ async def draft(state: InvestigationState, *, session) -> dict:
     rated = [g for g in groups if g.historical_approval_rate is not None]
     confidence_basis = (
         " ".join(
-            f"{g.pattern_code} has a {g.historical_approval_rate:.0%} "
-            "historical approval rate."
+            f"{g.pattern_code} has {_article(round(g.historical_approval_rate * 100))} "
+            f"{g.historical_approval_rate:.0%} historical approval rate."
             for g in rated
         )
         or "No prior resolutions available for these patterns."

@@ -21,8 +21,27 @@ if config.config_file_name is not None:
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
 from app.db.base import Base
-from app.db import models_graph, models_session  # noqa: F401  register tables
+from app.db import models_graph, models_ops, models_session  # noqa: F401  register tables
 target_metadata = Base.metadata
+
+# LangGraph's Postgres checkpointer creates and owns these. They are not in
+# our metadata, so autogenerate would emit DROP statements for them.
+CHECKPOINTER_TABLES = {
+    "checkpoints",
+    "checkpoint_blobs",
+    "checkpoint_writes",
+    "checkpoint_migrations",
+}
+
+
+def include_object(object, name, type_, reflected, compare_to):
+    if type_ == "table" and name in CHECKPOINTER_TABLES:
+        return False
+    if type_ == "index" and getattr(object, "table", None) is not None:
+        return object.table.name not in CHECKPOINTER_TABLES
+    return True
+
+
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
@@ -46,6 +65,7 @@ def run_migrations_offline() -> None:
     context.configure(
         url=url,
         target_metadata=target_metadata,
+        include_object=include_object,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
     )
@@ -55,7 +75,11 @@ def run_migrations_offline() -> None:
 
 
 def do_run_migrations(connection: Connection) -> None:
-    context.configure(connection=connection, target_metadata=target_metadata)
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        include_object=include_object,
+    )
 
     with context.begin_transaction():
         context.run_migrations()

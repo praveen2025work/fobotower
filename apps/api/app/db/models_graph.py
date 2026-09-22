@@ -2,7 +2,17 @@ from datetime import date, datetime
 from decimal import Decimal
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import Date, DateTime, ForeignKey, Index, Numeric, String, Text, func
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    ForeignKey,
+    Index,
+    Numeric,
+    String,
+    Text,
+    func,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -67,6 +77,14 @@ class BreakEvent(Base):
     pattern_code: Mapped[str | None] = mapped_column(String(32), nullable=True)
     outcome: Mapped[str | None] = mapped_column(String(32), nullable=True)
     narrative: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # The wording a controller reads on the adjustment row, e.g.
+    # "Nostro statement received after 23:30 cutoff".
+    reason_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # A figure in this break's draft could not be traced to source data.
+    is_ungrounded: Mapped[bool] = mapped_column(Boolean, default=False)
+    # The run this break first appeared in. Later runs carrying the same
+    # break_id make it aged; that span is the "carried N runs" badge.
+    first_seen_run_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     recorded_from: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

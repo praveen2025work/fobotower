@@ -11,6 +11,7 @@ from app.db.base import get_session
 
 # Child tables first.
 TABLES = [
+    "source_call",
     "controller_decision",
     "pattern_group",
     "evidence_item",
@@ -20,6 +21,8 @@ TABLES = [
     "break_event",
     "edge",
     "node",
+    "run",
+    "reconciliation",
 ]
 
 

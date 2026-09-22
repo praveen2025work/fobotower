@@ -5,6 +5,7 @@ from app.db.base import get_session
 from app.workflow.nodes.gather import gather
 from app.workflow.nodes.group import group
 from app.workflow.nodes.resolve import resolve
+from app.workflow.session import ensure_investigation_session
 from fixtures.loader import read_breaks
 
 FO = Caller(staff_id="p1", roles=["FO"], entity_scope=["LE-APAC-01"], region="APAC")
@@ -37,6 +38,7 @@ async def _run_to_group(session, breaks=None):
         "hypothesis_attempts": 0,
         "review_cycles": 0,
     }
+    await ensure_investigation_session(session, st)
     st |= await resolve(st, session=session)
     st |= await gather(st, session=session)
     st |= await group(st, session=session)

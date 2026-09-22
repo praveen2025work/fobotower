@@ -22,6 +22,11 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
 
+# Registers investigation_session in the same metadata: source_call declares a
+# foreign key to it, and SQLAlchemy resolves that by table name at mapper
+# configuration time.
+from app.db import models_session  # noqa: E402,F401
+
 
 class Reconciliation(Base):
     """A rec definition: what it is, where it belongs, when it runs."""

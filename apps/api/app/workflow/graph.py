@@ -21,6 +21,7 @@ from app.workflow.nodes.rank import rank
 from app.workflow.nodes.record import record
 from app.workflow.nodes.resolve import resolve
 from app.workflow.nodes.validate import validate
+from app.workflow.session import ensure_investigation_session
 from app.workflow.state import InvestigationState
 
 ESCALATED = "escalated"
@@ -68,6 +69,9 @@ def build_graph(checkpointer, *, session=None):
 
 
 async def run_investigation(state, *, thread_id, session, checkpointer):
+    # source_call carries an FK to the session, and gather records as it
+    # retrieves, so the row has to exist before the graph starts.
+    await ensure_investigation_session(session, state)
     app = build_graph(checkpointer, session=session)
     config = {"configurable": {"thread_id": thread_id}}
     await app.ainvoke(state, config)

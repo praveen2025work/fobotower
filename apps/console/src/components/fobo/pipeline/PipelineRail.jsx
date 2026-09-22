@@ -31,6 +31,14 @@ const STATE_STYLE = {
  * pending. That is the honest rendering: we do not know where the run is,
  * so we do not claim anything is done.
  */
+const STAGE_GLYPH = {
+  mbr: '▦',
+  analysis: '◈',
+  signoff: '✓',
+  post: '↗',
+  notify: '🔔',
+};
+
 function stageState(stages, currentStage, index) {
   const currentIndex = stages.findIndex((s) => s.key === currentStage);
   if (currentIndex === -1) return 'pending';
@@ -64,7 +72,7 @@ export default function PipelineRail({ stages, currentStage, counts }) {
                   className="flex items-center justify-center rounded-full shrink-0 text-sm font-semibold"
                   style={{ width: 34, height: 34, ...STATE_STYLE[state] }}
                 >
-                  {state === 'complete' ? '✓' : i + 1}
+                  {state === 'complete' ? '✓' : (STAGE_GLYPH[stage.key] ?? i + 1)}
                 </span>
                 <span
                   className="h-px flex-1"

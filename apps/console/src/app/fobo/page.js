@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import PatternGroupCard from '@/components/fobo/adjustments/PatternGroupCard';
 import GroundingPanel from '@/components/fobo/grounding/GroundingPanel';
@@ -9,9 +9,12 @@ import RegionRail from '@/components/fobo/regions/RegionRail';
 import RunScheduleCard from '@/components/fobo/schedule/RunScheduleCard';
 import ConnectionError from '@/components/fobo/shell/ConnectionError';
 import TopBar from '@/components/fobo/shell/TopBar';
+import ActivityFeed from '@/components/fobo/worklist/ActivityFeed';
+import HumanInLoopPanel from '@/components/fobo/worklist/HumanInLoopPanel';
 import { useFoboDecisionStore } from '@/store/foboDecisionStore';
 import { useFoboRunStore } from '@/store/foboRunStore';
 import { useFoboSessionStore } from '@/store/foboSessionStore';
+import { useFoboWorklistStore } from '@/store/foboWorklistStore';
 
 const REGION_STYLE = {
   APAC: { background: 'var(--apac-bg)', color: 'var(--apac-text)' },
@@ -22,6 +25,12 @@ const REGION_STYLE = {
 export default function FoboControlTower() {
   const [tab, setTab] = useState('pipeline');
   const [openPattern, setOpenPattern] = useState(null);
+  const [navPinned, setNavPinned] = useState(false);
+  const [navCollapsed, setNavCollapsed] = useState(false);
+  // The rail closes when a controller picks a rec, not when the page
+  // restores one on load — arriving to a collapsed rail hides the
+  // navigation before anyone has chosen anything.
+  const [userPicked, setUserPicked] = useState(false);
 
   const regions = useFoboRunStore((s) => s.regions);
   const runWindows = useFoboRunStore((s) => s.runWindows);
@@ -34,38 +43,53 @@ export default function FoboControlTower() {
   const sess = useFoboSessionStore();
   const { loadRec } = sess;
   const decisions = useFoboDecisionStore();
+  const worklist = useFoboWorklistStore();
+  const { load: loadWorklist } = worklist;
 
   useEffect(() => {
     loadRuns();
-  }, [loadRuns]);
+    loadWorklist();
+  }, [loadRuns, loadWorklist]);
 
-  // The rail chooses a rec; this loads it. Selecting a different rec in the
-  // rail is the only navigation the screen has, so it has to actually work.
   useEffect(() => {
     if (!selectedRecId) return;
-    // Decisions belong to the rec that is open. Carrying them across would
-    // show one rec's approvals against another rec's breaks.
     decisions.reset();
     loadRec(selectedRecId);
+    // Selecting closes the rail unless it is pinned.
+    if (userPicked && !navPinned) setNavCollapsed(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedRecId, loadRec]);
+  }, [selectedRecId, loadRec, navPinned, userPicked]);
 
-  async function handleDecide({ action, groupId, breakId }) {
-    let reason = null;
-    if (action === 'reject') {
-      // The server refuses an empty rejection: it leaves the retry cycle
-      // nothing to correct.
-      reason = window.prompt('Reason for rejection (required):');
-      if (!reason || !reason.trim()) return;
-    }
-    await decisions.decide({
-      recId: selectedRecId,
-      action,
-      groupId,
-      breakId,
-      reason,
-    });
-  }
+  const pickRec = useCallback(
+    (recId) => {
+      setUserPicked(true);
+      selectRec(recId);
+    },
+    [selectRec],
+  );
+
+  const handleDecide = useCallback(
+    async ({ action, groupId, breakId, recId }) => {
+      let reason = null;
+      if (action === 'reject') {
+        reason = window.prompt('Reason for rejection (required):');
+        if (!reason || !reason.trim()) return;
+      }
+      const ok = await decisions.decide({
+        recId: recId ?? selectedRecId,
+        action,
+        groupId,
+        breakId,
+        reason,
+      });
+      // The schedule's pending counts and the queue both move on a decision.
+      if (ok) {
+        loadRuns();
+        loadWorklist();
+      }
+    },
+    [decisions, selectedRecId, loadRuns, loadWorklist],
+  );
 
   const error = runError ?? sess.error;
   if (error) {
@@ -74,6 +98,7 @@ export default function FoboControlTower() {
         message={error}
         onRetry={() => {
           loadRuns();
+          loadWorklist();
           if (selectedRecId) loadRec(selectedRecId);
         }}
       />
@@ -89,10 +114,7 @@ export default function FoboControlTower() {
   }
 
   const header = sess.header;
-  const awaiting = sess.patternGroups.reduce(
-    (n, g) => n + g.break_ids.length,
-    0,
-  );
+  const awaiting = sess.patternGroups.reduce((n, g) => n + g.break_ids.length, 0);
   const counts = {
     auto_posted: sess.patternGroups.filter((g) => g.mode === 'auto').length,
     awaiting_signoff: awaiting,
@@ -103,26 +125,32 @@ export default function FoboControlTower() {
     <div className="min-h-screen flex flex-col">
       <TopBar stats={stats} activeTab={tab} onTabChange={setTab} />
 
-      <main className="flex-1 p-4 flex flex-col gap-4">
+      <main className="flex-1 p-3 flex flex-col gap-3">
         <RunScheduleCard
           stats={stats}
           regions={regions}
           runWindows={runWindows}
           selectedRecId={selectedRecId}
-          onSelectRec={selectRec}
+          onSelectRec={pickRec}
         />
 
         <div
-          className="grid gap-4 items-start"
-          style={{ gridTemplateColumns: '260px minmax(0, 1fr)' }}
+          className="grid gap-3 items-start"
+          style={{
+            gridTemplateColumns: `${navCollapsed ? '52px' : '248px'} minmax(0, 1fr) 320px`,
+          }}
         >
           <RegionRail
             regions={regions}
             selectedRecId={selectedRecId}
-            onSelectRec={selectRec}
+            onSelectRec={pickRec}
+            pinned={navPinned}
+            onTogglePin={() => setNavPinned((v) => !v)}
+            collapsed={navCollapsed}
+            onToggleCollapse={() => setNavCollapsed((v) => !v)}
           />
 
-          <section className="glass-card p-4 flex flex-col gap-4 min-h-[320px]">
+          <section className="glass-card p-4 flex flex-col gap-3 min-h-[320px]">
             {sess.loading && (
               <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                 Loading {selectedRecId}…
@@ -144,10 +172,7 @@ export default function FoboControlTower() {
                   >
                     {header.region}
                   </span>
-                  <span
-                    className="text-xs"
-                    style={{ color: 'var(--text-muted)' }}
-                  >
+                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
                     {header.rec_id} · {header.scheduled}
                     {header.completed ? ` · ${header.completed} IST` : ''} ·{' '}
                     {header.master_book} · COB {header.business_date}
@@ -170,59 +195,76 @@ export default function FoboControlTower() {
                   </p>
                 )}
 
-                {sess.draft && (
-                  <AnalysisPanel
-                    draft={sess.draft}
-                    modelSkipped={sess.modelSkipped}
-                    evidenceGaps={sess.evidenceGaps}
-                  />
-                )}
+                {(sess.draft || sess.patternGroups.length > 0) && (
+                  <div
+                    className="grid gap-4 items-start"
+                    style={{ gridTemplateColumns: 'minmax(0, 5fr) minmax(0, 6fr)' }}
+                  >
+                    <div className="flex flex-col gap-3">
+                      {sess.draft && (
+                        <AnalysisPanel
+                          draft={sess.draft}
+                          modelSkipped={sess.modelSkipped}
+                          evidenceGaps={sess.evidenceGaps}
+                        />
+                      )}
+                      {sess.grounding.length > 0 && (
+                        <GroundingPanel calls={sess.grounding} />
+                      )}
+                    </div>
 
-                {sess.grounding.length > 0 && (
-                  <GroundingPanel calls={sess.grounding} />
-                )}
-
-                {sess.patternGroups.length > 0 && (
-                  <div className="flex flex-col gap-3">
-                    <h3
-                      className="text-sm font-bold"
-                      style={{ fontFamily: 'var(--font-manrope), sans-serif' }}
-                    >
-                      Drafted Adjustments
-                      <span
-                        className="ml-2 text-xs font-normal"
-                        style={{ color: 'var(--text-muted)' }}
+                    <div className="flex flex-col gap-2">
+                      <h3
+                        className="text-sm font-bold"
+                        style={{ fontFamily: 'var(--font-manrope), sans-serif' }}
                       >
-                        {awaiting} adj · {sess.patternGroups.length} patterns ·
-                        click a pattern for detail
-                      </span>
-                    </h3>
+                        Drafted Adjustments
+                        <span
+                          className="ml-2 text-xs font-normal"
+                          style={{ color: 'var(--text-muted)' }}
+                        >
+                          {awaiting} adj · {sess.patternGroups.length} patterns
+                        </span>
+                      </h3>
 
-                    {decisions.error && (
-                      <p className="text-xs" style={{ color: 'var(--clr-red)' }}>
-                        {decisions.error}
-                      </p>
-                    )}
+                      {decisions.error && (
+                        <p className="text-xs" style={{ color: 'var(--clr-red)' }}>
+                          {decisions.error}
+                        </p>
+                      )}
 
-                    {sess.patternGroups.map((group) => (
-                      <PatternGroupCard
-                        key={group.group_id}
-                        group={group}
-                        deltas={sess.deltas}
-                        breakBooks={sess.breakBooks}
-                        reasons={sess.reasons}
-                        meta={sess.groupMeta[group.group_id] ?? {}}
-                        decided={decisions.decided}
-                        pending={decisions.pending}
-                        onOpenPattern={setOpenPattern}
-                        onDecide={handleDecide}
-                      />
-                    ))}
+                      {sess.patternGroups.map((group) => (
+                        <PatternGroupCard
+                          key={group.group_id}
+                          group={group}
+                          deltas={sess.deltas}
+                          breakBooks={sess.breakBooks}
+                          reasons={sess.reasons}
+                          meta={sess.groupMeta[group.group_id] ?? {}}
+                          decided={decisions.decided}
+                          pending={decisions.pending}
+                          onOpenPattern={setOpenPattern}
+                          onDecide={handleDecide}
+                        />
+                      ))}
+                    </div>
                   </div>
                 )}
               </>
             )}
           </section>
+
+          <div className="flex flex-col gap-3">
+            <HumanInLoopPanel
+              items={worklist.items}
+              pending={worklist.pending}
+              decided={decisions.decided}
+              busy={decisions.pending}
+              onDecide={handleDecide}
+              onOpenRec={pickRec}
+            />
+            <ActivityFeed events={worklist.events} />
+          </div>
         </div>
       </main>
 
@@ -269,7 +311,7 @@ function StatusPill({ state, header }) {
 
 function AnalysisPanel({ draft, modelSkipped, evidenceGaps }) {
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-2.5">
       <div className="flex flex-wrap items-center gap-2">
         <h3
           className="text-sm font-bold"
@@ -286,10 +328,7 @@ function AnalysisPanel({ draft, modelSkipped, evidenceGaps }) {
         {modelSkipped && (
           <span
             className="pill"
-            style={{
-              background: 'var(--clr-green-bg)',
-              color: 'var(--clr-green)',
-            }}
+            style={{ background: 'var(--clr-green-bg)', color: 'var(--clr-green)' }}
           >
             Deterministic · no model call
           </span>
@@ -299,8 +338,6 @@ function AnalysisPanel({ draft, modelSkipped, evidenceGaps }) {
       {[
         ['WHAT HAPPENED', draft.what_happened],
         ['WHY', draft.why],
-        ['WHAT TO DO', draft.what_to_do],
-        ['RISK / WATCH POINT', draft.risk],
       ].map(([heading, body]) => (
         <div key={heading}>
           <div
@@ -317,6 +354,49 @@ function AnalysisPanel({ draft, modelSkipped, evidenceGaps }) {
           </p>
         </div>
       ))}
+
+      {/* WHAT TO DO is the only section a controller acts on, so it is
+          lifted out of the prose rather than buried in it. */}
+      <div
+        className="rounded-xl p-3 flex gap-2"
+        style={{
+          background: 'var(--clr-green-bg)',
+          border: '1px solid var(--clr-green)',
+        }}
+      >
+        <span aria-hidden="true" style={{ color: 'var(--clr-green)' }}>
+          ✓
+        </span>
+        <div>
+          <div
+            className="text-[11px] font-bold tracking-wide mb-0.5"
+            style={{ color: 'var(--clr-green)' }}
+          >
+            WHAT TO DO
+          </div>
+          <p
+            className="text-sm leading-relaxed"
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            {draft.what_to_do}
+          </p>
+        </div>
+      </div>
+
+      <div>
+        <div
+          className="text-[11px] font-bold tracking-wide mb-0.5"
+          style={{ color: 'var(--text-muted)' }}
+        >
+          RISK / WATCH POINT
+        </div>
+        <p
+          className="text-sm leading-relaxed"
+          style={{ color: 'var(--text-secondary)' }}
+        >
+          {draft.risk}
+        </p>
+      </div>
 
       <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
         Confidence basis: {draft.confidence_basis}
@@ -402,10 +482,7 @@ function PatternDrawer({ group, deltas, breakBooks, reasons, onClose }) {
                 style={{ borderTop: '1px solid var(--border-subtle)' }}
               >
                 <div className="flex items-baseline justify-between gap-2">
-                  <span
-                    className="text-sm"
-                    style={{ color: 'var(--text-primary)' }}
-                  >
+                  <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
                     {breakBooks[b] ?? b}
                   </span>
                   <span
@@ -432,14 +509,8 @@ function PatternDrawer({ group, deltas, breakBooks, reasons, onClose }) {
 
 function Tile({ label, value }) {
   return (
-    <div
-      className="rounded-lg p-2 text-center"
-      style={{ background: 'var(--bg-muted)' }}
-    >
-      <div
-        className="text-lg font-bold"
-        style={{ color: 'var(--text-primary)' }}
-      >
+    <div className="rounded-lg p-2 text-center" style={{ background: 'var(--bg-muted)' }}>
+      <div className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
         {value}
       </div>
       <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>

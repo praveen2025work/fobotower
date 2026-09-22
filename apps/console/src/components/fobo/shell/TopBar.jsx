@@ -1,5 +1,7 @@
 'use client';
 
+import ThemeToggle from './ThemeToggle';
+
 const TABS = [
   { key: 'pipeline', label: 'Pipeline' },
   { key: 'analytics', label: 'Agent Analytics' },
@@ -71,6 +73,8 @@ export default function TopBar({ stats, activeTab, onTabChange }) {
           {stats.next_run} {stats.timezone}
         </strong>
       </span>
+
+      <ThemeToggle />
 
       <div className="flex items-center gap-2 shrink-0">
         <div className="text-right leading-tight">

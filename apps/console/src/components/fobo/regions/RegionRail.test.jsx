@@ -88,20 +88,20 @@ describe('RegionRail', () => {
 
   it('filters recs by the search box', async () => {
     render(<RegionRail regions={REGIONS} selectedRecId={null} onSelectRec={noop} />);
-    await userEvent.type(screen.getByPlaceholderText('Search recs...'), 'Collateral');
+    await userEvent.type(screen.getByPlaceholderText('Search recs…'), 'Collateral');
     expect(screen.queryByText('CATS vs MOTIF — Rates')).not.toBeInTheDocument();
     expect(screen.getByText('Rec Factory — Collateral')).toBeInTheDocument();
   });
 
   it('hides a region whose recs all filter out', async () => {
     render(<RegionRail regions={REGIONS} selectedRecId={null} onSelectRec={noop} />);
-    await userEvent.type(screen.getByPlaceholderText('Search recs...'), 'Collateral');
+    await userEvent.type(screen.getByPlaceholderText('Search recs…'), 'Collateral');
     expect(screen.queryByText('APAC')).not.toBeInTheDocument();
   });
 
   it('says so when nothing matches instead of rendering an empty rail', async () => {
     render(<RegionRail regions={REGIONS} selectedRecId={null} onSelectRec={noop} />);
-    await userEvent.type(screen.getByPlaceholderText('Search recs...'), 'zzzz');
+    await userEvent.type(screen.getByPlaceholderText('Search recs…'), 'zzzz');
     expect(screen.getByText('No recs match.')).toBeInTheDocument();
   });
 });

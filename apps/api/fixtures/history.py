@@ -193,6 +193,12 @@ async def _load_resolved_breaks(session) -> None:
         sched = time(11, 0)
         outcomes = ["approved"] * approved + ["rejected"] * (total - approved)
         sid = f"hist-R-1055-{day:%Y%m%d}"
+        # created_ts is set explicitly rather than defaulting to now():
+        # sign-off duration is decided_ts minus this, and a historical
+        # session measured against today's clock reads as negative.
+        opened_at = datetime.combine(day, sched, tzinfo=timezone.utc) + timedelta(
+            minutes=35
+        )
         session.add(
             InvestigationSession(
                 investigation_session_id=sid,
@@ -201,6 +207,7 @@ async def _load_resolved_breaks(session) -> None:
                 business_date=day,
                 run_id=run_id,
                 status="recorded",
+                created_ts=opened_at,
             )
         )
         await session.flush()

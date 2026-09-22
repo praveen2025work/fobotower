@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
+import AnalyticsTab from '@/components/fobo/analytics/AnalyticsTab';
 import PatternGroupCard from '@/components/fobo/adjustments/PatternGroupCard';
 import GroundingPanel from '@/components/fobo/grounding/GroundingPanel';
 import PipelineRail from '@/components/fobo/pipeline/PipelineRail';
@@ -126,6 +127,10 @@ export default function FoboControlTower() {
       <TopBar stats={stats} activeTab={tab} onTabChange={setTab} />
 
       <main className="flex-1 p-3 flex flex-col gap-3">
+        {tab === 'analytics' && <AnalyticsTab />}
+
+        {tab === 'pipeline' && (
+        <>
         <RunScheduleCard
           stats={stats}
           regions={regions}
@@ -266,6 +271,8 @@ export default function FoboControlTower() {
             <ActivityFeed events={worklist.events} />
           </div>
         </div>
+        </>
+        )}
       </main>
 
       <footer

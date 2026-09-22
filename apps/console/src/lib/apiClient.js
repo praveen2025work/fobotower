@@ -8,14 +8,22 @@ export async function get(path) {
   return res.json();
 }
 
-export async function post(path, body) {
+export async function post(path, body, extraHeaders = {}) {
   const res = await fetch(`${BASE}${path}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...extraHeaders },
     body: body ? JSON.stringify(body) : undefined,
   });
   if (!res.ok) {
-    throw new Error(`POST ${path} failed: ${res.status}`);
+    // Surface the server's own explanation: "a rejection requires a reason"
+    // is far more useful than "422".
+    let detail = '';
+    try {
+      detail = (await res.json())?.detail ?? '';
+    } catch {
+      detail = '';
+    }
+    throw new Error(detail || `POST ${path} failed: ${res.status}`);
   }
-  return res.status === 202 ? null : res.json();
+  return res.status === 202 || res.status === 204 ? null : res.json();
 }

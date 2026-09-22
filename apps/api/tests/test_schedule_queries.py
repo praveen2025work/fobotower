@@ -61,7 +61,8 @@ async def test_header_status_counts_match_the_mock():
         assert st["cleared"] == 2
         assert st["awaiting"] == 1
         assert st["blocked"] == 1
-        assert st["adj_pending"] == 14
+        # 14 on R-1055, 8 on R-2010, 5 on R-2015.
+        assert st["adj_pending"] == 27
 
 
 async def test_header_book_counts_match_the_mock():
@@ -86,7 +87,23 @@ async def test_unlocked_counts_books_with_no_open_breaks():
     async with get_session() as s:
         await _seeded(s)
         st = await header_stats(s, COB)
-        # Today's 12 APAC-CASH books all have open breaks; the 12 history
-        # books on this date are fully resolved.
+        # The 12 history books for today are fully resolved; the 25 books
+        # carrying open breaks across R-1055, R-2010 and R-2015 are not.
         assert st["unlocked"] == 12
-        assert st["unlocked_total"] == 24
+        assert st["unlocked_total"] == 37
+
+
+async def test_each_open_rec_reports_its_own_pending_count():
+    """Switching recs must show that rec's work, so the counts have to be
+    per-rec rather than a single total spread over all of them."""
+    async with get_session() as s:
+        await _seeded(s)
+        per_rec = {
+            rec["rec_id"]: rec["adj_pending"]
+            for region in await regions_with_recs(s, COB)
+            for rec in region["recs"]
+        }
+        assert per_rec["R-1055"] == 14
+        assert per_rec["R-2010"] == 8
+        assert per_rec["R-2015"] == 5
+        assert per_rec["R-1050"] == 0

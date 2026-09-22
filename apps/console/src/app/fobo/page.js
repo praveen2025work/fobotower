@@ -9,6 +9,7 @@ import RegionRail from '@/components/fobo/regions/RegionRail';
 import RunScheduleCard from '@/components/fobo/schedule/RunScheduleCard';
 import ConnectionError from '@/components/fobo/shell/ConnectionError';
 import TopBar from '@/components/fobo/shell/TopBar';
+import { useFoboDecisionStore } from '@/store/foboDecisionStore';
 import { useFoboRunStore } from '@/store/foboRunStore';
 import { useFoboSessionStore } from '@/store/foboSessionStore';
 
@@ -32,6 +33,7 @@ export default function FoboControlTower() {
 
   const sess = useFoboSessionStore();
   const { loadRec } = sess;
+  const decisions = useFoboDecisionStore();
 
   useEffect(() => {
     loadRuns();
@@ -40,8 +42,30 @@ export default function FoboControlTower() {
   // The rail chooses a rec; this loads it. Selecting a different rec in the
   // rail is the only navigation the screen has, so it has to actually work.
   useEffect(() => {
-    if (selectedRecId) loadRec(selectedRecId);
+    if (!selectedRecId) return;
+    // Decisions belong to the rec that is open. Carrying them across would
+    // show one rec's approvals against another rec's breaks.
+    decisions.reset();
+    loadRec(selectedRecId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedRecId, loadRec]);
+
+  async function handleDecide({ action, groupId, breakId }) {
+    let reason = null;
+    if (action === 'reject') {
+      // The server refuses an empty rejection: it leaves the retry cycle
+      // nothing to correct.
+      reason = window.prompt('Reason for rejection (required):');
+      if (!reason || !reason.trim()) return;
+    }
+    await decisions.decide({
+      recId: selectedRecId,
+      action,
+      groupId,
+      breakId,
+      reason,
+    });
+  }
 
   const error = runError ?? sess.error;
   if (error) {
@@ -84,6 +108,8 @@ export default function FoboControlTower() {
           stats={stats}
           regions={regions}
           runWindows={runWindows}
+          selectedRecId={selectedRecId}
+          onSelectRec={selectRec}
         />
 
         <div
@@ -172,6 +198,12 @@ export default function FoboControlTower() {
                       </span>
                     </h3>
 
+                    {decisions.error && (
+                      <p className="text-xs" style={{ color: 'var(--clr-red)' }}>
+                        {decisions.error}
+                      </p>
+                    )}
+
                     {sess.patternGroups.map((group) => (
                       <PatternGroupCard
                         key={group.group_id}
@@ -180,7 +212,10 @@ export default function FoboControlTower() {
                         breakBooks={sess.breakBooks}
                         reasons={sess.reasons}
                         meta={sess.groupMeta[group.group_id] ?? {}}
+                        decided={decisions.decided}
+                        pending={decisions.pending}
                         onOpenPattern={setOpenPattern}
+                        onDecide={handleDecide}
                       />
                     ))}
                   </div>

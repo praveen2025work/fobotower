@@ -74,9 +74,24 @@ async def prepare_database():
     await engine.dispose()
 
 
+# LangGraph owns these and creates them lazily. They outlive a truncation of
+# the application tables, and a stale checkpoint makes a route think an
+# investigation already ran — so the session row it would have created never
+# appears, and later inserts fail their foreign key.
+CHECKPOINT_TABLES = ["checkpoints", "checkpoint_blobs", "checkpoint_writes"]
+
+
 @pytest.fixture(autouse=True)
 async def clean_tables(prepare_database):
     async with get_session() as s:
         await s.execute(text(f"TRUNCATE {', '.join(TABLES)} CASCADE"))
+        for name in CHECKPOINT_TABLES:
+            await s.execute(
+                text(
+                    "DO $$ BEGIN "
+                    f"IF to_regclass('public.{name}') IS NOT NULL THEN "
+                    f"TRUNCATE {name} CASCADE; END IF; END $$;"
+                )
+            )
         await s.commit()
     yield

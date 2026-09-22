@@ -9,12 +9,17 @@ export default function PatternGroupCard({
   breakBooks = {},
   reasons = {},
   meta = {},
+  decided = {},
+  pending = null,
   onOpenPattern,
+  onDecide,
 }) {
   const total = group.break_ids.reduce((sum, b) => sum + (deltas[b] ?? 0), 0);
   const auto = group.mode === 'auto';
   const ungrounded = meta.ungrounded_count ?? 0;
   const carried = meta.carried_runs ?? 0;
+  const groupOutcome = decided[group.group_id];
+  const busy = pending === group.group_id;
 
   return (
     <div
@@ -103,6 +108,58 @@ export default function PatternGroupCard({
         >
           Pattern detail →
         </button>
+
+        {groupOutcome ? (
+          <span
+            className="pill font-semibold"
+            style={{
+              background:
+                groupOutcome === 'approved'
+                  ? 'var(--clr-green-bg)'
+                  : 'var(--clr-red-bg)',
+              color:
+                groupOutcome === 'approved'
+                  ? 'var(--clr-green)'
+                  : 'var(--clr-red)',
+            }}
+          >
+            {groupOutcome === 'approved' ? '✓ Approved' : '✕ Rejected'}
+          </span>
+        ) : (
+          <>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() =>
+                onDecide({ action: 'approve', groupId: group.group_id })
+              }
+              className="pill font-semibold"
+              style={{
+                background: 'var(--clr-green)',
+                color: '#fff',
+                opacity: busy ? 0.6 : 1,
+              }}
+            >
+              {busy ? 'Working…' : `Approve all ${group.break_ids.length}`}
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() =>
+                onDecide({ action: 'reject', groupId: group.group_id })
+              }
+              className="pill"
+              style={{
+                background: 'transparent',
+                color: 'var(--clr-red)',
+                border: '1px solid var(--clr-red)',
+                opacity: busy ? 0.6 : 1,
+              }}
+            >
+              Reject all
+            </button>
+          </>
+        )}
       </div>
 
       <ul className="mt-2 flex flex-col">
@@ -133,6 +190,58 @@ export default function PatternGroupCard({
               style={{ color: 'var(--text-muted)' }}
             >
               {reasons[breakId] ?? ''}
+            </span>
+            <span className="ml-auto shrink-0 flex items-center gap-1">
+              {decided[breakId] ? (
+                <span
+                  className="text-xs font-semibold"
+                  style={{
+                    color:
+                      decided[breakId] === 'approved'
+                        ? 'var(--clr-green)'
+                        : 'var(--clr-red)',
+                  }}
+                >
+                  {decided[breakId] === 'approved' ? '✓' : '✕'}
+                </span>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    aria-label={`Approve ${breakBooks[breakId] ?? breakId}`}
+                    onClick={() =>
+                      onDecide({ action: 'approve', breakId })
+                    }
+                    className="rounded"
+                    style={{
+                      width: 20,
+                      height: 20,
+                      color: 'var(--clr-green)',
+                      border: '1px solid var(--border-subtle)',
+                      fontSize: 11,
+                      lineHeight: 1,
+                    }}
+                  >
+                    ✓
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Reject ${breakBooks[breakId] ?? breakId}`}
+                    onClick={() => onDecide({ action: 'reject', breakId })}
+                    className="rounded"
+                    style={{
+                      width: 20,
+                      height: 20,
+                      color: 'var(--clr-red)',
+                      border: '1px solid var(--border-subtle)',
+                      fontSize: 11,
+                      lineHeight: 1,
+                    }}
+                  >
+                    ✕
+                  </button>
+                </>
+              )}
             </span>
           </li>
         ))}

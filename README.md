@@ -15,17 +15,16 @@ AgentOne is a separate, manual step.
 
 | Phase | Scope | State |
 |---|---|---|
-| 1 | Contracts, schema, fixtures, LangGraph through the review interrupt, console shell | Backend done (Tasks 1–9). Console pending (Tasks 10–13) |
+| 1 | Contracts, schema, fixtures, LangGraph through the review interrupt, console shell | **Done** — 13 tasks, 105 tests |
 | 2 | Analysis panel, grounding list, pattern-grouped adjustments, idempotent decisions | Not started |
 | 3 | MCP tool groups, entitlement gate, chat drawer, rules R1–R7, `revise` | Not started |
 | 4 | MBR + Trade Store, file ingestion, paging, analytics, evals | Not started |
-
-There is **no UI yet**. Everything below tests the backend.
 
 ## Prerequisites
 
 - Docker (for Postgres 16 + pgvector)
 - Python 3.12 — the venv is already created at `apps/api/.venv`
+- Node 20+ — console dependencies are already installed
 
 ## Testing
 
@@ -47,7 +46,7 @@ cd apps/api && .venv/bin/alembic upgrade head
 cd apps/api && .venv/bin/python -m pytest -v
 ```
 
-68 tests. They are re-runnable: `tests/conftest.py` truncates every table
+80 tests. They are re-runnable: `tests/conftest.py` truncates every table
 before each test.
 
 ### 4. See an investigation run
@@ -60,11 +59,53 @@ Loads fixtures, runs the workflow to the human interrupt, prints the drafted
 analysis and pattern groups exactly as a controller would see them, then
 resumes with per-group approvals and reports the recorded outcome.
 
+### 5. Run the whole thing
+
+Three terminals:
+
+```bash
+docker compose up -d postgres
+```
+
+```bash
+cd apps/api && .venv/bin/uvicorn api.main:app --port 8100 --reload
+```
+
+```bash
+cd apps/console && npm run dev
+```
+
+Then open **http://localhost:3100/fobo**.
+
+You should see the navy header, the run schedule with its stat chips and the
+regional timeline, the searchable region rail, the pipeline rail with Human
+Sign-off active, the four-part agent analysis, and the four pattern groups
+with their amounts.
+
+### 6. Console tests
+
+```bash
+cd apps/console && npm test
+```
+
+25 tests. No database needed — components are tested against props.
+
 ### Starting completely clean
 
 ```bash
 docker compose down -v && docker compose up -d postgres && sleep 8 && cd apps/api && .venv/bin/alembic upgrade head && .venv/bin/python -m pytest -q
 ```
+
+### Regenerating design tokens
+
+```bash
+cd apps/console && npm run build:tokens
+```
+
+Regenerates `src/styles/tokens.css` from `docs/design/mock-tokens.css`. The
+source is extracted verbatim from the mock and is read-only; the build strips
+its Google Fonts `@import`, because that file is inlined into `globals.css`
+and an `@import` must precede every other rule. Fonts load via `next/font`.
 
 ### Recreating the venv
 
@@ -99,8 +140,8 @@ rows disagree; the rows win.
 
 | Service | Port |
 |---|---|
-| Console (pending) | 3100 |
-| API (pending) | 8100 |
+| Console | 3100 |
+| API | 8100 |
 | Postgres | 5433 |
 
 All offset from AgentOne's defaults so both stacks run simultaneously.

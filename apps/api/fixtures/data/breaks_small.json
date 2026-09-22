@@ -1,0 +1,16 @@
+[
+  {"break_id":"b-01","book_ref":"APAC-CASH-01","line_code":"CASH","fo_value":102340.0,"bo_value":100000.0,"expected_pattern":"P-204","cause":"C1"},
+  {"break_id":"b-02","book_ref":"APAC-CASH-02","line_code":"CASH","fo_value":101880.0,"bo_value":100000.0,"expected_pattern":"P-204","cause":"C1"},
+  {"break_id":"b-03","book_ref":"APAC-CASH-03","line_code":"CASH","fo_value":106120.0,"bo_value":100000.0,"expected_pattern":"P-204","cause":"C1"},
+  {"break_id":"b-04","book_ref":"APAC-CASH-04","line_code":"CASH","fo_value":100940.0,"bo_value":100000.0,"expected_pattern":"P-204","cause":"C1"},
+  {"break_id":"b-05","book_ref":"APAC-CASH-05","line_code":"CASH","fo_value":103470.0,"bo_value":100000.0,"expected_pattern":"P-204","cause":"C1"},
+  {"break_id":"b-06","book_ref":"APAC-CASH-06","line_code":"CASH","fo_value":101215.0,"bo_value":100000.0,"expected_pattern":"P-204","cause":"C1"},
+  {"break_id":"b-07","book_ref":"APAC-CASH-07","line_code":"CASH","fo_value":118760.0,"bo_value":100000.0,"expected_pattern":"CPTY-REF","cause":"C2"},
+  {"break_id":"b-08","book_ref":"APAC-CASH-08","line_code":"CASH","fo_value":107310.0,"bo_value":100000.0,"expected_pattern":"CPTY-REF","cause":"C2"},
+  {"break_id":"b-09","book_ref":"APAC-CASH-11","line_code":"CASH","fo_value":102905.0,"bo_value":100000.0,"expected_pattern":"CPTY-REF","cause":"C2"},
+  {"break_id":"b-10","book_ref":"APAC-CASH-09","line_code":"CASH","fo_value":109500.0,"bo_value":100000.0,"expected_pattern":"LATE-BOOK","cause":"C5"},
+  {"break_id":"b-11","book_ref":"APAC-CASH-09","line_code":"CASH","fo_value":103220.0,"bo_value":100000.0,"expected_pattern":"LATE-BOOK","cause":"C5"},
+  {"break_id":"b-12","book_ref":"APAC-CASH-10","line_code":"CASH","fo_value":105780.0,"bo_value":100000.0,"expected_pattern":"LATE-BOOK","cause":"C5"},
+  {"break_id":"b-13","book_ref":"APAC-CASH-07","line_code":"CASH","fo_value":104020.0,"bo_value":100000.0,"expected_pattern":"DUP-SETTLE","cause":"C6"},
+  {"break_id":"b-14","book_ref":"APAC-CASH-12","line_code":"CASH","fo_value":101640.0,"bo_value":100000.0,"expected_pattern":"DUP-SETTLE","cause":"C6"}
+]

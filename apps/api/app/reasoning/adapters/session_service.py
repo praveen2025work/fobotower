@@ -10,9 +10,13 @@ Configuration:
     FOBO_SESSION_SERVICE_TOKEN bearer token, if it requires one
     FOBO_SESSION_SKILL_ID      the skill the service should apply
 
-The request shape below is a placeholder pending the service's actual
-contract — it is isolated to _build_request and _parse_response so adapting
-it is a two-function change, not a rewrite.
+    FOBO_MCP_URL               this orchestrator's MCP server, handed to the
+                               session so the model can query the graph
+    FOBO_MCP_TOKEN             bearer token the session uses against it
+
+The service runs each request through the Claude Agent SDK. The shape is
+specified in docs/integration/session-service-contract.md, and isolated to
+_build_request and _parse_response here.
 """
 
 import os
@@ -24,6 +28,16 @@ from app.reasoning.contracts import SkillVerdict
 from app.reasoning.port import ReasoningUnavailable
 
 DEFAULT_TIMEOUT_SECONDS = 120.0
+
+# The orchestrator's graph and engines, as the model sees them.
+FOBO_MCP_TOOLS = (
+    "mcp__fobo__fobo_list_tests",
+    "mcp__fobo__fobo_evidence_required",
+    "mcp__fobo__fobo_required_on_fail",
+    "mcp__fobo__fobo_similar_breaks",
+    "mcp__fobo__fobo_book_context",
+    "mcp__fobo__fobo_unset_policies",
+)
 
 
 class SessionServiceReasoner:
@@ -40,9 +54,12 @@ class SessionServiceReasoner:
             "/"
         )
         self._token = token or os.getenv("FOBO_SESSION_SERVICE_TOKEN")
+        # Must match the `name` in skills/fobo-investigation/SKILL.md.
         self._skill_id = skill_id or os.getenv(
-            "FOBO_SESSION_SKILL_ID", "fobo-cats-vs-motif"
+            "FOBO_SESSION_SKILL_ID", "fobo-investigation"
         )
+        self._mcp_url = os.getenv("FOBO_MCP_URL")
+        self._mcp_token = os.getenv("FOBO_MCP_TOKEN")
         self._timeout = timeout
         if not self._base_url:
             raise ReasoningUnavailable("FOBO_SESSION_SERVICE_URL is not set")
@@ -55,15 +72,33 @@ class SessionServiceReasoner:
 
     def _build_request(self, evidence: dict) -> dict:
         """One break, one session. The skill is named, not inlined: the
-        service already holds it, and re-uploading it per break would pay
-        for the same tokens on every call."""
-        return {
+        service holds it on disk, and re-sending it per break would pay for
+        the same tokens on every call."""
+        request = {
             "skill_id": self._skill_id,
-            "inputs": {"break_record": evidence},
+            "correlation_id": evidence.get("correlation_id") or evidence.get("break_id"),
+            "inputs": {
+                "break_record": {
+                    k: v for k, v in evidence.items() if k != "already_established"
+                },
+                "already_established": evidence.get("already_established", {}),
+            },
             "output_schema": SkillVerdict.model_json_schema(),
         }
+        # Only offer the graph as tools when there is one to offer. Naming an
+        # unreachable MCP server would fail the session for no benefit.
+        if self._mcp_url:
+            request["mcp"] = {"url": self._mcp_url, "token": self._mcp_token}
+            request["tools"] = list(FOBO_MCP_TOOLS)
+        return request
 
     def _parse_response(self, payload: dict) -> SkillVerdict:
+        status = payload.get("status")
+        if status in ("failed", "refused"):
+            err = payload.get("error") or {}
+            raise ReasoningUnavailable(
+                f"session {status}: {err.get('code', '?')} — {err.get('message', '')}"
+            )
         # Accept either a bare verdict or one nested under a result envelope.
         body = payload.get("output") or payload.get("result") or payload
         try:

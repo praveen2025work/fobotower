@@ -1,0 +1,137 @@
+# FOBO investigation playbook — CATS (Front Office) vs MOTIF (Back Office)
+#
+# Owner: Product Control. This file is the single source of truth for the
+# investigation rules the orchestrator applies. It is loaded into the
+# knowledge graph with an effective date, so every decision can be audited
+# against the playbook that was in force when it was made.
+#
+# To change the playbook:
+#   1. Edit this file.
+#   2. Bump `version` and set `effective_from` to when the change applies.
+#   3. Validate:  apps/api/.venv/bin/python -m app.playbook.cli validate
+#   4. Load:      apps/api/.venv/bin/python -m app.playbook.cli load
+#
+# The loader rejects the file if anything references a test, category,
+# verdict or team that is not defined here — a typo fails the load, it does
+# not surface halfway through an investigation.
+
+version: "1.0"
+effective_from: 2026-07-01
+source: FOBO_CATS_vs_MOTIF skill v1.0 (FOBO Pilot)
+
+# --- Policy parameters (skill: "Local parameters") -------------------------
+# Rule P1: never invent a threshold. Leave `value` as null until Product
+# Control confirms it. While a parameter a verdict depends on is null, a
+# POST is flagged "requires controller confirmation".
+policy:
+  materiality_threshold:
+    value: null
+    unit: GBP
+    used_by: Step 1 — which breaks enter scope
+  mtm_market_movement_tolerance:
+    value: null
+    unit: GBP
+    used_by: FO-4
+  calculation_reasonable_tolerance:
+    value: null
+    unit: GBP
+    used_by: FO-6
+  posting_policy_reference:
+    value: null
+    used_by: Section 10
+  same_day_resolution_cutoff:
+    value: null
+    unit: time (IST)
+    used_by: Section 10
+
+# --- Components (skill §3 decomposition map) -------------------------------
+components:
+  FO: [Position, Price, MTM, Trading PnL, Pull Factor, Redemption Events, Trade Economics]
+  # Pull Factor is not in the skill's BO decomposition map, but BO-3
+  # validates it. The source document disagrees with itself; the test is
+  # explicit, so it is listed here. Raised with Product Control.
+  BO: [Position, Price, Pull Factor, Settlement, Cash Movement, Accounting Entry, Journal Generation]
+
+# --- Validation tests (skill §5 and §6) ------------------------------------
+tests:
+  FO-1: { side: FO, validates: Position,          checks: "Prior day close position = current day open position",
+          on_fail: "Hold adjustment; escalate position issue",
+          evidence: [Position file] }
+  FO-2: { side: FO, validates: Price,             checks: "Yesterday close price = today open price",
+          on_fail: "Hold adjustment; raise market-data DQ",
+          evidence: [Pricing file] }
+  FO-3: { side: FO, validates: Pull Factor,       checks: "Yesterday pull factor = today opening pull factor",
+          on_fail: "Go to FO-6 before concluding",
+          requires_on_fail: [FO-6] }
+  FO-4: { side: FO, validates: MTM,               checks: "Does Position x Price Movement explain MTM?",
+          on_fail: "Isolate which of the three; escalate",
+          policy: [mtm_market_movement_tolerance] }
+  FO-5: { side: FO, validates: Trading PnL,       checks: "Do trade economics explain Trading PnL?",
+          on_fail: "Move to Step 4 trade layer" }
+  FO-6: { side: FO, validates: Redemption Events, checks: "Redemption occurred? Factor changed? PnL expected? CATS calculated it?",
+          on_fail: "See findings A/B/C",
+          evidence: [Corporate action file, Pull factor history],
+          policy: [calculation_reasonable_tolerance] }
+  FO-7: { side: FO, validates: Price,             checks: "Price = 0 — valid corporate action or data quality issue?",
+          on_fail: "Obtain trade file, corporate action file, bond metadata before concluding",
+          evidence: [Corporate action file, Trade file, Bond metadata] }
+  FO-8: { side: FO, validates: Price,             checks: "Holiday close = next business day open, for position, price and pull factor",
+          on_fail: "Recurring root cause of PnL distortion — check explicitly" }
+  BO-1: { side: BO, validates: Position,          checks: "Position balance; position quantity; settlement activity" }
+  BO-2: { side: BO, validates: Price,             checks: "Market price; accounting price; pricing source" }
+  BO-3: { side: BO, validates: Pull Factor,       checks: "Factor used; redemption treatment; calculation logic" }
+  BO-4: { side: BO, validates: Settlement,        checks: "Trade settled? Settlement date? Quantity settled? Cash settled?" }
+  BO-5: { side: BO, validates: Cash Movement,     checks: "Redemption cash; coupon cash; settlement cash" }
+  BO-6: { side: BO, validates: Journal Generation, checks: "MOTIF entry generated? Journal posted? Journal rejected?",
+          evidence: [Journal status] }
+
+# --- FO-6 findings ----------------------------------------------------------
+findings:
+  A: { test: FO-6, side: FO,      indicates: C, description: "Pull factor event missing; expected PnL exists, FO shows zero" }
+  B: { test: FO-6, side: FO,      indicates: B, description: "Pull factor applied too early; artificial PnL generated" }
+  C: { test: FO-6, side: NEITHER,               description: "Redemption correctly reflected; proceed to BO validation" }
+
+# --- Break classification (skill §9) ---------------------------------------
+# determinism: deterministic -> the orchestrator applies the rule, no model.
+#              judgement     -> routed to the reasoner, marked for SME review.
+categories:
+  A: { name: Price break,            determinism: deterministic, escalate_to: Market data }
+  B: { name: Pull factor break,      determinism: deterministic, escalate_to: CATS support }
+  C: { name: Redemption break,       determinism: deterministic, escalate_to: CATS support }
+  D: { name: Settlement break,       determinism: deterministic, escalate_to: Operations }
+  E: { name: Trade booking break,    determinism: deterministic, escalate_to: Desk }
+  F: { name: Data quality break,     determinism: deterministic, escalate_to: Technology }
+  G: { name: Corporate action break, determinism: judgement,     escalate_to: Product Control }
+  H: { name: Novel break,            determinism: judgement,     escalate_to: Product Control }
+
+# --- Default verdict by category and side (skill §10) ----------------------
+# A cause originating in FO never posts: it would mask the upstream failure
+# (R2, Appendix A). The orchestrator also enforces this in code, so a wrong
+# edit here cannot make an FO cause post.
+default_verdicts:
+  A: { FO: DO_NOT_POST, BO: POST }
+  B: { FO: DO_NOT_POST, BO: POST }
+  C: { FO: DO_NOT_POST, BO: POST }
+  D: { FO: DO_NOT_POST, BO: POST }
+  E: { FO: DO_NOT_POST, BO: POST }
+  F: { FO: DO_NOT_POST, BO: DO_NOT_POST }
+  G: { FO: ESCALATE,    BO: ESCALATE }
+  H: { FO: ESCALATE,    BO: ESCALATE }
+
+# --- Cause checks -> category and side --------------------------------------
+# How the orchestrator's current checks map onto the skill's categories, and
+# which side each one implicates. The side is what selects the default
+# verdict above.
+#
+# side: UNKNOWN means the check proves a difference exists but not which side
+# is wrong — differing curves, say. R2 forbids assuming FO is correct, so
+# such a break is NOT deterministic: it goes to the reasoner, or escalates.
+cause_checks:
+  C1: { category: C, side: BO,      reason: "Nostro statement received after 23:30 cutoff" }
+  C2: { category: F, side: BO,      reason: "Reference does not resolve in static data" }
+  C3: { category: A, side: UNKNOWN, reason: "FO and BO priced from different curve datasets" }
+  C4: { category: E, side: UNKNOWN, reason: "Fee or funding component present on one side only" }
+  C5: { category: E, side: FO,      reason: "Pending desk confirmation since the 11:00 run" }
+  C6: { category: D, side: BO,      reason: "Two entries with identical settlement reference" }
+
+teams: [Market data, CATS support, Operations, Desk, Technology, Product Control]

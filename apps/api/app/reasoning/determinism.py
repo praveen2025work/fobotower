@@ -12,15 +12,43 @@ from dataclasses import dataclass, field
 
 from app.reasoning.contracts import CATEGORY_NAMES
 
-# Cause check -> break classification (skill §9).
-CHECK_TO_CATEGORY = {
-    "C1": "C",  # late nostro against cutoff -> redemption/timing
-    "C2": "F",  # reference unresolved in static -> data quality
-    "C3": "A",  # differing curve datasets -> price
-    "C4": "E",  # one-sided component -> trade booking
-    "C5": "E",  # version mismatch -> trade booking
-    "C6": "D",  # duplicate settlement
-}
+from functools import lru_cache
+
+
+@lru_cache(maxsize=1)
+def _check_categories() -> dict[str, str]:
+    """Cause check -> break category, from the playbook YAML.
+
+    Read from config rather than declared here, so there is one copy of the
+    mapping and Product Control owns it.
+    """
+    from app.playbook.loader import read_playbook
+
+    return {check: c.category for check, c in read_playbook().cause_checks.items()}
+
+
+@lru_cache(maxsize=1)
+def _check_sides() -> dict[str, str]:
+    """Cause check -> the side it implicates, from the playbook."""
+    from app.playbook.loader import read_playbook
+
+    return {check: c.side for check, c in read_playbook().cause_checks.items()}
+
+
+class _CheckToCategory:
+    """Dict-like view over the playbook mapping, kept for existing callers."""
+
+    def get(self, key, default=None):
+        return _check_categories().get(key, default)
+
+    def items(self):
+        return _check_categories().items()
+
+    def __getitem__(self, key):
+        return _check_categories()[key]
+
+
+CHECK_TO_CATEGORY = _CheckToCategory()
 
 # The skill's named deterministic patterns (§9) that are decidable from the
 # break record alone, without a model.
@@ -38,6 +66,8 @@ class Determination:
 
     resolved: bool
     pattern: str | None = None
+    # FO, BO, or None when the determination does not rest on a side.
+    side: str | None = None
     rule_applied: str | None = None
     category_code: str | None = None
     root_cause: str | None = None
@@ -144,12 +174,26 @@ def classify(brk: dict, candidates: list, *, delta: float | None,
     positives = _positives(candidates)
     if len(positives) == 1:
         check = positives[0].check_id
+        side = _check_sides().get(check, "UNKNOWN")
+        if side not in ("FO", "BO"):
+            # One cause fired, but it does not say which side is wrong. R2
+            # forbids assuming FO is right, so this is judgement, not a rule.
+            return Determination(
+                resolved=False,
+                unresolved_reason=(
+                    f"{check} identifies a difference but not which side is at "
+                    "fault; the side must be evidenced before a verdict"
+                ),
+            )
         return Determination(
             resolved=True,
             pattern=PATTERN_SINGLE_CAUSE,
             rule_applied=check,
+            side=side,
             category_code=CHECK_TO_CATEGORY.get(check, "H"),
             root_cause=positives[0].description,
+            # The verdict comes from the playbook's default_verdicts table,
+            # looked up by the reasoning node from category and side.
             verdict=None,
             evidence=positives[0].supporting_ids,
         )

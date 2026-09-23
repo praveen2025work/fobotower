@@ -129,6 +129,50 @@ These are the ones worth reading, not just running.
 | A failed priors lookup degrades and flags a gap — it does not fabricate | `test_nodes_resolve_gather.py::test_gather_degrades_when_priors_are_unavailable` |
 | An approved run stamps breaks so they become tomorrow's priors | `test_checkpoint_resume.py::test_an_approved_run_writes_tomorrows_priors` |
 
+## The investigation playbook
+
+The rules the orchestrator applies live in one file Product Control owns:
+
+**[`config/playbook/fobo-cats-vs-motif.yaml`](config/playbook/fobo-cats-vs-motif.yaml)**
+
+It holds the FO and BO validation tests, which test must run before another
+can conclude, the evidence each needs, the break categories, the default
+verdict for each category and side, escalation routes, and the policy
+thresholds. It is loaded into the knowledge graph with an effective date.
+
+```bash
+cd apps/api && .venv/bin/python -m app.playbook.cli validate
+```
+
+```bash
+cd apps/api && .venv/bin/python -m app.playbook.cli load
+```
+
+`validate` rejects the file if anything references a test, category, verdict
+or team that is not defined — a typo fails the load instead of surfacing mid
+investigation. It also refuses a playbook that would let a Front Office cause
+post (R2).
+
+Thresholds start as `null`. Rule P1: until one is set, any POST that depends
+on it is flagged *requires controller confirmation*. Set a value and reload.
+
+## Running without an LLM
+
+```bash
+cd apps/api && .venv/bin/python scripts/run_investigation.py
+```
+
+With `FOBO_REASONER` unset, no model is called. Breaks the playbook can
+settle get a verdict from it; breaks it cannot settle escalate to a human.
+The report shows the deterministic share per rec, which is the
+orchestrator's headline figure.
+
+| `FOBO_REASONER` | Judgement-based breaks go to |
+|---|---|
+| unset / `none` | nobody — they escalate (no LLM) |
+| `session_service` | the Agent SDK session service |
+| `direct` | a direct Anthropic SDK call (local development) |
+
 ## Known deviations from the mock
 
 `FoboControlTower (1).html` states *"14 breaks across 9 Cash books"*, but its

@@ -1,7 +1,7 @@
 """Graph wiring.
 
-The sequence is fixed: resolve -> gather -> group -> rank -> draft ->
-validate -> review (interrupt) -> record. The model never chooses what
+The sequence is fixed: resolve -> gather -> group -> reason -> rank ->
+draft -> validate -> review (interrupt) -> record. The model never chooses what
 happens next. Escalation short-circuits out of resolve or gather.
 
 thread_id = investigation_session_id, at rec/book/run grain, so the review
@@ -18,6 +18,7 @@ from app.workflow.nodes.escalate import escalate
 from app.workflow.nodes.gather import gather
 from app.workflow.nodes.group import group
 from app.workflow.nodes.rank import rank
+from app.workflow.nodes.reason import reason
 from app.workflow.nodes.record import record
 from app.workflow.nodes.resolve import resolve
 from app.workflow.nodes.validate import validate
@@ -43,6 +44,7 @@ def build_graph(checkpointer, *, session=None):
     g.add_node("resolve", bind(resolve))
     g.add_node("gather", bind(gather))
     g.add_node("group", bind(group))
+    g.add_node("reason", bind(reason))
     g.add_node("rank", bind(rank))
     g.add_node("draft", bind(draft))
     g.add_node("validate", bind(validate))
@@ -57,7 +59,10 @@ def build_graph(checkpointer, *, session=None):
     g.add_conditional_edges(
         "gather", _route, {"continue": "group", "escalate": "escalate"}
     )
-    g.add_edge("group", "rank")
+    # Determinism first: settle what the playbook can, send only the
+    # residue to the reasoner, and apply the guards to every verdict.
+    g.add_edge("group", "reason")
+    g.add_edge("reason", "rank")
     g.add_edge("rank", "draft")
     g.add_edge("draft", "validate")
     g.add_edge("validate", "review")

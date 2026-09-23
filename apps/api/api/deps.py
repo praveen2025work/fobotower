@@ -7,6 +7,7 @@ from sqlalchemy import func, select, text
 
 from app.db.base import DATABASE_URL
 from app.db.models_graph import Node
+from app.playbook.loader import load_playbook, loaded_version
 from fixtures.history import history_is_loaded, load_history
 from fixtures.loader import load_all
 
@@ -68,3 +69,5 @@ async def ensure_fixtures(session) -> None:
             await load_all(session, commit=False)
         if not await history_is_loaded(session):
             await load_history(session, commit=False)
+        if await loaded_version(session) is None:
+            await load_playbook(session, commit=False)

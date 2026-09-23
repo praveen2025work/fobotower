@@ -12,6 +12,7 @@ share of the run that needed no model at all.
 """
 
 from app.graph.ontology import OntologyRepository
+from app.playbook.loader import loaded_version
 from app.reasoning.determinism import classify, coverage
 from app.reasoning.guards import guard_verdict
 from app.reasoning.port import ReasoningUnavailable
@@ -47,6 +48,9 @@ async def reason(state: InvestigationState, *, session, reasoner=None) -> dict:
         else list(VERDICT_POLICY_PARAMS)
     )
 
+    # Recorded on every finding: an audit must know which rules produced it.
+    playbook_version = await loaded_version(session) if session is not None else None
+
     determinations = {}
     findings: dict[str, dict] = {}
     gaps = list(state.get("evidence_gaps", []))
@@ -65,8 +69,16 @@ async def reason(state: InvestigationState, *, session, reasoner=None) -> dict:
 
         if det.resolved:
             finding = det.as_finding(state.get("reasons", {}).get(bid))
-            side = "BO" if det.verdict == "POST" else None
+            side = det.side
             proposed = det.verdict
+            # A rule that fixes category and side takes its verdict from the
+            # playbook's default_verdicts table — read from the graph, as of
+            # the business date, not from code.
+            if proposed is None and ontology is not None and side in ("FO", "BO"):
+                proposed = await ontology.default_verdict(
+                    det.category_code, side, as_of
+                )
+            finding["side"] = side
             established = True
         else:
             if active is None:
@@ -130,6 +142,7 @@ async def reason(state: InvestigationState, *, session, reasoner=None) -> dict:
             guarded.requires_controller_confirmation
         )
         finding["conditional_on"] = list(guarded.conditional_on)
+        finding["playbook_version"] = playbook_version
         findings[bid] = finding
 
     return {

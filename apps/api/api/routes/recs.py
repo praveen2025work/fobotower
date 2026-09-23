@@ -101,6 +101,8 @@ async def get_rec_case(rec_id: str, business_date: date = COB) -> dict:
                 "evidence_gaps": [],
                 "validation_errors": [],
                 "model_skipped": None,
+                "findings": {},
+                "determinism": None,
             }
 
         sid = session_id_for(rec_id)
@@ -140,4 +142,10 @@ async def get_rec_case(rec_id: str, business_date: date = COB) -> dict:
             "evidence_gaps": v.get("evidence_gaps", []),
             "validation_errors": v.get("validation_errors", []),
             "model_skipped": v.get("model_skipped"),
+            # Per break: pattern or rule applied, category, guarded verdict,
+            # and why a guard overrode it. The deterministic share of the run
+            # is the orchestrator's headline figure.
+            "findings": v.get("findings", {}),
+            "determinism": v.get("determinism"),
+            "reasoning_error": v.get("reasoning_error"),
         }

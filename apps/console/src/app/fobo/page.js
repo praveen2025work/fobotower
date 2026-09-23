@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import AnalyticsTab from '@/components/fobo/analytics/AnalyticsTab';
+import ExecutionTab from '@/components/fobo/execution/ExecutionTab';
 import PatternGroupCard from '@/components/fobo/adjustments/PatternGroupCard';
 import BookDetailDrawer from '@/components/fobo/drawers/BookDetailDrawer';
 import GroundingPanel from '@/components/fobo/grounding/GroundingPanel';
@@ -130,6 +131,24 @@ export default function FoboControlTower() {
 
       <main className="flex-1 p-3 flex flex-col gap-3">
         {tab === 'analytics' && <AnalyticsTab />}
+
+        {tab === 'execution' && (
+          <div
+            className="grid gap-3 items-start"
+            style={{ gridTemplateColumns: `${navCollapsed ? '52px' : '248px'} minmax(0, 1fr)` }}
+          >
+            <RegionRail
+              regions={regions}
+              selectedRecId={selectedRecId}
+              onSelectRec={pickRec}
+              pinned={navPinned}
+              onTogglePin={() => setNavPinned((v) => !v)}
+              collapsed={navCollapsed}
+              onToggleCollapse={() => setNavCollapsed((v) => !v)}
+            />
+            <ExecutionTab recId={selectedRecId} />
+          </div>
+        )}
 
         {tab === 'pipeline' && (
         <>

@@ -17,6 +17,8 @@ const EMPTY = {
   evidenceGaps: [],
   validationErrors: [],
   modelSkipped: null,
+  findings: {},
+  determinism: null,
 };
 
 export const useFoboSessionStore = create((set, getState) => ({
@@ -53,6 +55,8 @@ export const useFoboSessionStore = create((set, getState) => ({
         evidenceGaps: d.evidence_gaps,
         validationErrors: d.validation_errors,
         modelSkipped: d.model_skipped,
+        findings: d.findings ?? {},
+        determinism: d.determinism ?? null,
         loading: false,
       });
     } catch (err) {

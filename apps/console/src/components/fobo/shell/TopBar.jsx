@@ -4,6 +4,7 @@ import ThemeToggle from './ThemeToggle';
 
 const TABS = [
   { key: 'pipeline', label: 'Pipeline' },
+  { key: 'execution', label: 'Execution' },
   { key: 'analytics', label: 'Agent Analytics' },
 ];
 

@@ -16,6 +16,7 @@ from api.routes.sessions import CAUSE_TO_SNAPSHOT, PIPELINE_STAGES
 from app.db.base import get_session
 from app.db.models_ops import Reconciliation, Run
 from app.grounding.recorder import calls_for
+from app.queries.trace import execution_trace
 from app.workflow.graph import build_graph, run_investigation
 from fixtures.history import COB, breaks_for_rec
 
@@ -149,3 +150,18 @@ async def get_rec_case(rec_id: str, business_date: date = COB) -> dict:
             "determinism": v.get("determinism"),
             "reasoning_error": v.get("reasoning_error"),
         }
+
+
+@router.get("/{rec_id}/trace")
+async def get_rec_trace(rec_id: str, business_date: date = COB) -> dict:
+    """How this rec's investigation executed: each LangGraph step, in order,
+    with its timing and what it produced — read from the checkpoints."""
+    async with get_session() as s:
+        await ensure_fixtures(s)
+        rec, run = await _rec_and_run(s, rec_id, business_date)
+        header = _header(rec, run)
+        if not breaks_for_rec(rec_id):
+            return {"header": header, "state": "clear", "trace": None}
+        async with checkpointer() as cp:
+            trace = await execution_trace(cp, s, session_id_for(rec_id))
+        return {"header": header, "state": "open", "trace": trace}

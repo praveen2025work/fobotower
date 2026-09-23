@@ -39,6 +39,8 @@ class InvestigationState(TypedDict, total=False):
     pattern_groups: list[PatternGroup]
     reasons: dict[str, str]
     group_meta: dict[str, dict]
+    findings: dict[str, dict]
+    reasoning_error: str | None
     ranking: dict[str, Any]
     model_skipped: bool
     draft: AnalysisDraft | None

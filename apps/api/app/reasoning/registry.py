@@ -17,7 +17,10 @@ from app.reasoning.port import ReasoningPort, ReasoningUnavailable
 
 
 def get_reasoner() -> ReasoningPort:
-    choice = os.getenv("FOBO_REASONER", "none").strip().lower()
+    from app.workflow.config import settings
+
+    # The environment wins, so a deployment can override the file.
+    choice = (os.getenv("FOBO_REASONER") or settings().reason.reasoner).strip().lower()
     if choice == "session_service":
         from app.reasoning.adapters.session_service import SessionServiceReasoner
 

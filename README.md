@@ -156,6 +156,34 @@ post (R2).
 Thresholds start as `null`. Rule P1: until one is set, any POST that depends
 on it is flagged *requires controller confirmation*. Set a value and reload.
 
+## The investigation workflow
+
+How an investigation *executes* — which steps run, in what order, where it
+pauses for a person, and each step's settings — lives in:
+
+**[`config/workflow/fobo-investigation.yaml`](config/workflow/fobo-investigation.yaml)**
+
+```bash
+cd apps/api && .venv/bin/python -m app.workflow.cli show
+```
+
+Restart the API after editing; the workflow is read once per process.
+
+| You can | You cannot |
+|---|---|
+| Drop the optional `rank` step | Remove `reason` — it applies the playbook and the verdict guards |
+| Add a pause, e.g. before `reason`, to inspect a run | Remove `validate` — no ungrounded figure may reach a controller |
+| Change lookback, depth, limits, retries, timeout | Remove `review`, or its pause — no decision without a person |
+| Choose the reasoner: `none`, `session_service`, `direct` | Put a step before the step whose output it needs |
+
+The validator refuses the right-hand column with a message naming the
+problem. Each step declares what it needs and produces
+(`apps/api/app/workflow/registry.py`), which is how an order that cannot
+work is caught before a run starts.
+
+The **playbook** (`config/playbook/`) holds *what the rules are*; the
+**workflow** (`config/workflow/`) holds *how the run executes*.
+
 ## Running without an LLM
 
 ```bash

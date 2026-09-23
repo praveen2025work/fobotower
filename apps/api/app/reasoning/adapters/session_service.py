@@ -48,7 +48,7 @@ class SessionServiceReasoner:
         base_url: str | None = None,
         token: str | None = None,
         skill_id: str | None = None,
-        timeout: float = DEFAULT_TIMEOUT_SECONDS,
+        timeout: float | None = None,
     ):
         self._base_url = (base_url or os.getenv("FOBO_SESSION_SERVICE_URL", "")).rstrip(
             "/"
@@ -60,6 +60,10 @@ class SessionServiceReasoner:
         )
         self._mcp_url = os.getenv("FOBO_MCP_URL")
         self._mcp_token = os.getenv("FOBO_MCP_TOKEN")
+        if timeout is None:
+            from app.workflow.config import settings
+
+            timeout = settings().session_service.timeout_seconds
         self._timeout = timeout
         if not self._base_url:
             raise ReasoningUnavailable("FOBO_SESSION_SERVICE_URL is not set")

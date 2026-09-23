@@ -1,0 +1,63 @@
+# FOBO investigation workflow — the LangGraph run
+#
+# This file controls HOW an investigation executes: which steps run, in what
+# order, where it pauses for a person, and each step's settings.
+#
+# WHAT the rules are (tests, categories, verdicts, thresholds) lives in the
+# playbook instead: config/playbook/fobo-cats-vs-motif.yaml.
+#
+# To change the workflow:
+#   1. Edit this file.
+#   2. Validate:  apps/api/.venv/bin/python -m app.workflow.cli validate
+#   3. Restart the API. New investigations use the new workflow; runs
+#      already in flight keep the one they started with.
+#
+# The validator rejects an order that cannot work — a step placed before the
+# step whose output it needs — and refuses to drop the safety steps: the
+# playbook and its guards (reason), the grounding check (validate), and human
+# sign-off (review). It will not let `record` run before `review`.
+
+version: "1.0"
+name: fobo-investigation
+
+# Steps run top to bottom. `rank` is the only optional step today.
+steps:
+  - resolve     # pin each break's book to the business date
+  - gather      # deltas, cause checks, lineage, prior resolutions
+  - group       # collapse breaks into pattern groups
+  - reason      # settle by playbook rule; send the rest to the reasoner
+  - rank        # order candidate causes (optional)
+  - draft       # write the four-part analysis
+  - validate    # every figure must trace to a computed delta
+  - review      # human sign-off
+  - record      # write decisions; they become tomorrow's priors
+
+# The run stops before these steps and waits for a person. `review` must be
+# here. Add another step to inspect a run mid-way, e.g. [reason, review].
+pause_before: [review]
+
+settings:
+  gather:
+    priors_lookback_days: 180     # how far back to look for prior resolutions
+    lineage_max_depth: 4          # desk/entity hops to walk, 1-4
+    max_similar_breaks: 20        # prior resolutions kept per book
+
+  reason:
+    # Who handles breaks the playbook cannot settle.
+    #   none            nobody — they escalate to a person (no LLM)
+    #   session_service the Agent SDK session service
+    #   direct          a direct Anthropic SDK call (local development)
+    # The FOBO_REASONER environment variable overrides this.
+    reasoner: none
+    # A POST that depends on any of these unset thresholds is flagged
+    # "requires controller confirmation" (Rule P1).
+    verdict_policy_params: [materiality_threshold, posting_policy_reference]
+
+  validate:
+    max_hypothesis_attempts: 3    # retries before RETRY_EXHAUSTED
+
+  review:
+    max_review_cycles: 2          # reject-and-redraft rounds before escalation
+
+  session_service:
+    timeout_seconds: 120          # per judgement-based break

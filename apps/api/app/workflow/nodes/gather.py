@@ -10,6 +10,7 @@ Nothing is substituted for a value that could not be retrieved.
 from app.graph.repository import GraphRepository
 from app.grounding.recorder import GroundingRecorder
 from app.recon.checks import run_cause_checks
+from app.workflow.config import settings
 from app.workflow.state import InvestigationState
 
 EXPECTED_CHECKS = 6
@@ -40,6 +41,7 @@ def _snapshot(brk: dict) -> dict:
 async def gather(state: InvestigationState, *, session) -> dict:
     repo = GraphRepository(session)
     recorder = GroundingRecorder(session, state["investigation_session_id"])
+    cfg = settings().gather
     as_of = state["as_of"]
     caller = state["caller"]
 
@@ -83,7 +85,9 @@ async def gather(state: InvestigationState, *, session) -> dict:
             return {"outcome": "escalated", "escalation_reason": "CHECKS_UNAVAILABLE"}
 
         try:
-            lineage[bid] = await repo.lineage(book_id, "BELONGS_TO", 4, as_of, caller)
+            lineage[bid] = await repo.lineage(
+                book_id, "BELONGS_TO", cfg.lineage_max_depth, as_of, caller
+            )
             await recorder.record(
                 application="MOTIF",
                 tool="MOTIF.getLedgerEntries",
@@ -105,12 +109,13 @@ async def gather(state: InvestigationState, *, session) -> dict:
 
         try:
             priors[bid] = await repo.similar_breaks(
-                book_id, brk.get("line_code", "CASH"), as_of, 180, caller
+                book_id, brk.get("line_code", "CASH"), as_of,
+                cfg.priors_lookback_days, caller, limit=cfg.max_similar_breaks,
             )
             await recorder.record(
                 application="RecFactory",
                 tool="RecFactory.getResolutionHistory",
-                params={"book": brk["book_ref"], "lookback": "180d"},
+                params={"book": brk["book_ref"], "lookback": f"{cfg.priors_lookback_days}d"},
                 row_count=len(priors[bid]),
                 summary=f"{len(priors[bid])} prior resolutions",
             )
@@ -120,7 +125,7 @@ async def gather(state: InvestigationState, *, session) -> dict:
             await recorder.record(
                 application="RecFactory",
                 tool="RecFactory.getResolutionHistory",
-                params={"book": brk["book_ref"], "lookback": "180d"},
+                params={"book": brk["book_ref"], "lookback": f"{cfg.priors_lookback_days}d"},
                 row_count=None,
                 summary="unavailable",
                 error=str(exc),

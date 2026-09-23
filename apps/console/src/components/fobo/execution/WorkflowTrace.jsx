@@ -30,6 +30,13 @@ export default function WorkflowTrace({ trace }) {
           LangGraph · {trace.checkpoints} checkpoints · {trace.total_ms} ms
         </span>
       </div>
+      <p className="text-[11px] -mt-2" style={{ color: 'var(--text-muted)' }}>
+        Steps, order and pause points from{' '}
+        <code style={{ fontFamily: 'var(--font-mono), monospace' }}>
+          config/workflow/fobo-investigation.yaml
+        </code>
+        {trace.workflow_version ? ` (v${trace.workflow_version})` : ''}
+      </p>
 
       <ol className="relative flex flex-col">
         {trace.steps.map((step, i) => {

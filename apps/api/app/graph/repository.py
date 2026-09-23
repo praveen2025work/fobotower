@@ -112,6 +112,7 @@ class GraphRepository:
         cob_date: date,
         lookback: int,
         caller: Caller,
+        limit: int = MAX_SIMILAR_BREAKS,
     ) -> list[dict]:
         """Structural query first: it bounds the candidate set.
 
@@ -133,7 +134,7 @@ class GraphRepository:
                     build_entitlement_predicate(caller),
                 )
                 .order_by(BreakEvent.cob_date.desc())
-                .limit(MAX_SIMILAR_BREAKS)
+                .limit(limit)
             )
         ).all()
         return [

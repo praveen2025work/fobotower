@@ -17,10 +17,9 @@ from app.reasoning.determinism import classify, coverage
 from app.reasoning.guards import guard_verdict
 from app.reasoning.port import ReasoningUnavailable
 from app.reasoning.registry import get_reasoner
+from app.workflow.config import settings
 from app.workflow.state import InvestigationState
 
-# Parameters a verdict may depend on. P1 checks whether each has a value.
-VERDICT_POLICY_PARAMS = ["materiality_threshold", "posting_policy_reference"]
 
 
 def _evidence(state: InvestigationState, brk: dict) -> dict:
@@ -41,11 +40,13 @@ def _evidence(state: InvestigationState, brk: dict) -> dict:
 
 async def reason(state: InvestigationState, *, session, reasoner=None) -> dict:
     as_of = state["business_date"]
+    # Parameters a verdict may depend on; P1 checks each has a value.
+    policy_params = settings().reason.verdict_policy_params
     ontology = OntologyRepository(session) if session is not None else None
     unset = (
-        await ontology.unset_policies(VERDICT_POLICY_PARAMS, as_of)
+        await ontology.unset_policies(policy_params, as_of)
         if ontology is not None
-        else list(VERDICT_POLICY_PARAMS)
+        else list(policy_params)
     )
 
     # Recorded on every finding: an audit must know which rules produced it.

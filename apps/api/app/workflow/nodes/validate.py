@@ -8,7 +8,8 @@ different things and must stay labelled differently.
 
 import re
 
-from app.workflow.state import MAX_HYPOTHESIS_ATTEMPTS, InvestigationState
+from app.workflow.config import settings
+from app.workflow.state import InvestigationState
 
 MONEY = re.compile(r"\$([\d,]+\.\d{2})")
 
@@ -44,7 +45,7 @@ async def validate(state: InvestigationState, *, session) -> dict:
     for gap in state.get("evidence_gaps", []):
         errors.append(f"evidence_gap: {gap}")
 
-    if state.get("hypothesis_attempts", 0) >= MAX_HYPOTHESIS_ATTEMPTS:
+    if state.get("hypothesis_attempts", 0) >= settings().validate_.max_hypothesis_attempts:
         errors.append("RETRY_EXHAUSTED")
 
     return {"validation_errors": errors}

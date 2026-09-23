@@ -10,20 +10,15 @@ k names the node that runs between step k and step k+1.
 
 from app.workflow.graph import build_graph
 
-# The workflow in execution order, as wired in app/workflow/graph.py. Listed
-# here so the trace can show steps that have not run yet.
-WORKFLOW = [
-    ("resolve", "Resolve books", "Pin each break's book to the business date"),
-    ("gather", "Gather evidence", "Deltas, cause checks, lineage and priors"),
-    ("group", "Group patterns", "Collapse breaks into pattern groups"),
-    ("reason", "Apply playbook", "Settle by rule; route the rest to the reasoner"),
-    ("rank", "Rank causes", "Order candidate causes per break"),
-    ("draft", "Draft analysis", "Write the four-part narrative"),
-    ("validate", "Validate", "Check every figure traces to a delta"),
-    ("review", "Human sign-off", "Controller approves or rejects"),
-    ("record", "Record outcome", "Write decisions; they become tomorrow's priors"),
-]
-NODE_INDEX = {name: i for i, (name, _l, _d) in enumerate(WORKFLOW)}
+def _workflow() -> list[tuple[str, str, str]]:
+    """The configured steps, in order — so the trace shows the workflow that
+    actually ran, including steps that have not run yet."""
+    from app.workflow.config import workflow
+    from app.workflow.registry import STEPS
+
+    return [(n, STEPS[n].label, STEPS[n].description) for n in workflow().steps]
+
+
 
 
 def _summary(node: str, v: dict) -> str:
@@ -69,15 +64,17 @@ async def execution_trace(checkpointer, session, thread_id: str) -> dict:
     if not history:
         return {"thread_id": thread_id, "status": "not_started", "steps": [
             {"node": n, "label": l, "description": d, "status": "pending"}
-            for n, l, d in WORKFLOW
+            for n, l, d in _workflow()
         ]}
 
+    steps_cfg = _workflow()
+    known = {n for n, _l, _d in steps_cfg}
     ran: dict[str, dict] = {}
     for i, snap in enumerate(history):
         if not snap.next:
             continue
         node = snap.next[0]
-        if node not in NODE_INDEX or i + 1 >= len(history):
+        if node not in known or i + 1 >= len(history):
             continue
         after = history[i + 1]
         started, finished = snap.created_at, after.created_at
@@ -93,7 +90,7 @@ async def execution_trace(checkpointer, session, thread_id: str) -> dict:
     escalated = (latest.values or {}).get("outcome") == "escalated"
 
     steps = []
-    for name, label, desc in WORKFLOW:
+    for name, label, desc in steps_cfg:
         step = {"node": name, "label": label, "description": desc}
         if name in ran:
             step.update(status="done", **ran[name])
@@ -106,8 +103,12 @@ async def execution_trace(checkpointer, session, thread_id: str) -> dict:
     status = ("escalated" if escalated
               else "awaiting_signoff" if parked_at == "review"
               else (latest.values or {}).get("outcome") or "running")
+    from app.workflow.config import workflow
+
     return {
         "thread_id": thread_id,
+        "workflow_version": workflow().version,
+        "pause_before": list(workflow().pause_before),
         "status": status,
         "parked_at": parked_at,
         "checkpoints": len(history),

@@ -41,6 +41,7 @@ class InvestigationState(TypedDict, total=False):
     group_meta: dict[str, dict]
     findings: dict[str, dict]
     reasoning_error: str | None
+    determinism: dict
     ranking: dict[str, Any]
     model_skipped: bool
     draft: AnalysisDraft | None

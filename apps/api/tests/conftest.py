@@ -20,7 +20,7 @@ import asyncpg  # noqa: E402
 import pytest  # noqa: E402
 from sqlalchemy import text  # noqa: E402
 
-from app.db import models_graph, models_ops, models_session  # noqa: E402,F401
+from app.db import models_graph, models_ops, models_session, models_workflow  # noqa: E402,F401
 from app.db.base import Base, engine, get_session  # noqa: E402
 
 # Child tables first.
@@ -32,6 +32,7 @@ TABLES = [
     "evidence_item",
     "analysis_version",
     "investigation_session",
+    "workflow_version",
     "break_embedding",
     "break_event",
     "edge",

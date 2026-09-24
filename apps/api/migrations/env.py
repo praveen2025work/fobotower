@@ -21,7 +21,7 @@ if config.config_file_name is not None:
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
 from app.db.base import Base
-from app.db import models_graph, models_ops, models_session  # noqa: F401  register tables
+from app.db import models_graph, models_ops, models_session, models_workflow  # noqa: F401  register tables
 target_metadata = Base.metadata
 
 # LangGraph's Postgres checkpointer creates and owns these. They are not in

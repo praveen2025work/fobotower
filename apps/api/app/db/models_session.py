@@ -7,6 +7,7 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     Index,
+    Integer,
     String,
     Text,
     func,
@@ -15,6 +16,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
+from app.db import models_workflow  # noqa: F401 — the workflow_version FK target
 
 
 class InvestigationSession(Base):
@@ -25,6 +27,11 @@ class InvestigationSession(Base):
     business_date: Mapped[date] = mapped_column(Date)
     run_id: Mapped[str] = mapped_column(String(64))
     status: Mapped[str] = mapped_column(String(32))
+    # The workflow version the run started with. Null: the run predates
+    # versioning and is read as version 1.
+    workflow_version: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("workflow_version.number"), nullable=True
+    )
     created_ts: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

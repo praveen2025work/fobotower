@@ -1,10 +1,12 @@
 import os
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from api.auth import dev_caller_middleware
+from api.deps import setup_checkpointer
 from api.routes import (
     analytics,
     books,
@@ -39,8 +41,17 @@ async def _version_error(_request, exc: VersionError) -> JSONResponse:
     return JSONResponse(status_code=exc.status, content={"detail": detail})
 
 
+@asynccontextmanager
+async def _lifespan(_app: FastAPI):
+    # Creates the checkpoint tables/indexes before this process serves its
+    # first request — see setup_checkpointer's docstring for why doing this
+    # lazily, inside a request, can deadlock forever on a fresh database.
+    await setup_checkpointer()
+    yield
+
+
 def create_app() -> FastAPI:
-    app = FastAPI(title="FOBO Investigation API", version="0.1.0")
+    app = FastAPI(title="FOBO Investigation API", version="0.1.0", lifespan=_lifespan)
     # Registered before CORS so CORS wraps it: a refused dev caller still
     # gets the CORS headers the browser needs to read the 400.
     app.middleware("http")(dev_caller_middleware)

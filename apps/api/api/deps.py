@@ -1,5 +1,6 @@
 """Shared request-scoped helpers."""
 
+import asyncio
 from contextlib import asynccontextmanager
 
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
@@ -17,11 +18,43 @@ CHECKPOINT_DSN = DATABASE_URL.replace("+asyncpg", "")
 # Arbitrary but stable. Any process seeding this database uses the same key.
 SEED_LOCK_KEY = 872155
 
+# Whether the checkpoint tables/indexes have been created in this process.
+_checkpointer_ready = False
+_checkpointer_setup_lock = asyncio.Lock()
+
+
+async def setup_checkpointer() -> None:
+    """Create the checkpoint tables and indexes once per process.
+
+    cp.setup() runs `CREATE INDEX CONCURRENTLY`, which cannot run inside a
+    transaction and must wait for every transaction already open in the
+    database to finish — including, if this runs lazily inside a request,
+    that request's own SQLAlchemy session, which is left idle-in-transaction
+    because nothing has committed it yet. The request then can't finish
+    (it's waiting on setup() to return) and setup() can't finish (it's
+    waiting on the request's transaction to end): a permanent deadlock, and
+    on a brand-new database — one where these indexes don't already exist —
+    the very first request to open an investigation hits it every time.
+    Running this once at process startup, before any request can hold a
+    transaction, avoids that. Guarded by a flag plus a lock so two
+    concurrent first callers (e.g. FastAPI's lifespan racing a request that
+    arrived before it finished) don't both run it.
+    """
+    global _checkpointer_ready
+    if _checkpointer_ready:
+        return
+    async with _checkpointer_setup_lock:
+        if _checkpointer_ready:
+            return
+        async with AsyncPostgresSaver.from_conn_string(CHECKPOINT_DSN) as cp:
+            await cp.setup()
+        _checkpointer_ready = True
+
 
 @asynccontextmanager
 async def checkpointer():
+    await setup_checkpointer()
     async with AsyncPostgresSaver.from_conn_string(CHECKPOINT_DSN) as cp:
-        await cp.setup()
         yield cp
 
 

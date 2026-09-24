@@ -20,6 +20,7 @@ import asyncpg  # noqa: E402
 import pytest  # noqa: E402
 from sqlalchemy import text  # noqa: E402
 
+from api.deps import setup_checkpointer  # noqa: E402
 from app.db import models_graph, models_ops, models_session, models_workflow  # noqa: E402,F401
 from app.db.base import Base, engine, get_session  # noqa: E402
 
@@ -72,6 +73,12 @@ async def prepare_database():
     async with engine.begin() as conn:
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         await conn.run_sync(Base.metadata.create_all)
+    # httpx's ASGITransport never runs the app's lifespan, so the tests that
+    # go through it (most of them) would otherwise never create the
+    # checkpoint tables at all. Doing it once, here, keeps every test's
+    # first checkpointer() call — whichever test that happens to be — fast
+    # and outside of an open transaction, same as the app's lifespan does.
+    await setup_checkpointer()
     yield
     await engine.dispose()
 

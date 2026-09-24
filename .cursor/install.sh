@@ -1,11 +1,21 @@
 #!/usr/bin/env bash
-# FOBO Investigation Console — repository bootstrap.
-# Idempotent: prepares the Python venv + deps, the Node console deps, ensures
-# the fobo role/database exist, and applies migrations. Safe to re-run.
+# FOBO Investigation Console — environment bootstrap.
+# Idempotent: installs system packages (PostgreSQL 16 + pgvector) on top of the
+# default Ubuntu 24.04 base image, ensures uv, provisions the fobo role/database,
+# creates the Python 3.12 venv + deps, applies migrations, and installs the
+# console deps. Safe to re-run.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export PATH="${HOME}/.local/bin:${PATH}"
+
+echo "==> Ensuring system packages (PostgreSQL 16 + pgvector, build tools)"
+if ! dpkg -s postgresql-16 >/dev/null 2>&1 || ! dpkg -s postgresql-16-pgvector >/dev/null 2>&1; then
+  sudo apt-get update -qq
+  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
+    postgresql-16 postgresql-16-pgvector postgresql-client-16 \
+    build-essential python3.12-venv python3-dev libpq-dev
+fi
 
 echo "==> Ensuring uv is available"
 if ! command -v uv >/dev/null 2>&1; then

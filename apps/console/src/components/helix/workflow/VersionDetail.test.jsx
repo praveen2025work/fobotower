@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as api from '../data/workflowApi';
@@ -105,5 +105,36 @@ describe('VersionDetail', () => {
   it('says so when a version is the active one', async () => {
     renderDetail(ASHA, draft({ number: 3, status: 'active', diff: [] }));
     expect(await screen.findByText('This is the active version.')).toBeInTheDocument();
+  });
+
+  it('drops a stale dialog when the reviewed number changes under it', async () => {
+    const v6 = draft({ number: 6, active_number: 6, based_on: 6 });
+    api.fetchVersion.mockResolvedValueOnce(draft()).mockResolvedValueOnce(v6);
+    const props = { onChanged: vi.fn(), onRedraft: vi.fn() };
+    const { rerender } = render(<VersionDetail number={4} caller={ASHA} {...props} />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Approve' }));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    rerender(<VersionDetail number={6} caller={ASHA} {...props} />);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(api.approveVersion).not.toHaveBeenCalled();
+  });
+
+  it('cannot be cancelled while the approval request is in flight', async () => {
+    let resolveApprove;
+    api.approveVersion.mockReturnValue(
+      new Promise((resolve) => {
+        resolveApprove = resolve;
+      }),
+    );
+    const { onChanged } = renderDetail(ASHA);
+    await userEvent.click(await screen.findByRole('button', { name: 'Approve' }));
+    const dialog = screen.getByRole('dialog');
+    for (const box of within(dialog).getAllByRole('checkbox')) await userEvent.click(box);
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Approve and activate' }));
+    expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeDisabled();
+    await userEvent.keyboard('{Escape}');
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    resolveApprove({ number: 4, status: 'active' });
+    await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
   });
 });

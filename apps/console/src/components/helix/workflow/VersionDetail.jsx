@@ -164,6 +164,11 @@ export function VersionDetail({ number, caller, onChanged, onRedraft }) {
   const [redraftError, setRedraftError] = useState(null);
   useEffect(() => {
     let live = true;
+    // A new number means a new review: drop any dialog and error bound to
+    // the version we were just looking at before the next one loads.
+    setState({ status: 'loading' });
+    setDialog(null);
+    setRedraftError(null);
     fetchVersion(number)
       .then((v) => live && setState({ status: 'ready', v }))
       .catch((e) => live && setState({ status: 'error', error: e.message }));

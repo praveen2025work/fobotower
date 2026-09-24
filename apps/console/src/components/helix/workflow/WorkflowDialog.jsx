@@ -4,10 +4,11 @@ import { manrope } from '../lib/format';
 /** A confirm dialog styled like the adjustments ConfirmDialog. */
 export function WorkflowDialog({ title, confirmLabel, ready, busy, error, onCancel, onConfirm, children }) {
   useEffect(() => {
-    const k = (e) => e.key === 'Escape' && onCancel();
+    // A request in flight cannot be walked back: ignore Escape until it settles.
+    const k = (e) => e.key === 'Escape' && !busy && onCancel();
     window.addEventListener('keydown', k);
     return () => window.removeEventListener('keydown', k);
-  }, [onCancel]);
+  }, [onCancel, busy]);
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -38,8 +39,9 @@ export function WorkflowDialog({ title, confirmLabel, ready, busy, error, onCanc
         <div className="px-5 py-3 flex justify-end gap-2" style={{ borderTop: '1px solid var(--border)' }}>
           <button
             type="button"
+            disabled={busy}
             onClick={onCancel}
-            className="text-[12px] px-3 py-1.5 rounded-full"
+            className="text-[12px] px-3 py-1.5 rounded-full disabled:opacity-40"
             style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
           >
             Cancel

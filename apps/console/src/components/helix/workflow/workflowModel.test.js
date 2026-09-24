@@ -23,6 +23,13 @@ describe('workflowModel', () => {
     ]);
     expect(decidedByChips('human')).toEqual([{ label: 'Human', tone: 'blue' }]);
     expect(decidedByChips('code')).toEqual([{ label: 'Code', tone: 'grey' }]);
+    expect(decidedByChips('code+model')).toEqual([
+      { label: 'Code', tone: 'grey' },
+      { label: 'Multi-cause: model (not built)', tone: 'grey' },
+    ]);
+    expect(decidedByChips('template')).toEqual([
+      { label: 'Template · model planned', tone: 'grey' },
+    ]);
   });
 
   it('prefers an environment override to the configured reasoner', () => {
@@ -59,6 +66,12 @@ describe('workflowModel', () => {
   it('finds the errors that name a step', () => {
     const errors = ["steps: 'draft' needs 'pattern_groups' before it runs", 'other'];
     expect(errorsFor(errors, 'draft')).toEqual([errors[0]]);
+  });
+
+  it('attributes an error to its subject, not any step it happens to quote', () => {
+    const errors = ["steps: 'validate' needs 'draft' before it runs — produced by draft"];
+    expect(errorsFor(errors, 'draft')).toEqual([]);
+    expect(errorsFor(errors, 'validate')).toEqual(errors);
   });
 
   it('reads each kind of change as a sentence', () => {

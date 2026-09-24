@@ -71,6 +71,14 @@ describe('WorkflowGraph', () => {
     expect(within(card('draft')).getByRole('alert')).toHaveTextContent('pattern_groups');
   });
 
+  it('attributes an error to its subject even when the message quotes another step', () => {
+    renderGraph({
+      errors: ["steps: 'validate' needs 'draft' before it runs — produced by draft"],
+    });
+    expect(within(card('validate')).getByRole('alert')).toBeInTheDocument();
+    expect(within(card('draft')).queryByRole('alert')).toBeNull();
+  });
+
   it('draws an unknown step instead of failing', () => {
     const config = { ...fixture.active.config, steps: [...fixture.active.config.steps, 'mystery'] };
     renderGraph({ config });

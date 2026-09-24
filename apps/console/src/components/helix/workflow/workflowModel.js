@@ -39,8 +39,14 @@ export const effectiveReasoner = (config, overrides) =>
 
 export const byName = (catalogue) => Object.fromEntries(catalogue.map((s) => [s.name, s]));
 
-/** Errors that name this step, e.g. "steps: 'draft' needs 'pattern_groups'". */
-export const errorsFor = (errors, name) => errors.filter((e) => e.includes(`'${name}'`));
+/** The step an error message is about: the first quoted token after the
+ *  leading "<field>: " prefix, e.g. "validate" in
+ *  "steps: 'validate' needs 'draft' before it runs — produced by draft". */
+const subjectOf = (e) => /^[a-z_.]+: '([^']+)'/.exec(e)?.[1];
+
+/** Errors whose subject is this step — not just messages that quote its name
+ *  in passing (a message can quote a data key that is also a step name). */
+export const errorsFor = (errors, name) => errors.filter((e) => subjectOf(e) === name);
 
 export function moveStep(config, index, delta) {
   const to = index + delta;

@@ -3444,6 +3444,11 @@ export function StepCard({
           <Chip key={c.label} {...c} />
         ))}
       </div>
+      {step.unknown && (
+        <div className="text-[10.5px]" style={{ color: 'var(--clr-red)' }}>
+          Not a known step
+        </div>
+      )}
       {step.can_escalate && (
         <div className="text-[10px] flex items-center gap-1" style={{ color: 'var(--clr-red)' }}>
           <CornerDownRight size={10} /> can escalate → end
@@ -3493,6 +3498,7 @@ import { byName, errorsFor, moveStep, removeStep, togglePause } from './workflow
 
 const unknownStep = (name) => ({
   name,
+  unknown: true,
   label: name,
   description: 'Not a known step',
   decided_by: 'code',
@@ -4813,7 +4819,7 @@ In `apps/console/src/components/helix/HelixApp.test.jsx`, add the mock for the w
 vi.mock('./data/workflowApi', () => ({
   fetchWorkflow: vi.fn(async () => structuredClone(workflowFixture)),
   fetchVersions: vi.fn(async () => []),
-  fetchVersion: vi.fn(),
+  fetchVersion: vi.fn(async () => ({ ...workflowFixture.active, active_number: 3, diff: [] })),
   fetchRebased: vi.fn(),
   validateWorkflow: vi.fn(),
   saveDraft: vi.fn(),
@@ -4829,7 +4835,7 @@ with `import workflowFixture from './workflow/__fixtures__/workflow.json';` at t
 ```jsx
   it('opens the Workflow tab', async () => {
     await renderLoaded();
-    await userEvent.click(screen.getByRole('button', { name: /Workflow/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Workflow' }));
     expect(await screen.findByText('Workflow v3')).toBeInTheDocument();
   });
 
@@ -5370,8 +5376,8 @@ test('a draft goes live when a second controller approves it, and only new runs 
   await expect(page.getByText('FOBO Controller')).toBeVisible({ timeout: 120_000 });
 
   // Loading the board ran R-1055's investigation on v1.
-  await page.getByRole('button', { name: /Workflow/ }).click();
-  await expect(page.getByText('Workflow v1')).toBeVisible();
+  await page.getByRole('button', { name: 'Workflow', exact: true }).click();
+  await expect(page.getByText('Workflow v1', { exact: true })).toBeVisible();
 
   // praveen drafts a 90-day lookback.
   await page.getByRole('button', { name: 'New draft' }).click();
@@ -5380,16 +5386,16 @@ test('a draft goes live when a second controller approves it, and only new runs 
   await expect(page.getByText(/^Valid/)).toBeVisible();
   await page.getByRole('button', { name: 'Save draft' }).click();
   await expect(page.getByRole('button', { name: '1 draft awaiting approval' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Approve' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Approve', exact: true })).toBeDisabled();
 
   // asha approves it.
   await page.getByLabel('Act as').selectOption('asha');
   await page.getByRole('button', { name: /^v2/ }).click();
-  await page.getByRole('button', { name: 'Approve' }).click();
+  await page.getByRole('button', { name: 'Approve', exact: true }).click();
   const dialog = page.getByRole('dialog');
   for (const box of await dialog.getByRole('checkbox').all()) await box.check();
   await dialog.getByRole('button', { name: 'Approve and activate' }).click();
-  await expect(page.getByText('Workflow v2')).toBeVisible();
+  await expect(page.getByText('Workflow v2', { exact: true })).toBeVisible();
 
   // A run that starts now uses v2.
   await request.get(`${API}/api/recs/R-2031`, { timeout: 120_000 });
@@ -5397,7 +5403,7 @@ test('a draft goes live when a second controller approves it, and only new runs 
   expect(fresh.trace.workflow_version).toBe(2);
 
   // The run that started on v1 keeps it.
-  await page.getByRole('button', { name: 'Pipeline' }).click();
+  await page.getByRole('button', { name: 'Pipeline', exact: true }).click();
   await page.getByRole('button', { name: /Graph run/ }).click();
   await expect(page.getByText(/workflow v1 ·/)).toBeVisible();
 });

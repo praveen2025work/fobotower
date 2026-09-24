@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -112,6 +112,9 @@ describe('HelixApp', () => {
       },
     });
     await renderLoaded();
+    // RecDetail re-keys the session pane on mount to flash it; let that
+    // remount land so the query does not return a detached textarea.
+    await act(async () => {});
     const box = screen.getByPlaceholderText(/Ask about Prime/);
     await userEvent.type(box, 'Explain B-8{Enter}');
     expect(api.askSession).toHaveBeenCalledWith('R-1055', 'Explain B-8');

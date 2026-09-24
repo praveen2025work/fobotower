@@ -1,6 +1,9 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from api.deps import checkpointer
 from api.routes import (
     analytics,
     books,
@@ -17,8 +20,21 @@ from api.websocket import handler
 CONSOLE_ORIGIN = "http://localhost:3100"
 
 
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    # Apply the checkpointer's migrations before serving. Some of them are
+    # CREATE INDEX CONCURRENTLY, which waits for every open transaction; run
+    # from inside a request, it waits on that request's own transaction and
+    # the first call against a fresh database never returns.
+    async with checkpointer():
+        pass
+    yield
+
+
 def create_app() -> FastAPI:
-    app = FastAPI(title="FOBO Investigation API", version="0.1.0")
+    app = FastAPI(
+        title="FOBO Investigation API", version="0.1.0", lifespan=lifespan
+    )
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[CONSOLE_ORIGIN],

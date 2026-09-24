@@ -96,11 +96,12 @@ A repository over `workflow_version`:
 
 - `active(session) -> (number, WorkflowConfig)` — seeds if empty.
 - `get(session, number) -> WorkflowVersion`
-- `config_for(session, number) -> WorkflowConfig` — validated configs are
-  cached in-process by number. Versions are immutable, so the cache never
-  needs invalidating; only the *active number* is re-read, with one indexed
-  query, whenever a new run starts or a request asks for it. An approval on one
-  API instance is therefore visible to every instance without a restart.
+- `config_for(session, number) -> WorkflowConfig` — one primary-key read;
+  validation is cached in-process by the config's content, so it is safe
+  even when a test database reuses version numbers. The *active number* is
+  re-read, with one indexed query, whenever a new run starts or a request
+  asks for it. An approval on one API instance is therefore visible to every
+  instance without a restart.
 - `list(session)`, `create_draft(...)`, `approve(...)`, `reject(...)` — the
   rules in §3.3.
 
@@ -220,8 +221,9 @@ validated before it is returned.
 ## 5. Console — the Workflow tab
 
 A third header tab in Helix: **Pipeline · Agent Analytics · Workflow**. It uses
-the existing tokens, light/dark themes, `Drawer`, and the double-confirm
-`ConfirmDialog`.
+the existing tokens, light/dark themes and `Drawer`. Approve and reject use a
+small double-confirm dialog styled like the adjustments `ConfirmDialog` (which
+is specific to adjustments and cannot be reused as is).
 
 ### 5.1 Files
 
@@ -340,6 +342,8 @@ On a fresh test database, with `FOBO_ENV=dev`:
 
 1. As `praveen`, draft "lookback 90 days".
 2. Switch to `asha` and approve it.
-3. Open a rec whose investigation has not run yet.
-4. Its Graph run drawer shows v2, and the gather step's grounding calls show
-   a 90-day lookback.
+3. Start an investigation that has not run yet (R-2031): its trace reports
+   workflow v2.
+4. R-1055, which ran on v1 when the board first loaded, still shows
+   "workflow v1" in its Graph run drawer. (The 90-day lookback reaching the
+   gather step is proved by the backend pinning test.)

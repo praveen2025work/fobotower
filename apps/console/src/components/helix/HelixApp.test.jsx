@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import board from './__fixtures__/board.json';
 import * as api from './data/helixApi';
+import workflowFixture from './workflow/__fixtures__/workflow.json';
 import HelixApp from './HelixApp';
 
 // The fixture is a trimmed copy of a real /api/helix/board response.
@@ -13,6 +14,19 @@ vi.mock('./data/helixApi', () => ({
   fetchTrace: vi.fn(),
   askSession: vi.fn(),
   decide: vi.fn(),
+}));
+
+vi.mock('./data/workflowApi', () => ({
+  fetchWorkflow: vi.fn(async () => structuredClone(workflowFixture)),
+  fetchVersions: vi.fn(async () => []),
+  fetchVersion: vi.fn(async () => ({ ...workflowFixture.active, active_number: 3, diff: [] })),
+  fetchRebased: vi.fn(),
+  validateWorkflow: vi.fn(),
+  saveDraft: vi.fn(),
+  uploadYaml: vi.fn(),
+  approveVersion: vi.fn(),
+  rejectVersion: vi.fn(),
+  downloadYaml: vi.fn(),
 }));
 
 const served = () => structuredClone(board);
@@ -118,5 +132,30 @@ describe('HelixApp', () => {
     expect(
       await screen.findByText('Reference does not resolve in static data.'),
     ).toBeInTheDocument();
+  });
+
+  it('opens the Workflow tab', async () => {
+    await renderLoaded();
+    await userEvent.click(screen.getByRole('button', { name: 'Workflow' }));
+    expect(await screen.findByText('Workflow v3')).toBeInTheDocument();
+  });
+
+  it('offers the dev caller switch only when the API lists dev callers', async () => {
+    const data = served();
+    data.devCallers = [
+      { id: 'praveen', roles: ['FO', 'PC'] },
+      { id: 'asha', roles: ['PC'] },
+    ];
+    await renderLoaded(data);
+    api.fetchBoard.mockClear();
+    await userEvent.selectOptions(screen.getByLabelText('Act as'), 'asha');
+    expect(window.localStorage.getItem('fobo.devCaller')).toBe('asha');
+    expect(api.fetchBoard).toHaveBeenCalled();
+    window.localStorage.removeItem('fobo.devCaller');
+  });
+
+  it('shows no dev caller switch without dev callers', async () => {
+    await renderLoaded();
+    expect(screen.queryByLabelText('Act as')).toBeNull();
   });
 });

@@ -31,11 +31,9 @@ export default function WorkflowTrace({ trace }) {
         </span>
       </div>
       <p className="text-[11px] -mt-2" style={{ color: 'var(--text-muted)' }}>
-        Steps, order and pause points from{' '}
-        <code style={{ fontFamily: 'var(--font-mono), monospace' }}>
-          config/workflow/fobo-investigation.yaml
-        </code>
-        {trace.workflow_version ? ` (v${trace.workflow_version})` : ''}
+        Steps, order and pause points from workflow
+        {trace.workflow_version ? ` v${trace.workflow_version}` : ''}, as approved in the
+        Workflow tab.
       </p>
 
       <ol className="relative flex flex-col">

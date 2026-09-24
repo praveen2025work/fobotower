@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { CalendarDays as Calendar, Gauge } from 'lucide-react';
+import { CalendarDays as Calendar, Gauge, Workflow as WorkflowIcon } from 'lucide-react';
 import { Analytics } from './Analytics';
 import { EventBoard } from './EventBoard';
 import { NotificationBell } from './NotificationBell';
@@ -19,6 +19,8 @@ import { BoardStatus } from './BoardStatus';
 import { WorkflowTraceDrawer } from './drawers/WorkflowTraceDrawer';
 import { bookCounts, manrope, nowStamp } from './lib/format';
 import { AgentOneClient, initialSession } from './lib/session';
+import { DevCallerSwitch } from './workflow/DevCallerSwitch';
+import { WorkflowView } from './workflow/WorkflowView';
 
 // '2026-08-03' -> '03 Aug 2026', the business date the board is for.
 const cobLabel = (cob) =>
@@ -48,6 +50,7 @@ export default function HelixApp() {
   const [hoursSaved, setHoursSaved] = useState(null);
   const [cob, setCob] = useState(null);
   const [caller, setCaller] = useState(null);
+  const [devCallers, setDevCallers] = useState([]);
   const [sessions, setSessions] = useState({});
   const [pendingReply, setPendingReply] = useState({});
   const [load, setLoad] = useState({ state: 'loading', error: null });
@@ -62,6 +65,7 @@ export default function HelixApp() {
       setHoursSaved(board.hoursSaved);
       setCob(board.cob);
       setCaller(board.caller);
+      setDevCallers(board.devCallers || []);
       setSessions(
         Object.fromEntries(served.map((r) => [r.id, initialSession(r)])),
       );
@@ -301,6 +305,14 @@ export default function HelixApp() {
                 <Gauge size={12} />
                 {' Agent Analytics'}
               </button>
+              <button
+                onClick={() => setView('workflow')}
+                className="text-xs font-semibold px-3.5 py-1.5 rounded-full transition-colors flex items-center gap-1.5"
+                style={tabStyle(view === 'workflow')}
+              >
+                <WorkflowIcon size={12} />
+                {' Workflow'}
+              </button>
             </div>
             <div className="ml-auto flex items-center gap-2.5 shrink-0">
               <button
@@ -314,6 +326,7 @@ export default function HelixApp() {
               >
                 {dark ? '☀' : '◑'}
               </button>
+              <DevCallerSwitch callers={devCallers} current={caller?.id} onSwitch={() => loadBoard()} />
               <NotificationBell
                 activity={activity}
                 onSelectRec={(id) => {
@@ -347,7 +360,13 @@ export default function HelixApp() {
             </div>
           </div>
         </div>
-        {view === 'analytics' ? (
+        {view === 'workflow' ? (
+          <div className="flex-1 min-h-0 overflow-y-auto px-6 md:px-10 py-6">
+            <div className="max-w-7xl mx-auto w-full">
+              <WorkflowView callerKey={caller?.id} />
+            </div>
+          </div>
+        ) : view === 'analytics' ? (
           <div className="flex-1 min-h-0 overflow-y-auto px-6 md:px-10 py-6">
             <div className="max-w-6xl mx-auto w-full">
               <Analytics

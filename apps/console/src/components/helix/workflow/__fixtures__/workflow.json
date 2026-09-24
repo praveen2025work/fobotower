@@ -1,0 +1,357 @@
+{
+  "active": {
+    "number": 3,
+    "status": "active",
+    "note": "Lookback 180→90 days",
+    "based_on": 2,
+    "drafted_by": "praveen",
+    "drafted_at": "2026-09-24T14:02:00+00:00",
+    "decided_by": "asha",
+    "decided_at": "2026-09-24T14:10:00+00:00",
+    "reject_reason": null,
+    "config": {
+      "version": "1.0",
+      "name": "fobo-investigation",
+      "steps": [
+        "resolve",
+        "gather",
+        "group",
+        "reason",
+        "rank",
+        "draft",
+        "validate",
+        "review",
+        "record"
+      ],
+      "pause_before": [
+        "review"
+      ],
+      "settings": {
+        "gather": {
+          "priors_lookback_days": 180,
+          "lineage_max_depth": 4,
+          "max_similar_breaks": 20
+        },
+        "reason": {
+          "reasoner": "none",
+          "verdict_policy_params": [
+            "materiality_threshold",
+            "posting_policy_reference"
+          ]
+        },
+        "validate": {
+          "max_hypothesis_attempts": 3
+        },
+        "review": {
+          "max_review_cycles": 2
+        },
+        "session_service": {
+          "timeout_seconds": 120.0
+        }
+      }
+    }
+  },
+  "steps": [
+    {
+      "name": "resolve",
+      "label": "Resolve books",
+      "description": "Pin each break's book to the business date",
+      "decided_by": "code",
+      "removable": false,
+      "required_because": "every later step works on resolved books",
+      "can_escalate": true,
+      "needs": [
+        "breaks",
+        "business_date",
+        "caller"
+      ],
+      "produces": [
+        "as_of",
+        "book_resolutions"
+      ],
+      "must_follow": []
+    },
+    {
+      "name": "gather",
+      "label": "Gather evidence",
+      "description": "Deltas, cause checks, lineage and priors",
+      "decided_by": "code",
+      "removable": false,
+      "required_because": "there is nothing to explain without the deltas and checks",
+      "can_escalate": true,
+      "needs": [
+        "as_of",
+        "book_resolutions",
+        "breaks",
+        "caller",
+        "evidence_gaps",
+        "investigation_session_id",
+        "master_book",
+        "reconciliation_id"
+      ],
+      "produces": [
+        "candidates",
+        "deltas",
+        "evidence_gaps",
+        "lineage",
+        "priors"
+      ],
+      "must_follow": []
+    },
+    {
+      "name": "group",
+      "label": "Group patterns",
+      "description": "Collapse breaks into pattern groups",
+      "decided_by": "code",
+      "removable": false,
+      "required_because": "the playbook step and the draft both need the pattern groups",
+      "can_escalate": false,
+      "needs": [
+        "breaks",
+        "candidates",
+        "investigation_session_id",
+        "priors",
+        "run_id"
+      ],
+      "produces": [
+        "group_meta",
+        "pattern_groups",
+        "reasons",
+        "ungrounded_breaks"
+      ],
+      "must_follow": []
+    },
+    {
+      "name": "reason",
+      "label": "Apply playbook",
+      "description": "Settle by rule; route the rest to the reasoner",
+      "decided_by": "playbook+reasoner",
+      "removable": false,
+      "required_because": "it applies the playbook and the hard verdict guards (R2, R6, P1)",
+      "can_escalate": false,
+      "needs": [
+        "breaks",
+        "business_date",
+        "candidates",
+        "deltas",
+        "evidence_gaps",
+        "lineage",
+        "priors",
+        "reasons"
+      ],
+      "produces": [
+        "determinism",
+        "evidence_gaps",
+        "findings",
+        "reasoning_error"
+      ],
+      "must_follow": []
+    },
+    {
+      "name": "rank",
+      "label": "Rank causes",
+      "description": "Order candidate causes per break",
+      "decided_by": "code+model",
+      "removable": true,
+      "required_because": null,
+      "can_escalate": false,
+      "needs": [
+        "breaks",
+        "candidates"
+      ],
+      "produces": [
+        "model_skipped",
+        "ranking"
+      ],
+      "must_follow": []
+    },
+    {
+      "name": "draft",
+      "label": "Draft analysis",
+      "description": "Write the four-part narrative",
+      "decided_by": "template",
+      "removable": false,
+      "required_because": "the controller reviews it and record writes it",
+      "can_escalate": false,
+      "needs": [
+        "breaks",
+        "deltas",
+        "evidence_gaps",
+        "pattern_groups"
+      ],
+      "produces": [
+        "draft"
+      ],
+      "must_follow": []
+    },
+    {
+      "name": "validate",
+      "label": "Validate",
+      "description": "Check every figure traces to a delta",
+      "decided_by": "code",
+      "removable": false,
+      "required_because": "no ungrounded figure may reach a controller",
+      "can_escalate": false,
+      "needs": [
+        "breaks",
+        "deltas",
+        "draft",
+        "evidence_gaps",
+        "hypothesis_attempts",
+        "investigation_session_id",
+        "pattern_groups",
+        "reconciliation_id"
+      ],
+      "produces": [
+        "validation_errors"
+      ],
+      "must_follow": []
+    },
+    {
+      "name": "review",
+      "label": "Human sign-off",
+      "description": "Controller approves or rejects",
+      "decided_by": "human",
+      "removable": false,
+      "required_because": "no decision is recorded without a person",
+      "can_escalate": false,
+      "needs": [
+        "findings",
+        "pattern_groups"
+      ],
+      "produces": [
+        "review_cycles"
+      ],
+      "must_follow": [
+        "reason",
+        "validate"
+      ]
+    },
+    {
+      "name": "record",
+      "label": "Record outcome",
+      "description": "Write decisions; they become tomorrow's priors",
+      "decided_by": "code",
+      "removable": false,
+      "required_because": "an investigation that is never recorded never happened",
+      "can_escalate": false,
+      "needs": [
+        "business_date",
+        "decisions",
+        "draft",
+        "investigation_session_id",
+        "master_book",
+        "pattern_groups",
+        "reconciliation_id",
+        "run_id"
+      ],
+      "produces": [
+        "outcome"
+      ],
+      "must_follow": [
+        "review"
+      ]
+    }
+  ],
+  "settings_schema": {
+    "gather": {
+      "priors_lookback_days": {
+        "type": "integer",
+        "default": 180,
+        "description": "How far back to look for prior resolutions, in days",
+        "min": 1,
+        "max": 3650
+      },
+      "lineage_max_depth": {
+        "type": "integer",
+        "default": 4,
+        "description": "Desk and entity hops to walk when tracing lineage",
+        "min": 1,
+        "max": 4
+      },
+      "max_similar_breaks": {
+        "type": "integer",
+        "default": 20,
+        "description": "Prior resolutions kept per book",
+        "min": 1,
+        "max": 500
+      }
+    },
+    "reason": {
+      "reasoner": {
+        "type": "enum",
+        "options": [
+          "none",
+          "session_service",
+          "direct"
+        ],
+        "default": "none",
+        "description": "Who handles breaks the playbook cannot settle: none (a person), session_service (the Agent SDK session service), direct (local development)"
+      },
+      "verdict_policy_params": {
+        "type": "string_list",
+        "default": [
+          "materiality_threshold",
+          "posting_policy_reference"
+        ],
+        "description": "Policy thresholds a POST verdict depends on; when any is unset the POST needs controller confirmation (Rule P1)"
+      }
+    },
+    "validate": {
+      "max_hypothesis_attempts": {
+        "type": "integer",
+        "default": 3,
+        "description": "Retries before RETRY_EXHAUSTED",
+        "min": 1,
+        "max": 10
+      }
+    },
+    "review": {
+      "max_review_cycles": {
+        "type": "integer",
+        "default": 2,
+        "description": "Reject-and-redraft rounds before escalation",
+        "min": 1,
+        "max": 10
+      }
+    },
+    "session_service": {
+      "timeout_seconds": {
+        "type": "number",
+        "default": 120.0,
+        "description": "Seconds allowed per judgement-based break",
+        "exclusive_min": 0,
+        "max": 1800
+      }
+    }
+  },
+  "reasoners": [
+    "none",
+    "session_service",
+    "direct"
+  ],
+  "overrides": {},
+  "pending_drafts": 2,
+  "caller": {
+    "id": "praveen",
+    "roles": [
+      "FO",
+      "PC"
+    ]
+  },
+  "dev_callers": [
+    {
+      "id": "praveen",
+      "roles": [
+        "FO",
+        "PC"
+      ]
+    },
+    {
+      "id": "asha",
+      "roles": [
+        "PC"
+      ]
+    }
+  ]
+}

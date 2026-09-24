@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from api.auth import dev_caller_middleware
 from api.routes import (
@@ -11,11 +12,24 @@ from api.routes import (
     recs,
     runs,
     sessions,
+    workflow,
     worklist,
 )
 from api.websocket import handler
+from app.workflow.versions import Invalid, VersionError
 
 CONSOLE_ORIGIN = "http://localhost:3100"
+
+
+async def _version_error(_request, exc: VersionError) -> JSONResponse:
+    """A refused workflow change, in the API's usual `detail` envelope. A
+    validation failure lists every problem so the console can show each one."""
+    detail = (
+        {"message": str(exc), "errors": exc.errors}
+        if isinstance(exc, Invalid) and exc.errors
+        else str(exc)
+    )
+    return JSONResponse(status_code=exc.status, content={"detail": detail})
 
 
 def create_app() -> FastAPI:
@@ -30,6 +44,7 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.add_exception_handler(VersionError, _version_error)
     app.include_router(runs.router)
     app.include_router(sessions.router)
     app.include_router(recs.router)
@@ -40,6 +55,7 @@ def create_app() -> FastAPI:
     app.include_router(breaks.router)
     app.include_router(helix.router)
     app.include_router(handler.router)
+    app.include_router(workflow.router)
 
     @app.get("/health")
     async def health() -> dict:

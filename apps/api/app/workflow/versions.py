@@ -219,6 +219,8 @@ async def approve(s, number: int, *, caller, key: str) -> WorkflowVersion:
     _require_pc(caller)
     if not (key or "").strip():
         raise Invalid("an Idempotency-Key header is required")
+    if len(key) > 128:
+        raise Invalid("the Idempotency-Key is longer than 128 characters")
     await _lock(s)
     used = await s.scalar(select(WorkflowVersion.number).where(WorkflowVersion.decision_key == key))
     if used is not None:

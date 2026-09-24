@@ -14,7 +14,7 @@ from api.routes.recs import session_id_for
 from app.db.base import get_session
 from app.db.models_ops import Reconciliation, Run
 from app.queries.activity import activity_feed
-from app.workflow.graph import build_graph
+from app.workflow.graph import graph_for_session
 from fixtures.history import COB
 
 router = APIRouter(prefix="/api", tags=["worklist"])
@@ -43,11 +43,10 @@ async def get_worklist(business_date: date = COB) -> dict:
 
         items: list[dict] = []
         async with checkpointer() as cp:
-            graph = build_graph(cp, session=s)
             for rec, _run in rows:
-                snapshot = await graph.aget_state(
-                    {"configurable": {"thread_id": session_id_for(rec.rec_id)}}
-                )
+                sid = session_id_for(rec.rec_id)
+                graph, _pinned = await graph_for_session(cp, s, sid)
+                snapshot = await graph.aget_state({"configurable": {"thread_id": sid}})
                 v = snapshot.values
                 if not v:
                     continue

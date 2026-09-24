@@ -14,6 +14,7 @@ from app.workflow.config import (
     WorkflowConfig,
     dump_config,
     read_workflow,
+    reset_workflow_cache,
     settings,
     use_workflow,
 )
@@ -109,3 +110,21 @@ def test_inside_use_workflow_settings_are_the_bound_ones():
     with use_workflow(WorkflowConfig.model_validate(raw)):
         assert settings().gather.priors_lookback_days == 7
     assert settings().gather.priors_lookback_days == 180
+
+
+async def test_the_worklist_reads_pinned_graphs_not_the_yaml_file(client, tmp_path, monkeypatch):
+    """/api/worklist builds each rec's graph from its pinned version, not from
+    build_graph's config-less fallback to the YAML file — so an invalid edit
+    left in the file must not break the route once a version is seeded."""
+    await client.get("/api/recs/R-1055")  # seeds workflow_version=1, a checkpoint
+
+    bad = tmp_path / "bad-workflow.yaml"
+    bad.write_text("not: [a, valid, workflow", encoding="utf-8")
+    monkeypatch.setenv("FOBO_WORKFLOW_PATH", str(bad))
+    reset_workflow_cache()
+    try:
+        resp = await client.get("/api/worklist")
+        assert resp.status_code == 200
+    finally:
+        monkeypatch.delenv("FOBO_WORKFLOW_PATH", raising=False)
+        reset_workflow_cache()

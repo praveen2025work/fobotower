@@ -126,6 +126,13 @@ describe('HelixApp', () => {
       },
     });
     await renderLoaded();
+    // R-1055 is mid-pipeline at "signoff", so RecDetail's mount effect
+    // retargets focus from the default "session" pane to "adjustments" —
+    // and, because that pane's wrapper is keyed on the focus target, it
+    // remounts the session composer underneath it. Typing before that
+    // retarget settles lands in a textarea React is about to discard,
+    // losing every keystroke; wait for the retarget to settle first.
+    await screen.findByRole('tab', { name: /Drafted adjustments/, selected: true });
     const box = screen.getByPlaceholderText(/Ask about Prime/);
     await userEvent.type(box, 'Explain B-8{Enter}');
     expect(api.askSession).toHaveBeenCalledWith('R-1055', 'Explain B-8');

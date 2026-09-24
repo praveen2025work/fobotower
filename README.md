@@ -40,6 +40,9 @@ docker compose up -d postgres
 cd apps/api && .venv/bin/alembic upgrade head
 ```
 
+After pulling this change, run the same command — it applies the migration
+that added workflow versioning.
+
 ### 3. Run the suite
 
 ```bash
@@ -68,8 +71,11 @@ docker compose up -d postgres
 ```
 
 ```bash
-cd apps/api && .venv/bin/uvicorn api.main:app --port 8100 --reload
+cd apps/api && FOBO_ENV=dev .venv/bin/uvicorn api.main:app --port 8100 --reload
 ```
+
+`FOBO_ENV=dev` enables the **Act as** switch in the console header, so a
+second person can approve a workflow draft.
 
 ```bash
 cd apps/console && npm run dev
@@ -110,6 +116,15 @@ cd apps/console && npm test
 ```
 
 25 tests. No database needed — components are tested against props.
+
+### 7. End-to-end test
+
+```bash
+cd apps/console && npm run test:e2e
+```
+
+Runs the workflow end-to-end test against a fresh `fobo_e2e` database on
+ports 8101/3101.
 
 ### Starting completely clean
 
@@ -180,15 +195,27 @@ on it is flagged *requires controller confirmation*. Set a value and reload.
 ## The investigation workflow
 
 How an investigation *executes* — which steps run, in what order, where it
-pauses for a person, and each step's settings — lives in:
+pauses for a person, and each step's settings — is a versioned, four-eyes
+config, not a file you hand-edit and restart for:
 
-**[`config/workflow/fobo-investigation.yaml`](config/workflow/fobo-investigation.yaml)**
+The live workflow is stored in the database; the YAML file at
+[`config/workflow/fobo-investigation.yaml`](config/workflow/fobo-investigation.yaml)
+seeds version 1 and is the Download/Upload format.
 
-```bash
-cd apps/api && .venv/bin/python -m app.workflow.cli show
-```
+In the console, open **Workflow**: the graph shows each step tagged Code /
+Playbook + Reasoner / Template / Human, the pause before sign-off, and the
+escalate branch. Click a step for its inputs, outputs and settings.
 
-Restart the API after editing; the workflow is read once per process.
+**New draft** → edit (rank on/off, order, pauses, settings, reasoner);
+problems are listed as you edit → add a note → **Save draft**.
+
+A different Product Control user opens the draft, reviews the changes
+against the active version, and approves (two confirmations). New
+investigations use it from then on; a run keeps the version it started with
+(see "workflow vN" in the Graph run drawer).
+
+`FOBO_REASONER` still overrides the reasoner for local development; the
+Workflow tab shows a banner while it does.
 
 | You can | You cannot |
 |---|---|

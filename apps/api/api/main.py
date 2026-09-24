@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -18,7 +20,12 @@ from api.routes import (
 from api.websocket import handler
 from app.workflow.versions import Invalid, VersionError
 
-CONSOLE_ORIGIN = "http://localhost:3100"
+
+def _console_origins() -> list[str]:
+    """The consoles allowed to call the API. FOBO_CONSOLE_ORIGINS is a
+    comma-separated list; the e2e console runs on its own port."""
+    raw = os.getenv("FOBO_CONSOLE_ORIGINS", "http://localhost:3100")
+    return [o.strip() for o in raw.split(",") if o.strip()]
 
 
 async def _version_error(_request, exc: VersionError) -> JSONResponse:
@@ -39,7 +46,7 @@ def create_app() -> FastAPI:
     app.middleware("http")(dev_caller_middleware)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[CONSOLE_ORIGIN],
+        allow_origins=_console_origins(),
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

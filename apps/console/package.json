@@ -9,6 +9,7 @@
     "start": "next start -p 3100",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "node e2e/reset-db.mjs && playwright test",
     "build:tokens": "node scripts/build-tokens.mjs"
   },
   "keywords": [],
@@ -23,6 +24,7 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4.3.3",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",

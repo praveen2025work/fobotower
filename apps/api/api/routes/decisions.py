@@ -19,7 +19,7 @@ from api.cases import session_id_for
 from app.db.base import get_session
 from app.db.models_graph import BreakEvent
 from app.db.models_session import ControllerDecision, PatternGroupRow
-from app.workflow.graph import build_graph
+from app.workflow.graph import graph_for_session
 from app.workflow.session import ensure_investigation_session
 
 router = APIRouter(prefix="/api/recs", tags=["decisions"])
@@ -72,9 +72,8 @@ async def apply_decision(s, rec_id: str, body: DecisionRequest,
         )
 
     async with checkpointer() as cp:
-        snapshot = await build_graph(cp, session=s).aget_state(
-            {"configurable": {"thread_id": sid}}
-        )
+        graph, _ = await graph_for_session(cp, s, sid)
+        snapshot = await graph.aget_state({"configurable": {"thread_id": sid}})
     if not snapshot.values:
         raise HTTPException(status_code=404, detail=f"no open case for {rec_id}")
 

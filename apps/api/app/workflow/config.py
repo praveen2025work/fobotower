@@ -7,6 +7,8 @@ safety step removed, is refused with a message naming the problem.
 """
 
 import os
+from contextlib import contextmanager
+from contextvars import ContextVar
 from functools import lru_cache
 from pathlib import Path
 from typing import get_origin
@@ -165,7 +167,9 @@ def read_workflow(path: Path | None = None) -> WorkflowConfig:
 
 @lru_cache(maxsize=1)
 def workflow() -> WorkflowConfig:
-    """The active workflow, validated once per process."""
+    """The YAML file's workflow: the seed for version 1, and what settings()
+    falls back to outside a run. The API runs whichever version is active in
+    the database (app/workflow/versions.py)."""
     return read_workflow()
 
 
@@ -173,8 +177,26 @@ def reset_workflow_cache() -> None:
     workflow.cache_clear()
 
 
+# The workflow of the run executing in this context. run_investigation binds
+# the run's pinned version for the length of the run; LangGraph copies the
+# context into the tasks that execute each step, so every step reads it.
+_bound: ContextVar["WorkflowConfig | None"] = ContextVar("fobo_workflow", default=None)
+
+
+@contextmanager
+def use_workflow(cfg: "WorkflowConfig"):
+    token = _bound.set(cfg)
+    try:
+        yield cfg
+    finally:
+        _bound.reset(token)
+
+
 def settings() -> Settings:
-    return workflow().settings
+    """The running workflow's settings: the run's pinned version inside a
+    run; the YAML file's outside one (the CLI, and unit tests that call a
+    step directly)."""
+    return (_bound.get() or workflow()).settings
 
 
 def dump_config(cfg: WorkflowConfig) -> dict:

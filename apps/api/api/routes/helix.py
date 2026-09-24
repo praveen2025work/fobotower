@@ -36,7 +36,7 @@ from app.helix.session import (
     workspace,
 )
 from app.queries.analytics import hours_saved
-from app.workflow.config import settings
+from app.workflow import versions
 from fixtures.history import COB
 
 router = APIRouter(prefix="/api/helix", tags=["helix"])
@@ -133,11 +133,12 @@ async def ask(rec_id: str, body: Question, business_date: date = COB) -> dict:
             raise HTTPException(status_code=409, detail=f"{rec_id} has no open session yet")
         await ensure_session_row(s, r, run, sid, "analysing")
 
+        active = await versions.active(s)
         tools = SessionTools(s, sid, workspace(view, business_date))
         intent, blocks = await answer(
             view, question, tools, cob=str(business_date),
             analysis_call_ids=[c["id"] for c in view["calls"]],
-            reasoner=settings().reason.reasoner,
+            reasoner=active.config.settings.reason.reasoner,
         )
         await s.flush()
         asked = await add_message(s, sid, "user", text=question)

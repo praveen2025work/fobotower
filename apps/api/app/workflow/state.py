@@ -22,6 +22,7 @@ class InvestigationState(TypedDict, total=False):
     business_date: date
     run_id: str
     caller: Caller
+    workflow_version: int
 
     # Population
     breaks: list[dict]

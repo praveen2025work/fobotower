@@ -17,7 +17,12 @@ async def ensure_investigation_session(session, state: InvestigationState) -> No
     ON CONFLICT rather than a read-then-write: the console fires two
     investigates at once in dev (React StrictMode), and a check-then-act
     lets both see no row and both insert. The primary key is the authority.
+
+    A row created earlier without a workflow version (a recorded session, or
+    a run from before versioning) takes the version of the run starting now.
+    Once set, a run's version never changes.
     """
+    version = state.get("workflow_version")
     stmt = (
         insert(InvestigationSession)
         .values(
@@ -27,8 +32,13 @@ async def ensure_investigation_session(session, state: InvestigationState) -> No
             business_date=state["business_date"],
             run_id=state["run_id"],
             status="analysing",
+            workflow_version=version,
         )
-        .on_conflict_do_nothing(index_elements=["investigation_session_id"])
+        .on_conflict_do_update(
+            index_elements=["investigation_session_id"],
+            set_={"workflow_version": version},
+            where=InvestigationSession.workflow_version.is_(None),
+        )
     )
     await session.execute(stmt)
     await session.commit()

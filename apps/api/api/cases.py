@@ -15,7 +15,7 @@ from sqlalchemy import select
 from api.auth import current_caller
 from api.deps import checkpointer
 from app.db.models_ops import Reconciliation, Run
-from app.workflow.graph import build_graph, run_investigation
+from app.workflow.graph import graph_for_session, run_investigation
 from fixtures.history import breaks_for_rec
 
 # Maps each fixture break's declared cause to the snapshot fields that make
@@ -82,7 +82,8 @@ async def open_case(s, rec, run):
     config = {"configurable": {"thread_id": sid}}
     async with _opening[rec.rec_id]:
         async with checkpointer() as cp:
-            snapshot = await build_graph(cp, session=s).aget_state(config)
+            graph, _ = await graph_for_session(cp, s, sid)
+            snapshot = await graph.aget_state(config)
             if not snapshot.values:
                 await run_investigation(
                     initial_state(rec, run, breaks),
@@ -94,14 +95,15 @@ async def open_case(s, rec, run):
                 # checkpoint is durable, so their rows must be too, or a later
                 # read finds a finished investigation missing its last calls.
                 await s.commit()
-                snapshot = await build_graph(cp, session=s).aget_state(config)
+                graph, _ = await graph_for_session(cp, s, sid)
+                snapshot = await graph.aget_state(config)
     return snapshot
 
 
 async def read_case(s, rec_id: str):
     """The checkpointed state only; never runs anything."""
+    sid = session_id_for(rec_id)
     async with checkpointer() as cp:
-        snapshot = await build_graph(cp, session=s).aget_state(
-            {"configurable": {"thread_id": session_id_for(rec_id)}}
-        )
+        graph, _ = await graph_for_session(cp, s, sid)
+        snapshot = await graph.aget_state({"configurable": {"thread_id": sid}})
     return snapshot if snapshot.values else None

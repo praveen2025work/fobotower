@@ -6,11 +6,16 @@
 # WHAT the rules are (tests, categories, verdicts, thresholds) lives in the
 # playbook instead: config/playbook/fobo-cats-vs-motif.yaml.
 #
-# To change the workflow:
-#   1. Edit this file.
-#   2. Validate:  apps/api/.venv/bin/python -m app.workflow.cli validate
-#   3. Restart the API. New investigations use the new workflow; runs
-#      already in flight keep the one they started with.
+# The running API does not read this file. It reads the active version from
+# the database: this file seeds version 1 on a fresh database, and is the
+# format of Download / Upload YAML in the console's Workflow tab.
+#
+# To change the live workflow, use the Workflow tab: a draft becomes active
+# only when a second Product Control user approves it. New investigations
+# use the new version; a run keeps the version it started with.
+#
+# To check an edit to this file:
+#   apps/api/.venv/bin/python -m app.workflow.cli validate
 #
 # The validator rejects an order that cannot work — a step placed before the
 # step whose output it needs — and refuses to drop the safety steps: the

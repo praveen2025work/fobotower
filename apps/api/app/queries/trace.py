@@ -8,17 +8,14 @@ Which node ran is read from each checkpoint's `next`: the checkpoint at step
 k names the node that runs between step k and step k+1.
 """
 
-from app.workflow.graph import build_graph
-
-def _workflow() -> list[tuple[str, str, str]]:
-    """The configured steps, in order — so the trace shows the workflow that
-    actually ran, including steps that have not run yet."""
-    from app.workflow.config import workflow
-    from app.workflow.registry import STEPS
-
-    return [(n, STEPS[n].label, STEPS[n].description) for n in workflow().steps]
+from app.workflow.graph import graph_for_session
+from app.workflow.registry import STEPS
 
 
+def _steps(cfg) -> list[tuple[str, str, str]]:
+    """The run's configured steps, in order — so the trace shows the workflow
+    that actually ran, including steps that have not run yet."""
+    return [(n, STEPS[n].label, STEPS[n].description) for n in cfg.steps]
 
 
 def _summary(node: str, v: dict) -> str:
@@ -62,18 +59,23 @@ def _added_keys(before: dict, after: dict) -> list[str]:
 
 
 async def execution_trace(checkpointer, session, thread_id: str) -> dict:
-    graph = build_graph(checkpointer, session=session)
+    graph, pinned = await graph_for_session(checkpointer, session, thread_id)
     config = {"configurable": {"thread_id": thread_id}}
     history = [snap async for snap in graph.aget_state_history(config)]
     history.reverse()  # oldest first
 
     if not history:
-        return {"thread_id": thread_id, "status": "not_started", "steps": [
-            {"node": n, "label": l, "description": d, "status": "pending"}
-            for n, l, d in _workflow()
-        ]}
+        return {
+            "thread_id": thread_id,
+            "status": "not_started",
+            "workflow_version": pinned.number,
+            "steps": [
+                {"node": n, "label": l, "description": d, "status": "pending"}
+                for n, l, d in _steps(pinned.config)
+            ],
+        }
 
-    steps_cfg = _workflow()
+    steps_cfg = _steps(pinned.config)
     known = {n for n, _l, _d in steps_cfg}
     ran: dict[str, dict] = {}
     for i, snap in enumerate(history):
@@ -109,12 +111,11 @@ async def execution_trace(checkpointer, session, thread_id: str) -> dict:
     status = ("escalated" if escalated
               else "awaiting_signoff" if parked_at == "review"
               else (latest.values or {}).get("outcome") or "running")
-    from app.workflow.config import workflow
 
     return {
         "thread_id": thread_id,
-        "workflow_version": workflow().version,
-        "pause_before": list(workflow().pause_before),
+        "workflow_version": pinned.number,
+        "pause_before": list(pinned.config.pause_before),
         "status": status,
         "parked_at": parked_at,
         "checkpoints": len(history),

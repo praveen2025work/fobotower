@@ -8,7 +8,7 @@ from api.auth import current_caller
 from api.cases import CAUSE_TO_SNAPSHOT
 from api.deps import checkpointer, ensure_fixtures
 from app.db.base import get_session
-from app.workflow.graph import build_graph, run_investigation
+from app.workflow.graph import graph_for_session, run_investigation
 from fixtures.loader import read_breaks
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
@@ -46,9 +46,8 @@ def _initial_state(session_id: str) -> dict:
 async def load_snapshot(session_id: str):
     async with get_session() as s:
         async with checkpointer() as cp:
-            return await build_graph(cp, session=s).aget_state(
-                {"configurable": {"thread_id": session_id}}
-            )
+            graph, _ = await graph_for_session(cp, s, session_id)
+            return await graph.aget_state({"configurable": {"thread_id": session_id}})
 
 
 @router.post("/{session_id}/investigate", status_code=202)

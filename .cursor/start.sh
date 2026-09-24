@@ -1,44 +1,33 @@
 #!/usr/bin/env bash
-# Start PostgreSQL 16 (with pgvector) on port 5433 and wait until it accepts
-# connections. Matches the repo default DSN:
-#   postgresql+asyncpg://fobo:fobo@localhost:5433/fobo
-# Idempotent: safe to run on every boot, tolerates an already-running server
-# and a stale pidfile left behind by a snapshot / unclean shutdown.
+# Per-boot startup for the FOBO Investigation Console.
+# Ensures PostgreSQL is up (hard requirement) and launches the API and console
+# dev servers in the background (best-effort). Idempotent: a server that is
+# already listening is left alone.
 set -euo pipefail
 
-PGVER=16
-PGCLUSTER=main
-PGPORT=5433
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export PATH="${HOME}/.local/bin:${PATH}"
 
-# The base image already ships the "16 main" cluster; recreate it only if a
-# fresh base ever lacks one.
-if ! pg_lsclusters -h 2>/dev/null | awk '{print $1"/"$2}' | grep -qx "${PGVER}/${PGCLUSTER}"; then
-  sudo pg_createcluster "${PGVER}" "${PGCLUSTER}"
-fi
+# --- PostgreSQL (required) ---------------------------------------------------
+bash "${REPO_ROOT}/.cursor/db.sh"
 
-# Pin the listen port so the app's default DSN resolves without any override.
-sudo pg_conftool "${PGVER}" "${PGCLUSTER}" set port "${PGPORT}"
+# --- Dev servers (best-effort) ----------------------------------------------
+port_is_up() { (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null && exec 3>&- 3<&- ; }
 
-# Drop a stale pidfile if the recorded process is no longer alive.
-PIDFILE="/var/lib/postgresql/${PGVER}/${PGCLUSTER}/postmaster.pid"
-if sudo test -f "${PIDFILE}"; then
-  PGPID="$(sudo head -n1 "${PIDFILE}" 2>/dev/null || true)"
-  if [ -n "${PGPID}" ] && ! sudo kill -0 "${PGPID}" 2>/dev/null; then
-    sudo rm -f "${PIDFILE}"
+start_bg() {
+  local name="$1" port="$2" logfile="$3" workdir="$4"; shift 4
+  if port_is_up "${port}"; then
+    echo "==> ${name} already listening on ${port}"
+    return 0
   fi
-fi
+  echo "==> Starting ${name} on port ${port} (logs: ${logfile})"
+  ( cd "${workdir}" && nohup "$@" >"${logfile}" 2>&1 & )
+}
 
-sudo pg_ctlcluster "${PGVER}" "${PGCLUSTER}" start || true
+start_bg "API" 8100 /tmp/fobo-api.log "${REPO_ROOT}/apps/api" \
+  "${REPO_ROOT}/apps/api/.venv/bin/uvicorn" api.main:app --host 0.0.0.0 --port 8100
 
-echo "==> Waiting for PostgreSQL on port ${PGPORT}"
-for _ in $(seq 1 30); do
-  if pg_isready -h localhost -p "${PGPORT}" >/dev/null 2>&1; then
-    echo "PostgreSQL is ready on port ${PGPORT}"
-    exit 0
-  fi
-  sleep 1
-done
+start_bg "console" 3100 /tmp/fobo-console.log "${REPO_ROOT}/apps/console" \
+  npm run dev
 
-echo "PostgreSQL did not become ready on port ${PGPORT}" >&2
-sudo tail -n 40 "/var/log/postgresql/postgresql-${PGVER}-${PGCLUSTER}.log" 2>/dev/null || true
-exit 1
+echo "==> Startup complete (Postgres:5433, API:8100, console:3100)"

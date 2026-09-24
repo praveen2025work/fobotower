@@ -14,7 +14,7 @@ if ! command -v uv >/dev/null 2>&1; then
 fi
 
 echo "==> Ensuring PostgreSQL is running (migrations need it)"
-bash "${REPO_ROOT}/.cursor/start.sh"
+bash "${REPO_ROOT}/.cursor/db.sh"
 
 echo "==> Ensuring the fobo role and database exist"
 # The app connects as a superuser (matching docker-compose's POSTGRES_USER),

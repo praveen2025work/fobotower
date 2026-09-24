@@ -42,8 +42,14 @@ def _summary(node: str, v: dict) -> str:
     if node == "draft":
         return "analysis drafted" if v.get("draft") else "no draft"
     if node == "validate":
+        # Two different checks: the narrative's figures, and each drafted
+        # adjustment's figure against MB Rec. Report both, not just the first.
         errs = v.get("validation_errors") or []
-        return "every figure grounded" if not errs else f"{len(errs)} validation notes"
+        untraced = v.get("ungrounded_breaks") or []
+        parts = ["narrative figures grounded" if not errs else f"{len(errs)} validation notes"]
+        if untraced:
+            parts.append(f"{', '.join(untraced)} not traced to MB Rec")
+        return " · ".join(parts)
     if node == "review":
         return "awaiting controller sign-off"
     if node == "record":

@@ -109,7 +109,7 @@ async def test_a_break_with_no_positive_cause_is_grouped_as_ungrouped():
         clean = [
             {
                 "break_id": "b-clean",
-                "book_ref": "APAC-CASH-01",
+                "book_ref": "PRIME-MB-01",
                 "line_code": "CASH",
                 "fo_value": 100000.0,
                 "bo_value": 99000.0,

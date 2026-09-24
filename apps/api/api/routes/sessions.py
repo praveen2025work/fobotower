@@ -5,6 +5,7 @@ from datetime import date
 from fastapi import APIRouter, HTTPException, Response
 
 from api.auth import current_caller
+from api.cases import CAUSE_TO_SNAPSHOT
 from api.deps import checkpointer, ensure_fixtures
 from app.db.base import get_session
 from app.workflow.graph import build_graph, run_investigation
@@ -12,17 +13,6 @@ from fixtures.loader import read_breaks
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 
-# Maps each fixture break's declared cause to the snapshot fields that make
-# the corresponding check fire. Phase 3 replaces this with the CATS and
-# MOTIF adapters.
-CAUSE_TO_SNAPSHOT = {
-    "C1": {"fo_booking_ts": "2026-08-04T00:15:00Z"},
-    "C2": {"mapping_present": False},
-    "C3": {"bo_dataset_id": "EOD-2026-08-02"},
-    "C4": {"fo_components": ["principal", "fee"]},
-    "C5": {"fo_version": 2},
-    "C6": {"bo_adjustments": ["manual-1"]},
-}
 
 PIPELINE_STAGES = [
     {"key": "mbr", "label": "MBR / Rec Factory", "sub": "CATS ↔ MOTIF breaks"},
@@ -41,7 +31,7 @@ def _initial_state(session_id: str) -> dict:
     return {
         "investigation_session_id": session_id,
         "reconciliation_id": "R-1055",
-        "master_book": "APAC-CASH",
+        "master_book": "PRIME-MB",
         "business_date": date(2026, 8, 3),
         "run_id": "run-1100",
         "caller": current_caller(),

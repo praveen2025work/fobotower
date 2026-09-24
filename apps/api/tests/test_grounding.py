@@ -17,8 +17,8 @@ SID = "sess-ground"
 
 def _brk(**over):
     return {
-        "break_id": "b-01",
-        "book_ref": "APAC-CASH-01",
+        "break_id": "B-1",
+        "book_ref": "PRIME-MB-01",
         "line_code": "CASH",
         "fo_value": 102340.0,
         "bo_value": 100000.0,
@@ -79,14 +79,14 @@ async def test_gather_records_one_call_per_retrieval():
         assert n >= 4, f"expected breaks, lineage, priors and movements; got {n}"
 
 
-async def test_gather_records_the_applications_the_mock_names():
+async def test_gather_records_the_mcp_servers_helix_reads_from():
     async with get_session() as s:
         st = await _prepare(s)
         st |= await resolve(st, session=s)
         await gather(st, session=s)
         await s.commit()
         apps = {r["application"] for r in await calls_for(s, SID)}
-        assert {"RecFactory", "CATS", "MOTIF"} <= apps
+        assert {"MBRec", "HelixKG"} <= apps
 
 
 async def test_a_failed_retrieval_is_recorded_as_failed_not_omitted():

@@ -1,72 +1,55 @@
-"""Seven days of run history.
+"""Seven days of run history, and today as the Helix console shows it.
 
-The mock shows figures that cannot come from a single run: a 7-day pattern
-history, a median draft-to-sign-off time, and a "carried N runs" badge. This
-seeds the rows those derive from, so nothing on screen is a literal.
+Figures like a 7-day pattern history, a median draft-to-sign-off time and a
+"carried N sessions" badge cannot come from a single run. This seeds the rows
+they derive from, so nothing on screen is a literal.
 
-Today (the business date) is deliberately left incomplete: R-1055 is awaiting
-sign-off, R-2015 is blocked, and two recs have not opened. That is the state
-the mock renders.
+Today (the business date) is deliberately incomplete: Prime is awaiting
+sign-off, Collateral is blocked, FI Credit is mid-analysis, and two recs are
+still waiting for their Ready event. The scenario itself is in catalogue.py.
 """
 
 import random
 from datetime import date, datetime, time, timedelta, timezone
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 
 from app.db.models_graph import BreakEvent, Node
 from app.db.models_ops import Reconciliation, Run
 from app.db.models_session import ControllerDecision, InvestigationSession
+from fixtures.catalogue import (
+    ENTITY,
+    OPEN_REC_BREAKS,
+    P204_HISTORY_DAYS,
+    PATTERN_MIX,
+    PRIME_CARRIED,
+    PRIME_UNGROUNDED,
+    REC_BY_ID,
+    RECS,
+    RESOLVED_TODAY,
+    TODAY,
+    master_book_ref,
+)
 
 COB = date(2026, 8, 3)
 HISTORY_DAYS = 7
-ENTITY = "LE-APAC-01"
 
-# The mock's seven recs. books_total and the run-window times come straight
-# from its timeline and region rail.
-RECS = [
-    ("R-1050", "CATS vs MOTIF — Rates", "APAC", "APAC-RATES", time(11, 0), 22),
-    ("R-1055", "Rec Factory — Cash Recon", "APAC", "APAC-CASH", time(11, 0), 11),
-    ("R-1060", "CATS vs MOTIF — FX", "APAC", "APAC-FX", time(19, 0), 15),
-    ("R-2010", "CATS vs MOTIF — Credit", "EMEA", "EMEA-CREDIT", time(15, 0), 19),
-    ("R-2015", "Rec Factory — Collateral", "EMEA", "EMEA-COLL", time(15, 0), 7),
-    ("R-3010", "CATS vs MOTIF — Equities", "AMER", "AMER-EQ", time(17, 0), 41),
-    ("R-3015", "Rec Factory — Cash Recon", "AMER", "AMER-CASH", time(17, 0), 13),
-]
-
-# Today's state, as the mock shows it: rec_id -> (status, books_open).
-TODAY_STATE = {
-    "R-1050": ("cleared", 22),
-    "R-1055": ("awaiting", 9),
-    "R-1060": ("scheduled", 0),
-    "R-2010": ("in_progress", 11),
-    "R-2015": ("blocked", 1),
-    "R-3010": ("scheduled", 0),
-    "R-3015": ("cleared", 13),
-}
-
-# Completion times for today's finished runs, so the rec header can show
-# "R-1055 · 11:00 · 11:52 IST".
-TODAY_COMPLETED = {
-    "R-1050": time(11, 38),
-    "R-1055": time(11, 52),
-    "R-2010": time(15, 41),
-    "R-3015": time(17, 29),
-}
-
-PATTERN_MIX = ["P-204", "CPTY-REF", "LATE-BOOK", "DUP-SETTLE"]
-
-# The mock's 7-day pattern history for P-204: approved/total per day.
-# 03 Aug is today's run, resolved earlier in the day.
+# approved/total per day for R-1055's P-204 resolutions, keyed by date.
 P204_HISTORY = {
-    date(2026, 7, 28): (4, 5),
-    date(2026, 7, 29): (3, 4),
-    date(2026, 7, 30): (2, 3),
-    date(2026, 7, 31): (2, 2),
-    date(2026, 8, 1): (8, 9),
-    date(2026, 8, 2): (8, 8),
-    date(2026, 8, 3): (7, 7),
+    COB - timedelta(days=HISTORY_DAYS - 1 - i): counts
+    for i, counts in enumerate(P204_HISTORY_DAYS)
 }
+
+# Rows history.py owns, by break id prefix, so a reseed clears exactly them.
+_OWNED_BREAK_PREFIXES = ("hist-", "A-", "C-", "F-", "COLL-")
+
+
+def _at(day: date, t: time) -> datetime:
+    return datetime.combine(day, t, tzinfo=timezone.utc)
+
+
+def _run_id(rec_id: str, day: date) -> str:
+    return f"run-{rec_id}-{day:%Y%m%d}"
 
 
 async def load_history(session, *, commit: bool = True) -> None:
@@ -81,15 +64,18 @@ async def load_history(session, *, commit: bool = True) -> None:
     await _load_resolved_breaks(session)
     await session.flush()
     await _load_open_rec_breaks(session)
+    await _load_resolved_today(session)
+    await _mark_prime_breaks(session)
     if commit:
         await session.commit()
 
 
 async def _clear(session) -> None:
     await session.execute(delete(ControllerDecision))
-    await session.execute(
-        delete(BreakEvent).where(BreakEvent.break_id.like("hist-%"))
-    )
+    for prefix in _OWNED_BREAK_PREFIXES:
+        await session.execute(
+            delete(BreakEvent).where(BreakEvent.break_id.like(f"{prefix}%"))
+        )
     await session.execute(
         delete(InvestigationSession).where(
             InvestigationSession.investigation_session_id.like("hist-%")
@@ -98,74 +84,89 @@ async def _clear(session) -> None:
     await session.execute(delete(Run))
     await session.execute(delete(Reconciliation))
     await session.execute(delete(Node).where(Node.node_id.like("book:HIST-%")))
-    for prefix in ("EMEA-CREDIT", "EMEA-COLL"):
+    for rec in RECS:
+        if rec.rec_id == "R-1055":
+            continue  # loader.py owns the Prime books
         await session.execute(
-            delete(BreakEvent).where(BreakEvent.book_id.like(f"book:{prefix}-%"))
-        )
-        await session.execute(
-            delete(Node).where(Node.node_id.like(f"book:{prefix}-%"))
+            delete(Node).where(Node.node_id.like(f"book:{rec.master_book}-%"))
         )
 
 
 async def _load_recs(session) -> None:
-    for rec_id, name, region, book, sched, total in RECS:
+    for rec in RECS:
         session.add(
             Reconciliation(
-                rec_id=rec_id,
-                name=name,
-                region=region,
-                master_book=book,
-                scheduled_time=sched,
-                books_total=total,
+                rec_id=rec.rec_id,
+                name=rec.name,
+                region=rec.region,
+                master_book=rec.master_book,
+                scheduled_time=rec.scheduled,
+                books_total=rec.books_total,
+                rec_group=rec.group,
+                l4=rec.l4,
+                ccy=rec.ccy,
             )
         )
 
 
-def _run_id(rec_id: str, day: date) -> str:
-    return f"run-{rec_id}-{day:%Y%m%d}"
+def _event_id(rec_id: str, day: date) -> str:
+    """Past runs' Ready events: stable, and distinct from today's."""
+    return f"EVT-RDY-{int(rec_id[2:]) * 10 + day.day % 10:05d}"
 
 
 async def _load_runs(session) -> None:
     rng = random.Random(1055)
     for offset in range(HISTORY_DAYS - 1, 0, -1):
         day = COB - timedelta(days=offset)
-        for rec_id, _n, _r, _b, sched, total in RECS:
-            # Past runs all completed, a few minutes after their window.
-            completed = datetime.combine(
-                day, sched, tzinfo=timezone.utc
-            ) + timedelta(minutes=rng.randint(22, 58))
+        for rec in RECS:
+            # Past runs all cleared, a few minutes after their window.
+            ready = _at(day, rec.scheduled) + timedelta(minutes=rng.randint(2, 20))
+            completed = ready + timedelta(minutes=rng.randint(12, 40))
             session.add(
                 Run(
-                    run_id=_run_id(rec_id, day),
-                    rec_id=rec_id,
+                    run_id=_run_id(rec.rec_id, day),
+                    rec_id=rec.rec_id,
                     business_date=day,
-                    scheduled_time=sched,
+                    scheduled_time=rec.scheduled,
                     completed_at=completed,
                     status="cleared",
-                    books_open=total,
+                    books_open=rec.books_total,
+                    ready_event_id=_event_id(rec.rec_id, day),
+                    ready_at=ready,
+                    mb_available=rec.books_total,
+                    mb_reported_at=ready - timedelta(minutes=2),
+                    book_stats={
+                        "total": rec.books_total, "autoPost": rec.books_total,
+                        "cleared": 0, "awaiting": 0, "analysing": 0,
+                        "blocked": 0, "notOpen": 0,
+                    },
+                    books_unlocked=rec.books_total,
                 )
             )
 
-    for rec_id, _n, _r, _b, sched, _t in RECS:
-        status, books_open = TODAY_STATE[rec_id]
-        done = TODAY_COMPLETED.get(rec_id)
+    for rec in RECS:
+        today = TODAY[rec.rec_id]
         session.add(
             Run(
-                run_id=_run_id(rec_id, COB),
-                rec_id=rec_id,
+                run_id=_run_id(rec.rec_id, COB),
+                rec_id=rec.rec_id,
                 business_date=COB,
-                scheduled_time=sched,
-                completed_at=(
-                    datetime.combine(COB, done, tzinfo=timezone.utc) if done else None
-                ),
-                status=status,
-                books_open=books_open,
+                scheduled_time=rec.scheduled,
+                completed_at=_at(COB, today.completed) if today.completed else None,
+                status=today.status,
+                books_open=rec.books_total - today.book_stats["notOpen"],
+                ready_event_id=today.ready_event_id,
+                ready_at=_at(COB, today.ready_at) if today.ready_at else None,
+                mb_available=today.mb_available,
+                mb_reported_at=_at(COB, today.mb_reported_at),
+                book_stats=today.book_stats,
+                books_unlocked=today.books_unlocked,
             )
         )
 
 
 async def _load_history_books(session) -> None:
-    """Books the historical breaks hang off. Distinct from today's APAC-CASH
+    """Books the historical breaks hang off. Distinct from today's Prime
     books so history and today's population never collide."""
     for i in range(1, 13):
         session.add(
@@ -182,28 +183,26 @@ async def _load_history_books(session) -> None:
 async def _load_resolved_breaks(session) -> None:
     """Resolved breaks per day, with decisions carrying real timestamps.
 
-    P-204 counts match the mock's 7-day history exactly. The other patterns
-    get a smaller spread so the analytics split is not uniform.
+    P-204 counts match the 7-day history exactly. The other patterns get a
+    smaller spread so the analytics split is not uniform.
     """
     rng = random.Random(204)
     seq = 0
+    prime = REC_BY_ID["R-1055"]
 
     for day, (approved, total) in P204_HISTORY.items():
         run_id = _run_id("R-1055", day)
-        sched = time(11, 0)
         outcomes = ["approved"] * approved + ["rejected"] * (total - approved)
         sid = f"hist-R-1055-{day:%Y%m%d}"
         # created_ts is set explicitly rather than defaulting to now():
         # sign-off duration is decided_ts minus this, and a historical
         # session measured against today's clock reads as negative.
-        opened_at = datetime.combine(day, sched, tzinfo=timezone.utc) + timedelta(
-            minutes=35
-        )
+        opened_at = _at(day, prime.scheduled) + timedelta(minutes=35)
         session.add(
             InvestigationSession(
                 investigation_session_id=sid,
                 reconciliation_id="R-1055",
-                master_book="APAC-CASH",
+                master_book=prime.master_book,
                 business_date=day,
                 run_id=run_id,
                 status="recorded",
@@ -212,10 +211,8 @@ async def _load_resolved_breaks(session) -> None:
         )
         await session.flush()
 
-        drafted_at = datetime.combine(day, sched, tzinfo=timezone.utc) + timedelta(
-            minutes=40
-        )
-        for i, outcome in enumerate(outcomes):
+        drafted_at = _at(day, prime.scheduled) + timedelta(minutes=40)
+        for outcome in outcomes:
             seq += 1
             session.add(
                 BreakEvent(
@@ -233,7 +230,7 @@ async def _load_resolved_breaks(session) -> None:
                     first_seen_run_id=run_id,
                 )
             )
-            # Median sign-off lands around 18 minutes, as the mock reports.
+            # Median sign-off lands around 18 minutes.
             session.add(
                 ControllerDecision(
                     decision_id=f"hist-dec-{seq:04d}",
@@ -268,79 +265,105 @@ async def _load_resolved_breaks(session) -> None:
                 )
 
 
-# Recs with work waiting get their own break population, so switching recs
-# shows that rec's data rather than an empty panel. Cleared and scheduled
-# recs deliberately get none: that is what "cleared" means.
-OPEN_REC_BREAKS = {
-    "R-2010": [
-        ("C1", 4210.0), ("C1", 1890.0), ("C1", 2650.0),
-        ("C3", 11400.0), ("C3", 7320.0),
-        ("C4", 980.0), ("C4", 3115.0), ("C4", 1745.0),
-    ],
-    "R-2015": [
-        ("C2", 22400.0), ("C2", 8650.0),
-        ("C6", 5120.0), ("C6", 3380.0), ("C6", 1290.0),
-    ],
-}
+async def _add_book(session, ref: str) -> None:
+    if await session.get(Node, f"book:{ref}") is None:
+        session.add(
+            Node(
+                node_id=f"book:{ref}",
+                node_type="Book",
+                natural_key=ref,
+                legal_entity_id=ENTITY,
+                valid_from=date(2020, 1, 1),
+            )
+        )
+        await session.flush()
 
 
 async def _load_open_rec_breaks(session) -> None:
-    """Books and breaks for the recs that are mid-flight."""
-    by_id = {r[0]: r for r in RECS}
+    """Books and breaks for the recs whose investigation runs today."""
     for rec_id, rows in OPEN_REC_BREAKS.items():
-        _id, _name, _region, master_book, _sched, _total = by_id[rec_id]
-        run_id = _run_id(rec_id, COB)
-        for i, (cause, delta) in enumerate(rows, start=1):
-            book = f"{master_book}-{i:02d}"
-            session.add(
-                Node(
-                    node_id=f"book:{book}",
-                    node_type="Book",
-                    natural_key=book,
-                    legal_entity_id=ENTITY,
-                    valid_from=date(2020, 1, 1),
-                )
-            )
-        await session.flush()
-        for i, (cause, delta) in enumerate(rows, start=1):
-            book = f"{master_book}-{i:02d}"
+        rec = REC_BY_ID[rec_id]
+        for b in rows:
+            ref = master_book_ref(rec, b.book_no)
+            await _add_book(session, ref)
             session.add(
                 BreakEvent(
-                    break_id=f"{rec_id.lower()}-b{i:02d}",
-                    book_id=f"book:{book}",
+                    break_id=b.break_id,
+                    book_id=f"book:{ref}",
                     line_code="CASH",
                     cob_date=COB,
-                    fo_value=100000.0 + delta,
+                    fo_value=100000.0 + b.delta,
                     bo_value=100000.0,
-                    delta=delta,
+                    delta=b.delta,
                     outcome=None,
-                    first_seen_run_id=run_id,
+                    first_seen_run_id=_run_id(
+                        rec_id, COB - timedelta(days=b.first_seen_days_ago)
+                    ),
                 )
             )
+
+
+async def _load_resolved_today(session) -> None:
+    """Cleared recs: what their sessions resolved earlier today."""
+    for rec_id, rows in RESOLVED_TODAY.items():
+        rec = REC_BY_ID[rec_id]
+        for b in rows:
+            ref = master_book_ref(rec, b.book_no)
+            await _add_book(session, ref)
+            session.add(
+                BreakEvent(
+                    break_id=b.break_id,
+                    book_id=f"book:{ref}",
+                    line_code="CASH",
+                    cob_date=COB,
+                    fo_value=100000.0 + b.delta,
+                    bo_value=100000.0,
+                    delta=b.delta,
+                    pattern_code=b.pattern_code,
+                    outcome=b.outcome,
+                    narrative=b.label,
+                    reason_text=b.reason,
+                    first_seen_run_id=_run_id(rec_id, COB),
+                )
+            )
+
+
+async def _mark_prime_breaks(session) -> None:
+    """Carry and grounding flags on the Prime population loader.py seeds."""
+    for break_id, days_ago in PRIME_CARRIED.items():
+        await session.execute(
+            update(BreakEvent)
+            .where(BreakEvent.break_id == break_id)
+            .values(first_seen_run_id=_run_id("R-1055", COB - timedelta(days=days_ago)))
+        )
+    await session.execute(
+        update(BreakEvent)
+        .where(BreakEvent.break_id.in_(PRIME_UNGROUNDED))
+        .values(is_ungrounded=True)
+    )
 
 
 def breaks_for_rec(rec_id: str) -> list[dict]:
     """The break population an investigation of this rec should analyse."""
     if rec_id == "R-1055":
-        # The mock's own population, defined in loader.py.
+        # The Prime population, defined in data/breaks_small.json.
         from fixtures.loader import read_breaks
 
         return read_breaks()
 
-    by_id = {r[0]: r for r in RECS}
-    if rec_id not in OPEN_REC_BREAKS:
+    rec = REC_BY_ID.get(rec_id)
+    if rec is None or rec_id not in OPEN_REC_BREAKS:
         return []
-    master_book = by_id[rec_id][3]
     return [
         {
-            "break_id": f"{rec_id.lower()}-b{i:02d}",
-            "book_ref": f"{master_book}-{i:02d}",
+            "break_id": b.break_id,
+            "book_ref": master_book_ref(rec, b.book_no),
             "line_code": "CASH",
-            "fo_value": 100000.0 + delta,
+            "fo_value": 100000.0 + b.delta,
             "bo_value": 100000.0,
-            "cause": cause,
+            "cause": b.cause,
         }
-        for i, (cause, delta) in enumerate(OPEN_REC_BREAKS[rec_id], start=1)
+        for b in OPEN_REC_BREAKS[rec_id]
     ]
 
 

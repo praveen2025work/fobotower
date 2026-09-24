@@ -1,0 +1,315 @@
+{
+ "cob": "2026-08-03",
+ "caller": {
+  "id": "praveen",
+  "name": "Praveen",
+  "title": "FOBO Controller"
+ },
+ "recs": [
+  {
+   "id": "R-1055",
+   "name": "CATS vs MOTIF — Prime",
+   "group": "CATS-MOTIF",
+   "l4": "Prime",
+   "ccy": "USD",
+   "readyAt": "11:44",
+   "eventId": "EVT-RDY-80437",
+   "mb": {
+    "available": 14,
+    "total": 14
+   },
+   "bookStats": {
+    "total": 14,
+    "blocked": 0,
+    "cleared": 0,
+    "notOpen": 2,
+    "autoPost": 3,
+    "awaiting": 9,
+    "analysing": 0
+   },
+   "status": "Awaiting Sign-off",
+   "steps": [
+    "done",
+    "done",
+    "done",
+    "active",
+    "pending"
+   ],
+   "booksUnlocked": 0,
+   "updated": "11:52 IST",
+   "sessionId": "sess-r-1055",
+   "graphRun": true,
+   "analysis": {
+    "what": "14 breaks across 12 books, grouped into 4 distinct root causes.",
+    "why": "6 attributed to FX timing lag (P-204), totalling $15,965.00. 3 attributed to Unmatched counterparty reference (CPTY-REF), totalling $28,975.00. 3 attributed to Late trade booking (LATE-BOOK), totalling $18,500.00. 2 attributed to Duplicate settlement suspected (DUP-SETTLE), totalling $5,660.00.",
+    "confidence": "MEDIUM",
+    "confidenceNote": "P-204 has an 88% historical approval rate.",
+    "action": "Approve the P-204 group in one action. Review the remaining groups individually before approving.",
+    "risk": "B-9 has an ungrounded figure. A number in the drafted adjustment could not be traced back to MB Rec source data. Verify the amount manually before approving."
+   },
+   "adjustments": [
+    {
+     "id": "B-2",
+     "type": "Auto",
+     "book": "PRIME-MB-02",
+     "amount": "$1,880",
+     "delta": 1880.0,
+     "pattern": "P-204",
+     "patternLabel": "FX timing lag",
+     "reason": "Nostro statement received after 23:30 cutoff",
+     "status": "Pending",
+     "grounded": true,
+     "agedSessions": 0,
+     "detail": {
+      "ref": "BRK-B-2",
+      "type": "FX timing lag",
+      "delta": "USD 1,880.00",
+      "cause": "Nostro statement received after 23:30 cutoff. FO booking timestamp is after the BO ledger cut-off. The playbook files this as a redemption break on the BO side.",
+      "cats": {
+       "label": "CATS leg",
+       "value": "USD 101,880.00",
+       "note": "PRIME-MB-02, as MB Rec reports it"
+      },
+      "motif": {
+       "label": "MOTIF leg",
+       "value": "USD 100,000.00",
+       "note": "PRIME-MB-02, as MB Rec reports it"
+      },
+      "gap": {
+       "label": "Difference",
+       "value": "USD 1,880.00",
+       "note": "CATS minus MOTIF"
+      },
+      "fix": "Post an adjustment of USD 1,880.00 to PRIME-MB-02 so MOTIF agrees with CATS. The playbook has no materiality threshold or posting policy reference set, so a controller confirms it.",
+      "verify": [
+       "Confirm the materiality threshold: it is not set in the playbook v1.0",
+       "Confirm the posting policy reference: it is not set in the playbook v1.0"
+      ],
+      "grounded": true,
+      "verdict": "POST",
+      "category": "Redemption break",
+      "escalateTo": "CATS support"
+     },
+     "legs": {
+      "cats": [
+       {
+        "ref": "MBR-B-2-CATS",
+        "time": "03 Aug EOD",
+        "ccy": "USD",
+        "amount": 101880.0,
+        "type": "Position",
+        "status": "Reported"
+       }
+      ],
+      "motif": [
+       {
+        "ref": "MBR-B-2-MOTIF",
+        "time": "03 Aug EOD",
+        "ccy": "USD",
+        "amount": 100000.0,
+        "type": "Position",
+        "status": "Reported"
+       }
+      ],
+      "note": "MB Rec reports USD 101,880.00 in CATS and USD 100,000.00 in MOTIF for PRIME-MB-02; the break is the difference."
+     }
+    },
+    {
+     "id": "B-8",
+     "type": "Manual",
+     "book": "PRIME-MB-08",
+     "amount": "$7,310",
+     "delta": 7310.0,
+     "pattern": "CPTY-REF",
+     "patternLabel": "Unmatched counterparty reference",
+     "reason": "Reference does not resolve in static data",
+     "status": "Pending",
+     "grounded": true,
+     "agedSessions": 0,
+     "detail": {
+      "ref": "BRK-B-8",
+      "type": "Unmatched counterparty reference",
+      "delta": "USD 7,310.00",
+      "cause": "Reference does not resolve in static data. Static mapping missing or newly effective. The playbook files this as a data quality break on the BO side.",
+      "cats": {
+       "label": "CATS leg",
+       "value": "USD 107,310.00",
+       "note": "PRIME-MB-08, as MB Rec reports it"
+      },
+      "motif": {
+       "label": "MOTIF leg",
+       "value": "USD 100,000.00",
+       "note": "PRIME-MB-08, as MB Rec reports it"
+      },
+      "gap": {
+       "label": "Difference",
+       "value": "USD 7,310.00",
+       "note": "CATS minus MOTIF"
+      },
+      "fix": null,
+      "verify": [
+       "Route to Technology: the fix belongs upstream, not in a MOTIF adjustment"
+      ],
+      "grounded": true,
+      "verdict": "DO_NOT_POST",
+      "category": "Data quality break",
+      "escalateTo": "Technology"
+     },
+     "legs": {
+      "cats": [
+       {
+        "ref": "MBR-B-8-CATS",
+        "time": "03 Aug EOD",
+        "ccy": "USD",
+        "amount": 107310.0,
+        "type": "Position",
+        "status": "Reported"
+       }
+      ],
+      "motif": [
+       {
+        "ref": "MBR-B-8-MOTIF",
+        "time": "03 Aug EOD",
+        "ccy": "USD",
+        "amount": 100000.0,
+        "type": "Position",
+        "status": "Reported"
+       }
+      ],
+      "note": "MB Rec reports USD 107,310.00 in CATS and USD 100,000.00 in MOTIF for PRIME-MB-08; the break is the difference."
+     }
+    }
+   ],
+   "session": [
+    {
+     "id": "R-1055-a0",
+     "role": "agent",
+     "kind": "analysis",
+     "time": "11:52",
+     "calls": [
+      {
+       "id": "sess-r-1055:1790218071353553000000:581ad0",
+       "server": "mbrec",
+       "tool": "get_breaks",
+       "args": {
+        "cob": "2026-08-03",
+        "rec": "R-1055",
+        "masterBook": "PRIME-MB"
+       },
+       "rows": [
+        {
+         "line": "CASH",
+         "delta": "USD 2,340.00",
+         "breakId": "B-1",
+         "masterBook": "PRIME-MB-01"
+        },
+        {
+         "line": "CASH",
+         "delta": "USD 1,880.00",
+         "breakId": "B-2",
+         "masterBook": "PRIME-MB-02"
+        }
+       ],
+       "summary": "14 breaks",
+       "ms": null,
+       "status": "ok",
+       "error": null
+      }
+     ]
+    }
+   ],
+   "calls": [
+    {
+     "id": "sess-r-1055:1790218071353553000000:581ad0",
+     "server": "mbrec",
+     "tool": "get_breaks",
+     "args": {
+      "cob": "2026-08-03",
+      "rec": "R-1055",
+      "masterBook": "PRIME-MB"
+     },
+     "rows": [
+      {
+       "line": "CASH",
+       "delta": "USD 2,340.00",
+       "breakId": "B-1",
+       "masterBook": "PRIME-MB-01"
+      },
+      {
+       "line": "CASH",
+       "delta": "USD 1,880.00",
+       "breakId": "B-2",
+       "masterBook": "PRIME-MB-02"
+      }
+     ],
+     "summary": "14 breaks",
+     "ms": null,
+     "status": "ok",
+     "error": null
+    }
+   ]
+  },
+  {
+   "id": "R-1061",
+   "name": "CATS vs MOTIF — FX",
+   "group": "CATS-MOTIF",
+   "l4": "FX",
+   "ccy": "USD",
+   "readyAt": null,
+   "eventId": null,
+   "mb": {
+    "available": 6,
+    "total": 15
+   },
+   "bookStats": {
+    "total": 15,
+    "blocked": 0,
+    "cleared": 0,
+    "notOpen": 15,
+    "autoPost": 0,
+    "awaiting": 0,
+    "analysing": 0
+   },
+   "status": "Awaiting Ready",
+   "steps": [
+    "active",
+    "pending",
+    "pending",
+    "pending",
+    "pending"
+   ],
+   "booksUnlocked": 0,
+   "updated": "—",
+   "sessionId": null,
+   "graphRun": false,
+   "analysis": null,
+   "adjustments": [],
+   "session": [],
+   "calls": []
+  }
+ ],
+ "activity": [
+  {
+   "time": "08:18",
+   "recId": "R-1055",
+   "type": "approved",
+   "text": "Approved: 6 adj on Prime (USD 15,965)"
+  },
+  {
+   "time": "17:31",
+   "recId": "R-1061",
+   "type": "event",
+   "text": "MB Rec readiness (One Fin UX): FX 6/15 master books ready"
+  },
+  {
+   "time": "11:52",
+   "recId": "R-1055",
+   "type": "awaiting",
+   "text": "Awaiting sign-off: Prime, 14 adjustments across 4 patterns"
+  }
+ ],
+ "hoursSaved": {
+  "value": 7.2,
+  "basis": "36 decisions avoided at 12 min each"
+ }
+}

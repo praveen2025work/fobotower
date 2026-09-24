@@ -44,8 +44,8 @@ async def test_done_steps_carry_their_recorded_timing(client):
 
 
 async def test_the_playbook_step_reports_the_deterministic_split(client):
-    await client.get("/api/recs/R-2010")
-    trace = (await _trace(client, "R-2010"))["trace"]
+    await client.get("/api/recs/R-2031")
+    trace = (await _trace(client, "R-2031"))["trace"]
     reason = next(s for s in trace["steps"] if s["node"] == "reason")
     assert reason["summary"] == "3 of 8 settled by playbook · 5 need judgement"
 
@@ -59,6 +59,6 @@ async def test_steps_report_what_they_added_to_the_state(client):
 
 
 async def test_a_clear_rec_has_no_trace(client):
-    body = await _trace(client, "R-1050")
+    body = await _trace(client, "R-1042")
     assert body["state"] == "clear"
     assert body["trace"] is None

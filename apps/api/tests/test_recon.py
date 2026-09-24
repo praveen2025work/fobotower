@@ -1,7 +1,7 @@
 from app.recon.checks import run_cause_checks
 
 BASE = {
-    "break_id": "b-01",
+    "break_id": "B-1",
     "fo_booking_ts": "2026-08-03T22:00:00Z",
     "bo_cutoff_ts": "2026-08-03T23:30:00Z",
     "mapping_present": True,
@@ -77,7 +77,7 @@ def test_a_positive_check_carries_its_supporting_evidence():
     """A claim with no evidence reference cannot be cited in a draft."""
     snap = BASE | {"fo_booking_ts": "2026-08-04T00:15:00Z"}
     c1 = next(c for c in run_cause_checks(snap) if c.check_id == "C1")
-    assert c1.supporting_ids == ["b-01"]
+    assert c1.supporting_ids == ["B-1"]
 
 
 def test_a_negative_check_carries_no_evidence():

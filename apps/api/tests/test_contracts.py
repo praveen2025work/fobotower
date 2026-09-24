@@ -32,7 +32,7 @@ def test_break_record_rejects_unknown_fields():
     with pytest.raises(ValidationError):
         BreakRecord(
             break_id="b1",
-            book_ref="APAC-CASH-01",
+            book_ref="PRIME-MB-01",
             line_code="CASH",
             cob_date="2026-08-03",
             fo_value=1.0,

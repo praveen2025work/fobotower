@@ -75,12 +75,33 @@ cd apps/api && .venv/bin/uvicorn api.main:app --port 8100 --reload
 cd apps/console && npm run dev
 ```
 
-Then open **http://localhost:3100/fobo**.
+Then open **http://localhost:3100/fobo** (or just **http://localhost:3100**)
+for the Helix console, the finalized UI (Helix Pilot V1). The earlier console
+is kept at **http://localhost:3100/classic** until it is retired.
 
-You should see the navy header, the run schedule with its stat chips and the
-regional timeline, the searchable region rail, the pipeline rail with Human
-Sign-off active, the four-part agent analysis, and the four pattern groups
-with their amounts.
+### The Helix console
+
+Everything on screen is read from the API; the browser generates nothing.
+
+| On screen | Comes from |
+|---|---|
+| Recs, Ready events, master-book readiness, book states | `reconciliation` and `run` rows (`fixtures/catalogue.py` seeds them) |
+| Drafted adjustments, verdicts, fixes | the LangGraph investigation's checkpoint and the playbook |
+| Analysis (what, why, action, risk) | the draft node, plus grounding and carry flags |
+| MCP data (N) | `source_call` rows, with the rows each tool returned |
+| Agent One answers | `POST /api/helix/recs/{id}/messages`: a deterministic intent router; anything it cannot answer goes to the reasoner (none by default) |
+| Approve / Reject | `POST /api/helix/recs/{id}/decisions`, double-confirmed, one idempotency key per decision |
+| Notification bell | derived from runs and today's decisions |
+| **Graph run** (session header) | `GET /api/recs/{id}/trace`: each LangGraph step from the checkpoints |
+
+The whole board is one call: `GET /api/helix/board`.
+
+To reset the scenario (undo every decision and question), clear the app tables
+and checkpoints; the next request reseeds:
+
+```bash
+docker compose exec postgres psql -U fobo -d fobo -c "TRUNCATE session_message, source_call, controller_decision, pattern_group, evidence_item, analysis_version, investigation_session, break_embedding, break_event, edge, node, run, reconciliation, checkpoints, checkpoint_blobs, checkpoint_writes CASCADE"
+```
 
 ### 6. Console tests
 
@@ -203,10 +224,21 @@ orchestrator's headline figure.
 
 ## Known deviations from the mock
 
-`FoboControlTower (1).html` states *"14 breaks across 9 Cash books"*, but its
-own adjustment rows list twelve distinct books (`APAC-CASH-01`…`12`). The
-draft derives the count from the data and reports 12. The mock's prose and its
-rows disagree; the rows win.
+Both mocks state *"14 breaks across 9 … books"*, but their own adjustment rows
+list twelve distinct books (`PRIME-MB-01`…`12`). The draft derives the count
+from the data and reports 12. The mock's prose and its rows disagree; the rows
+win.
+
+Helix Pilot V1 invents some detail in the browser that the orchestrator has no
+source for yet, so the port shows what the backend actually has instead:
+
+- **Break legs.** The mock makes up trade references and times per leg. The
+  API shows each break's CATS and MOTIF values as MB Rec reports them.
+- **FAS posting preview, custody statement lookup, counterparty resolution.**
+  No FAS, custody or reference-data MCP server is connected, so these calls
+  are not made rather than faked.
+- **Timestamps of new actions.** Decisions and questions carry the real clock
+  (IST); the seeded business day is frozen at 03 Aug 2026.
 
 ## Ports
 

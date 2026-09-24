@@ -39,6 +39,7 @@ class InvestigationState(TypedDict, total=False):
     pattern_groups: list[PatternGroup]
     reasons: dict[str, str]
     group_meta: dict[str, dict]
+    ungrounded_breaks: list[str]
     findings: dict[str, dict]
     reasoning_error: str | None
     determinism: dict

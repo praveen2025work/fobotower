@@ -158,4 +158,6 @@ async def group(state: InvestigationState, *, session) -> dict:
         "pattern_groups": groups,
         "reasons": enriched["reasons"],
         "group_meta": group_meta,
+        # Per break, so a reviewer sees which figure failed, not just a count.
+        "ungrounded_breaks": sorted(enriched["ungrounded"]),
     }

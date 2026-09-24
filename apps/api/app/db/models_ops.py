@@ -38,6 +38,11 @@ class Reconciliation(Base):
     master_book: Mapped[str] = mapped_column(String(64))
     scheduled_time: Mapped[time] = mapped_column(Time)
     books_total: Mapped[int] = mapped_column(Integer)
+    # How the Helix console files a rec: its rec group (CATS-MOTIF or
+    # RF-CASHCOLL), the L4 it covers, and the currency its figures are in.
+    rec_group: Mapped[str] = mapped_column(String(16), default="CATS-MOTIF")
+    l4: Mapped[str] = mapped_column(String(64), default="")
+    ccy: Mapped[str] = mapped_column(String(3), default="USD")
 
     __table_args__ = (Index("idx_rec_region", "region", "scheduled_time"),)
 
@@ -57,6 +62,20 @@ class Run(Base):
     )
     status: Mapped[str] = mapped_column(String(16))
     books_open: Mapped[int] = mapped_column(Integer, default=0)
+    # A Helix session starts when One Fin UX sends the rec's Ready event, not
+    # at a fixed time. Until then only master-book readiness is known.
+    ready_event_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    ready_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    mb_available: Mapped[int] = mapped_column(Integer, default=0)
+    mb_reported_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # Book states as One Fin UX reports them for this run: total, autoPost,
+    # cleared, awaiting, analysing, blocked, notOpen.
+    book_stats: Mapped[dict] = mapped_column(JSONB, default=dict)
+    books_unlocked: Mapped[int] = mapped_column(Integer, default=0)
 
     __table_args__ = (Index("idx_run_date", "business_date", "rec_id"),)
 
@@ -81,6 +100,9 @@ class SourceCall(Base):
     entitlement_result: Mapped[str] = mapped_column(String(16))
     latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     error_detail: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # What the tool returned, as returned. The MCP inspector shows these rows,
+    # so a figure on screen can be traced to the retrieval that produced it.
+    result_rows: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     called_ts: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

@@ -9,7 +9,7 @@ def _pos(check_id):
         check_id=check_id,
         positive=True,
         description="d",
-        supporting_ids=["b-01"],
+        supporting_ids=["B-1"],
         estimated_value=2340.0,
     )
 
@@ -21,19 +21,19 @@ def _neg(check_id):
 BASE = {
     "investigation_session_id": "sess-1",
     "breaks": [
-        {"break_id": "b-01", "book_ref": "APAC-CASH-01", "line_code": "CASH"}
+        {"break_id": "B-1", "book_ref": "PRIME-MB-01", "line_code": "CASH"}
     ],
     "candidates": {
-        "b-01": [_pos("C1")] + [_neg(c) for c in ("C2", "C3", "C4", "C5", "C6")]
+        "B-1": [_pos("C1")] + [_neg(c) for c in ("C2", "C3", "C4", "C5", "C6")]
     },
-    "deltas": {"b-01": 2340.0},
+    "deltas": {"B-1": 2340.0},
     "pattern_groups": [
         PatternGroup(
             group_id="g1",
             pattern_code="P-204",
             label="FX timing lag",
             mode="auto",
-            break_ids=["b-01"],
+            break_ids=["B-1"],
             historical_approval_rate=0.88,
         )
     ],
@@ -44,26 +44,26 @@ BASE = {
 
 async def test_single_candidate_takes_the_fast_path_and_skips_the_model():
     out = await rank(BASE, session=None)
-    assert out["ranking"]["b-01"][0]["share_bps"] == 10000
-    assert out["ranking"]["b-01"][0]["candidate_id"] == "C1"
+    assert out["ranking"]["B-1"][0]["share_bps"] == 10000
+    assert out["ranking"]["B-1"][0]["candidate_id"] == "C1"
     assert out["model_skipped"] is True
 
 
 async def test_the_fast_path_carries_evidence_references():
     out = await rank(BASE, session=None)
-    assert out["ranking"]["b-01"][0]["evidence_ids"] == ["b-01"]
+    assert out["ranking"]["B-1"][0]["evidence_ids"] == ["B-1"]
 
 
 async def test_multiple_candidates_are_flagged_for_the_model():
     st = BASE | {
         "candidates": {
-            "b-01": [_pos("C1"), _pos("C5")]
+            "B-1": [_pos("C1"), _pos("C5")]
             + [_neg(c) for c in ("C2", "C3", "C4", "C6")]
         }
     }
     out = await rank(st, session=None)
     assert out["model_skipped"] is False
-    assert out["ranking"]["b-01"] == "needs_model"
+    assert out["ranking"]["B-1"] == "needs_model"
 
 
 async def test_draft_produces_the_four_part_narrative():
@@ -79,21 +79,21 @@ async def test_draft_produces_the_four_part_narrative():
 async def test_draft_pluralises_correctly():
     st = BASE | {
         "breaks": [
-            {"break_id": "b-01", "book_ref": "APAC-CASH-01"},
-            {"break_id": "b-02", "book_ref": "APAC-CASH-02"},
+            {"break_id": "B-1", "book_ref": "PRIME-MB-01"},
+            {"break_id": "B-2", "book_ref": "PRIME-MB-02"},
         ],
         "candidates": {
-            "b-01": BASE["candidates"]["b-01"],
-            "b-02": BASE["candidates"]["b-01"],
+            "B-1": BASE["candidates"]["B-1"],
+            "B-2": BASE["candidates"]["B-1"],
         },
-        "deltas": {"b-01": 2340.0, "b-02": 1880.0},
+        "deltas": {"B-1": 2340.0, "B-2": 1880.0},
         "pattern_groups": [
             PatternGroup(
                 group_id="g1",
                 pattern_code="P-204",
                 label="FX timing lag",
                 mode="auto",
-                break_ids=["b-01", "b-02"],
+                break_ids=["B-1", "B-2"],
                 historical_approval_rate=0.88,
             )
         ],
@@ -123,7 +123,7 @@ async def test_validate_rejects_an_ungrounded_figure():
 
 
 async def test_validate_reports_evidence_gaps():
-    st = BASE | {"evidence_gaps": ["priors:b-01"]}
+    st = BASE | {"evidence_gaps": ["priors:B-1"]}
     st |= await rank(st, session=None)
     st |= await draft(st, session=None)
     out = await validate(st, session=None)

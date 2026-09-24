@@ -17,11 +17,11 @@ DATA = Path(__file__).parent / "data"
 COB = date(2026, 8, 3)
 ENTITY = "LE-APAC-01"
 
-BOOKS = [f"APAC-CASH-{i:02d}" for i in range(1, 13)]
+BOOKS = [f"PRIME-MB-{i:02d}" for i in range(1, 13)]
 
 # The book that moved desk mid-period. Its old edge is closed, not updated,
 # which is what makes as_of correctness testable.
-MOVED_BOOK = "APAC-CASH-05"
+MOVED_BOOK = "PRIME-MB-05"
 MOVE_EFFECTIVE = date(2026, 7, 1)
 
 

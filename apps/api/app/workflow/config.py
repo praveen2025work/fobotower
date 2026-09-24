@@ -9,9 +9,11 @@ safety step removed, is refused with a message naming the problem.
 import os
 from functools import lru_cache
 from pathlib import Path
+from typing import get_origin
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from annotated_types import Ge, Gt, Le
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 DEFAULT_PATH = REPO_ROOT / "config" / "workflow" / "fobo-investigation.yaml"
@@ -24,16 +26,24 @@ class Strict(BaseModel):
 
 
 class GatherSettings(Strict):
-    priors_lookback_days: int = Field(180, ge=1, le=3650)
+    priors_lookback_days: int = Field(
+        180, ge=1, le=3650, description="How far back to look for prior resolutions, in days")
     # Recursion ceiling for the lineage walk.
-    lineage_max_depth: int = Field(4, ge=1, le=4)
-    max_similar_breaks: int = Field(20, ge=1, le=500)
+    lineage_max_depth: int = Field(
+        4, ge=1, le=4, description="Desk and entity hops to walk when tracing lineage")
+    max_similar_breaks: int = Field(
+        20, ge=1, le=500, description="Prior resolutions kept per book")
 
 
 class ReasonSettings(Strict):
-    reasoner: str = "none"
+    reasoner: str = Field(
+        "none",
+        description="Who handles breaks the playbook cannot settle: none (a person), "
+                    "session_service (the Agent SDK session service), direct (local development)")
     verdict_policy_params: list[str] = Field(
-        default_factory=lambda: ["materiality_threshold", "posting_policy_reference"]
+        default_factory=lambda: ["materiality_threshold", "posting_policy_reference"],
+        description="Policy thresholds a POST verdict depends on; when any is unset the "
+                    "POST needs controller confirmation (Rule P1)",
     )
 
     @model_validator(mode="after")
@@ -46,15 +56,18 @@ class ReasonSettings(Strict):
 
 
 class ValidateSettings(Strict):
-    max_hypothesis_attempts: int = Field(3, ge=1, le=10)
+    max_hypothesis_attempts: int = Field(
+        3, ge=1, le=10, description="Retries before RETRY_EXHAUSTED")
 
 
 class ReviewSettings(Strict):
-    max_review_cycles: int = Field(2, ge=1, le=10)
+    max_review_cycles: int = Field(
+        2, ge=1, le=10, description="Reject-and-redraft rounds before escalation")
 
 
 class SessionServiceSettings(Strict):
-    timeout_seconds: float = Field(120.0, gt=0, le=1800)
+    timeout_seconds: float = Field(
+        120.0, gt=0, le=1800, description="Seconds allowed per judgement-based break")
 
 
 class Settings(Strict):
@@ -162,3 +175,66 @@ def reset_workflow_cache() -> None:
 
 def settings() -> Settings:
     return workflow().settings
+
+
+def dump_config(cfg: WorkflowConfig) -> dict:
+    """The config as JSON-safe data, with YAML names (`validate`) and YAML order."""
+    return cfg.model_dump(mode="json", by_alias=True)
+
+
+def errors_of(exc: Exception) -> list[str]:
+    """Every problem, one line each, in the validator's own words.
+
+    The CLI, the API's validate endpoint and draft creation all report through
+    this, so the file check and the Workflow tab can never disagree.
+    """
+    if not isinstance(exc, ValidationError):
+        return [str(exc)]
+    out: list[str] = []
+    for e in exc.errors():
+        msg = e["msg"].removeprefix("Value error, ")
+        if msg.startswith("workflow is invalid:"):
+            out += [line.strip().removeprefix("- ")
+                    for line in msg.splitlines()[1:] if line.strip()]
+            continue
+        loc = ".".join(str(p) for p in e["loc"])
+        out.append(f"{loc}: {msg}" if loc else msg)
+    return out
+
+
+_TYPE_NAMES = {int: "integer", float: "number", str: "string"}
+
+
+def _field_type(section: str, name: str, annotation) -> dict:
+    if (section, name) == ("reason", "reasoner"):
+        return {"type": "enum", "options": list(REASONERS)}
+    if get_origin(annotation) is list:
+        return {"type": "string_list"}
+    return {"type": _TYPE_NAMES[annotation]}
+
+
+def settings_schema() -> dict[str, dict[str, dict]]:
+    """Each setting's type, bounds, default and description, by YAML section.
+
+    Read from the models, so the form in the Workflow tab offers exactly the
+    bounds the validator enforces.
+    """
+    out: dict[str, dict[str, dict]] = {}
+    for attr, section_field in Settings.model_fields.items():
+        section = section_field.alias or attr
+        fields: dict[str, dict] = {}
+        for name, f in section_field.annotation.model_fields.items():
+            meta = _field_type(section, name, f.annotation) | {
+                "default": f.get_default(call_default_factory=True),
+                "description": f.description or "",
+            }
+            for m in f.metadata:
+                if isinstance(m, Ge):
+                    meta["min"] = m.ge
+                elif isinstance(m, Gt):
+                    meta["exclusive_min"] = m.gt
+                elif isinstance(m, Le):
+                    meta["max"] = m.le
+            fields[name] = meta
+        out[section] = fields
+    return out

@@ -43,13 +43,16 @@ class Step:
     required_because: str | None = None
     # Must come after these steps even when no data dependency says so.
     must_follow: frozenset[str] = field(default_factory=frozenset)
+    # Who or what decides the step's output; the Workflow tab tags each step
+    # with it. One of DECIDED_BY.
+    decided_by: str = "code"
 
 
 # Supplied by whoever starts the run (see api/routes/recs.py _initial_state).
 INITIAL_INPUTS = frozenset({
     "investigation_session_id", "reconciliation_id", "master_book",
     "business_date", "run_id", "caller", "breaks", "book_resolutions",
-    "evidence_gaps", "hypothesis_attempts", "review_cycles",
+    "evidence_gaps", "hypothesis_attempts", "review_cycles", "workflow_version",
 })
 
 # Written into the state by the controller's decision on resume, not by a node.
@@ -80,14 +83,17 @@ STEPS: dict[str, Step] = {s.name: s for s in [
          needs=_s("breaks", "business_date", "candidates", "deltas", "evidence_gaps",
                   "lineage", "priors", "reasons"),
          produces=_s("findings", "determinism", "reasoning_error", "evidence_gaps"),
-         required_because="it applies the playbook and the hard verdict guards (R2, R6, P1)"),
+         required_because="it applies the playbook and the hard verdict guards (R2, R6, P1)",
+         decided_by="playbook+reasoner"),
     Step("rank", rank, "Rank causes", "Order candidate causes per break",
          needs=_s("breaks", "candidates"),
-         produces=_s("ranking", "model_skipped")),
+         produces=_s("ranking", "model_skipped"),
+         decided_by="code+model"),
     Step("draft", draft, "Draft analysis", "Write the four-part narrative",
          needs=_s("breaks", "deltas", "evidence_gaps", "pattern_groups"),
          produces=_s("draft"),
-         required_because="the controller reviews it and record writes it"),
+         required_because="the controller reviews it and record writes it",
+         decided_by="template"),
     Step("validate", validate, "Validate", "Check every figure traces to a delta",
          needs=_s("breaks", "deltas", "draft", "evidence_gaps", "hypothesis_attempts",
                   "investigation_session_id", "pattern_groups", "reconciliation_id"),
@@ -98,7 +104,8 @@ STEPS: dict[str, Step] = {s.name: s for s in [
          produces=_s("review_cycles"),
          uses_session=False,
          required_because="no decision is recorded without a person",
-         must_follow=_s("reason", "validate")),
+         must_follow=_s("reason", "validate"),
+         decided_by="human"),
     Step("record", record, "Record outcome", "Write decisions; they become tomorrow's priors",
          needs=_s("business_date", "decisions", "draft", "investigation_session_id",
                   "master_book", "pattern_groups", "reconciliation_id", "run_id"),
@@ -109,3 +116,24 @@ STEPS: dict[str, Step] = {s.name: s for s in [
 
 REQUIRED_STEPS = frozenset(n for n, s in STEPS.items() if s.required_because)
 PAUSE_REQUIRED = frozenset({"review"})
+
+DECIDED_BY = ("code", "playbook+reasoner", "code+model", "template", "human")
+
+
+def catalogue() -> list[dict]:
+    """Every registered step as the Workflow tab shows it, in registry order."""
+    return [
+        {
+            "name": s.name,
+            "label": s.label,
+            "description": s.description,
+            "decided_by": s.decided_by,
+            "removable": s.required_because is None,
+            "required_because": s.required_because,
+            "can_escalate": s.can_escalate,
+            "needs": sorted(s.needs),
+            "produces": sorted(s.produces),
+            "must_follow": sorted(s.must_follow),
+        }
+        for s in STEPS.values()
+    ]

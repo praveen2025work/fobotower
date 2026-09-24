@@ -8,23 +8,11 @@ changing the checked-in file. Restart the API after editing: the workflow is
 read once per process.
 """
 
-import re
 import sys
 
 from pydantic import ValidationError
 
-from app.workflow.config import read_workflow, workflow_path
-
-
-def _errors(exc: Exception) -> list[str]:
-    out = []
-    for line in str(exc).splitlines():
-        line = re.sub(r"\s*\[type=.*$", "", line).strip()
-        if line.startswith("- "):
-            out.append(line)
-        elif line.startswith(("Value error,", "Input should", "Extra inputs")):
-            out.append("- " + line.removeprefix("Value error, "))
-    return out or [str(exc).splitlines()[0]]
+from app.workflow.config import errors_of, read_workflow, workflow_path
 
 
 def _validate() -> int:
@@ -33,8 +21,8 @@ def _validate() -> int:
         wf = read_workflow(path)
     except (ValidationError, ValueError) as exc:
         print(f"INVALID  {path}")
-        for line in _errors(exc):
-            print(f"  {line}")
+        for line in errors_of(exc):
+            print(f"  - {line}")
         return 1
     print(f"VALID    {path}")
     print(f"  workflow {wf.name} v{wf.version}: {' -> '.join(wf.steps)}")

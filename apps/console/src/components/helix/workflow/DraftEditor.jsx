@@ -180,7 +180,7 @@ export function DraftEditor({
           disabled={!canSave}
           onClick={submit}
           className="text-[12px] font-semibold px-4 py-1.5 rounded-full disabled:opacity-40"
-          style={{ background: 'var(--clr-blue)', color: '#FFFFFF' }}
+          style={{ background: 'var(--clr-blue)', color: 'var(--text-on-brand)' }}
         >
           {save.busy ? 'Saving…' : 'Save draft'}
         </button>

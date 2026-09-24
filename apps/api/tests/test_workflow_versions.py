@@ -3,6 +3,7 @@
 import asyncio
 
 import pytest
+from sqlalchemy import text
 
 from app.contracts.models import Caller
 from app.db.base import get_session
@@ -208,3 +209,41 @@ async def test_the_view_is_json_ready():
     assert v["number"] == 2 and isinstance(v["drafted_at"], str)
     assert list(v["config"]) == ["version", "name", "steps", "pause_before", "settings"]
     assert "config" not in versions.view(d, with_config=False)
+
+
+async def test_approve_re_reads_the_row_when_another_session_rejected_it_first():
+    """A session that loaded the draft before a competing decision must not
+    judge that decision against its now-stale, pre-loaded copy."""
+    d = await _draft()
+    async with get_session() as s1:
+        preloaded = await versions.get(s1, d.number)
+        assert preloaded.status == "draft"
+        await _reject(d.number)
+        with pytest.raises(versions.Conflict):
+            await versions.approve(s1, d.number, caller=ASHA, key="race-approve")
+    async with get_session() as s:
+        row = await versions.get(s, d.number)
+    assert row.status == "rejected"
+
+
+async def test_reject_re_reads_the_row_when_another_session_approved_it_first():
+    d = await _draft()
+    async with get_session() as s1:
+        preloaded = await versions.get(s1, d.number)
+        assert preloaded.status == "draft"
+        await _approve(d.number)
+        with pytest.raises(versions.Conflict):
+            await versions.reject(s1, d.number, caller=ASHA, reason="too late")
+    async with get_session() as s:
+        actives = [v.number for v in await versions.list_versions(s) if v.status == "active"]
+    assert actives == [d.number]
+
+
+async def test_active_raises_a_clear_error_when_none_is_active():
+    async with get_session() as s:
+        await versions.ensure_seeded(s)
+        await s.execute(text("UPDATE workflow_version SET status = 'superseded' WHERE status = 'active'"))
+        await s.commit()
+    async with get_session() as s:
+        with pytest.raises(versions.Conflict):
+            await versions.active(s)

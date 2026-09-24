@@ -126,12 +126,23 @@ async def get(s, number: int) -> WorkflowVersion:
 
 
 async def _active_row(s) -> WorkflowVersion:
-    return await s.scalar(select(WorkflowVersion).where(WorkflowVersion.status == "active"))
+    """Fresh, not the identity map's copy: with expire_on_commit=False, a
+    session that already holds this row gets its own pre-existing in-memory
+    object back, unrefreshed, unless asked to repopulate it — and a decision
+    made under the advisory lock must see what another session just
+    committed, not what this session saw before the lock was acquired."""
+    return await s.scalar(
+        select(WorkflowVersion)
+        .where(WorkflowVersion.status == "active")
+        .execution_options(populate_existing=True)
+    )
 
 
 async def active(s) -> Pinned:
     await ensure_seeded(s)
     row = await _active_row(s)
+    if row is None:
+        raise Conflict("no workflow version is active")
     return Pinned(row.number, as_config(row.config))
 
 
@@ -191,7 +202,14 @@ async def create_draft(s, *, raw: dict, note: str, based_on: int, caller) -> Wor
 
 
 async def _decidable(s, number: int) -> WorkflowVersion:
-    row = await get(s, number)
+    """Fresh, not the identity map's copy — see `_active_row`. A caller that
+    already holds this row (e.g. it read it before calling approve/reject)
+    would otherwise have its decision judged against the status it saw
+    before the advisory lock was acquired, not the status a competing,
+    already-committed decision just gave it."""
+    row = await s.get(WorkflowVersion, number, populate_existing=True)
+    if row is None:
+        raise NotFound(f"no workflow version {number}")
     if row.status != "draft":
         raise Conflict(f"v{number} is {row.status}, not a draft")
     return row

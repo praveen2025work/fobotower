@@ -41,8 +41,9 @@ export const byName = (catalogue) => Object.fromEntries(catalogue.map((s) => [s.
 
 /** The step an error message is about: the first quoted token after the
  *  leading "<field>: " prefix, e.g. "validate" in
- *  "steps: 'validate' needs 'draft' before it runs — produced by draft". */
-const subjectOf = (e) => /^[a-z_.]+: '([^']+)'/.exec(e)?.[1];
+ *  "steps: 'validate' needs 'draft' before it runs — produced by draft", or
+ *  after "<field>: must include '<step>'" for a missing required pause. */
+const subjectOf = (e) => /^[a-z_.]+: (?:must include )?'([^']+)'/.exec(e)?.[1];
 
 /** Errors whose subject is this step — not just messages that quote its name
  *  in passing (a message can quote a data key that is also a step name). */

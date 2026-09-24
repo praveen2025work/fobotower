@@ -79,6 +79,13 @@ describe('WorkflowGraph', () => {
     expect(within(card('draft')).queryByRole('alert')).toBeNull();
   });
 
+  it('shows a missing required pause on the step it guards', () => {
+    renderGraph({
+      errors: ["pause_before: must include 'review' — no decision is recorded without a person"],
+    });
+    expect(within(card('review')).getByRole('alert')).toBeInTheDocument();
+  });
+
   it('draws an unknown step instead of failing', () => {
     const config = { ...fixture.active.config, steps: [...fixture.active.config.steps, 'mystery'] };
     renderGraph({ config });

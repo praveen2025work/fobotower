@@ -74,6 +74,16 @@ describe('workflowModel', () => {
     expect(errorsFor(errors, 'validate')).toEqual(errors);
   });
 
+  it('attributes a missing required pause to the step it guards', () => {
+    const errors = ["pause_before: must include 'review' — no decision is recorded without a person"];
+    expect(errorsFor(errors, 'review')).toEqual(errors);
+  });
+
+  it('attaches a settings error to no step', () => {
+    const errors = ['settings.gather.prior_lookback_days: Extra inputs are not permitted'];
+    expect(errorsFor(errors, 'gather')).toEqual([]);
+  });
+
   it('reads each kind of change as a sentence', () => {
     expect(describeChange({ path: 'steps.rank', kind: 'removed', before: 4 })).toBe(
       'rank removed (was step 5)',

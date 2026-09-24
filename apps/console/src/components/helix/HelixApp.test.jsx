@@ -1,0 +1,122 @@
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import board from './__fixtures__/board.json';
+import * as api from './data/helixApi';
+import HelixApp from './HelixApp';
+
+// The fixture is a trimmed copy of a real /api/helix/board response.
+vi.mock('./data/helixApi', () => ({
+  fetchBoard: vi.fn(),
+  fetchRec: vi.fn(),
+  fetchTrace: vi.fn(),
+  askSession: vi.fn(),
+  decide: vi.fn(),
+}));
+
+const served = () => structuredClone(board);
+
+async function renderLoaded(data = served()) {
+  api.fetchBoard.mockResolvedValue(data);
+  render(<HelixApp />);
+  await screen.findByText('FOBO Controller');
+  return data;
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  // jsdom has no scrolling; the panels scroll a row into view on focus.
+  Element.prototype.scrollTo = vi.fn();
+});
+
+describe('HelixApp', () => {
+  it('renders what the API served: caller, business date and adjustments', async () => {
+    await renderLoaded();
+    expect(screen.getByText('Praveen')).toBeInTheDocument();
+    expect(screen.getByText('03 Aug 2026')).toBeInTheDocument();
+    expect(screen.getAllByText('PRIME-MB-02').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('PRIME-MB-08').length).toBeGreaterThan(0);
+  });
+
+  it('offers a retry when the API cannot be reached', async () => {
+    api.fetchBoard
+      .mockRejectedValueOnce(new Error('GET /api/helix/board failed: 500'))
+      .mockResolvedValueOnce(served());
+    render(<HelixApp />);
+    expect(await screen.findByText(/failed: 500/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(await screen.findByText('FOBO Controller')).toBeInTheDocument();
+  });
+
+  it('records an approval only after both confirmations, then shows the rec the API returns', async () => {
+    const data = served();
+    const after = structuredClone(data.recs[0]);
+    after.adjustments[0].status = 'Approved';
+    after.session = [
+      ...after.session,
+      {
+        id: 'm1',
+        role: 'system',
+        tone: 'approved',
+        time: '08:00',
+        text: 'Praveen approved 1 adjustment (B-2), USD 1,880. Released to FAS for MOTIF posting.',
+      },
+    ];
+    api.decide.mockResolvedValue({ rec: after, activity: data.activity });
+    await renderLoaded(data);
+
+    await userEvent.click(screen.getAllByRole('button', { name: 'Approve' })[0]);
+    const dialog = screen.getByRole('dialog');
+    const confirm = within(dialog).getAllByRole('button').at(-1);
+    expect(confirm).toBeDisabled();
+    for (const box of within(dialog).getAllByRole('checkbox')) {
+      await userEvent.click(box);
+    }
+    expect(confirm).toBeEnabled();
+    await userEvent.click(confirm);
+
+    expect(api.decide).toHaveBeenCalledWith('R-1055', {
+      ids: ['B-2'],
+      decision: 'Approved',
+      reason: '',
+    });
+    expect(await screen.findByText(/Released to FAS for MOTIF posting/)).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('says so in the session when the API refuses a decision', async () => {
+    api.decide.mockRejectedValue(new Error('no longer pending: B-2'));
+    await renderLoaded();
+    await userEvent.click(screen.getAllByRole('button', { name: 'Approve' })[0]);
+    const dialog = screen.getByRole('dialog');
+    for (const box of within(dialog).getAllByRole('checkbox')) {
+      await userEvent.click(box);
+    }
+    await userEvent.click(within(dialog).getAllByRole('button').at(-1));
+    expect(
+      await screen.findByText(/was not recorded: no longer pending: B-2/),
+    ).toBeInTheDocument();
+  });
+
+  it('asks the orchestrator, not the browser, and shows its answer', async () => {
+    api.askSession.mockResolvedValue({
+      user: { id: 'u9', role: 'user', time: '08:01', text: 'Explain B-8' },
+      agent: {
+        id: 'a9',
+        role: 'agent',
+        time: '08:01',
+        answeredBy: 'router:adjustment',
+        blocks: [{ type: 'p', text: 'Reference does not resolve in static data.' }],
+        calls: [],
+      },
+    });
+    await renderLoaded();
+    const box = screen.getByPlaceholderText(/Ask about Prime/);
+    await userEvent.type(box, 'Explain B-8{Enter}');
+    expect(api.askSession).toHaveBeenCalledWith('R-1055', 'Explain B-8');
+    expect(
+      await screen.findByText('Reference does not resolve in static data.'),
+    ).toBeInTheDocument();
+  });
+});

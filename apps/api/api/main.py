@@ -6,6 +6,7 @@ from api.routes import (
     books,
     breaks,
     decisions,
+    helix,
     recs,
     runs,
     sessions,
@@ -33,6 +34,7 @@ def create_app() -> FastAPI:
     app.include_router(analytics.router)
     app.include_router(books.router)
     app.include_router(breaks.router)
+    app.include_router(helix.router)
     app.include_router(handler.router)
 
     @app.get("/health")

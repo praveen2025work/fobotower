@@ -12,16 +12,16 @@ ALL = ("C1", "C2", "C3", "C4", "C5", "C6")
 
 def _only(check):
     return [CandidateCause(check_id=c, positive=(c == check), description="d",
-                           supporting_ids=["b-01"] if c == check else []) for c in ALL]
+                           supporting_ids=["B-1"] if c == check else []) for c in ALL]
 
 
 def _state(check):
     return {
-        "breaks": [{"break_id": "b-01", "book_ref": "APAC-CASH-01", "line_code": "CASH",
+        "breaks": [{"break_id": "B-1", "book_ref": "PRIME-MB-01", "line_code": "CASH",
                     "fo_value": 102340.0, "bo_value": 100000.0}],
-        "candidates": {"b-01": _only(check)},
-        "deltas": {"b-01": 2340.0},
-        "reasons": {"b-01": "r"},
+        "candidates": {"B-1": _only(check)},
+        "deltas": {"B-1": 2340.0},
+        "reasons": {"B-1": "r"},
         "business_date": date(2026, 8, 3),
         "evidence_gaps": [],
     }
@@ -38,7 +38,7 @@ async def _finding(check):
     async with get_session() as s:
         await load_playbook(s)
         out = await reason(_state(check), session=s, reasoner=NoCalls())
-        return out["findings"]["b-01"]
+        return out["findings"]["B-1"]
 
 
 async def test_a_bo_side_redemption_break_posts():
@@ -68,7 +68,7 @@ async def test_a_check_that_cannot_name_the_wrong_side_is_not_deterministic():
     async with get_session() as s:
         await load_playbook(s)
         out = await reason(_state("C3"), session=s)  # default reasoner: none
-    f = out["findings"]["b-01"]
+    f = out["findings"]["B-1"]
     assert f["deterministic"] is False
     assert f["verdict"] == "ESCALATE"
 

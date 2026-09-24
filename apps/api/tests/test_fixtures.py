@@ -25,7 +25,7 @@ async def test_a_book_hierarchy_changes_mid_period():
         rows = (
             await s.scalars(
                 select(Edge).where(
-                    Edge.from_node_id == "book:APAC-CASH-05",
+                    Edge.from_node_id == "book:PRIME-MB-05",
                     Edge.edge_type == "BELONGS_TO",
                 )
             )

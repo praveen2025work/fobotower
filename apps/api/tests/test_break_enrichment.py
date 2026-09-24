@@ -50,10 +50,10 @@ async def test_each_break_gets_the_mock_reason_wording():
     async with get_session() as s:
         await load_all(s)
         st = await _run(s)
-        assert st["reasons"]["b-01"] == "Nostro statement received after 23:30 cutoff"
-        assert st["reasons"]["b-07"] == "Reference does not resolve in static data"
-        assert st["reasons"]["b-10"] == "Pending desk confirmation since the 11:00 run"
-        assert st["reasons"]["b-13"] == "Two entries with identical settlement reference"
+        assert st["reasons"]["B-1"] == "Nostro statement received after 23:30 cutoff"
+        assert st["reasons"]["B-7"] == "Reference does not resolve in static data"
+        assert st["reasons"]["B-12"] == "Pending desk confirmation since the 11:00 run"
+        assert st["reasons"]["B-10"] == "Two entries with identical settlement reference"
 
 
 async def test_every_break_has_a_reason():
@@ -69,7 +69,7 @@ async def test_reasons_are_persisted_so_later_runs_can_read_them():
     async with get_session() as s:
         await load_all(s)
         await _run(s)
-        row = await s.scalar(select(BreakEvent).where(BreakEvent.break_id == "b-01"))
+        row = await s.scalar(select(BreakEvent).where(BreakEvent.break_id == "B-1"))
         assert row.reason_text == "Nostro statement received after 23:30 cutoff"
         assert row.first_seen_run_id == "run-1100"
 
@@ -79,7 +79,7 @@ async def test_a_group_reports_how_many_of_its_breaks_are_ungrounded():
     async with get_session() as s:
         await load_all(s)
         # Mark one CPTY-REF break as ungrounded, as the validator would.
-        row = await s.scalar(select(BreakEvent).where(BreakEvent.break_id == "b-07"))
+        row = await s.scalar(select(BreakEvent).where(BreakEvent.break_id == "B-7"))
         row.is_ungrounded = True
         await s.commit()
 
@@ -97,11 +97,11 @@ async def test_carried_runs_counts_distinct_runs_a_break_appeared_in():
     async with get_session() as s:
         await load_all(s)
         await _run(s, run_id="run-1100")
-        row = await s.scalar(select(BreakEvent).where(BreakEvent.break_id == "b-10"))
+        row = await s.scalar(select(BreakEvent).where(BreakEvent.break_id == "B-12"))
         assert row.first_seen_run_id == "run-1100"
 
         await _run(s, run_id="run-1500")
-        row = await s.scalar(select(BreakEvent).where(BreakEvent.break_id == "b-10"))
+        row = await s.scalar(select(BreakEvent).where(BreakEvent.break_id == "B-12"))
         assert row.first_seen_run_id == "run-1100", "first_seen was overwritten"
 
 

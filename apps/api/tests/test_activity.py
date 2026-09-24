@@ -36,14 +36,14 @@ async def test_a_blocked_run_says_why():
 
 
 async def test_unlock_events_carry_a_real_book_count():
-    """The mock shows '19 books' and '34 books' — those are run totals,
-    not decoration."""
+    """The mock shows '19 books' and '34 books' — those are the books each
+    cleared run unlocked, not decoration."""
     async with get_session() as s:
         await _seeded(s)
         feed = await activity_feed(s, COB)
         unlocked = [e for e in feed if e["kind"] == "unlocked"]
         assert unlocked
-        assert any(str(n) in e["text"] for e in unlocked for n in (22, 13))
+        assert any(str(n) in e["text"] for e in unlocked for n in (34, 19))
 
 
 async def test_every_event_carries_a_tone_the_ui_can_colour():

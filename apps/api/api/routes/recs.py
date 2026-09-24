@@ -7,55 +7,19 @@ the two stay in step.
 
 from datetime import date
 
-from fastapi import APIRouter, HTTPException
-from sqlalchemy import select
+from fastapi import APIRouter
 
-from api.auth import current_caller
+from api.cases import open_case, rec_and_run, session_id_for
 from api.deps import checkpointer, ensure_fixtures
-from api.routes.sessions import CAUSE_TO_SNAPSHOT, PIPELINE_STAGES
+from api.routes.sessions import PIPELINE_STAGES
 from app.db.base import get_session
-from app.db.models_ops import Reconciliation, Run
 from app.grounding.recorder import calls_for
 from app.queries.trace import execution_trace
-from app.workflow.graph import build_graph, run_investigation
 from fixtures.history import COB, breaks_for_rec
 
 router = APIRouter(prefix="/api/recs", tags=["recs"])
 
 
-def session_id_for(rec_id: str) -> str:
-    return f"sess-{rec_id.lower()}"
-
-
-async def _rec_and_run(s, rec_id: str, business_date: date):
-    row = (
-        await s.execute(
-            select(Reconciliation, Run)
-            .join(Run, Run.rec_id == Reconciliation.rec_id)
-            .where(
-                Reconciliation.rec_id == rec_id, Run.business_date == business_date
-            )
-        )
-    ).first()
-    if row is None:
-        raise HTTPException(status_code=404, detail=f"no run for {rec_id}")
-    return row
-
-
-def _initial_state(rec, run, breaks: list[dict]) -> dict:
-    return {
-        "investigation_session_id": session_id_for(rec.rec_id),
-        "reconciliation_id": rec.rec_id,
-        "master_book": rec.master_book,
-        "business_date": run.business_date,
-        "run_id": run.run_id,
-        "caller": current_caller(),
-        "breaks": [b | CAUSE_TO_SNAPSHOT[b["cause"]] for b in breaks],
-        "book_resolutions": {},
-        "evidence_gaps": [],
-        "hypothesis_attempts": 0,
-        "review_cycles": 0,
-    }
 
 
 def _header(rec, run) -> dict:
@@ -82,7 +46,7 @@ async def get_rec_case(rec_id: str, business_date: date = COB) -> dict:
     """
     async with get_session() as s:
         await ensure_fixtures(s)
-        rec, run = await _rec_and_run(s, rec_id, business_date)
+        rec, run = await rec_and_run(s, rec_id, business_date)
         breaks = breaks_for_rec(rec_id)
         header = _header(rec, run)
 
@@ -107,20 +71,7 @@ async def get_rec_case(rec_id: str, business_date: date = COB) -> dict:
             }
 
         sid = session_id_for(rec_id)
-        async with checkpointer() as cp:
-            snapshot = await build_graph(cp, session=s).aget_state(
-                {"configurable": {"thread_id": sid}}
-            )
-            if not snapshot.values:
-                await run_investigation(
-                    _initial_state(rec, run, breaks),
-                    thread_id=sid,
-                    session=s,
-                    checkpointer=cp,
-                )
-                snapshot = await build_graph(cp, session=s).aget_state(
-                    {"configurable": {"thread_id": sid}}
-                )
+        snapshot = await open_case(s, rec, run)
 
         v = snapshot.values
         parked = snapshot.next == ("review",)
@@ -158,7 +109,7 @@ async def get_rec_trace(rec_id: str, business_date: date = COB) -> dict:
     with its timing and what it produced — read from the checkpoints."""
     async with get_session() as s:
         await ensure_fixtures(s)
-        rec, run = await _rec_and_run(s, rec_id, business_date)
+        rec, run = await rec_and_run(s, rec_id, business_date)
         header = _header(rec, run)
         if not breaks_for_rec(rec_id):
             return {"header": header, "state": "clear", "trace": None}

@@ -7,7 +7,9 @@ different things and must stay labelled differently.
 """
 
 import re
+import time
 
+from app.grounding.recorder import GroundingRecorder
 from app.workflow.config import settings
 from app.workflow.state import InvestigationState
 
@@ -25,10 +27,50 @@ def _grounded_values(state: InvestigationState) -> set[str]:
     return values
 
 
+def _grounding_rows(state: InvestigationState) -> list[dict]:
+    """Each drafted figure against the MB Rec value it must trace to. A break
+    flagged ungrounded has a figure with no matching source value."""
+    ungrounded = set(state.get("ungrounded_breaks", []))
+    deltas = state.get("deltas", {})
+    rows = []
+    for brk in state.get("breaks", []):
+        bid = brk["break_id"]
+        if bid not in deltas:
+            continue
+        traced = bid not in ungrounded
+        rows.append(
+            {
+                "adjId": bid,
+                "figure": deltas[bid],
+                "source": deltas[bid] if traced else None,
+                "result": "Traced" if traced else "Not traced",
+            }
+        )
+    return rows
+
+
+async def _record_grounding(state: InvestigationState, session) -> None:
+    started = time.perf_counter()
+    rows = _grounding_rows(state)
+    failed = sum(1 for r in rows if r["result"] != "Traced")
+    await GroundingRecorder(session, state["investigation_session_id"]).record(
+        application="Helix",
+        tool="helix.grounding_check",
+        params={"rec": state["reconciliation_id"], "figures": len(rows)},
+        row_count=len(rows),
+        summary=f"{failed} not traced" if failed else f"{len(rows)} of {len(rows)} traced",
+        latency_ms=round((time.perf_counter() - started) * 1000),
+        rows=rows,
+    )
+
+
 async def validate(state: InvestigationState, *, session) -> dict:
     d = state.get("draft")
     if d is None:
         return {"validation_errors": ["no draft produced"]}
+    # Validation itself is pure; only a live run has a session to record into.
+    if session is not None:
+        await _record_grounding(state, session)
 
     errors: list[str] = []
     grounded = _grounded_values(state)

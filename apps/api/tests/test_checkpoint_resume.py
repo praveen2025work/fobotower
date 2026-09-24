@@ -129,7 +129,7 @@ async def test_an_approved_run_writes_tomorrows_priors():
             )
 
     async with get_session() as s2:
-        brk = await s2.scalar(select(BreakEvent).where(BreakEvent.break_id == "b-01"))
+        brk = await s2.scalar(select(BreakEvent).where(BreakEvent.break_id == "B-1"))
         assert brk.pattern_code == "P-204"
         assert brk.outcome == "approved"
 

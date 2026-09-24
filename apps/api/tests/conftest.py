@@ -25,6 +25,7 @@ from app.db.base import Base, engine, get_session  # noqa: E402
 
 # Child tables first.
 TABLES = [
+    "session_message",
     "source_call",
     "controller_decision",
     "pattern_group",

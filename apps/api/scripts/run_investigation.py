@@ -1,7 +1,7 @@
 """Run investigations end to end — deterministic, no LLM.
 
     .venv/bin/python scripts/run_investigation.py            every open rec
-    .venv/bin/python scripts/run_investigation.py R-2015     one rec
+    .venv/bin/python scripts/run_investigation.py R-2048     one rec
 
 Uses whatever FOBO_REASONER is set to. Unset means `none`: nothing calls a
 model, and any break the playbook cannot settle escalates to a human. That
@@ -22,7 +22,7 @@ from httpx import ASGITransport, AsyncClient  # noqa: E402
 
 from api.main import create_app  # noqa: E402
 
-OPEN_RECS = ["R-1055", "R-2010", "R-2015"]
+OPEN_RECS = ["R-1055", "R-2031", "R-2048"]
 
 
 def _line(char="─", n=78):

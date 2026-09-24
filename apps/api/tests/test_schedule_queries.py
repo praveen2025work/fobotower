@@ -31,8 +31,8 @@ async def test_a_rec_carries_its_scheduled_and_completed_times():
         assert r1055["scheduled"] == "11:00"
         assert r1055["completed"] == "11:52"
         assert r1055["status"] == "awaiting"
-        assert r1055["books_open"] == 9
-        assert r1055["books_total"] == 11
+        assert r1055["books_open"] == 12
+        assert r1055["books_total"] == 14
 
 
 async def test_a_scheduled_rec_has_no_completion_time():
@@ -40,7 +40,7 @@ async def test_a_scheduled_rec_has_no_completion_time():
         await _seeded(s)
         regions = await regions_with_recs(s, COB)
         apac = next(r for r in regions if r["region"] == "APAC")["recs"]
-        assert next(r for r in apac if r["rec_id"] == "R-1060")["completed"] is None
+        assert next(r for r in apac if r["rec_id"] == "R-1061")["completed"] is None
 
 
 async def test_pending_adjustments_are_counted_before_any_case_is_opened():
@@ -61,15 +61,16 @@ async def test_header_status_counts_match_the_mock():
         assert st["cleared"] == 2
         assert st["awaiting"] == 1
         assert st["blocked"] == 1
-        # 14 on R-1055, 8 on R-2010, 5 on R-2015.
-        assert st["adj_pending"] == 27
+        # 14 on R-1055, 8 on R-2031, 1 on R-2048.
+        assert st["adj_pending"] == 23
 
 
 async def test_header_book_counts_match_the_mock():
     async with get_session() as s:
         await _seeded(s)
         st = await header_stats(s, COB)
-        assert st["books_open"] == 56
+        # 160 master books across the seven recs; 72 not yet open.
+        assert st["books_open"] == 88
         assert st["books_not_open"] == 72
 
 
@@ -79,7 +80,7 @@ async def test_the_clock_is_derived_not_declared():
     async with get_session() as s:
         await _seeded(s)
         st = await header_stats(s, COB)
-        assert st["now"] == "17:29"
+        assert st["now"] == "17:22"
         assert st["next_run"] == "19:00"
 
 
@@ -87,10 +88,10 @@ async def test_unlocked_counts_books_with_no_open_breaks():
     async with get_session() as s:
         await _seeded(s)
         st = await header_stats(s, COB)
-        # The 12 history books for today are fully resolved; the 25 books
-        # carrying open breaks across R-1055, R-2010 and R-2015 are not.
-        assert st["unlocked"] == 12
-        assert st["unlocked_total"] == 37
+        # Resolved: 12 history books, plus the 3 Rates and 3 Cash books whose
+        # breaks cleared today. Open: 12 Prime, 8 FI Credit, 1 Collateral.
+        assert st["unlocked"] == 18
+        assert st["unlocked_total"] == 39
 
 
 async def test_each_open_rec_reports_its_own_pending_count():
@@ -104,6 +105,6 @@ async def test_each_open_rec_reports_its_own_pending_count():
             for rec in region["recs"]
         }
         assert per_rec["R-1055"] == 14
-        assert per_rec["R-2010"] == 8
-        assert per_rec["R-2015"] == 5
-        assert per_rec["R-1050"] == 0
+        assert per_rec["R-2031"] == 8
+        assert per_rec["R-2048"] == 1
+        assert per_rec["R-1042"] == 0

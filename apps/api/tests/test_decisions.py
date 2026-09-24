@@ -65,11 +65,11 @@ async def test_a_rejection_with_a_reason_is_accepted(client):
 async def test_a_single_break_can_be_decided(client):
     r = await client.post(
         "/api/recs/R-1055/decisions",
-        json={"action": "approve", "break_id": "b-01"},
+        json={"action": "approve", "break_id": "B-1"},
         headers={"Idempotency-Key": "k-one"},
     )
     assert r.status_code == 201
-    assert r.json()["break_ids"] == ["b-01"]
+    assert r.json()["break_ids"] == ["B-1"]
 
 
 async def test_an_unknown_group_is_404(client):

@@ -33,9 +33,11 @@ async def test_todays_runs_match_the_mocks_states():
                 await s.scalars(select(Run).where(Run.business_date == COB))
             ).all()
         }
-        assert today["R-1055"] == ("awaiting", 9)
-        assert today["R-2015"] == ("blocked", 1)
-        assert today["R-1050"] == ("cleared", 22)
+        # books_open is total minus the books One Fin UX reports not open.
+        assert today["R-1055"] == ("awaiting", 12)
+        assert today["R-2048"] == ("blocked", 3)
+        assert today["R-1042"] == ("cleared", 34)
+        assert today["R-2031"] == ("in_progress", 20)
 
 
 async def test_a_completed_run_records_when_it_finished():
@@ -50,13 +52,17 @@ async def test_a_completed_run_records_when_it_finished():
         assert run.completed_at.minute == 52
 
 
-async def test_a_scheduled_run_has_not_completed():
+async def test_a_run_waiting_for_its_ready_event_has_not_started():
+    """Helix sessions start on the One Fin UX Ready event. Until it arrives
+    only master-book readiness is known."""
     async with get_session() as s:
         await load_history(s)
         run = await s.scalar(
-            select(Run).where(Run.rec_id == "R-1060", Run.business_date == COB)
+            select(Run).where(Run.rec_id == "R-1061", Run.business_date == COB)
         )
         assert run.completed_at is None
+        assert run.ready_event_id is None and run.ready_at is None
+        assert (run.mb_available, run.book_stats["total"]) == (6, 15)
 
 
 async def test_p204_history_reproduces_the_mocks_seven_day_chart():

@@ -28,33 +28,33 @@ def test_the_default_skill_id_matches_the_deployable_skill(monkeypatch):
     """A mismatch here means the service loads no skill and the model reasons
     from nothing — with a verdict that looks normal."""
     name = re.search(r"^name:\s*(\S+)", SKILL.read_text(), re.M).group(1)
-    req = _reasoner(monkeypatch)._build_request({"break_id": "b-07"})
+    req = _reasoner(monkeypatch)._build_request({"break_id": "B-7"})
     assert req["skill_id"] == name == "fobo-investigation"
 
 
 def test_the_request_carries_the_break_and_what_is_already_established(monkeypatch):
     req = _reasoner(monkeypatch)._build_request({
-        "break_id": "b-07", "fo_value": 0.0,
+        "break_id": "B-7", "fo_value": 0.0,
         "already_established": {"deterministic_findings": ["FO-1 pass"]},
     })
-    assert req["inputs"]["break_record"]["break_id"] == "b-07"
+    assert req["inputs"]["break_record"]["break_id"] == "B-7"
     assert "already_established" not in req["inputs"]["break_record"]
     assert req["inputs"]["already_established"]["deterministic_findings"] == ["FO-1 pass"]
-    assert req["correlation_id"] == "b-07"
+    assert req["correlation_id"] == "B-7"
 
 
 def test_the_output_schema_is_the_skill_verdict(monkeypatch):
-    req = _reasoner(monkeypatch)._build_request({"break_id": "b-07"})
+    req = _reasoner(monkeypatch)._build_request({"break_id": "B-7"})
     assert req["output_schema"] == SkillVerdict.model_json_schema()
 
 
 def test_mcp_tools_are_offered_only_when_a_server_is_configured(monkeypatch):
     """Naming an unreachable MCP server would fail the session for nothing."""
-    without = _reasoner(monkeypatch)._build_request({"break_id": "b-07"})
+    without = _reasoner(monkeypatch)._build_request({"break_id": "B-7"})
     assert "mcp" not in without and "tools" not in without
 
     with_mcp = _reasoner(monkeypatch, FOBO_MCP_URL="https://orch/mcp",
-                         FOBO_MCP_TOKEN="t")._build_request({"break_id": "b-07"})
+                         FOBO_MCP_TOKEN="t")._build_request({"break_id": "B-7"})
     assert with_mcp["mcp"] == {"url": "https://orch/mcp", "token": "t"}
     assert with_mcp["tools"] == list(FOBO_MCP_TOOLS)
 
@@ -75,7 +75,7 @@ def test_the_skill_names_the_same_tools_the_adapter_offers():
 def test_the_documented_request_shape_matches_what_the_adapter_builds(monkeypatch):
     documented = _documented(0)
     built = _reasoner(monkeypatch, FOBO_MCP_URL="u", FOBO_MCP_TOKEN="t")._build_request(
-        {"break_id": "b-07"}
+        {"break_id": "B-7"}
     )
     assert set(documented) <= set(built) | {"output_schema"}
 

@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from api.auth import dev_caller_middleware
 from api.routes import (
     analytics,
     books,
@@ -19,6 +20,9 @@ CONSOLE_ORIGIN = "http://localhost:3100"
 
 def create_app() -> FastAPI:
     app = FastAPI(title="FOBO Investigation API", version="0.1.0")
+    # Registered before CORS so CORS wraps it: a refused dev caller still
+    # gets the CORS headers the browser needs to read the 400.
+    app.middleware("http")(dev_caller_middleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[CONSOLE_ORIGIN],

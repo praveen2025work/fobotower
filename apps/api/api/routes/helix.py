@@ -16,7 +16,7 @@ from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
-from api.auth import current_caller
+from api.auth import current_caller, dev_callers
 from api.cases import open_case, rec_and_run, session_id_for
 from api.deps import ensure_fixtures
 from api.routes.decisions import DecisionRequest, apply_decision
@@ -91,7 +91,7 @@ async def board(business_date: date = COB) -> dict:
         await ensure_fixtures(s)
         rows = await _today(s, business_date)
         views = {rec.rec_id: await _view(s, rec, run) for rec, run in rows}
-        return {
+        body = {
             "cob": str(business_date),
             "caller": _caller(),
             "recs": [views[rec.rec_id] for rec, _ in rows],
@@ -100,6 +100,10 @@ async def board(business_date: date = COB) -> dict:
             # 12 min each"; the console shows the value and the basis together.
             "hoursSaved": await hours_saved(s, business_date),
         }
+        callers = dev_callers()
+        if callers:
+            body["devCallers"] = callers
+        return body
 
 
 @router.get("/recs/{rec_id}")

@@ -89,6 +89,27 @@ describe('VersionDetail', () => {
     expect(onRedraft).toHaveBeenCalledWith({ config: { steps: [] }, basedOn: 5, conflicts: ['steps'] });
   });
 
+  it('opens the Approve dialog without throwing when crypto.randomUUID is unavailable', async () => {
+    // Absent outside a secure context (plain HTTP on a non-localhost
+    // origin) — an own, undefined property shadows the inherited method,
+    // same as the browser leaves it in that context.
+    const original = globalThis.crypto.randomUUID;
+    Object.defineProperty(globalThis.crypto, 'randomUUID', { value: undefined, configurable: true });
+    try {
+      api.approveVersion.mockResolvedValue({ number: 4, status: 'active' });
+      const { onChanged } = renderDetail(ASHA);
+      await userEvent.click(await screen.findByRole('button', { name: 'Approve' }));
+      const dialog = screen.getByRole('dialog');
+      for (const box of within(dialog).getAllByRole('checkbox')) await userEvent.click(box);
+      await userEvent.click(within(dialog).getByRole('button', { name: 'Approve and activate' }));
+      expect(api.approveVersion).toHaveBeenCalledWith(4, expect.any(String));
+      expect(api.approveVersion.mock.calls[0][1].length).toBeGreaterThan(0);
+      expect(onChanged).toHaveBeenCalled();
+    } finally {
+      Object.defineProperty(globalThis.crypto, 'randomUUID', { value: original, configurable: true });
+    }
+  });
+
   it('requires a reason to reject', async () => {
     api.rejectVersion.mockResolvedValue({ number: 4, status: 'rejected' });
     const { onChanged } = renderDetail(ASHA);

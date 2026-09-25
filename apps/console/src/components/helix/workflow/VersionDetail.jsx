@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { approveVersion, downloadYaml, fetchRebased, fetchVersion, rejectVersion } from '../data/workflowApi';
+import { randomId } from '@/lib/uuid';
 import { StatusChip } from './VersionList';
 import { Check, WorkflowDialog } from './WorkflowDialog';
 import { describeChange, when } from './workflowModel';
@@ -8,7 +9,7 @@ const pillButton = 'text-[12px] font-semibold px-3 py-1.5 rounded-full disabled:
 
 function ApproveDialog({ version, onCancel, onDone }) {
   // One key per confirmation: a retried click can never approve twice.
-  const [key] = useState(() => crypto.randomUUID());
+  const [key] = useState(randomId);
   const [ackDiff, setAckDiff] = useState(false);
   const [ackLive, setAckLive] = useState(false);
   const [state, setState] = useState({ busy: false, error: null });

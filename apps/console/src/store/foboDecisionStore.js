@@ -1,13 +1,7 @@
 import { create } from 'zustand';
 
 import { post } from '@/lib/apiClient';
-
-/** A fresh key per attempt. The server rejects a repeat with 409, so a
- *  retry after a network blip must carry a new one or it looks like a
- *  duplicate submission. */
-function newKey() {
-  return globalThis.crypto?.randomUUID?.() ?? `k-${Date.now()}-${Math.random()}`;
-}
+import { randomId } from '@/lib/uuid';
 
 export const useFoboDecisionStore = create((set, getState) => ({
   // group_id or break_id -> 'approved' | 'rejected'
@@ -22,12 +16,15 @@ export const useFoboDecisionStore = create((set, getState) => ({
     if (!target || getState().pending) return false;
     set({ pending: target, error: null });
     try {
+      // A fresh key per attempt: the server rejects a repeat with 409, so a
+      // retry after a network blip must carry a new one or it looks like a
+      // duplicate submission.
       const res = await post(`/api/recs/${recId}/decisions`, {
         action,
         reason: reason ?? null,
         group_id: groupId ?? null,
         break_id: breakId ?? null,
-      }, { 'Idempotency-Key': newKey() });
+      }, { 'Idempotency-Key': randomId() });
 
       const outcome = action === 'approve' ? 'approved' : 'rejected';
       const marks = { [target]: outcome };

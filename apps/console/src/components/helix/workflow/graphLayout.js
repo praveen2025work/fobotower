@@ -142,17 +142,60 @@ export function toFlow(graph) {
     };
   });
 
+  // Source order (top to bottom, same order as `groups`), so each
+  // escalate-bound edge can get its own vertical lane (via `stepPosition`,
+  // the fraction of the way from source to target where a smoothstep edge
+  // makes its turn — and, for this exact handle pairing [Right → Left],
+  // also exactly where React Flow places the edge's label). Smoothstep's
+  // path for two horizontally-opposed handles is source → (turn) → target,
+  // where the turn's x is `stepPosition` of the way from source to target,
+  // and the two runs either side of it sit at the SOURCE's y (before the
+  // turn) and the TARGET's y (after). A default `stepPosition` of 0.5
+  // gives every escalate-bound edge the same turn-x, so an earlier (higher,
+  // further from Escalate) step's long source-side run — at ITS OWN y —
+  // extends past a later (lower, closer) step's row and crosses that
+  // step's short run, right where its label sits.
+  //
+  // Fix: the step closer to Escalate turns early (small stepPosition — its
+  // vertical run sits near ITS OWN source, short, since it has little
+  // distance to cover), and the step further away turns late (large
+  // stepPosition — its vertical run sits near Escalate, so its long
+  // source-side run stays up at its own height, above every closer step's
+  // row, instead of cutting through it). `groups` is already ordered top
+  // to bottom, i.e. furthest-from-Escalate to closest, so that's index 0 →
+  // MAX, last index → MIN.
+  const ESCALATE_STEP_MIN = 0.08;
+  const ESCALATE_STEP_MAX = 0.92;
+  const escalateSourceIndex = new Map(groups.map((g, i) => [g.source, i]));
+  const escalateStepPosition = (source) => {
+    const n = groups.length;
+    if (n <= 1) return 0.5;
+    const i = escalateSourceIndex.get(source);
+    return ESCALATE_STEP_MAX - (i / (n - 1)) * (ESCALATE_STEP_MAX - ESCALATE_STEP_MIN);
+  };
+
   const edges = graph.edges.map((e) => {
     const look = edgeLook(e, pausedIds);
-    const toEscalate = e.conditional && e.target === 'escalate';
+    const intoEscalate = e.conditional && e.target === 'escalate';
+    // Escalate's own route to End is a distinct path from the main chain's
+    // record→End edge: it uses End's right-side handle (entered from the
+    // escalate lane) instead of sharing End's top handle with the chain,
+    // so it can never read as "rejoining" the chain partway down.
+    const escalateToEnd = e.source === 'escalate' && e.target === '__end__';
     return {
       id: `${e.source}->${e.target}`,
       source: e.source,
       target: e.target,
-      sourceHandle: toEscalate ? 'right' : 'bottom',
-      targetHandle: toEscalate ? 'left' : 'top',
+      sourceHandle: intoEscalate ? 'right' : 'bottom',
+      // Each step that can escalate gets its own target handle on Escalate
+      // (`in-<step id>`, rendered by FlowNodes.jsx spread along its left
+      // edge in source order) rather than all sharing one — otherwise a
+      // later step's short hop in can cross an earlier step's longer one,
+      // right where its label sits.
+      targetHandle: intoEscalate ? `in-${e.source}` : escalateToEnd ? 'escalate-in' : 'top',
       type: 'smoothstep',
       animated: false,
+      ...(intoEscalate ? { pathOptions: { stepPosition: escalateStepPosition(e.source) } } : {}),
       style: {
         stroke: look.color,
         strokeWidth: 1.5,

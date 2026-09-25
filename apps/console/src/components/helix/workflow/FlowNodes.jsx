@@ -60,9 +60,23 @@ export function StepNode({ id, data }) {
  *  each one (`data.reasonGroups`, built by `graphLayout.js` from the
  *  graph's own edges). */
 export function EscalateNode({ id, data }) {
+  const groups = data.reasonGroups || [];
   return (
     <>
-      <Handle type="target" position={Position.Left} id="left" />
+      {/* One target handle per source step, spread down the left edge in
+       *  source order — not one handle shared by every incoming edge — so
+       *  a later step's shorter hop in can't cross an earlier step's
+       *  longer one (which was cutting through its own "if escalated"
+       *  label). */}
+      {groups.map((g, i) => (
+        <Handle
+          key={g.source}
+          type="target"
+          position={Position.Left}
+          id={`in-${g.source}`}
+          style={{ top: `${((i + 1) / (groups.length + 1)) * 100}%` }}
+        />
+      ))}
       <button
         type="button"
         aria-label={`Open ${data.label}`}
@@ -96,8 +110,11 @@ export function EscalateNode({ id, data }) {
   );
 }
 
-/** `start` / `end` pills — no interaction, just the shape of the chain. */
-export function EdgeMarkerNode({ data, sourceOnly, targetOnly }) {
+/** `start` / `end` pills — no interaction, just the shape of the chain. End
+ *  gets a second, right-side target handle (`escalate-in`) distinct from
+ *  the chain's own top one, so the escalate→End edge visibly arrives from
+ *  its own lane instead of sharing a segment with record→End. */
+export function EdgeMarkerNode({ data, sourceOnly, targetOnly, escalateTarget }) {
   return (
     <>
       {!sourceOnly && <Handle type="target" position={Position.Top} id="top" />}
@@ -108,9 +125,10 @@ export function EdgeMarkerNode({ data, sourceOnly, targetOnly }) {
         {data.label}
       </div>
       {!targetOnly && <Handle type="source" position={Position.Bottom} id="bottom" />}
+      {escalateTarget && <Handle type="target" position={Position.Right} id="escalate-in" />}
     </>
   );
 }
 
 export const StartNode = (props) => <EdgeMarkerNode {...props} sourceOnly />;
-export const EndNode = (props) => <EdgeMarkerNode {...props} targetOnly />;
+export const EndNode = (props) => <EdgeMarkerNode {...props} targetOnly escalateTarget />;

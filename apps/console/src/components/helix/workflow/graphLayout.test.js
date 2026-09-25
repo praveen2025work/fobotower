@@ -129,6 +129,44 @@ describe('toFlow', () => {
     });
   });
 
+  describe('escalate→End routing', () => {
+    it('routes escalate→__end__ through a distinct handle pair from record→__end__', () => {
+      const { edges } = toFlow(fixture);
+      const escalateToEnd = edges.find((e) => e.source === 'escalate' && e.target === '__end__');
+      const chainToEnd = edges.find((e) => e.source !== 'escalate' && e.target === '__end__');
+      expect(escalateToEnd).toBeTruthy();
+      expect(chainToEnd).toBeTruthy();
+
+      // End's own right-side handle — not the top handle the main chain's
+      // last step arrives through — so the two paths can never share a
+      // segment or read as "the escalated run rejoins the chain".
+      expect(escalateToEnd.targetHandle).toBe('escalate-in');
+      expect(chainToEnd.targetHandle).not.toBe('escalate-in');
+      expect(escalateToEnd.targetHandle).not.toBe(chainToEnd.targetHandle);
+    });
+
+    it("gives each step that can escalate its own target handle on Escalate, distinct from the others", () => {
+      const { edges } = toFlow(fixture);
+      const intoEscalate = edges.filter((e) => e.target === 'escalate');
+      expect(intoEscalate.length).toBeGreaterThan(1);
+      const handles = intoEscalate.map((e) => e.targetHandle);
+      expect(new Set(handles).size).toBe(handles.length);
+      for (const e of intoEscalate) {
+        expect(e.targetHandle).toBe(`in-${e.source}`);
+      }
+    });
+
+    it("spreads escalate-bound edges' turn points (stepPosition) so no two share the same one", () => {
+      const { edges } = toFlow(fixture);
+      const intoEscalate = edges.filter((e) => e.target === 'escalate');
+      const positions = intoEscalate.map((e) => e.pathOptions?.stepPosition);
+      for (const p of positions) {
+        expect(typeof p).toBe('number');
+      }
+      expect(new Set(positions).size).toBe(positions.length);
+    });
+  });
+
   describe('canvas height', () => {
     it('fits the whole real graph at close to zoom 1, never below the 0.85 floor', () => {
       const { nodes, height } = toFlow(fixture);

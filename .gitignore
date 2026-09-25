@@ -6,6 +6,7 @@ __pycache__/
 node_modules/
 .next/
 .next-e2e/
+.next-build/
 apps/console/test-results/
 apps/console/playwright-report/
 packages/contracts/dist/

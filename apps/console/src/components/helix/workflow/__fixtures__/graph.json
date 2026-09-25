@@ -234,13 +234,27 @@
       "defined_in": "apps/api/app/workflow/nodes/record.py · record"
     },
     "escalate": {
-      "reasons": [
-        "AMBIGUOUS_BOOK",
-        "CHECKS_UNAVAILABLE",
-        "DELTA_UNAVAILABLE",
+      "raised_by": [
+        {
+          "step": "resolve",
+          "label": "Resolve books",
+          "codes": [
+            "UNRESOLVED_BOOK",
+            "AMBIGUOUS_BOOK"
+          ]
+        },
+        {
+          "step": "gather",
+          "label": "Gather evidence",
+          "codes": [
+            "DELTA_UNAVAILABLE",
+            "CHECKS_UNAVAILABLE"
+          ]
+        }
+      ],
+      "other_known": [
         "RETRY_EXHAUSTED",
         "UNMAPPED_BOOK",
-        "UNRESOLVED_BOOK",
         "VALIDATION_FAILED"
       ],
       "defined_in": "apps/api/app/workflow/nodes/escalate.py · escalate"
@@ -254,27 +268,33 @@
     "patterns": [
       {
         "code": "posting_failure",
-        "meaning": "MOTIF rejected a posting that should have occurred"
+        "meaning": "MOTIF rejected a posting that should have occurred",
+        "verdict": "CORRECT_AND_REPOST"
       },
       {
         "code": "missing_side",
-        "meaning": "One side of the break is absent entirely"
+        "meaning": "One side of the break is absent entirely",
+        "verdict": null
       },
       {
         "code": "missing_price",
-        "meaning": "Price is zero and no corporate action is confirmed"
+        "meaning": "Price is zero and the record explicitly has corporate_action_confirmed: false",
+        "verdict": "DO_NOT_POST"
       },
       {
         "code": "side_double",
-        "meaning": "The same side is duplicated"
+        "meaning": "The same side is duplicated",
+        "verdict": "DO_NOT_POST"
       },
       {
         "code": "reapplication",
-        "meaning": "Today's break matches a prior-day adjustment rolling forward"
+        "meaning": "Today's break matches a prior-day adjustment rolling forward",
+        "verdict": "POST"
       },
       {
         "code": "single_cause",
-        "meaning": "Exactly one cause check fired"
+        "meaning": "Exactly one cause check fired, and that check names FO or BO",
+        "verdict": "from playbook default_verdicts"
       }
     ],
     "cause_checks": [
@@ -283,6 +303,7 @@
         "category": "C",
         "category_name": "Redemption break",
         "side": "BO",
+        "settles": true,
         "reason": "Nostro statement received after 23:30 cutoff"
       },
       {
@@ -290,6 +311,7 @@
         "category": "F",
         "category_name": "Data quality break",
         "side": "BO",
+        "settles": true,
         "reason": "Reference does not resolve in static data"
       },
       {
@@ -297,6 +319,7 @@
         "category": "A",
         "category_name": "Price break",
         "side": "UNKNOWN",
+        "settles": false,
         "reason": "FO and BO priced from different curve datasets"
       },
       {
@@ -304,6 +327,7 @@
         "category": "E",
         "category_name": "Trade booking break",
         "side": "UNKNOWN",
+        "settles": false,
         "reason": "Fee or funding component present on one side only"
       },
       {
@@ -311,6 +335,7 @@
         "category": "E",
         "category_name": "Trade booking break",
         "side": "FO",
+        "settles": true,
         "reason": "Pending desk confirmation since the 11:00 run"
       },
       {
@@ -318,6 +343,7 @@
         "category": "D",
         "category_name": "Settlement break",
         "side": "BO",
+        "settles": true,
         "reason": "Two entries with identical settlement reference"
       }
     ],
@@ -370,6 +396,11 @@
         "FO": "ESCALATE",
         "BO": "ESCALATE"
       }
+    ],
+    "unresolved_when": [
+      "No named pattern matched, and no cause check fired",
+      "No named pattern matched, and more than one cause check fired at once",
+      "No named pattern matched, and exactly one cause check fired but its side is not FO or BO"
     ],
     "reasoner": "none",
     "guards": [

@@ -166,8 +166,8 @@ def test_pattern_order_covers_exactly_the_pattern_constants():
         v for k, v in vars(determinism).items()
         if k.startswith("PATTERN_") and isinstance(v, str)
     }
-    assert {code for code, _meaning in determinism.PATTERN_ORDER} == constants
-    assert [code for code, _ in determinism.PATTERN_ORDER] == [
+    assert {code for code, _meaning, _verdict in determinism.PATTERN_ORDER} == constants
+    assert [code for code, _meaning, _verdict in determinism.PATTERN_ORDER] == [
         "posting_failure", "missing_side", "missing_price",
         "side_double", "reapplication", "single_cause",
     ]
@@ -194,6 +194,16 @@ def test_defined_in_points_at_the_router():
     assert defined_in(_router).startswith("apps/api/app/workflow/graph.py")
 
 
+def test_defined_in_falls_back_to_the_dotted_module_name_outside_repo_root():
+    """Never an absolute filesystem path in front of a controller — an
+    object defined outside REPO_ROOT (e.g. the stdlib, installed elsewhere
+    on this machine) gets the module's dotted name instead."""
+    import json
+    result = defined_in(json.dumps)
+    assert not result.startswith("/")
+    assert result == "json · dumps"
+
+
 def test_defined_in_is_used_throughout_the_view():
     view = _view()
     assert view["router"]["defined_in"].startswith("apps/api/app/workflow/graph.py")
@@ -201,10 +211,69 @@ def test_defined_in_is_used_throughout_the_view():
         "apps/api/app/workflow/nodes/resolve.py")
     assert view["logic"]["escalate"]["defined_in"].startswith(
         "apps/api/app/workflow/nodes/escalate.py")
-    assert view["logic"]["escalate"]["reasons"] == sorted(REASONS)
     assert view["decision"]["defined_in"] == [
         defined_in(determinism.classify), defined_in(guards.guard_verdict),
     ]
+
+
+# --- escalate panel: only reachable reason codes ----------------------------
+
+def test_escalate_logic_lists_only_codes_configured_steps_actually_raise():
+    """Only resolve (UNRESOLVED_BOOK, AMBIGUOUS_BOOK) and gather
+    (DELTA_UNAVAILABLE, CHECKS_UNAVAILABLE) have a non-empty escalates_when
+    in the registry; no configured step raises UNMAPPED_BOOK,
+    RETRY_EXHAUSTED or VALIDATION_FAILED, so those must not be claimed as
+    reachable by any step."""
+    esc = _view()["logic"]["escalate"]
+    assert esc["raised_by"] == [
+        {"step": "resolve", "label": registry.STEPS["resolve"].label,
+         "codes": ["UNRESOLVED_BOOK", "AMBIGUOUS_BOOK"]},
+        {"step": "gather", "label": registry.STEPS["gather"].label,
+         "codes": ["DELTA_UNAVAILABLE", "CHECKS_UNAVAILABLE"]},
+    ]
+    assert esc["other_known"] == ["RETRY_EXHAUSTED", "UNMAPPED_BOOK", "VALIDATION_FAILED"]
+    # Every code accepted by escalate() appears exactly once, either raised
+    # or in other_known — nothing invented, nothing dropped.
+    raised = {c for group in esc["raised_by"] for c in group["codes"]}
+    assert raised | set(esc["other_known"]) == REASONS
+    assert not (raised & set(esc["other_known"]))
+
+
+def test_escalate_logic_is_scoped_to_the_configured_steps():
+    """resolve and gather are the only steps required_because non-removable
+    (dropping either invalidates the config), but raised_by is still built
+    from `cfg.steps`, not the whole registry — dropping an unrelated,
+    removable step (rank, which cannot escalate) must not change it."""
+    view = _view(lambda r: r["steps"].remove("rank"))
+    esc = view["logic"]["escalate"]
+    steps_with_codes = {g["step"] for g in esc["raised_by"]}
+    assert steps_with_codes == {"resolve", "gather"}
+
+
+# --- decision: patterns carry a verdict, cause checks say whether they settle --
+
+def test_decision_patterns_carry_the_verdict_classify_actually_sets():
+    view = _view()["decision"]
+    by_code = {p["code"]: p["verdict"] for p in view["patterns"]}
+    assert by_code["posting_failure"] == "CORRECT_AND_REPOST"
+    assert by_code["missing_side"] is None
+    assert by_code["missing_price"] == "DO_NOT_POST"
+    assert by_code["side_double"] == "DO_NOT_POST"
+    assert by_code["reapplication"] == "POST"
+    assert by_code["single_cause"] == determinism.VERDICT_FROM_PLAYBOOK
+
+
+def test_decision_cause_checks_carry_settles_matching_their_side():
+    view = _view()["decision"]
+    for row in view["cause_checks"]:
+        assert row["settles"] == (row["side"] in ("FO", "BO"))
+    settles_false = {r["check"] for r in view["cause_checks"] if not r["settles"]}
+    assert settles_false == {"C3", "C4"}
+
+
+def test_decision_lists_unresolved_when():
+    view = _view()["decision"]
+    assert view["unresolved_when"] == list(determinism.UNRESOLVED_WHEN)
 
 
 # --- decision: matches the playbook exactly --------------------------------
@@ -216,7 +285,7 @@ def test_decision_cause_checks_and_default_verdicts_match_the_playbook():
     expected_checks = [
         {"check": check, "category": c.category,
          "category_name": pb.categories[c.category].name,
-         "side": c.side, "reason": c.reason}
+         "side": c.side, "settles": c.side in ("FO", "BO"), "reason": c.reason}
         for check, c in sorted(pb.cause_checks.items())
     ]
     assert view["cause_checks"] == expected_checks
@@ -231,7 +300,8 @@ def test_decision_cause_checks_and_default_verdicts_match_the_playbook():
     assert view["reasoner"] == "none"
     assert view["guards"] == [{"id": rid, "rule": rule} for rid, rule in guards.GUARD_RULES]
     assert view["patterns"] == [
-        {"code": code, "meaning": meaning} for code, meaning in determinism.PATTERN_ORDER
+        {"code": code, "meaning": meaning, "verdict": verdict}
+        for code, meaning, verdict in determinism.PATTERN_ORDER
     ]
 
 

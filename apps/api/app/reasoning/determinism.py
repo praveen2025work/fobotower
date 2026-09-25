@@ -59,16 +59,42 @@ PATTERN_REAPPLICATION = "reapplication"
 PATTERN_POSTING_FAILURE = "posting_failure"
 PATTERN_SINGLE_CAUSE = "single_cause"
 
-# (pattern, one-line meaning), in the order classify() tries them below. Kept
-# next to the code it describes so the Workflow tab cannot show an order the
-# function does not actually use.
-PATTERN_ORDER: tuple[tuple[str, str], ...] = (
-    (PATTERN_POSTING_FAILURE, "MOTIF rejected a posting that should have occurred"),
-    (PATTERN_MISSING_SIDE, "One side of the break is absent entirely"),
-    (PATTERN_MISSING_PRICE, "Price is zero and no corporate action is confirmed"),
-    (PATTERN_SIDE_DOUBLE, "The same side is duplicated"),
-    (PATTERN_REAPPLICATION, "Today's break matches a prior-day adjustment rolling forward"),
-    (PATTERN_SINGLE_CAUSE, "Exactly one cause check fired"),
+# The literal marker PATTERN_SINGLE_CAUSE carries as its "verdict" below.
+# classify() never assigns single_cause a verdict itself — the reason node
+# looks one up from the playbook's default_verdicts table by category+side
+# (see reason.py) — so there is no fixed literal to state here. This string
+# is what the Workflow tab shows in its place; it is not itself a Verdict.
+VERDICT_FROM_PLAYBOOK = "from playbook default_verdicts"
+
+# (pattern, one-line meaning, the verdict classify() sets for it — or the
+# VERDICT_FROM_PLAYBOOK marker for single_cause, or None for missing_side,
+# which the "none" guard turns into ESCALATE), in the order classify() tries
+# them below. Kept next to the code it describes so the Workflow tab cannot
+# show an order, a meaning or a verdict the function does not actually use.
+PATTERN_ORDER: tuple[tuple[str, str, str | None], ...] = (
+    (PATTERN_POSTING_FAILURE, "MOTIF rejected a posting that should have occurred",
+     "CORRECT_AND_REPOST"),
+    (PATTERN_MISSING_SIDE, "One side of the break is absent entirely", None),
+    (PATTERN_MISSING_PRICE,
+     "Price is zero and the record explicitly has corporate_action_confirmed: false",
+     "DO_NOT_POST"),
+    (PATTERN_SIDE_DOUBLE, "The same side is duplicated", "DO_NOT_POST"),
+    (PATTERN_REAPPLICATION, "Today's break matches a prior-day adjustment rolling forward",
+     "POST"),
+    (PATTERN_SINGLE_CAUSE, "Exactly one cause check fired, and that check names FO or BO",
+     VERDICT_FROM_PLAYBOOK),
+)
+
+# Every way classify() returns resolved=False (Determination.resolved is
+# False), i.e. every way a break is handed to the reasoner instead of being
+# settled by a named pattern above. In plain words, next to the branches in
+# classify() below so the Workflow tab cannot claim a way in that classify()
+# does not actually have (or omit one it does).
+UNRESOLVED_WHEN: tuple[str, ...] = (
+    "No named pattern matched, and no cause check fired",
+    "No named pattern matched, and more than one cause check fired at once",
+    "No named pattern matched, and exactly one cause check fired but its side "
+    "is not FO or BO",
 )
 
 

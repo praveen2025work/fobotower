@@ -79,6 +79,20 @@ describe('WorkflowView', () => {
     expect(await screen.findByText(/Settle by rule; route the rest to the reasoner/)).toBeInTheDocument();
   });
 
+  it('opens the Escalate panel from the diagram, via the known[panel] || ESCALATE_STEP fallback', async () => {
+    // Escalate has no entry in the step catalogue (overview.steps) — it
+    // isn't a registered step — so WorkflowView.jsx falls back to a
+    // minimal stand-in when `panel === 'escalate'`. This is the only test
+    // that opens the panel this way rather than through a catalogued step.
+    render(<WorkflowView callerKey="praveen" />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Open Escalate' }));
+    expect(await screen.findByText('Ends the run. The reason code says which step could not proceed.')).toBeInTheDocument();
+    expect(screen.getByTestId('escalate-reason-UNRESOLVED_BOOK')).toBeInTheDocument();
+    // No catalogue entry means no needs/produces/settings to show.
+    expect(screen.queryByText('Needs')).toBeNull();
+    expect(screen.queryByText('Produces')).toBeNull();
+  });
+
   it('shows an error with retry when the graph fails to load, while the rest of the tab still works', async () => {
     api.fetchGraph.mockRejectedValueOnce(new Error('GET /api/workflow/graph failed: 500'));
     render(<WorkflowView callerKey="praveen" />);

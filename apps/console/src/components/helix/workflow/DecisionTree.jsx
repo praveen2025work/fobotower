@@ -25,8 +25,12 @@ const td = { color: 'var(--text-secondary)' };
 
 /** Read the entire "Apply playbook" step: how a break is settled, from named
  *  patterns down through the reasoner and the hard guards. Every value comes
- *  from `graph.decision` (Task A's GET /api/workflow/graph); nothing here is
- *  typed in. */
+ *  from `graph.decision` (GET /api/workflow/graph, itself derived from
+ *  determinism.py's PATTERN_ORDER/UNRESOLVED_WHEN and the playbook); nothing
+ *  here is typed in beyond headings and connective words — a pattern's
+ *  meaning, verdict, and the cause-check/settles data all come straight from
+ *  the server, which in turn is checked against classify() by
+ *  tests/test_determinism.py. */
 export function DecisionTree({ decision, reasoner }) {
   const reasonerLine =
     reasoner === 'none' ? 'a person — logged as Novel break' : reasoner;
@@ -40,14 +44,25 @@ export function DecisionTree({ decision, reasoner }) {
                 {p.code}
               </span>{' '}
               — {p.meaning}
+              {p.verdict != null && (
+                <>
+                  {' '}
+                  <span style={{ color: 'var(--text-muted)' }}>→</span>{' '}
+                  <span data-testid={`pattern-verdict-${p.code}`} style={mono}>
+                    {p.verdict}
+                  </span>
+                </>
+              )}
             </li>
           ))}
         </ol>
       </Step>
 
-      <Step n={2} title="Single cause:">
+      <Step n={2} title="Cause checks:">
         <p style={{ color: 'var(--text-secondary)' }}>
-          Exactly one cause check fired — its category and side settle the verdict.
+          A check settles the single_cause pattern above only when it names FO or
+          BO; one that does not (its side is UNKNOWN) cannot, and goes to the
+          reasoner instead.
         </p>
         <table className="w-full text-left" style={{ borderCollapse: 'collapse' }}>
           <thead>
@@ -65,7 +80,7 @@ export function DecisionTree({ decision, reasoner }) {
           </thead>
           <tbody>
             {decision.cause_checks.map((c) => (
-              <tr key={c.check}>
+              <tr key={c.check} data-testid={`cause-check-${c.check}`}>
                 <td className="pr-2 py-0.5" style={{ ...mono, ...td }}>
                   {c.check}
                 </td>
@@ -74,6 +89,9 @@ export function DecisionTree({ decision, reasoner }) {
                 </td>
                 <td className="py-0.5" style={td}>
                   {c.side}
+                  {!c.settles && (
+                    <span style={{ color: 'var(--text-muted)' }}> → reasoner</span>
+                  )}
                 </td>
               </tr>
             ))}
@@ -82,6 +100,10 @@ export function DecisionTree({ decision, reasoner }) {
       </Step>
 
       <Step n={3} title="Verdict from the playbook:">
+        <p style={{ color: 'var(--text-secondary)' }}>
+          Applies to the single_cause pattern above, and only when its check
+          settles (names FO or BO).
+        </p>
         <table className="w-full text-left" style={{ borderCollapse: 'collapse' }}>
           <thead>
             <tr>
@@ -114,9 +136,16 @@ export function DecisionTree({ decision, reasoner }) {
         </table>
       </Step>
 
-      <Step n={4} title="No pattern or cause:">
+      <Step n={4} title="Otherwise, goes to the reasoner:">
+        <ul className="flex flex-col gap-0.5 mb-1">
+          {decision.unresolved_when.map((reason) => (
+            <li key={reason} data-testid="unresolved-when" style={{ color: 'var(--text-secondary)' }}>
+              {reason}
+            </li>
+          ))}
+        </ul>
         <p style={{ color: 'var(--text-secondary)' }}>
-          Goes to the reasoner in force: {reasonerLine}.
+          Reasoner in force: {reasonerLine}.
         </p>
       </Step>
 

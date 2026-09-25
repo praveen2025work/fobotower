@@ -59,3 +59,75 @@ it('shows the decision tree for the Apply playbook step', () => {
   expect(screen.getByText(/Named patterns, tried in order/)).toBeInTheDocument();
   expect(screen.getByTestId('verdict-row-A')).toBeInTheDocument();
 });
+
+it('labels the definition path "Defined in" for a step that cannot escalate', () => {
+  renderPanel('group', { graph: graphFixture });
+  expect(screen.getByTestId('step-defined-in')).toHaveTextContent(
+    `Defined in: ${graphFixture.logic.group.defined_in}`,
+  );
+});
+
+it('does not prefix the definition path for a step that can escalate (context already says so)', () => {
+  renderPanel('gather', { graph: graphFixture });
+  expect(screen.getByTestId('step-defined-in')).toHaveTextContent(
+    graphFixture.logic.gather.defined_in,
+  );
+  expect(screen.getByTestId('step-defined-in')).not.toHaveTextContent('Defined in:');
+});
+
+// --- Escalate: a pseudo-step with no entry in the step catalogue (see
+// WorkflowView.jsx's `known[panel] || ESCALATE_STEP` fallback) -------------
+
+const ESCALATE_STEP = {
+  name: 'escalate',
+  label: 'Escalate',
+  description: 'Ends the run with a reason code',
+  decided_by: 'code',
+  removable: false,
+  required_because: null,
+  can_escalate: false,
+  needs: [],
+  produces: [],
+  must_follow: [],
+};
+
+it('groups the Escalate panel’s reason codes by the step that raises them', () => {
+  renderPanel('escalate', { graph: graphFixture, step: ESCALATE_STEP });
+  for (const group of graphFixture.logic.escalate.raised_by) {
+    for (const code of group.codes) {
+      const row = screen.getByTestId(`escalate-reason-${code}`);
+      expect(row).toHaveTextContent(code);
+    }
+  }
+  // Grouped under their step's label, e.g. resolve's codes under "Resolve books".
+  expect(screen.getByText('Resolve books')).toBeInTheDocument();
+  expect(screen.getByText('Gather evidence')).toBeInTheDocument();
+});
+
+it('does not list a reason code no configured step raises as if it were reachable', () => {
+  renderPanel('escalate', { graph: graphFixture, step: ESCALATE_STEP });
+  for (const code of graphFixture.logic.escalate.other_known) {
+    expect(screen.queryByTestId(`escalate-reason-${code}`)).toBeNull();
+  }
+});
+
+it('separately, de-emphasised, lists codes accepted by escalate() but unreachable in this workflow', () => {
+  renderPanel('escalate', { graph: graphFixture, step: ESCALATE_STEP });
+  const note = screen.getByTestId('escalate-other-known');
+  for (const code of graphFixture.logic.escalate.other_known) {
+    expect(note).toHaveTextContent(code);
+  }
+  expect(note).toHaveTextContent('not raised by any step in this workflow');
+});
+
+it('shows where escalate() is defined', () => {
+  renderPanel('escalate', { graph: graphFixture, step: ESCALATE_STEP });
+  expect(screen.getByText(graphFixture.logic.escalate.defined_in)).toBeInTheDocument();
+});
+
+it('hides Needs, Produces and the settings message for the Escalate pseudo-step', () => {
+  renderPanel('escalate', { graph: graphFixture, step: ESCALATE_STEP });
+  expect(screen.queryByText('Needs')).toBeNull();
+  expect(screen.queryByText('Produces')).toBeNull();
+  expect(screen.queryByText('This step has no settings.')).toBeNull();
+});

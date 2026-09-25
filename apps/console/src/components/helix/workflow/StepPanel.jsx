@@ -47,13 +47,40 @@ function HowItDecides({ step, graph, reasoner }) {
         <p className="text-[12px] mb-1.5" style={{ color: 'var(--text-secondary)' }}>
           Ends the run. The reason code says which step could not proceed.
         </p>
-        <ul className="flex flex-col gap-0.5 mb-1.5">
-          {esc.reasons.map((code) => (
-            <li key={code} className="text-[11px]" style={mono}>
-              {code}
+        <ul className="flex flex-col gap-1.5 mb-1.5">
+          {esc.raised_by.map((group) => (
+            <li key={group.step}>
+              <div
+                className="text-[10.5px] font-bold uppercase tracking-wide mb-0.5"
+                style={{ color: 'var(--text-muted)' }}
+              >
+                {group.label}
+              </div>
+              <ul className="flex flex-col gap-0.5">
+                {group.codes.map((code) => (
+                  <li
+                    key={code}
+                    data-testid={`escalate-reason-${code}`}
+                    className="text-[11px]"
+                    style={mono}
+                  >
+                    {code}
+                  </li>
+                ))}
+              </ul>
             </li>
           ))}
         </ul>
+        {esc.other_known.length > 0 && (
+          <p
+            className="text-[10.5px] mb-1.5"
+            style={{ color: 'var(--text-muted)' }}
+            data-testid="escalate-other-known"
+          >
+            Accepted by escalate() but not raised by any step in this workflow:{' '}
+            <span style={mono}>{esc.other_known.join(', ')}</span>
+          </p>
+        )}
         <p className="text-[10.5px]" style={{ ...mono, color: 'var(--text-muted)' }}>
           {esc.defined_in}
         </p>
@@ -90,8 +117,12 @@ function HowItDecides({ step, graph, reasoner }) {
           </ul>
         </>
       )}
-      <p className="text-[10.5px] mb-2" style={{ ...mono, color: 'var(--text-muted)' }}>
-        {logic.defined_in}
+      <p
+        className="text-[10.5px] mb-2"
+        style={{ ...mono, color: 'var(--text-muted)' }}
+        data-testid="step-defined-in"
+      >
+        {canEscalate ? logic.defined_in : `Defined in: ${logic.defined_in}`}
       </p>
       {step.name === 'reason' && (
         <>
@@ -107,6 +138,12 @@ function HowItDecides({ step, graph, reasoner }) {
 
 export function StepPanel({ step, config, schema, reasoner, graph, onClose }) {
   const sections = SETTINGS_FOR_STEP[step.name] || [];
+  // Escalate isn't a registered step — it has no needs/produces/settings of
+  // its own (WorkflowView.jsx's ESCALATE_STEP stand-in gives it empty
+  // arrays for those), so those sections would otherwise show nothing but
+  // "(none)" / "This step has no settings." with nothing for a controller
+  // to learn from them.
+  const isEscalate = step.name === 'escalate';
   return (
     <Drawer title={step.label} subtitle={`${step.name} · ${step.description}`} width={480} onClose={onClose}>
       <HowItDecides step={step} graph={graph} reasoner={reasoner} />
@@ -124,12 +161,16 @@ export function StepPanel({ step, config, schema, reasoner, graph, onClose }) {
           </p>
         </Section>
       )}
-      <Section title="Needs">
-        <Keys keys={step.needs} />
-      </Section>
-      <Section title="Produces">
-        <Keys keys={step.produces} />
-      </Section>
+      {!isEscalate && (
+        <Section title="Needs">
+          <Keys keys={step.needs} />
+        </Section>
+      )}
+      {!isEscalate && (
+        <Section title="Produces">
+          <Keys keys={step.produces} />
+        </Section>
+      )}
       {step.must_follow.length > 0 && (
         <Section title="Must come after">
           <Keys keys={step.must_follow} />
@@ -154,7 +195,7 @@ export function StepPanel({ step, config, schema, reasoner, graph, onClose }) {
           </dl>
         </Section>
       ))}
-      {!sections.length && (
+      {!isEscalate && !sections.length && (
         <p className="text-[12px]" style={{ color: 'var(--text-muted)' }}>
           This step has no settings.
         </p>

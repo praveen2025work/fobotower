@@ -49,6 +49,16 @@ def test_the_catalogue_is_plain_json():
     json.dumps(catalogue())
 
 
+def test_only_resolve_and_gather_carry_escalates_when():
+    by_name = {s["name"]: s["escalates_when"] for s in catalogue()}
+    assert [n for n, v in by_name.items() if v] == ["resolve", "gather"]
+    assert {c["code"] for c in by_name["resolve"]} == {"UNRESOLVED_BOOK", "AMBIGUOUS_BOOK"}
+    assert {c["code"] for c in by_name["gather"]} == {"DELTA_UNAVAILABLE", "CHECKS_UNAVAILABLE"}
+    for name in STEPS:
+        if not STEPS[name].can_escalate:
+            assert by_name[name] == []
+
+
 def test_the_run_supplies_its_workflow_version():
     assert "workflow_version" in INITIAL_INPUTS
 

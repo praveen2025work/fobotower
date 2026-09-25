@@ -46,6 +46,10 @@ class Step:
     # Who or what decides the step's output; the Workflow tab tags each step
     # with it. One of DECIDED_BY.
     decided_by: str = "code"
+    # (escalation reason code, the condition in plain words) — every code the
+    # step's own source can set as escalation_reason. Checked against the
+    # node's source in tests/test_workflow_graph_view.py so this cannot drift.
+    escalates_when: tuple[tuple[str, str], ...] = ()
 
 
 # Supplied by whoever starts the run (see api/routes/recs.py _initial_state).
@@ -68,13 +72,21 @@ STEPS: dict[str, Step] = {s.name: s for s in [
          needs=_s("breaks", "business_date", "caller"),
          produces=_s("book_resolutions", "as_of"),
          can_escalate=True,
-         required_because="every later step works on resolved books"),
+         required_because="every later step works on resolved books",
+         escalates_when=(
+             ("UNRESOLVED_BOOK", "no book matches"),
+             ("AMBIGUOUS_BOOK", "more than one matches; never auto-picked"),
+         )),
     Step("gather", gather, "Gather evidence", "Deltas, cause checks, lineage and priors",
          needs=_s("as_of", "book_resolutions", "breaks", "caller", "evidence_gaps",
                   "investigation_session_id", "master_book", "reconciliation_id"),
          produces=_s("deltas", "candidates", "priors", "lineage", "evidence_gaps"),
          can_escalate=True,
-         required_because="there is nothing to explain without the deltas and checks"),
+         required_because="there is nothing to explain without the deltas and checks",
+         escalates_when=(
+             ("DELTA_UNAVAILABLE", "a break leg is missing, so no delta to explain"),
+             ("CHECKS_UNAVAILABLE", "the cause checks did not all run"),
+         )),
     Step("group", group, "Group patterns", "Collapse breaks into pattern groups",
          needs=_s("breaks", "candidates", "investigation_session_id", "priors", "run_id"),
          produces=_s("pattern_groups", "reasons", "group_meta", "ungrounded_breaks"),
@@ -134,6 +146,7 @@ def catalogue() -> list[dict]:
             "needs": sorted(s.needs),
             "produces": sorted(s.produces),
             "must_follow": sorted(s.must_follow),
+            "escalates_when": [{"code": c, "when": w} for c, w in s.escalates_when],
         }
         for s in STEPS.values()
     ]

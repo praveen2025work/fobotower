@@ -14,6 +14,17 @@ DO_NOT_POST = "DO_NOT_POST"
 ESCALATE = "ESCALATE"
 CORRECT_AND_REPOST = "CORRECT_AND_REPOST"
 
+# (rule id, the rule in plain words), in the order guard_verdict() applies
+# them below. Kept next to the code it describes so the Workflow tab cannot
+# show an order the function does not actually use.
+GUARD_RULES: tuple[tuple[str, str], ...] = (
+    ("§8", "A rejected legitimate posting is corrected and re-posted, not judged"),
+    ("R6", "No evidenced root cause: escalate, do not post"),
+    ("R2", "A Front Office cause never posts a FOBO adjustment: do not post"),
+    ("none", "No verdict proposed at all is an escalation, never an implicit POST"),
+    ("P1", "A POST that depends on an unset policy threshold requires controller confirmation"),
+)
+
 
 @dataclass(frozen=True)
 class GuardedVerdict:

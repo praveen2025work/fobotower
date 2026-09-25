@@ -59,6 +59,18 @@ PATTERN_REAPPLICATION = "reapplication"
 PATTERN_POSTING_FAILURE = "posting_failure"
 PATTERN_SINGLE_CAUSE = "single_cause"
 
+# (pattern, one-line meaning), in the order classify() tries them below. Kept
+# next to the code it describes so the Workflow tab cannot show an order the
+# function does not actually use.
+PATTERN_ORDER: tuple[tuple[str, str], ...] = (
+    (PATTERN_POSTING_FAILURE, "MOTIF rejected a posting that should have occurred"),
+    (PATTERN_MISSING_SIDE, "One side of the break is absent entirely"),
+    (PATTERN_MISSING_PRICE, "Price is zero and no corporate action is confirmed"),
+    (PATTERN_SIDE_DOUBLE, "The same side is duplicated"),
+    (PATTERN_REAPPLICATION, "Today's break matches a prior-day adjustment rolling forward"),
+    (PATTERN_SINGLE_CAUSE, "Exactly one cause check fired"),
+)
+
 
 @dataclass
 class Determination:

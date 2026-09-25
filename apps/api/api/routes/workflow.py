@@ -15,6 +15,7 @@ from app.db.base import get_session
 from app.workflow import versions
 from app.workflow.config import REASONERS, dump_config, settings_schema
 from app.workflow.diff import diff, rebase
+from app.workflow.graph_view import graph_view
 from app.workflow.registry import catalogue
 from app.workflow.yaml_io import YamlError, parse_yaml, to_yaml
 
@@ -67,6 +68,17 @@ async def overview() -> dict:
     if callers:
         body["dev_callers"] = callers
     return body
+
+
+@router.get("/graph")
+async def graph(version: int | None = None) -> dict:
+    """The compiled graph and its decision logic, for a version (default:
+    active). Everything the console shows about routing comes from here."""
+    async with get_session() as s:
+        pinned = await (versions.pinned(s, version) if version is not None
+                        else versions.active(s))
+        body = graph_view(pinned.config, pinned.number)
+    return body | {"reasoner_override": _overrides().get("reasoner")}
 
 
 @router.get("/versions")

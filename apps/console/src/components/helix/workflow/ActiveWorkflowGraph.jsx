@@ -1,8 +1,23 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { FlowGraph } from './FlowGraph';
+import dynamic from 'next/dynamic';
 import { WorkflowGraph } from './WorkflowGraph';
+
+// React Flow (and dagre) are only needed for the wide-container diagram —
+// the narrow view below never touches them. Loading it lazily keeps that
+// bundle out of the initial page load for every visit that never sees the
+// diagram (a narrow viewport, or a reader who never opens the Workflow
+// tab). ssr: false because the diagram is interactive-only client code
+// with no server-renderable output of its own.
+const FlowGraph = dynamic(() => import('./FlowGraph').then((mod) => mod.FlowGraph), {
+  ssr: false,
+  loading: () => (
+    <p className="text-[12px]" style={{ color: 'var(--text-muted)' }}>
+      Loading the diagram…
+    </p>
+  ),
+});
 
 // Below this container width, the React Flow diagram doesn't have room to
 // show more than a sliver of the chain even at its zoom floor — the

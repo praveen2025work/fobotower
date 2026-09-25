@@ -67,9 +67,13 @@ const renderAt = (width, extra = {}) => {
 };
 
 describe('ActiveWorkflowGraph', () => {
-  it('renders the React Flow diagram when the container is wide', () => {
+  it('renders the React Flow diagram when the container is wide (lazy-loaded — shows a loading line first, then the diagram)', async () => {
     renderAt(900);
-    expect(screen.getByRole('button', { name: 'Open Apply playbook' })).toBeInTheDocument();
+    // FlowGraph is loaded via next/dynamic (kept out of the initial bundle
+    // for containers/visits that never need it), so it isn't there yet on
+    // the very first render.
+    expect(screen.getByText('Loading the diagram…')).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Open Apply playbook' })).toBeInTheDocument();
     expect(screen.queryByText(/Open on a wider screen/)).toBeNull();
   });
 
@@ -81,9 +85,9 @@ describe('ActiveWorkflowGraph', () => {
     );
   });
 
-  it('exactly at the breakpoint counts as wide (the diagram, not the cards)', () => {
+  it('exactly at the breakpoint counts as wide (the diagram, not the cards)', async () => {
     renderAt(640);
-    expect(screen.getByRole('button', { name: 'Open Apply playbook' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Open Apply playbook' })).toBeInTheDocument();
   });
 
   it('still opens the step panel by id when a card is tapped in the narrow view', async () => {

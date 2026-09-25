@@ -23,18 +23,18 @@ export function StepNode({ id, data }) {
         className="w-full h-full rounded-xl px-3 py-2 flex flex-col gap-1 text-left"
         style={{ ...nodeBase, border: '1px solid var(--border)', pointerEvents: 'auto', cursor: 'pointer' }}
       >
-        <div className="text-[14px] font-semibold truncate">{data.label}</div>
-        <div className="text-[11px] truncate" style={{ ...mono, color: 'var(--text-muted)' }}>
+        <div className="text-[14px] font-semibold truncate shrink-0">{data.label}</div>
+        <div className="text-[11px] truncate shrink-0" style={{ ...mono, color: 'var(--text-muted)' }}>
           {id}
         </div>
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-wrap gap-1 shrink-0">
           {decidedByChips(data.decidedBy, data.reasoner).map((c) => (
             <Chip key={c.label} {...c} size="11px" />
           ))}
         </div>
         {data.pausedBefore && (
           <div
-            className="text-[11px] font-semibold flex items-center gap-1"
+            className="text-[11px] font-semibold flex items-center gap-1 shrink-0"
             style={{ color: 'var(--clr-amber)' }}
           >
             ⏸ Pauses before
@@ -42,7 +42,7 @@ export function StepNode({ id, data }) {
         )}
         {data.canEscalate && (
           <div
-            className="text-[11px] flex items-center gap-1"
+            className="text-[11px] flex items-center gap-1 shrink-0"
             style={{ color: 'var(--clr-red)' }}
           >
             <CornerDownRight size={11} /> can escalate
@@ -76,12 +76,16 @@ export function EscalateNode({ id, data }) {
           cursor: 'pointer',
         }}
       >
-        <div className="text-[14px] font-semibold">{data.label}</div>
-        <div className="text-[11px] mb-0.5" style={{ color: 'var(--text-secondary)' }}>
+        <div className="text-[14px] font-semibold shrink-0">{data.label}</div>
+        <div className="text-[11px] mb-0.5 shrink-0" style={{ color: 'var(--text-secondary)' }}>
           Escalate → end
         </div>
         {(data.reasonGroups || []).map((g) => (
-          <div key={g.source} className="text-[10.5px] leading-snug" style={{ color: 'var(--clr-red)' }}>
+          <div
+            key={g.source}
+            className="text-[10.5px] leading-snug shrink-0"
+            style={{ color: 'var(--clr-red)' }}
+          >
             <span className="font-semibold">{g.label}:</span>{' '}
             <span style={mono}>{g.reasons.join(', ')}</span>
           </div>

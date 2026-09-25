@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { fetchGraph, fetchVersions, fetchWorkflow } from '../data/workflowApi';
 import { ActiveStrip } from './ActiveStrip';
+import { ActiveWorkflowGraph } from './ActiveWorkflowGraph';
 import { DraftEditor } from './DraftEditor';
-import { FlowGraph } from './FlowGraph';
 import { StepPanel } from './StepPanel';
 import { VersionDetail } from './VersionDetail';
 import { VersionList } from './VersionList';
@@ -153,27 +153,14 @@ export function WorkflowView({ callerKey }) {
             </Card>
           ) : (
             <Card title={`Active workflow · v${overview.active.number}`}>
-              {graph.state === 'loading' && (
-                <p className="text-[12px]" style={{ color: 'var(--text-muted)' }}>
-                  Loading the diagram…
-                </p>
-              )}
-              {graph.state === 'error' && (
-                <div className="flex items-center gap-3 text-[12px]" style={{ color: 'var(--clr-red)' }}>
-                  {graph.error}
-                  <button
-                    type="button"
-                    onClick={() => loadGraph(overview.active.number)}
-                    className="px-3 py-1 rounded-full"
-                    style={{ border: '1px solid var(--border)' }}
-                  >
-                    Retry
-                  </button>
-                </div>
-              )}
-              {graph.state === 'ready' && (
-                <FlowGraph graph={graph.graph} reasoner={reasoner} onSelect={setPanel} />
-              )}
+              <ActiveWorkflowGraph
+                config={overview.active.config}
+                catalogue={overview.steps}
+                reasoner={reasoner}
+                graphState={graph}
+                onRetryGraph={() => loadGraph(overview.active.number)}
+                onSelect={setPanel}
+              />
             </Card>
           )}
         </div>

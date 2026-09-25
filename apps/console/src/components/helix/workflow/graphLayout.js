@@ -6,11 +6,29 @@
 import dagre from '@dagrejs/dagre';
 import { MarkerType, Position } from '@xyflow/react';
 
-const STEP_SIZE = { width: 260, height: 88 };
+// A step node's height is its content's: padding, title, mono id, chips
+// row, plus one more line for each badge it shows (paused / can-escalate —
+// a future step could in principle carry both). Measured against the real
+// rendered node (Chrome, the app's own fonts) and rounded up with a small
+// safety margin, since a fixed guess is what let the extra badge line
+// overlap the id below it.
+const STEP_WIDTH = 260;
+const STEP_BASE_HEIGHT = 84; // padding + title + id + chips row
+const STEP_BADGE_LINE_HEIGHT = 20; // each of paused-before / can-escalate
+
 const START_END_SIZE = { width: 96, height: 40 };
+
+// The Escalate node's height likewise has to fit what it actually shows:
+// a title, a subtitle, and one wrapped block of text per source step. Line
+// count per block is estimated from its character length (mono + semibold
+// mixed text, so this is deliberately a little conservative) rather than
+// assumed to always be one line — that's what let CHECKS_UNAVAILABLE spill
+// below the box.
 const ESCALATE_WIDTH = 260;
-const ESCALATE_BASE_HEIGHT = 54;
-const ESCALATE_ROW_HEIGHT = 28;
+const ESCALATE_HEADER_HEIGHT = 58; // padding + title + gap + subtitle
+const ESCALATE_GROUP_GAP = 4;
+const ESCALATE_LINE_HEIGHT = 15;
+const ESCALATE_CHARS_PER_LINE = 34;
 
 const CANVAS_PADDING = 56;
 const MIN_CANVAS_HEIGHT = 420;
@@ -19,16 +37,23 @@ const MAX_CANVAS_HEIGHT = 1400;
 const WAITS_LABEL = '⏸ waits for a controller';
 const ESCALATE_LABEL = 'if escalated';
 
-const escalateSize = (groupCount) => ({
-  width: ESCALATE_WIDTH,
-  height: ESCALATE_BASE_HEIGHT + Math.max(groupCount, 1) * ESCALATE_ROW_HEIGHT,
-});
+const stepSize = ({ pausedBefore, canEscalate }) => {
+  const badgeLines = (pausedBefore ? 1 : 0) + (canEscalate ? 1 : 0);
+  return { width: STEP_WIDTH, height: STEP_BASE_HEIGHT + badgeLines * STEP_BADGE_LINE_HEIGHT };
+};
 
-function sizeFor(kind, escalateGroupCount) {
-  if (kind === 'step') return STEP_SIZE;
-  if (kind === 'escalate') return escalateSize(escalateGroupCount);
-  return START_END_SIZE;
-}
+const groupLineCount = (group) => {
+  const text = `${group.label}: ${group.reasons.join(', ')}`;
+  return Math.max(1, Math.ceil(text.length / ESCALATE_CHARS_PER_LINE));
+};
+
+const escalateSize = (groups) => {
+  const groupsHeight = groups.reduce(
+    (sum, g) => sum + ESCALATE_GROUP_GAP + groupLineCount(g) * ESCALATE_LINE_HEIGHT,
+    0,
+  );
+  return { width: ESCALATE_WIDTH, height: ESCALATE_HEADER_HEIGHT + groupsHeight };
+};
 
 /** The reason codes the Escalate node ends up with, grouped by the step that
  *  raised them — read straight off the graph's own edges, never typed in. */
@@ -69,11 +94,23 @@ export function toFlow(graph) {
   );
   const groups = reasonGroups(graph);
 
+  // Every node's own content decides its size — not a single fixed guess
+  // per kind — computed once up front so dagre's layout and the rendered
+  // node agree on exactly the same box.
+  const sizeOf = (n) => {
+    if (n.kind === 'step') {
+      return stepSize({ pausedBefore: n.paused_before, canEscalate: escalateSources.has(n.id) });
+    }
+    if (n.kind === 'escalate') return escalateSize(groups);
+    return START_END_SIZE;
+  };
+  const sizeById = new Map(graph.nodes.map((n) => [n.id, sizeOf(n)]));
+
   const g = new dagre.graphlib.Graph();
-  g.setGraph({ rankdir: 'TB', nodesep: 110, ranksep: 52, marginx: 24, marginy: 20 });
+  g.setGraph({ rankdir: 'TB', nodesep: 110, ranksep: 52, marginx: 24, marginy: 20, align: 'UL' });
   g.setDefaultEdgeLabel(() => ({}));
   for (const n of graph.nodes) {
-    const { width, height } = sizeFor(n.kind, groups.length);
+    const { width, height } = sizeById.get(n.id);
     g.setNode(n.id, { width, height });
   }
   for (const e of graph.edges) {
@@ -82,7 +119,7 @@ export function toFlow(graph) {
   dagre.layout(g);
 
   const nodes = graph.nodes.map((n) => {
-    const { width, height } = sizeFor(n.kind, groups.length);
+    const { width, height } = sizeById.get(n.id);
     const pos = g.node(n.id);
     const canEscalate = escalateSources.has(n.id);
     return {

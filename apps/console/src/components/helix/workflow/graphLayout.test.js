@@ -87,6 +87,48 @@ describe('toFlow', () => {
     expect(fixture).toEqual(before);
   });
 
+  describe('node sizes', () => {
+    it('gives a step with a badge line (paused-before or can-escalate) more height than one without', () => {
+      const { nodes } = toFlow(fixture);
+      const byId = Object.fromEntries(nodes.map((n) => [n.id, n]));
+      // 'resolve' can escalate (a badge line); 'group' has neither.
+      expect(byId.resolve.height).toBeGreaterThan(byId.group.height);
+      // 'review' pauses before it (a badge line); 'group' has neither.
+      expect(byId.review.height).toBeGreaterThan(byId.group.height);
+      // Tall enough for the real content (title + id + chips + badge),
+      // not just "taller than the baseline" — this is what let the badge
+      // line overlap the id above it.
+      expect(byId.resolve.height).toBeGreaterThanOrEqual(96);
+      expect(byId.group.height).toBeGreaterThanOrEqual(78);
+    });
+
+    it("grows the Escalate node's height with the number of reason lines it must show", () => {
+      const { nodes } = toFlow(fixture);
+      const twoGroups = nodes.find((n) => n.id === 'escalate');
+
+      // Drop the 'gather' escalation edge: only one source step left.
+      const oneGroupGraph = {
+        ...fixture,
+        edges: fixture.edges.filter(
+          (e) => !(e.conditional && e.target === 'escalate' && e.source === 'gather'),
+        ),
+      };
+      const oneGroup = toFlow(oneGroupGraph).nodes.find((n) => n.id === 'escalate');
+
+      expect(twoGroups.height).toBeGreaterThan(oneGroup.height);
+      // Tall enough for both groups' wrapped text (each wraps to 2 lines
+      // at this width) — real content, not just "taller than one group".
+      expect(twoGroups.height).toBeGreaterThanOrEqual(120);
+    });
+
+    it('keeps the main chain in a single straight column', () => {
+      const { nodes } = toFlow(fixture);
+      const chain = ['resolve', 'gather', 'group', 'reason', 'rank', 'draft', 'validate', 'review', 'record'];
+      const xs = new Set(chain.map((id) => nodes.find((n) => n.id === id).position.x));
+      expect(xs.size).toBe(1);
+    });
+  });
+
   describe('canvas height', () => {
     it('fits the whole real graph at close to zoom 1, never below the 0.85 floor', () => {
       const { nodes, height } = toFlow(fixture);

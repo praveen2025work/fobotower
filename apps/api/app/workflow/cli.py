@@ -4,8 +4,9 @@
     python -m app.workflow.cli show       print the steps, pauses and settings
 
 Run from apps/api. Point FOBO_WORKFLOW_PATH at a copy to try an edit without
-changing the checked-in file. Restart the API after editing: the workflow is
-read once per process.
+changing the checked-in file. The live workflow is served from the database
+(see app/workflow/versions.py), not this file — this CLI only validates or
+shows the file itself, which is useful before turning an edit into a draft.
 """
 
 import sys

@@ -1,9 +1,12 @@
 """Workflow configuration: which steps run, in what order, with what settings.
 
-Loaded from config/workflow/fobo-investigation.yaml and validated against the
-step registry before any run starts. The validator exists so the order can be
-edited safely — a step placed before the step whose output it needs, or a
-safety step removed, is refused with a message naming the problem.
+Read from config/workflow/fobo-investigation.yaml and validated against the
+step registry before any run starts. That file seeds version 1 in the
+database (see app/workflow/versions.py) and is what settings() falls back to
+outside a run; an actual investigation runs whichever version is active in
+the database, not the file. The validator exists so the order can be edited
+safely — a step placed before the step whose output it needs, or a safety
+step removed, is refused with a message naming the problem.
 """
 
 import os

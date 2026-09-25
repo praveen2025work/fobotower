@@ -49,7 +49,7 @@ that added workflow versioning.
 cd apps/api && .venv/bin/python -m pytest -v
 ```
 
-80 tests. They are re-runnable: `tests/conftest.py` truncates every table
+374 tests. They are re-runnable: `tests/conftest.py` truncates every table
 before each test.
 
 ### 4. See an investigation run
@@ -115,7 +115,7 @@ docker compose exec postgres psql -U fobo -d fobo -c "TRUNCATE session_message, 
 cd apps/console && npm test
 ```
 
-25 tests. No database needed — components are tested against props.
+127 tests. No database needed — components are tested against props.
 
 ### 7. End-to-end test
 

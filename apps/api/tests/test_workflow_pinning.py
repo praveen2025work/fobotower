@@ -4,6 +4,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select, update
 
+from api.deps import checkpointer
 from api.main import create_app
 from app.contracts.models import Caller
 from app.db.base import get_session
@@ -18,7 +19,7 @@ from app.workflow.config import (
     settings,
     use_workflow,
 )
-from app.workflow.graph import pinned_for_session
+from app.workflow.graph import graph_for_session, pinned_for_session
 
 PRAVEEN = Caller(staff_id="praveen", roles=["FO", "PC"], entity_scope=["LE-APAC-01"], region="APAC")
 ASHA = Caller(staff_id="asha", roles=["PC"], entity_scope=["LE-APAC-01"], region="APAC")
@@ -80,6 +81,30 @@ async def test_the_run_records_its_version_on_the_session_row(client):
     async with get_session() as s:
         row = await s.get(InvestigationSession, "sess-r-1055")
     assert row.workflow_version == 1
+
+
+async def test_a_second_run_on_a_thread_re_pins_the_row_to_its_own_version(client):
+    """The row records the version of the run that LAST started on this
+    thread — not just the first one ever. Otherwise a re-run after an
+    approval leaves the row and the checkpoints that run wrote disagreeing
+    about which version produced them, and every later reader rebuilds the
+    wrong graph over them."""
+    sid = "sess-r-1055"
+    await client.post(f"/api/sessions/{sid}/investigate")
+    await _activate_v2_without_rank_and_a_30_day_lookback()
+    await client.post(f"/api/sessions/{sid}/investigate")
+
+    async with get_session() as s:
+        row = await s.get(InvestigationSession, sid)
+    assert row.workflow_version == 2
+
+    async with get_session() as s, checkpointer() as cp:
+        graph, _ = await graph_for_session(cp, s, sid)
+        state = await graph.aget_state({"configurable": {"thread_id": sid}})
+    assert state.values["workflow_version"] == 2
+
+    trace = await _trace(client, "R-1055")
+    assert trace["workflow_version"] == 2
 
 
 async def test_a_run_from_before_versioning_is_read_as_v1(client):

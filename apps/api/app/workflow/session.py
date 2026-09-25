@@ -18,9 +18,12 @@ async def ensure_investigation_session(session, state: InvestigationState) -> No
     investigates at once in dev (React StrictMode), and a check-then-act
     lets both see no row and both insert. The primary key is the authority.
 
-    A row created earlier without a workflow version (a recorded session, or
-    a run from before versioning) takes the version of the run starting now.
-    Once set, a run's version never changes.
+    The row records the version of the run that last started on this
+    thread: a run starting now always takes it, whether the row is new, is
+    from before versioning, or was last written by an earlier run on an
+    older version. It does not change again while that run is paused —
+    resuming it never calls this — only a new run (a fresh POST /investigate
+    on the thread) does.
     """
     version = state.get("workflow_version")
     stmt = (
@@ -37,7 +40,6 @@ async def ensure_investigation_session(session, state: InvestigationState) -> No
         .on_conflict_do_update(
             index_elements=["investigation_session_id"],
             set_={"workflow_version": version},
-            where=InvestigationSession.workflow_version.is_(None),
         )
     )
     await session.execute(stmt)

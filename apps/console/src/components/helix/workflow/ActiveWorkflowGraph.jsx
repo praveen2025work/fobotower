@@ -45,6 +45,27 @@ function useContainerWidth() {
   return [ref, width];
 }
 
+/** The graph fetch's own failure, with a retry — shown in both the wide
+ *  diagram and the narrow card view. Even in the narrow view, where the
+ *  stacked cards render fine from `config`/`catalogue` alone (they don't
+ *  need the fetched graph), a step's "How it decides" panel does need it,
+ *  so a failed fetch still needs surfacing there, not silently dropped. */
+function GraphError({ error, onRetry }) {
+  return (
+    <div className="flex items-center gap-3 text-[12px] mb-2" style={{ color: 'var(--clr-red)' }}>
+      {error}
+      <button
+        type="button"
+        onClick={onRetry}
+        className="px-3 py-1 rounded-full"
+        style={{ border: '1px solid var(--border)' }}
+      >
+        Retry
+      </button>
+    </div>
+  );
+}
+
 /** The "Active workflow" card's contents. Wide enough (≥`NARROW_BREAKPOINT`)
  *  and it's the interactive React Flow diagram; narrower and it's the same
  *  stacked card view the tab always used, since the diagram has nowhere to
@@ -61,6 +82,9 @@ export function ActiveWorkflowGraph({ config, catalogue, reasoner, graphState, o
           <p className="text-[11px] mb-2" style={{ color: 'var(--text-muted)' }}>
             Open on a wider screen to see the diagram.
           </p>
+          {graphState.state === 'error' && (
+            <GraphError error={graphState.error} onRetry={onRetryGraph} />
+          )}
           <WorkflowGraph config={config} catalogue={catalogue} reasoner={reasoner} onSelect={onSelect} />
         </>
       ) : (
@@ -71,17 +95,7 @@ export function ActiveWorkflowGraph({ config, catalogue, reasoner, graphState, o
             </p>
           )}
           {graphState.state === 'error' && (
-            <div className="flex items-center gap-3 text-[12px]" style={{ color: 'var(--clr-red)' }}>
-              {graphState.error}
-              <button
-                type="button"
-                onClick={onRetryGraph}
-                className="px-3 py-1 rounded-full"
-                style={{ border: '1px solid var(--border)' }}
-              >
-                Retry
-              </button>
-            </div>
+            <GraphError error={graphState.error} onRetry={onRetryGraph} />
           )}
           {graphState.state === 'ready' && (
             <FlowGraph graph={graphState.graph} reasoner={reasoner} onSelect={onSelect} />

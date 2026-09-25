@@ -101,9 +101,20 @@ describe('ActiveWorkflowGraph', () => {
     expect(screen.getByText('Loading the diagram…')).toBeInTheDocument();
   });
 
-  it('shows an error with retry for the diagram when the graph failed to load (wide only)', async () => {
+  it('shows an error with retry for the diagram when the graph failed to load (wide)', async () => {
     const onRetryGraph = vi.fn();
     renderAt(900, { graphState: { state: 'error', error: 'boom' }, onRetryGraph });
+    expect(screen.getByText('boom')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(onRetryGraph).toHaveBeenCalled();
+  });
+
+  it('shows an error with retry for the diagram when the graph failed to load (narrow too — the "How it decides" panels would be missing data)', async () => {
+    const onRetryGraph = vi.fn();
+    renderAt(375, { graphState: { state: 'error', error: 'boom' }, onRetryGraph });
+    // The stacked card view still works without graph data...
+    expect(screen.getAllByTestId('step-card').length).toBeGreaterThan(0);
+    // ...but the failure to load it isn't silently dropped.
     expect(screen.getByText('boom')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
     expect(onRetryGraph).toHaveBeenCalled();

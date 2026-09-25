@@ -44,7 +44,6 @@ const MAX_CANVAS_HEIGHT = 1400;
 const DEFAULT_MIN_ZOOM = 0.85;
 
 const WAITS_LABEL = '⏸ waits for a controller';
-const ESCALATE_LABEL = 'if escalated';
 
 const stepSize = ({ pausedBefore, canEscalate }) => {
   const badgeLines = (pausedBefore ? 1 : 0) + (canEscalate ? 1 : 0);
@@ -88,7 +87,7 @@ function edgeLook(edge, pausedIds) {
     return { color: 'var(--clr-amber)', dashed: true, label: WAITS_LABEL };
   }
   if (edge.conditional && edge.target === 'escalate') {
-    return { color: 'var(--clr-red)', dashed: true, label: ESCALATE_LABEL };
+    return { color: 'var(--clr-red)', dashed: true, label: edge.label };
   }
   if (edge.conditional) {
     return { color: 'var(--text-muted)', dashed: false, label: edge.label || 'otherwise' };

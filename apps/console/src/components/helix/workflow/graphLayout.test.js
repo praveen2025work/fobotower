@@ -29,6 +29,23 @@ describe('toFlow', () => {
     expect(edge.label).toBe('if escalated');
   });
 
+  it("uses the API's own label for an escalate edge, not a hardcoded string", () => {
+    // graph_view.py sets every conditional-into-escalate edge's label to
+    // "if escalated" today, but that's the server's call, not this
+    // module's — a graph whose edge already carries a different label
+    // (however unlikely in practice) must be rendered with that label,
+    // proving graphLayout.js reads it rather than asserting its own.
+    const graph = {
+      ...fixture,
+      edges: fixture.edges.map((e) =>
+        e.source === 'resolve' && e.target === 'escalate' ? { ...e, label: 'escalated!' } : e,
+      ),
+    };
+    const { edges } = toFlow(graph);
+    const edge = edges.find((e) => e.source === 'resolve' && e.target === 'escalate');
+    expect(edge.label).toBe('escalated!');
+  });
+
   it("puts the reason codes on the Escalate node instead, grouped by source step", () => {
     const { nodes } = toFlow(fixture);
     const escalate = nodes.find((n) => n.id === 'escalate');

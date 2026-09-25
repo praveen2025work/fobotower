@@ -1,0 +1,21 @@
+{
+  "name": "FOBO Investigation Console",
+  "user": "ubuntu",
+  "install": "bash .cursor/install.sh",
+  "start": "bash .cursor/start.sh",
+  "terminals": [
+    {
+      "name": "api",
+      "command": "cd apps/api && .venv/bin/uvicorn api.main:app --host 0.0.0.0 --port 8100 --reload"
+    },
+    {
+      "name": "console",
+      "command": "cd apps/console && npm run dev"
+    }
+  ],
+  "ports": [
+    { "name": "console", "port": 3100 },
+    { "name": "api", "port": 8100 },
+    { "name": "postgres", "port": 5433 }
+  ]
+}

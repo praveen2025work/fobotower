@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -35,6 +35,18 @@ async function renderLoaded(data = served()) {
   api.fetchBoard.mockResolvedValue(data);
   render(<HelixApp />);
   await screen.findByText('FOBO Controller');
+  // R-1055 is mid-pipeline at "signoff", so the page settles in two steps,
+  // each of which remounts elements a test would click or type into:
+  // 1. RecDetail's mount effect retargets focus from the default "session"
+  //    pane to "adjustments"; the session pane's wrapper is keyed on the
+  //    focus target, so the composer remounts.
+  // 2. One animation frame later AdjustmentsPanel flashes the first group
+  //    with pending rows; that group is keyed on the flash, so its rows —
+  //    and their Approve buttons — remount.
+  // A click or keystroke before both land hits an element React is about
+  // to discard, so every test starts from the settled page.
+  await screen.findByRole('tab', { name: /Drafted adjustments/, selected: true });
+  await waitFor(() => expect(document.querySelector('.hx-flash')).not.toBeNull());
   return data;
 }
 
@@ -126,13 +138,6 @@ describe('HelixApp', () => {
       },
     });
     await renderLoaded();
-    // R-1055 is mid-pipeline at "signoff", so RecDetail's mount effect
-    // retargets focus from the default "session" pane to "adjustments" —
-    // and, because that pane's wrapper is keyed on the focus target, it
-    // remounts the session composer underneath it. Typing before that
-    // retarget settles lands in a textarea React is about to discard,
-    // losing every keystroke; wait for the retarget to settle first.
-    await screen.findByRole('tab', { name: /Drafted adjustments/, selected: true });
     const box = screen.getByPlaceholderText(/Ask about Prime/);
     await userEvent.type(box, 'Explain B-8{Enter}');
     expect(api.askSession).toHaveBeenCalledWith('R-1055', 'Explain B-8');

@@ -20,6 +20,7 @@ warnings.filterwarnings("ignore")
 
 from httpx import ASGITransport, AsyncClient  # noqa: E402
 
+from api.deps import setup_checkpointer  # noqa: E402
 from api.main import create_app  # noqa: E402
 
 OPEN_RECS = ["R-1055", "R-2031", "R-2048"]
@@ -77,6 +78,10 @@ def _report(case: dict) -> None:
 
 async def main(recs: list[str]) -> None:
     print(f"Reasoner: {os.getenv('FOBO_REASONER', 'none')}  (none = no LLM is called)")
+    # ASGITransport never runs the app's lifespan, so setup_checkpointer()
+    # would otherwise never run — and running it lazily inside the first
+    # request deadlocks on a fresh database (see api/deps.py::setup_checkpointer).
+    await setup_checkpointer()
     app = create_app()
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://local",
                            timeout=180) as client:

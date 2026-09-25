@@ -207,6 +207,38 @@ describe('VersionDetail', () => {
       expect(api.fetchVersionYaml).toHaveBeenCalledTimes(2);
     });
 
+    it('gives each tab aria-controls pointing at its role="tabpanel"', async () => {
+      renderDetail();
+      const changesTab = await screen.findByRole('tab', { name: 'Changes' });
+      const yamlTab = screen.getByRole('tab', { name: 'YAML' });
+      const changesPanelId = changesTab.getAttribute('aria-controls');
+      expect(changesPanelId).toBeTruthy();
+      expect(yamlTab.getAttribute('aria-controls')).toBeTruthy();
+      expect(yamlTab.getAttribute('aria-controls')).not.toBe(changesPanelId);
+      const panel = document.getElementById(changesPanelId);
+      expect(panel).toHaveAttribute('role', 'tabpanel');
+      expect(panel).toHaveTextContent('gather.priors_lookback_days: 180 → 90');
+    });
+
+    it('marks the selected Full/Diff toggle with aria-pressed', async () => {
+      api.fetchVersionYaml.mockImplementation((n) => Promise.resolve(n === 4 ? V4_YAML : V3_YAML));
+      renderDetail();
+      await userEvent.click(await screen.findByRole('tab', { name: 'YAML' }));
+      await screen.findByText('fobo-investigation');
+      expect(screen.getByRole('button', { name: 'Full YAML' })).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByRole('button', { name: 'Diff vs active v3' })).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      );
+      await userEvent.click(screen.getByRole('button', { name: 'Diff vs active v3' }));
+      await screen.findByText('version: 4');
+      expect(screen.getByRole('button', { name: 'Full YAML' })).toHaveAttribute('aria-pressed', 'false');
+      expect(screen.getByRole('button', { name: 'Diff vs active v3' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+    });
+
     it('returns to the Changes tab when the reviewed number changes', async () => {
       api.fetchVersionYaml.mockResolvedValue(V4_YAML);
       const v6 = draft({ number: 6, active_number: 6, based_on: 6 });

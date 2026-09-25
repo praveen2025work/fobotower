@@ -13,12 +13,19 @@ const nodeBase = {
 /** A `step` node: the label, its mono id, who decides it, and markers for a
  *  pause or an escalation edge leaving it. */
 export function StepNode({ id, data }) {
+  // aria-label replaces the button's accessible NAME entirely — a screen
+  // reader on "Open <label>" would otherwise never hear the decided-by
+  // chips, pause or escalate markers a sighted user sees in the node body.
+  // aria-describedby points at that same visible content instead of
+  // duplicating it into hidden text.
+  const descId = `${id}-desc`;
   return (
     <>
       <Handle type="target" position={Position.Top} id="top" />
       <button
         type="button"
         aria-label={`Open ${data.label}`}
+        aria-describedby={descId}
         onClick={() => data.onSelect?.(id)}
         className="w-full h-full rounded-xl px-3 py-2 flex flex-col gap-1 text-left"
         style={{ ...nodeBase, border: '1px solid var(--border)', pointerEvents: 'auto', cursor: 'pointer' }}
@@ -27,27 +34,29 @@ export function StepNode({ id, data }) {
         <div className="text-[11px] truncate shrink-0" style={{ ...mono, color: 'var(--text-muted)' }}>
           {id}
         </div>
-        <div className="flex flex-wrap gap-1 shrink-0">
-          {decidedByChips(data.decidedBy, data.reasoner).map((c) => (
-            <Chip key={c.label} {...c} size="11px" />
-          ))}
+        <div id={descId} className="contents">
+          <div className="flex flex-wrap gap-1 shrink-0">
+            {decidedByChips(data.decidedBy, data.reasoner).map((c) => (
+              <Chip key={c.label} {...c} size="11px" />
+            ))}
+          </div>
+          {data.pausedBefore && (
+            <div
+              className="text-[11px] font-semibold flex items-center gap-1 shrink-0"
+              style={{ color: 'var(--clr-amber)' }}
+            >
+              ⏸ Pauses before
+            </div>
+          )}
+          {data.canEscalate && (
+            <div
+              className="text-[11px] flex items-center gap-1 shrink-0"
+              style={{ color: 'var(--clr-red)' }}
+            >
+              <CornerDownRight size={11} /> can escalate
+            </div>
+          )}
         </div>
-        {data.pausedBefore && (
-          <div
-            className="text-[11px] font-semibold flex items-center gap-1 shrink-0"
-            style={{ color: 'var(--clr-amber)' }}
-          >
-            ⏸ Pauses before
-          </div>
-        )}
-        {data.canEscalate && (
-          <div
-            className="text-[11px] flex items-center gap-1 shrink-0"
-            style={{ color: 'var(--clr-red)' }}
-          >
-            <CornerDownRight size={11} /> can escalate
-          </div>
-        )}
       </button>
       <Handle type="source" position={Position.Bottom} id="bottom" />
       {data.canEscalate && <Handle type="source" position={Position.Right} id="right" />}
@@ -61,6 +70,10 @@ export function StepNode({ id, data }) {
  *  graph's own edges). */
 export function EscalateNode({ id, data }) {
   const groups = data.reasonGroups || [];
+  // Same reasoning as StepNode: aria-label replaces the accessible name, so
+  // the reason codes visible in the node body need aria-describedby to
+  // reach a screen reader at all.
+  const descId = `${id}-desc`;
   return (
     <>
       {/* One target handle per source step, spread down the left edge in
@@ -80,6 +93,7 @@ export function EscalateNode({ id, data }) {
       <button
         type="button"
         aria-label={`Open ${data.label}`}
+        aria-describedby={descId}
         onClick={() => data.onSelect?.(id)}
         className="w-full h-full rounded-xl px-3 py-2 flex flex-col gap-1 text-left"
         style={{
@@ -91,19 +105,21 @@ export function EscalateNode({ id, data }) {
         }}
       >
         <div className="text-[14px] font-semibold shrink-0">{data.label}</div>
-        <div className="text-[11px] mb-0.5 shrink-0" style={{ color: 'var(--text-secondary)' }}>
-          Escalate → end
-        </div>
-        {(data.reasonGroups || []).map((g) => (
-          <div
-            key={g.source}
-            className="text-[10.5px] leading-snug shrink-0"
-            style={{ color: 'var(--clr-red)' }}
-          >
-            <span className="font-semibold">{g.label}:</span>{' '}
-            <span style={mono}>{g.reasons.join(', ')}</span>
+        <div id={descId} className="contents">
+          <div className="text-[11px] mb-0.5 shrink-0" style={{ color: 'var(--text-secondary)' }}>
+            Escalate → end
           </div>
-        ))}
+          {groups.map((g) => (
+            <div
+              key={g.source}
+              className="text-[10.5px] leading-snug shrink-0"
+              style={{ color: 'var(--clr-red)' }}
+            >
+              <span className="font-semibold">{g.label}:</span>{' '}
+              <span style={mono}>{g.reasons.join(', ')}</span>
+            </div>
+          ))}
+        </div>
       </button>
       <Handle type="source" position={Position.Bottom} id="bottom" />
     </>

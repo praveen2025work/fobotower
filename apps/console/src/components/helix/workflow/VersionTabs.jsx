@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { describeChange } from './workflowModel';
 import { VersionYaml } from './VersionYaml';
 
@@ -44,6 +44,11 @@ function Changes({ v }) {
 export function VersionTabs({ v }) {
   const [tab, setTab] = useState('changes');
   const [yamlOpened, setYamlOpened] = useState(false);
+  const uid = useId();
+  const changesTabId = `${uid}-tab-changes`;
+  const yamlTabId = `${uid}-tab-yaml`;
+  const changesPanelId = `${uid}-panel-changes`;
+  const yamlPanelId = `${uid}-panel-yaml`;
 
   return (
     <div className="flex flex-col gap-2">
@@ -55,7 +60,9 @@ export function VersionTabs({ v }) {
         <button
           type="button"
           role="tab"
+          id={changesTabId}
           aria-selected={tab === 'changes'}
+          aria-controls={changesPanelId}
           onClick={() => setTab('changes')}
           className={tabButton}
           style={tab === 'changes' ? selectedTab : unselectedTab}
@@ -65,7 +72,9 @@ export function VersionTabs({ v }) {
         <button
           type="button"
           role="tab"
+          id={yamlTabId}
           aria-selected={tab === 'yaml'}
+          aria-controls={yamlPanelId}
           onClick={() => {
             setTab('yaml');
             setYamlOpened(true);
@@ -76,11 +85,21 @@ export function VersionTabs({ v }) {
           YAML
         </button>
       </div>
-      <div style={{ display: tab === 'changes' ? 'block' : 'none' }}>
+      <div
+        id={changesPanelId}
+        role="tabpanel"
+        aria-labelledby={changesTabId}
+        style={{ display: tab === 'changes' ? 'block' : 'none' }}
+      >
         <Changes v={v} />
       </div>
       {yamlOpened && (
-        <div style={{ display: tab === 'yaml' ? 'block' : 'none' }}>
+        <div
+          id={yamlPanelId}
+          role="tabpanel"
+          aria-labelledby={yamlTabId}
+          style={{ display: tab === 'yaml' ? 'block' : 'none' }}
+        >
           <VersionYaml v={v} />
         </div>
       )}

@@ -80,10 +80,22 @@ export function VersionYaml({ v }) {
           className="flex items-center gap-1 p-1 rounded-full self-start"
           style={{ background: 'var(--bg-muted)', border: '1px solid var(--border)' }}
         >
-          <button type="button" onClick={() => setView('full')} className={toggleButton} style={view === 'full' ? selected : unselected}>
+          <button
+            type="button"
+            aria-pressed={view === 'full'}
+            onClick={() => setView('full')}
+            className={toggleButton}
+            style={view === 'full' ? selected : unselected}
+          >
             Full YAML
           </button>
-          <button type="button" onClick={openDiff} className={toggleButton} style={view === 'diff' ? selected : unselected}>
+          <button
+            type="button"
+            aria-pressed={view === 'diff'}
+            onClick={openDiff}
+            className={toggleButton}
+            style={view === 'diff' ? selected : unselected}
+          >
             Diff vs active v{v.active_number}
           </button>
         </div>

@@ -86,4 +86,41 @@ describe('FlowGraph', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open Escalate' }));
     expect(onSelect).toHaveBeenCalledWith('escalate');
   });
+
+  // Read-only diagram: a node's own wrapper shouldn't be a second tab stop
+  // next to its inner "Open <label>" button (nodesFocusable/edgesFocusable).
+  it('exposes decided-by, pause and escalate info via aria-describedby (aria-label overrides the button’s own visible text for its accessible name)', () => {
+    renderFlow();
+    const resolveBtn = screen.getByRole('button', { name: 'Open Resolve books' });
+    const descId = resolveBtn.getAttribute('aria-describedby');
+    expect(descId).toBeTruthy();
+    const desc = document.getElementById(descId);
+    expect(desc).toHaveTextContent('Code');
+    expect(desc).toHaveTextContent('can escalate');
+
+    const reviewBtn = screen.getByRole('button', { name: 'Open Human sign-off' });
+    const reviewDescId = reviewBtn.getAttribute('aria-describedby');
+    expect(document.getElementById(reviewDescId)).toHaveTextContent('Pauses before');
+  });
+
+  it('exposes the Escalate node’s reason codes via aria-describedby too', () => {
+    renderFlow();
+    const escBtn = screen.getByRole('button', { name: 'Open Escalate' });
+    const descId = escBtn.getAttribute('aria-describedby');
+    expect(descId).toBeTruthy();
+    const desc = document.getElementById(descId);
+    expect(desc).toHaveTextContent('UNRESOLVED_BOOK');
+    expect(desc).toHaveTextContent('DELTA_UNAVAILABLE');
+  });
+
+  it('gives each node exactly one tab stop — the inner button, not React Flow’s own node wrapper', () => {
+    const { container } = renderFlow();
+    // eslint-disable-next-line testing-library/no-node-access
+    const wrappers = container.querySelectorAll('[data-testid^="rf__node-"]');
+    expect(wrappers.length).toBeGreaterThan(0);
+    for (const wrapper of wrappers) {
+      expect(wrapper).not.toHaveAttribute('tabindex');
+    }
+  });
+
 });

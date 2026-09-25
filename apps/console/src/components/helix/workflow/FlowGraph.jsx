@@ -99,6 +99,13 @@ export function FlowGraph({ graph, reasoner, onSelect }) {
           nodesDraggable={false}
           nodesConnectable={false}
           elementsSelectable={false}
+          // Read-only view: React Flow's own node/edge wrapper elements
+          // would otherwise each be a second tab stop next to a step
+          // node's own "Open <label>" button, doubling the number of tab
+          // stops per node with nothing extra for a keyboard user to do
+          // at the wrapper.
+          nodesFocusable={false}
+          edgesFocusable={false}
           zoomOnScroll={false}
           panOnScroll={false}
           preventScrolling={false}

@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as api from '../data/workflowApi';
 import graphFixture from './__fixtures__/graph.json';
 import fixture from './__fixtures__/workflow.json';
@@ -19,6 +19,28 @@ vi.mock('../data/workflowApi', () => ({
   rejectVersion: vi.fn(),
   downloadYaml: vi.fn(),
 }));
+
+// The view renders a real FlowGraph (React Flow); jsdom reports every
+// element as 0×0, which React Flow needs a plausible size from. Scoped here
+// (not a global vitest.setup.js stub) so it can't mask a real zero-size
+// regression in an unrelated layout test.
+let rectSpy;
+beforeEach(() => {
+  rectSpy = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({
+    x: 0,
+    y: 0,
+    top: 0,
+    left: 0,
+    right: 1024,
+    bottom: 640,
+    width: 1024,
+    height: 640,
+    toJSON() {},
+  });
+});
+afterEach(() => {
+  rectSpy.mockRestore();
+});
 
 const history = [
   { number: 5, status: 'draft', note: 'drop rank', based_on: 3, drafted_by: 'asha' },

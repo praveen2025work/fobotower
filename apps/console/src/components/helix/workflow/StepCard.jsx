@@ -18,12 +18,12 @@ function IconButton({ label, disabled, onClick, children }) {
   );
 }
 
-export function Chip({ label, tone }) {
+export function Chip({ label, tone, size = '10px' }) {
   const t = TAG_STYLE[tone] || TAG_STYLE.grey;
   return (
     <span
-      className="text-[10px] px-1.5 py-0.5 rounded font-semibold whitespace-nowrap"
-      style={{ background: t.bg, color: t.fg }}
+      className="px-1.5 py-0.5 rounded font-semibold whitespace-nowrap"
+      style={{ background: t.bg, color: t.fg, fontSize: size }}
     >
       {label}
     </span>

@@ -3,6 +3,10 @@ import '@testing-library/jest-dom/vitest';
 // jsdom has neither: React Flow (used by the Workflow tab's diagram) reads
 // both while measuring its container and node handles. Minimal stand-ins —
 // not full implementations — are enough for it to lay nodes out in tests.
+// (jsdom also reports every element as 0×0 via getBoundingClientRect, which
+// React Flow needs a plausible size from — that stub is scoped to the
+// diagram's own test files instead of set globally here, so it can't mask a
+// real zero-size regression in an unrelated layout test.)
 if (typeof globalThis.ResizeObserver === 'undefined') {
   globalThis.ResizeObserver = class ResizeObserver {
     observe() {}
@@ -18,24 +22,4 @@ if (typeof globalThis.DOMMatrixReadOnly === 'undefined') {
       this.m22 = scale ? Number(scale) : 1;
     }
   };
-}
-
-// jsdom reports every element as 0×0. React Flow refuses to lay out nodes in
-// a zero-size container, so give every element a plausible size by default.
-if (!Element.prototype.getBoundingClientRect.__fobo_stub) {
-  const stub = function getBoundingClientRect() {
-    return {
-      x: 0,
-      y: 0,
-      top: 0,
-      left: 0,
-      right: 1024,
-      bottom: 640,
-      width: 1024,
-      height: 640,
-      toJSON() {},
-    };
-  };
-  stub.__fobo_stub = true;
-  Element.prototype.getBoundingClientRect = stub;
 }

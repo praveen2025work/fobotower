@@ -1,12 +1,18 @@
 'use client';
 
-import { useMemo } from 'react';
-import { Background, Controls, MiniMap, ReactFlow } from '@xyflow/react';
+import { useEffect, useMemo } from 'react';
+import { Background, Controls, ReactFlow, useReactFlow } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { EndNode, EscalateNode, StartNode, StepNode } from './FlowNodes';
 import { toFlow } from './graphLayout';
 
 const nodeTypes = { start: StartNode, end: EndNode, step: StepNode, escalate: EscalateNode };
+
+// "Readable by default": start at zoom 1, and never let the initial fit (or
+// a user's own zoom-out) go far enough that node text stops being legible.
+const MIN_ZOOM = 0.85;
+const MAX_ZOOM = 1.5;
+const FIT_PADDING = 0.08;
 
 // Maps the theme's own CSS variables onto React Flow's `--xy-*` variables,
 // so the diagram follows light/dark mode instead of shipping its own colours.
@@ -28,9 +34,6 @@ const flowTheme = {
   '--xy-controls-button-background-color-hover': 'var(--bg-hover)',
   '--xy-controls-button-color': 'var(--text-secondary)',
   '--xy-controls-button-border-color': 'var(--border)',
-  '--xy-minimap-background-color': 'var(--bg-card-solid)',
-  '--xy-minimap-mask-background-color': 'var(--bg-hover)',
-  '--xy-minimap-node-background-color': 'var(--border)',
   '--xy-attribution-background-color': 'transparent',
 };
 
@@ -47,11 +50,38 @@ function Legend() {
   );
 }
 
-/** The active workflow's compiled LangGraph, read-only: pan and zoom, no
- *  dragging or connecting. Clicking a step or the Escalate node opens it in
- *  the side panel via `onSelect(id)`. */
+/** Fits the diagram to its container whenever the laid-out graph changes
+ *  (mount, or a different active version). Deliberately *not* the `fitView`
+ *  boolean prop: that fits once, synchronously, on the very first render —
+ *  before this component mounts at all — and was why the diagram used to
+ *  render at the library's default zoom/pan (1, untranslated) instead of a
+ *  real fit, clipping Start/Resolve at the top and Record/End at the
+ *  bottom. It also can't be driven by `useNodesInitialized`: that hook only
+ *  flips true once React Flow's own ResizeObserver measures each node's
+ *  *rendered* size, but since every node here already carries an explicit
+ *  `width`/`height` from `graphLayout.js` (dagre needs them for layout
+ *  math), React Flow treats them as already "sized" and never attaches that
+ *  observer — so the hook stays false forever. Keying a plain effect off the
+ *  laid-out nodes/edges (stable per `graph`, via `toFlow`'s memo) fires
+ *  right after mount and again only when the graph actually changes, not on
+ *  every incidental re-render (e.g. `reasoner` or `onSelect` changing) —
+ *  otherwise a re-fit would keep resetting a user's manual pan/zoom. */
+function FitOnReady({ layoutKey }) {
+  const { fitView } = useReactFlow();
+  useEffect(() => {
+    fitView({ padding: FIT_PADDING, minZoom: MIN_ZOOM, maxZoom: MAX_ZOOM, duration: 0 });
+  }, [layoutKey, fitView]);
+  return null;
+}
+
+/** The active workflow's compiled LangGraph, read-only: pan (drag) and zoom
+ *  (Controls' buttons), no dragging nodes or connecting them. The canvas is
+ *  sized to the layout itself (see `graphLayout.js`'s `height`) so the whole
+ *  graph fits without zooming out past `MIN_ZOOM`; the page scrolls past it
+ *  normally rather than the canvas capturing wheel input. Clicking a step or
+ *  the Escalate node opens it in the side panel via `onSelect(id)`. */
 export function FlowGraph({ graph, reasoner, onSelect }) {
-  const { nodes: laidOut, edges } = useMemo(() => toFlow(graph), [graph]);
+  const { nodes: laidOut, edges, height } = useMemo(() => toFlow(graph), [graph]);
   const nodes = useMemo(
     () => laidOut.map((n) => ({ ...n, data: { ...n.data, reasoner, onSelect } })),
     [laidOut, reasoner, onSelect],
@@ -59,22 +89,24 @@ export function FlowGraph({ graph, reasoner, onSelect }) {
 
   return (
     <div>
-      <div style={{ height: 560, width: '100%', ...flowTheme }}>
+      <div style={{ height, width: '100%', ...flowTheme }}>
         <ReactFlow
           nodes={nodes}
           edges={edges}
           nodeTypes={nodeTypes}
-          fitView
+          minZoom={MIN_ZOOM}
+          maxZoom={MAX_ZOOM}
           nodesDraggable={false}
           nodesConnectable={false}
           elementsSelectable={false}
-          panOnScroll
-          zoomOnScroll
+          zoomOnScroll={false}
+          panOnScroll={false}
+          preventScrolling={false}
           proOptions={{ hideAttribution: true }}
         >
+          <FitOnReady layoutKey={laidOut} />
           <Background />
           <Controls showInteractive={false} />
-          <MiniMap className="hidden md:block" pannable={false} zoomable={false} />
         </ReactFlow>
       </div>
       <Legend />

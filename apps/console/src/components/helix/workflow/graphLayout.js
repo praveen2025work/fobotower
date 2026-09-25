@@ -1,34 +1,60 @@
 /** Pure layout for the compiled LangGraph: turns the API's {nodes, edges}
- *  into React Flow's {nodes, edges}, positioned top-to-bottom with dagre.
- *  Nothing here mutates its `graph` argument. */
+ *  into React Flow's {nodes, edges}, positioned top-to-bottom with dagre,
+ *  plus a canvas `height` sized to fit the whole thing. Nothing here
+ *  mutates its `graph` argument. */
 
 import dagre from '@dagrejs/dagre';
 import { MarkerType, Position } from '@xyflow/react';
 
-const SIZE = {
-  step: { width: 230, height: 84 },
-  escalate: { width: 176, height: 68 },
-  start: { width: 92, height: 40 },
-  end: { width: 92, height: 40 },
-};
+const STEP_SIZE = { width: 260, height: 88 };
+const START_END_SIZE = { width: 96, height: 40 };
+const ESCALATE_WIDTH = 260;
+const ESCALATE_BASE_HEIGHT = 54;
+const ESCALATE_ROW_HEIGHT = 28;
 
-const sizeFor = (kind) => SIZE[kind] || SIZE.step;
+const CANVAS_PADDING = 56;
+const MIN_CANVAS_HEIGHT = 420;
+const MAX_CANVAS_HEIGHT = 1400;
 
 const WAITS_LABEL = '⏸ waits for a controller';
 const ESCALATE_LABEL = 'if escalated';
 
+const escalateSize = (groupCount) => ({
+  width: ESCALATE_WIDTH,
+  height: ESCALATE_BASE_HEIGHT + Math.max(groupCount, 1) * ESCALATE_ROW_HEIGHT,
+});
+
+function sizeFor(kind, escalateGroupCount) {
+  if (kind === 'step') return STEP_SIZE;
+  if (kind === 'escalate') return escalateSize(escalateGroupCount);
+  return START_END_SIZE;
+}
+
+/** The reason codes the Escalate node ends up with, grouped by the step that
+ *  raised them — read straight off the graph's own edges, never typed in. */
+function reasonGroups(graph) {
+  const labelById = new Map(graph.nodes.map((n) => [n.id, n.label]));
+  return graph.edges
+    .filter((e) => e.conditional && e.target === 'escalate')
+    .map((e) => ({
+      source: e.source,
+      label: labelById.get(e.source) || e.source,
+      reasons: e.reasons || [],
+    }));
+}
+
 /** How an edge should look, independent of layout: the rule that decides is
  *  "into a paused step" first (it overrides everything else, since arriving
  *  at a paused step is true regardless of why the edge exists), then
- *  "conditional into escalate", then "conditional otherwise", then plain. */
+ *  "conditional into escalate", then "conditional otherwise", then plain.
+ *  The reason codes for an "if escalated" edge live on the Escalate node
+ *  itself (see `reasonGroups`), not crammed onto the edge label. */
 function edgeLook(edge, pausedIds) {
   if (pausedIds.has(edge.target)) {
     return { color: 'var(--clr-amber)', dashed: true, label: WAITS_LABEL };
   }
   if (edge.conditional && edge.target === 'escalate') {
-    const reasons = edge.reasons || [];
-    const label = reasons.length ? `${ESCALATE_LABEL} (${reasons.join(', ')})` : ESCALATE_LABEL;
-    return { color: 'var(--clr-red)', dashed: true, label };
+    return { color: 'var(--clr-red)', dashed: true, label: ESCALATE_LABEL };
   }
   if (edge.conditional) {
     return { color: 'var(--text-muted)', dashed: false, label: edge.label || 'otherwise' };
@@ -41,12 +67,13 @@ export function toFlow(graph) {
   const escalateSources = new Set(
     graph.edges.filter((e) => e.conditional && e.target === 'escalate').map((e) => e.source),
   );
+  const groups = reasonGroups(graph);
 
   const g = new dagre.graphlib.Graph();
-  g.setGraph({ rankdir: 'TB', nodesep: 64, ranksep: 88, marginx: 20, marginy: 20 });
+  g.setGraph({ rankdir: 'TB', nodesep: 110, ranksep: 52, marginx: 24, marginy: 20 });
   g.setDefaultEdgeLabel(() => ({}));
   for (const n of graph.nodes) {
-    const { width, height } = sizeFor(n.kind);
+    const { width, height } = sizeFor(n.kind, groups.length);
     g.setNode(n.id, { width, height });
   }
   for (const e of graph.edges) {
@@ -55,7 +82,7 @@ export function toFlow(graph) {
   dagre.layout(g);
 
   const nodes = graph.nodes.map((n) => {
-    const { width, height } = sizeFor(n.kind);
+    const { width, height } = sizeFor(n.kind, groups.length);
     const pos = g.node(n.id);
     const canEscalate = escalateSources.has(n.id);
     return {
@@ -73,6 +100,7 @@ export function toFlow(graph) {
         decidedBy: n.decided_by,
         pausedBefore: n.paused_before,
         canEscalate,
+        ...(n.kind === 'escalate' ? { reasonGroups: groups } : {}),
       },
     };
   });
@@ -94,12 +122,21 @@ export function toFlow(graph) {
         ...(look.dashed ? { strokeDasharray: '6 4' } : {}),
       },
       label: look.label,
-      labelStyle: { fill: look.color, fontSize: 10, fontWeight: 600 },
-      labelBgPadding: [4, 2],
-      labelBgStyle: { fill: 'var(--bg-card-solid)' },
+      labelStyle: { fill: look.color, fontSize: 11, fontWeight: 600 },
+      labelBgPadding: [6, 3],
+      labelBgBorderRadius: 3,
+      labelBgStyle: { fill: 'var(--bg-card-solid)', fillOpacity: 0.95 },
       markerEnd: { type: MarkerType.ArrowClosed, color: look.color },
     };
   });
 
-  return { nodes, edges };
+  const contentBottom = nodes.length
+    ? Math.max(...nodes.map((n) => n.position.y + n.height))
+    : 0;
+  const height = Math.min(
+    MAX_CANVAS_HEIGHT,
+    Math.max(MIN_CANVAS_HEIGHT, Math.round(contentBottom + CANVAS_PADDING)),
+  );
+
+  return { nodes, edges, height };
 }

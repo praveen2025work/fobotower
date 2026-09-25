@@ -19,15 +19,28 @@ describe('toFlow', () => {
     expect(byId.escalate.position.x).not.toBe(byId.gather.position.x);
   });
 
-  it('colours the resolve→escalate edge red and dashed, with the reason codes in its label', () => {
+  it('colours the resolve→escalate edge red and dashed, with a short label (no reason codes crammed on it)', () => {
     const { edges } = toFlow(fixture);
     const edge = edges.find((e) => e.source === 'resolve' && e.target === 'escalate');
     expect(edge).toBeTruthy();
     expect(edge.style.stroke).toBe('var(--clr-red)');
     expect(edge.style.strokeDasharray).toBeTruthy();
     expect(edge.animated).toBe(false);
-    expect(edge.label).toContain('if escalated');
-    expect(edge.label).toContain('UNRESOLVED_BOOK');
+    expect(edge.label).toBe('if escalated');
+  });
+
+  it("puts the reason codes on the Escalate node instead, grouped by source step", () => {
+    const { nodes } = toFlow(fixture);
+    const escalate = nodes.find((n) => n.id === 'escalate');
+    const expected = fixture.edges
+      .filter((e) => e.conditional && e.target === 'escalate')
+      .map((e) => ({
+        source: e.source,
+        label: fixture.nodes.find((n) => n.id === e.source).label,
+        reasons: e.reasons,
+      }));
+    expect(expected.length).toBeGreaterThan(0);
+    expect(escalate.data.reasonGroups).toEqual(expected);
   });
 
   it('marks the "otherwise" edges solid with a small label', () => {
@@ -72,5 +85,47 @@ describe('toFlow', () => {
     const before = JSON.parse(JSON.stringify(fixture));
     toFlow(fixture);
     expect(fixture).toEqual(before);
+  });
+
+  describe('canvas height', () => {
+    it('fits the whole real graph at close to zoom 1, never below the 0.85 floor', () => {
+      const { nodes, height } = toFlow(fixture);
+      const contentBottom = Math.max(...nodes.map((n) => n.position.y + n.height));
+      // Within the agreed cap...
+      expect(height).toBeLessThanOrEqual(1400);
+      // ...and close enough to the content's own height that fitting the
+      // whole graph in (React Flow's fitView, bounded by that same floor)
+      // never needs to zoom out past readability.
+      expect(height / contentBottom).toBeGreaterThanOrEqual(0.85);
+    });
+
+    it('never drops below a sensible floor for a tiny graph', () => {
+      const tiny = {
+        ...fixture,
+        nodes: [
+          { id: '__start__', kind: 'start', label: 'Start', paused_before: false },
+          { id: '__end__', kind: 'end', label: 'End', paused_before: false },
+        ],
+        edges: [{ source: '__start__', target: '__end__', conditional: false, label: null }],
+      };
+      const { height } = toFlow(tiny);
+      expect(height).toBeGreaterThanOrEqual(400);
+    });
+
+    it('caps the height for a graph much taller than the cap', () => {
+      const nodes = [{ id: '__start__', kind: 'start', label: 'Start', paused_before: false }];
+      const edges = [];
+      for (let i = 0; i < 40; i += 1) {
+        nodes.push({ id: `s${i}`, kind: 'step', label: `Step ${i}`, decided_by: 'code', paused_before: false });
+        edges.push({
+          source: i === 0 ? '__start__' : `s${i - 1}`,
+          target: `s${i}`,
+          conditional: false,
+          label: null,
+        });
+      }
+      const { height } = toFlow({ ...fixture, nodes, edges });
+      expect(height).toBe(1400);
+    });
   });
 });

@@ -23,18 +23,18 @@ export function StepNode({ id, data }) {
         className="w-full h-full rounded-xl px-3 py-2 flex flex-col gap-1 text-left"
         style={{ ...nodeBase, border: '1px solid var(--border)', pointerEvents: 'auto', cursor: 'pointer' }}
       >
-        <div className="text-[13px] font-semibold truncate">{data.label}</div>
-        <div className="text-[10px] truncate" style={{ ...mono, color: 'var(--text-muted)' }}>
+        <div className="text-[14px] font-semibold truncate">{data.label}</div>
+        <div className="text-[11px] truncate" style={{ ...mono, color: 'var(--text-muted)' }}>
           {id}
         </div>
         <div className="flex flex-wrap gap-1">
           {decidedByChips(data.decidedBy, data.reasoner).map((c) => (
-            <Chip key={c.label} {...c} />
+            <Chip key={c.label} {...c} size="11px" />
           ))}
         </div>
         {data.pausedBefore && (
           <div
-            className="text-[10px] font-semibold flex items-center gap-1"
+            className="text-[11px] font-semibold flex items-center gap-1"
             style={{ color: 'var(--clr-amber)' }}
           >
             ⏸ Pauses before
@@ -42,10 +42,10 @@ export function StepNode({ id, data }) {
         )}
         {data.canEscalate && (
           <div
-            className="text-[10px] flex items-center gap-1"
+            className="text-[11px] flex items-center gap-1"
             style={{ color: 'var(--clr-red)' }}
           >
-            <CornerDownRight size={10} /> can escalate
+            <CornerDownRight size={11} /> can escalate
           </div>
         )}
       </button>
@@ -55,7 +55,10 @@ export function StepNode({ id, data }) {
   );
 }
 
-/** The `escalate` node: the run's end-of-line when a step can't proceed. */
+/** The `escalate` node: the run's end-of-line when a step can't proceed —
+ *  lists the reason codes it can end with, grouped by the step that raises
+ *  each one (`data.reasonGroups`, built by `graphLayout.js` from the
+ *  graph's own edges). */
 export function EscalateNode({ id, data }) {
   return (
     <>
@@ -64,7 +67,7 @@ export function EscalateNode({ id, data }) {
         type="button"
         aria-label={`Open ${data.label}`}
         onClick={() => data.onSelect?.(id)}
-        className="w-full h-full rounded-xl px-3 py-2 flex flex-col items-center justify-center gap-0.5 text-center"
+        className="w-full h-full rounded-xl px-3 py-2 flex flex-col gap-1 text-left"
         style={{
           ...nodeBase,
           border: '1.5px solid var(--clr-red)',
@@ -73,8 +76,16 @@ export function EscalateNode({ id, data }) {
           cursor: 'pointer',
         }}
       >
-        <div className="text-[13px] font-semibold">{data.label}</div>
-        <div className="text-[10.5px]">Escalate → end</div>
+        <div className="text-[14px] font-semibold">{data.label}</div>
+        <div className="text-[11px] mb-0.5" style={{ color: 'var(--text-secondary)' }}>
+          Escalate → end
+        </div>
+        {(data.reasonGroups || []).map((g) => (
+          <div key={g.source} className="text-[10.5px] leading-snug" style={{ color: 'var(--clr-red)' }}>
+            <span className="font-semibold">{g.label}:</span>{' '}
+            <span style={mono}>{g.reasons.join(', ')}</span>
+          </div>
+        ))}
       </button>
       <Handle type="source" position={Position.Bottom} id="bottom" />
     </>
@@ -87,7 +98,7 @@ export function EdgeMarkerNode({ data, sourceOnly, targetOnly }) {
     <>
       {!sourceOnly && <Handle type="target" position={Position.Top} id="top" />}
       <div
-        className="w-full h-full rounded-full flex items-center justify-center text-[11px] font-semibold"
+        className="w-full h-full rounded-full flex items-center justify-center text-[12px] font-semibold"
         style={{ ...nodeBase, border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
       >
         {data.label}

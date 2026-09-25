@@ -50,6 +50,15 @@ async function failure(res, method, path) {
   } catch {
     detail = '';
   }
+  // A dev caller the server no longer knows (e.g. seeded data changed under
+  // a name saved in localStorage) fails every call with this 400 forever,
+  // and the switch that would let someone pick a new one never renders
+  // because every call — including the one that loads it — fails the same
+  // way. Clearing it here breaks that lock: the next load falls back to no
+  // identity, and the switch appears again.
+  if (res.status === 400 && typeof detail === 'string' && detail.startsWith('unknown dev caller')) {
+    setDevCaller(null);
+  }
   const fallback = `${method} ${path} failed: ${res.status}`;
   if (Array.isArray(detail)) {
     const errors = requestErrors(detail);

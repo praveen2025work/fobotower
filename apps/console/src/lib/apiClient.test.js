@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ApiError, DEV_CALLER_KEY, get, post, setDevCaller } from './apiClient';
+import { ApiError, DEV_CALLER_KEY, devCaller, get, post, setDevCaller } from './apiClient';
 
 const reply = (status, body) => ({
   ok: status < 400,
@@ -76,5 +76,21 @@ describe('apiClient', () => {
     fetch.mockResolvedValue(reply(500));
     const err = await get('/x').catch((e) => e);
     expect(err.message).toBe('GET /x failed: 500');
+  });
+
+  it('clears a dev caller the server no longer recognises, so the switch reappears', async () => {
+    setDevCaller('ghost');
+    fetch.mockResolvedValue(reply(400, { detail: 'unknown dev caller: ghost' }));
+    const err = await get('/x').catch((e) => e);
+    expect(err).toBeInstanceOf(ApiError);
+    expect(devCaller()).toBeNull();
+    expect(window.localStorage.getItem(DEV_CALLER_KEY)).toBeNull();
+  });
+
+  it('leaves a recognised dev caller alone on an unrelated 400', async () => {
+    setDevCaller('asha');
+    fetch.mockResolvedValue(reply(400, { detail: 'a rejection requires a reason' }));
+    await post('/x', {}).catch(() => {});
+    expect(devCaller()).toBe('asha');
   });
 });

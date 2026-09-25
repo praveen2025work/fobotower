@@ -9,6 +9,8 @@ const ROW_STYLE = {
 
 const MARKER = { add: '+', del: '−', same: ' ' };
 
+const plural = (n, noun) => `${n} ${noun}${n === 1 ? '' : 's'}`;
+
 /** A unified diff of two YAML texts, ignoring the header (it names the
  *  version and would be noise here — the same reason `Changes` shows a
  *  readable list instead of a raw diff). */
@@ -20,7 +22,7 @@ export function YamlDiff({ before, after }) {
   return (
     <div className="flex flex-col gap-1.5 min-w-0">
       <p className="text-[11.5px]" style={{ color: 'var(--text-secondary)' }}>
-        {changed ? `${added} lines added · ${removed} removed` : 'Identical to the active version.'}
+        {changed ? `${plural(added, 'line')} added · ${removed} removed` : 'Identical to the active version.'}
       </p>
       {changed && (
         <div

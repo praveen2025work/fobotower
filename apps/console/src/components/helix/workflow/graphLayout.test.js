@@ -207,5 +207,48 @@ describe('toFlow', () => {
       const { height } = toFlow({ ...fixture, nodes, edges });
       expect(height).toBe(1400);
     });
+
+    it('lets the zoom floor give way when the capped canvas is shorter than the content, so Start and End still fit', () => {
+      // Many paused steps (each with a badge line, so taller than a plain
+      // step) — content comfortably exceeds MAX_CANVAS_HEIGHT even after
+      // the cap, unlike the real graph today (which fits within the 0.85
+      // floor with room to spare).
+      const nodes = [{ id: '__start__', kind: 'start', label: 'Start', paused_before: false }];
+      const edges = [];
+      let prev = '__start__';
+      for (let i = 0; i < 20; i += 1) {
+        const id = `p${i}`;
+        nodes.push({ id, kind: 'step', label: `Step ${i}`, decided_by: 'human', paused_before: true });
+        edges.push({ source: prev, target: id, conditional: false, label: null });
+        prev = id;
+      }
+      nodes.push({ id: '__end__', kind: 'end', label: 'End', paused_before: false });
+      edges.push({ source: prev, target: '__end__', conditional: false, label: null });
+
+      const { nodes: laidOut, height, minZoom } = toFlow({ ...fixture, nodes, edges });
+      expect(height).toBe(1400); // capped, same as the plain-steps case above
+
+      const contentBottom = Math.max(...laidOut.map((n) => n.position.y + n.height));
+      expect(contentBottom).toBeGreaterThan(height); // the cap really did bite
+
+      // A fixed 0.85 floor could not fit this content into the capped
+      // canvas at all; the floor must have given way to something smaller.
+      expect(minZoom).toBeLessThan(0.85);
+      // ...but not so far it stops being a real floor.
+      expect(minZoom).toBeGreaterThan(0);
+
+      // At that zoom, the whole chain — in particular Start at the top and
+      // End at the bottom — fits inside the canvas height.
+      expect(contentBottom * minZoom).toBeLessThanOrEqual(height + 1);
+      const start = laidOut.find((n) => n.id === '__start__');
+      const end = laidOut.find((n) => n.id === '__end__');
+      expect(start.position.y * minZoom).toBeGreaterThanOrEqual(0);
+      expect((end.position.y + end.height) * minZoom).toBeLessThanOrEqual(height + 1);
+    });
+
+    it('keeps the default minZoom for a graph that already fits within the cap', () => {
+      const { minZoom } = toFlow(fixture);
+      expect(minZoom).toBe(0.85);
+    });
   });
 });

@@ -34,6 +34,15 @@ const CANVAS_PADDING = 56;
 const MIN_CANVAS_HEIGHT = 420;
 const MAX_CANVAS_HEIGHT = 1400;
 
+// FlowGraph.jsx's "readable by default" zoom floor: below this, node text
+// stops being legible, so fitView is never asked to zoom out past it —
+// *unless* the laid-out content is tall enough that MAX_CANVAS_HEIGHT above
+// has capped the canvas below the content's own height. In that case a
+// fixed 0.85 floor would leave fitView unable to zoom out far enough, and
+// Start/End end up clipped outside the canvas entirely; readability gives
+// way to the diagram fitting at all. See `minZoom` below.
+const DEFAULT_MIN_ZOOM = 0.85;
+
 const WAITS_LABEL = '⏸ waits for a controller';
 const ESCALATE_LABEL = 'if escalated';
 
@@ -217,6 +226,11 @@ export function toFlow(graph) {
     MAX_CANVAS_HEIGHT,
     Math.max(MIN_CANVAS_HEIGHT, Math.round(contentBottom + CANVAS_PADDING)),
   );
+  // The zoom fitView actually needs to show the whole chain in a canvas of
+  // this height. Only lower than DEFAULT_MIN_ZOOM when the cap above bit —
+  // for every graph that fits within MAX_CANVAS_HEIGHT (every graph today),
+  // this is exactly DEFAULT_MIN_ZOOM, unchanged.
+  const minZoom = contentBottom > 0 ? Math.min(DEFAULT_MIN_ZOOM, height / contentBottom) : DEFAULT_MIN_ZOOM;
 
-  return { nodes, edges, height };
+  return { nodes, edges, height, minZoom };
 }

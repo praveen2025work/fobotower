@@ -8,9 +8,12 @@ import { toFlow } from './graphLayout';
 
 const nodeTypes = { start: StartNode, end: EndNode, step: StepNode, escalate: EscalateNode };
 
-// "Readable by default": start at zoom 1, and never let the initial fit (or
-// a user's own zoom-out) go far enough that node text stops being legible.
-const MIN_ZOOM = 0.85;
+// "Readable by default": start at zoom 1, and don't let the initial fit (or
+// a user's own zoom-out) go further than it has to. The actual floor comes
+// from `toFlow()` — normally this same 0.85, but it gives way for a graph
+// whose laid-out content is taller than graphLayout.js's canvas-height cap,
+// so Start/End can never end up clipped outside the canvas with nowhere
+// left to zoom out to.
 const MAX_ZOOM = 1.5;
 const FIT_PADDING = 0.08;
 
@@ -66,11 +69,11 @@ function Legend() {
  *  right after mount and again only when the graph actually changes, not on
  *  every incidental re-render (e.g. `reasoner` or `onSelect` changing) —
  *  otherwise a re-fit would keep resetting a user's manual pan/zoom. */
-function FitOnReady({ layoutKey }) {
+function FitOnReady({ layoutKey, minZoom }) {
   const { fitView } = useReactFlow();
   useEffect(() => {
-    fitView({ padding: FIT_PADDING, minZoom: MIN_ZOOM, maxZoom: MAX_ZOOM, duration: 0 });
-  }, [layoutKey, fitView]);
+    fitView({ padding: FIT_PADDING, minZoom, maxZoom: MAX_ZOOM, duration: 0 });
+  }, [layoutKey, minZoom, fitView]);
   return null;
 }
 
@@ -81,7 +84,7 @@ function FitOnReady({ layoutKey }) {
  *  normally rather than the canvas capturing wheel input. Clicking a step or
  *  the Escalate node opens it in the side panel via `onSelect(id)`. */
 export function FlowGraph({ graph, reasoner, onSelect }) {
-  const { nodes: laidOut, edges, height } = useMemo(() => toFlow(graph), [graph]);
+  const { nodes: laidOut, edges, height, minZoom } = useMemo(() => toFlow(graph), [graph]);
   const nodes = useMemo(
     () => laidOut.map((n) => ({ ...n, data: { ...n.data, reasoner, onSelect } })),
     [laidOut, reasoner, onSelect],
@@ -94,7 +97,7 @@ export function FlowGraph({ graph, reasoner, onSelect }) {
           nodes={nodes}
           edges={edges}
           nodeTypes={nodeTypes}
-          minZoom={MIN_ZOOM}
+          minZoom={minZoom}
           maxZoom={MAX_ZOOM}
           nodesDraggable={false}
           nodesConnectable={false}
@@ -111,7 +114,7 @@ export function FlowGraph({ graph, reasoner, onSelect }) {
           preventScrolling={false}
           proOptions={{ hideAttribution: true }}
         >
-          <FitOnReady layoutKey={laidOut} />
+          <FitOnReady layoutKey={laidOut} minZoom={minZoom} />
           <Background />
           <Controls showInteractive={false} />
         </ReactFlow>

@@ -10,6 +10,9 @@ export const fetchVersion = (n) => get(`/api/workflow/versions/${n}`);
 
 export const fetchRebased = (n) => get(`/api/workflow/versions/${n}/rebased`);
 
+/** A version's YAML as plain text, for the readable YAML tab. */
+export const fetchVersionYaml = (n) => getText(`/api/workflow/versions/${n}/yaml`);
+
 /** The compiled graph and why it routes the way it does, for a version
  * (default: active). */
 export const fetchGraph = (version) =>

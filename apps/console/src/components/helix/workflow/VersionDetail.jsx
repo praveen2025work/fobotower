@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { approveVersion, downloadYaml, fetchRebased, fetchVersion, rejectVersion } from '../data/workflowApi';
 import { randomId } from '@/lib/uuid';
 import { StatusChip } from './VersionList';
+import { VersionTabs } from './VersionTabs';
 import { Check, WorkflowDialog } from './WorkflowDialog';
-import { describeChange, when } from './workflowModel';
+import { when } from './workflowModel';
 
 const pillButton = 'text-[12px] font-semibold px-3 py-1.5 rounded-full disabled:opacity-40';
 
@@ -73,34 +74,6 @@ function RejectDialog({ version, own, onCancel, onDone }) {
         />
       </label>
     </WorkflowDialog>
-  );
-}
-
-function Changes({ v }) {
-  if (v.number === v.active_number) {
-    return (
-      <p className="text-[12px]" style={{ color: 'var(--text-secondary)' }}>
-        This is the active version.
-      </p>
-    );
-  }
-  return (
-    <div>
-      <h4 className="text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color: 'var(--text-muted)' }}>
-        Compared with active v{v.active_number}
-      </h4>
-      {v.diff.length ? (
-        <ul className="list-disc pl-4 text-[12.5px]" style={{ color: 'var(--text-primary)' }}>
-          {v.diff.map((c) => (
-            <li key={`${c.path}-${c.kind}`}>{describeChange(c)}</li>
-          ))}
-        </ul>
-      ) : (
-        <p className="text-[12px]" style={{ color: 'var(--text-secondary)' }}>
-          Identical to the active version.
-        </p>
-      )}
-    </div>
   );
 }
 
@@ -235,7 +208,7 @@ export function VersionDetail({ number, caller, onChanged, onRedraft }) {
           Rejected: {v.reject_reason}
         </p>
       )}
-      <Changes v={v} />
+      <VersionTabs v={v} />
       {v.status === 'draft' && (
         <Actions
           v={v}

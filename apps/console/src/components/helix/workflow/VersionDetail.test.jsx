@@ -10,6 +10,7 @@ vi.mock('../data/workflowApi', () => ({
   approveVersion: vi.fn(),
   rejectVersion: vi.fn(),
   downloadYaml: vi.fn(),
+  fetchVersionYaml: vi.fn(),
 }));
 
 const PRAVEEN = { id: 'praveen', roles: ['FO', 'PC'] };
@@ -157,5 +158,66 @@ describe('VersionDetail', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     resolveApprove({ number: 4, status: 'active' });
     await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
+  });
+
+  describe('YAML tab', () => {
+    const V4_YAML = '# header v4\n#\nversion: 4\nname: fobo-investigation\n';
+    const V3_YAML = '# header v3\n#\nversion: 3\nname: fobo-investigation\n';
+
+    it('shows the Changes tab by default, without loading any YAML', async () => {
+      renderDetail();
+      expect(await screen.findByRole('tab', { name: 'Changes' })).toHaveAttribute('aria-selected', 'true');
+      expect(screen.getByRole('tab', { name: 'YAML' })).toHaveAttribute('aria-selected', 'false');
+      expect(screen.getByText('gather.priors_lookback_days: 180 → 90')).toBeInTheDocument();
+      expect(api.fetchVersionYaml).not.toHaveBeenCalled();
+    });
+
+    it('loads the YAML lazily on first open, once', async () => {
+      api.fetchVersionYaml.mockResolvedValue(V4_YAML);
+      renderDetail();
+      await userEvent.click(await screen.findByRole('tab', { name: 'YAML' }));
+      expect(await screen.findByText('fobo-investigation')).toBeInTheDocument();
+      expect(api.fetchVersionYaml).toHaveBeenCalledWith(4);
+      expect(api.fetchVersionYaml).toHaveBeenCalledTimes(1);
+      // Switching away and back does not reload it.
+      await userEvent.click(screen.getByRole('tab', { name: 'Changes' }));
+      await userEvent.click(screen.getByRole('tab', { name: 'YAML' }));
+      expect(api.fetchVersionYaml).toHaveBeenCalledTimes(1);
+    });
+
+    it('offers Diff vs active vN for a draft, loading the active version’s YAML too', async () => {
+      api.fetchVersionYaml.mockImplementation((n) => Promise.resolve(n === 4 ? V4_YAML : V3_YAML));
+      renderDetail();
+      await userEvent.click(await screen.findByRole('tab', { name: 'YAML' }));
+      await screen.findByText('fobo-investigation');
+      await userEvent.click(screen.getByRole('button', { name: 'Diff vs active v3' }));
+      expect(await screen.findByText('version: 4')).toBeInTheDocument();
+      expect(screen.getByText('version: 3')).toBeInTheDocument();
+      expect(api.fetchVersionYaml).toHaveBeenCalledWith(3);
+      expect(api.fetchVersionYaml).toHaveBeenCalledWith(4);
+    });
+
+    it('shows Retry when the YAML fails to load', async () => {
+      api.fetchVersionYaml.mockRejectedValueOnce(new Error('boom')).mockResolvedValueOnce(V4_YAML);
+      renderDetail();
+      await userEvent.click(await screen.findByRole('tab', { name: 'YAML' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent('boom');
+      await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
+      expect(await screen.findByText('fobo-investigation')).toBeInTheDocument();
+      expect(api.fetchVersionYaml).toHaveBeenCalledTimes(2);
+    });
+
+    it('returns to the Changes tab when the reviewed number changes', async () => {
+      api.fetchVersionYaml.mockResolvedValue(V4_YAML);
+      const v6 = draft({ number: 6, active_number: 6, based_on: 6 });
+      api.fetchVersion.mockResolvedValueOnce(draft()).mockResolvedValueOnce(v6);
+      const props = { onChanged: vi.fn(), onRedraft: vi.fn() };
+      const { rerender } = render(<VersionDetail number={4} caller={ASHA} {...props} />);
+      await userEvent.click(await screen.findByRole('tab', { name: 'YAML' }));
+      expect(await screen.findByText('fobo-investigation')).toBeInTheDocument();
+      rerender(<VersionDetail number={6} caller={ASHA} {...props} />);
+      expect(await screen.findByRole('tab', { name: 'Changes' })).toHaveAttribute('aria-selected', 'true');
+      expect(screen.getByRole('tab', { name: 'YAML' })).toHaveAttribute('aria-selected', 'false');
+    });
   });
 });

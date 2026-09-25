@@ -1,6 +1,6 @@
 import { beforeEach, expect, it, vi } from 'vitest';
 import * as client from '@/lib/apiClient';
-import { approveVersion, saveDraft, uploadYaml } from './workflowApi';
+import { approveVersion, fetchGraph, saveDraft, uploadYaml } from './workflowApi';
 
 vi.mock('@/lib/apiClient', () => ({
   API_BASE: 'http://api',
@@ -30,4 +30,14 @@ it('approves with the idempotency key the dialog chose', async () => {
 it('uploads YAML text with its note', async () => {
   await uploadYaml({ yaml: 'steps: []', note: 'n' });
   expect(client.post).toHaveBeenCalledWith('/api/workflow/drafts/yaml', { yaml: 'steps: []', note: 'n' });
+});
+
+it('fetches the graph for a version', async () => {
+  await fetchGraph(3);
+  expect(client.get).toHaveBeenCalledWith('/api/workflow/graph?version=3');
+});
+
+it('fetches the active graph when no version is given', async () => {
+  await fetchGraph();
+  expect(client.get).toHaveBeenCalledWith('/api/workflow/graph');
 });

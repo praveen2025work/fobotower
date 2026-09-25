@@ -1,13 +1,28 @@
 import { useCallback, useEffect, useState } from 'react';
-import { fetchVersions, fetchWorkflow } from '../data/workflowApi';
+import { fetchGraph, fetchVersions, fetchWorkflow } from '../data/workflowApi';
 import { ActiveStrip } from './ActiveStrip';
 import { DraftEditor } from './DraftEditor';
+import { FlowGraph } from './FlowGraph';
 import { StepPanel } from './StepPanel';
 import { VersionDetail } from './VersionDetail';
 import { VersionList } from './VersionList';
-import { WorkflowGraph } from './WorkflowGraph';
 import { YamlUpload } from './YamlUpload';
 import { byName, effectiveReasoner } from './workflowModel';
+
+// The Escalate node has no entry in the step catalogue — it isn't a step —
+// so the panel gets a minimal stand-in for it instead.
+const ESCALATE_STEP = {
+  name: 'escalate',
+  label: 'Escalate',
+  description: 'Ends the run with a reason code',
+  decided_by: 'code',
+  removable: false,
+  required_because: null,
+  can_escalate: false,
+  needs: [],
+  produces: [],
+  must_follow: [],
+};
 
 function Card({ title, children }) {
   return (
@@ -38,6 +53,7 @@ export function WorkflowView({ callerKey }) {
   const [editorId, setEditorId] = useState(0);
   const [panel, setPanel] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [graph, setGraph] = useState({ state: 'loading' });
 
   const reload = useCallback(async (select) => {
     try {
@@ -54,6 +70,24 @@ export function WorkflowView({ callerKey }) {
   useEffect(() => {
     reload();
   }, [reload, callerKey]);
+
+  // The diagram loads on its own timeline, separate from the rest of the
+  // tab: a failure here shows its own retry without blocking versions,
+  // drafting or anything else. Re-fetched whenever the active version moves.
+  const activeNumber = load.state === 'ready' ? load.overview.active.number : null;
+  const loadGraph = useCallback(async (version) => {
+    setGraph({ state: 'loading' });
+    try {
+      const g = await fetchGraph(version);
+      setGraph({ state: 'ready', graph: g });
+    } catch (e) {
+      setGraph({ state: 'error', error: e.message });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeNumber != null) loadGraph(activeNumber);
+  }, [activeNumber, loadGraph]);
 
   if (load.state === 'loading') {
     return <p className="text-[12px]" style={{ color: 'var(--text-muted)' }}>Loading the workflow…</p>;
@@ -119,7 +153,27 @@ export function WorkflowView({ callerKey }) {
             </Card>
           ) : (
             <Card title={`Active workflow · v${overview.active.number}`}>
-              <WorkflowGraph config={overview.active.config} catalogue={overview.steps} reasoner={reasoner} onSelect={setPanel} />
+              {graph.state === 'loading' && (
+                <p className="text-[12px]" style={{ color: 'var(--text-muted)' }}>
+                  Loading the diagram…
+                </p>
+              )}
+              {graph.state === 'error' && (
+                <div className="flex items-center gap-3 text-[12px]" style={{ color: 'var(--clr-red)' }}>
+                  {graph.error}
+                  <button
+                    type="button"
+                    onClick={() => loadGraph(overview.active.number)}
+                    className="px-3 py-1 rounded-full"
+                    style={{ border: '1px solid var(--border)' }}
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
+              {graph.state === 'ready' && (
+                <FlowGraph graph={graph.graph} reasoner={reasoner} onSelect={setPanel} />
+              )}
             </Card>
           )}
         </div>
@@ -141,7 +195,14 @@ export function WorkflowView({ callerKey }) {
         </aside>
       </div>
       {panel && (
-        <StepPanel step={known[panel]} config={overview.active.config} schema={overview.settings_schema} reasoner={reasoner} onClose={() => setPanel(null)} />
+        <StepPanel
+          step={known[panel] || ESCALATE_STEP}
+          config={overview.active.config}
+          schema={overview.settings_schema}
+          reasoner={reasoner}
+          graph={graph.state === 'ready' ? graph.graph : undefined}
+          onClose={() => setPanel(null)}
+        />
       )}
       {uploading && (
         <YamlUpload

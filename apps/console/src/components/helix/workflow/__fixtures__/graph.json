@@ -1,0 +1,399 @@
+{
+  "version": 1,
+  "nodes": [
+    {
+      "id": "__start__",
+      "kind": "start",
+      "label": "Start",
+      "paused_before": false
+    },
+    {
+      "id": "resolve",
+      "kind": "step",
+      "label": "Resolve books",
+      "decided_by": "code",
+      "paused_before": false
+    },
+    {
+      "id": "gather",
+      "kind": "step",
+      "label": "Gather evidence",
+      "decided_by": "code",
+      "paused_before": false
+    },
+    {
+      "id": "group",
+      "kind": "step",
+      "label": "Group patterns",
+      "decided_by": "code",
+      "paused_before": false
+    },
+    {
+      "id": "reason",
+      "kind": "step",
+      "label": "Apply playbook",
+      "decided_by": "playbook+reasoner",
+      "paused_before": false
+    },
+    {
+      "id": "rank",
+      "kind": "step",
+      "label": "Rank causes",
+      "decided_by": "code+model",
+      "paused_before": false
+    },
+    {
+      "id": "draft",
+      "kind": "step",
+      "label": "Draft analysis",
+      "decided_by": "template",
+      "paused_before": false
+    },
+    {
+      "id": "validate",
+      "kind": "step",
+      "label": "Validate",
+      "decided_by": "code",
+      "paused_before": false
+    },
+    {
+      "id": "review",
+      "kind": "step",
+      "label": "Human sign-off",
+      "decided_by": "human",
+      "paused_before": true
+    },
+    {
+      "id": "record",
+      "kind": "step",
+      "label": "Record outcome",
+      "decided_by": "code",
+      "paused_before": false
+    },
+    {
+      "id": "escalate",
+      "kind": "escalate",
+      "label": "Escalate",
+      "paused_before": false
+    },
+    {
+      "id": "__end__",
+      "kind": "end",
+      "label": "End",
+      "paused_before": false
+    }
+  ],
+  "edges": [
+    {
+      "source": "__start__",
+      "target": "resolve",
+      "conditional": false,
+      "label": null
+    },
+    {
+      "source": "resolve",
+      "target": "escalate",
+      "conditional": true,
+      "label": "if escalated",
+      "reasons": [
+        "UNRESOLVED_BOOK",
+        "AMBIGUOUS_BOOK"
+      ]
+    },
+    {
+      "source": "resolve",
+      "target": "gather",
+      "conditional": true,
+      "label": "otherwise"
+    },
+    {
+      "source": "gather",
+      "target": "escalate",
+      "conditional": true,
+      "label": "if escalated",
+      "reasons": [
+        "DELTA_UNAVAILABLE",
+        "CHECKS_UNAVAILABLE"
+      ]
+    },
+    {
+      "source": "gather",
+      "target": "group",
+      "conditional": true,
+      "label": "otherwise"
+    },
+    {
+      "source": "group",
+      "target": "reason",
+      "conditional": false,
+      "label": null
+    },
+    {
+      "source": "reason",
+      "target": "rank",
+      "conditional": false,
+      "label": null
+    },
+    {
+      "source": "rank",
+      "target": "draft",
+      "conditional": false,
+      "label": null
+    },
+    {
+      "source": "draft",
+      "target": "validate",
+      "conditional": false,
+      "label": null
+    },
+    {
+      "source": "validate",
+      "target": "review",
+      "conditional": false,
+      "label": null
+    },
+    {
+      "source": "review",
+      "target": "record",
+      "conditional": false,
+      "label": null
+    },
+    {
+      "source": "record",
+      "target": "__end__",
+      "conditional": false,
+      "label": null
+    },
+    {
+      "source": "escalate",
+      "target": "__end__",
+      "conditional": false,
+      "label": null
+    }
+  ],
+  "pause_before": [
+    "review"
+  ],
+  "router": {
+    "rule": "After a step that can escalate: if the step set outcome = escalated the run goes to Escalate and ends; otherwise it continues to the next configured step.",
+    "defined_in": "apps/api/app/workflow/graph.py · _router"
+  },
+  "logic": {
+    "resolve": {
+      "escalates_when": [
+        {
+          "code": "UNRESOLVED_BOOK",
+          "when": "no book matches"
+        },
+        {
+          "code": "AMBIGUOUS_BOOK",
+          "when": "more than one matches; never auto-picked"
+        }
+      ],
+      "defined_in": "apps/api/app/workflow/nodes/resolve.py · resolve"
+    },
+    "gather": {
+      "escalates_when": [
+        {
+          "code": "DELTA_UNAVAILABLE",
+          "when": "a break leg is missing, so no delta to explain"
+        },
+        {
+          "code": "CHECKS_UNAVAILABLE",
+          "when": "the cause checks did not all run"
+        }
+      ],
+      "defined_in": "apps/api/app/workflow/nodes/gather.py · gather"
+    },
+    "group": {
+      "escalates_when": [],
+      "defined_in": "apps/api/app/workflow/nodes/group.py · group"
+    },
+    "reason": {
+      "escalates_when": [],
+      "defined_in": "apps/api/app/workflow/nodes/reason.py · reason"
+    },
+    "rank": {
+      "escalates_when": [],
+      "defined_in": "apps/api/app/workflow/nodes/rank.py · rank"
+    },
+    "draft": {
+      "escalates_when": [],
+      "defined_in": "apps/api/app/workflow/nodes/draft.py · draft"
+    },
+    "validate": {
+      "escalates_when": [],
+      "defined_in": "apps/api/app/workflow/nodes/validate.py · validate"
+    },
+    "review": {
+      "escalates_when": [],
+      "defined_in": "apps/api/app/workflow/registry.py · review"
+    },
+    "record": {
+      "escalates_when": [],
+      "defined_in": "apps/api/app/workflow/nodes/record.py · record"
+    },
+    "escalate": {
+      "reasons": [
+        "AMBIGUOUS_BOOK",
+        "CHECKS_UNAVAILABLE",
+        "DELTA_UNAVAILABLE",
+        "RETRY_EXHAUSTED",
+        "UNMAPPED_BOOK",
+        "UNRESOLVED_BOOK",
+        "VALIDATION_FAILED"
+      ],
+      "defined_in": "apps/api/app/workflow/nodes/escalate.py · escalate"
+    }
+  },
+  "decision": {
+    "defined_in": [
+      "apps/api/app/reasoning/determinism.py · classify",
+      "apps/api/app/reasoning/guards.py · guard_verdict"
+    ],
+    "patterns": [
+      {
+        "code": "posting_failure",
+        "meaning": "MOTIF rejected a posting that should have occurred"
+      },
+      {
+        "code": "missing_side",
+        "meaning": "One side of the break is absent entirely"
+      },
+      {
+        "code": "missing_price",
+        "meaning": "Price is zero and no corporate action is confirmed"
+      },
+      {
+        "code": "side_double",
+        "meaning": "The same side is duplicated"
+      },
+      {
+        "code": "reapplication",
+        "meaning": "Today's break matches a prior-day adjustment rolling forward"
+      },
+      {
+        "code": "single_cause",
+        "meaning": "Exactly one cause check fired"
+      }
+    ],
+    "cause_checks": [
+      {
+        "check": "C1",
+        "category": "C",
+        "category_name": "Redemption break",
+        "side": "BO",
+        "reason": "Nostro statement received after 23:30 cutoff"
+      },
+      {
+        "check": "C2",
+        "category": "F",
+        "category_name": "Data quality break",
+        "side": "BO",
+        "reason": "Reference does not resolve in static data"
+      },
+      {
+        "check": "C3",
+        "category": "A",
+        "category_name": "Price break",
+        "side": "UNKNOWN",
+        "reason": "FO and BO priced from different curve datasets"
+      },
+      {
+        "check": "C4",
+        "category": "E",
+        "category_name": "Trade booking break",
+        "side": "UNKNOWN",
+        "reason": "Fee or funding component present on one side only"
+      },
+      {
+        "check": "C5",
+        "category": "E",
+        "category_name": "Trade booking break",
+        "side": "FO",
+        "reason": "Pending desk confirmation since the 11:00 run"
+      },
+      {
+        "check": "C6",
+        "category": "D",
+        "category_name": "Settlement break",
+        "side": "BO",
+        "reason": "Two entries with identical settlement reference"
+      }
+    ],
+    "default_verdicts": [
+      {
+        "category": "A",
+        "category_name": "Price break",
+        "FO": "DO_NOT_POST",
+        "BO": "POST"
+      },
+      {
+        "category": "B",
+        "category_name": "Pull factor break",
+        "FO": "DO_NOT_POST",
+        "BO": "POST"
+      },
+      {
+        "category": "C",
+        "category_name": "Redemption break",
+        "FO": "DO_NOT_POST",
+        "BO": "POST"
+      },
+      {
+        "category": "D",
+        "category_name": "Settlement break",
+        "FO": "DO_NOT_POST",
+        "BO": "POST"
+      },
+      {
+        "category": "E",
+        "category_name": "Trade booking break",
+        "FO": "DO_NOT_POST",
+        "BO": "POST"
+      },
+      {
+        "category": "F",
+        "category_name": "Data quality break",
+        "FO": "DO_NOT_POST",
+        "BO": "DO_NOT_POST"
+      },
+      {
+        "category": "G",
+        "category_name": "Corporate action break",
+        "FO": "ESCALATE",
+        "BO": "ESCALATE"
+      },
+      {
+        "category": "H",
+        "category_name": "Novel break",
+        "FO": "ESCALATE",
+        "BO": "ESCALATE"
+      }
+    ],
+    "reasoner": "none",
+    "guards": [
+      {
+        "id": "§8",
+        "rule": "A rejected legitimate posting is corrected and re-posted, not judged"
+      },
+      {
+        "id": "R6",
+        "rule": "No evidenced root cause: escalate, do not post"
+      },
+      {
+        "id": "R2",
+        "rule": "A Front Office cause never posts a FOBO adjustment: do not post"
+      },
+      {
+        "id": "none",
+        "rule": "No verdict proposed at all is an escalation, never an implicit POST"
+      },
+      {
+        "id": "P1",
+        "rule": "A POST that depends on an unset policy threshold requires controller confirmation"
+      }
+    ]
+  },
+  "reasoner_override": null
+}

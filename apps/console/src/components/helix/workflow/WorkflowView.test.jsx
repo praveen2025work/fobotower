@@ -1,7 +1,8 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as api from '../data/workflowApi';
+import graphFixture from './__fixtures__/graph.json';
 import fixture from './__fixtures__/workflow.json';
 import { WorkflowView } from './WorkflowView';
 
@@ -10,6 +11,7 @@ vi.mock('../data/workflowApi', () => ({
   fetchVersions: vi.fn(),
   fetchVersion: vi.fn(),
   fetchRebased: vi.fn(),
+  fetchGraph: vi.fn(),
   validateWorkflow: vi.fn(),
   saveDraft: vi.fn(),
   uploadYaml: vi.fn(),
@@ -37,6 +39,7 @@ beforeEach(() => {
     drafted_at: '2026-09-24T14:02:00+00:00',
   }));
   api.validateWorkflow.mockResolvedValue({ ok: true, errors: [] });
+  api.fetchGraph.mockResolvedValue(graphFixture);
 });
 
 describe('WorkflowView', () => {
@@ -44,7 +47,26 @@ describe('WorkflowView', () => {
     render(<WorkflowView callerKey="praveen" />);
     expect(await screen.findByText('Workflow v3')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '2 drafts awaiting approval' })).toBeInTheDocument();
-    expect(screen.getAllByTestId('step-card')).toHaveLength(fixture.active.config.steps.length);
+    expect(await screen.findByRole('button', { name: 'Open Apply playbook' })).toBeInTheDocument();
+    expect(api.fetchGraph).toHaveBeenCalledWith(3);
+  });
+
+  it('opens the step panel from the diagram', async () => {
+    render(<WorkflowView callerKey="praveen" />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Open Apply playbook' }));
+    expect(await screen.findByText(/Settle by rule; route the rest to the reasoner/)).toBeInTheDocument();
+  });
+
+  it('shows an error with retry when the graph fails to load, while the rest of the tab still works', async () => {
+    api.fetchGraph.mockRejectedValueOnce(new Error('GET /api/workflow/graph failed: 500'));
+    render(<WorkflowView callerKey="praveen" />);
+    expect(await screen.findByText('GET /api/workflow/graph failed: 500')).toBeInTheDocument();
+    // the rest of the tab still works
+    expect(await screen.findByText('Workflow v3')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'New draft' })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(await screen.findByRole('button', { name: 'Open Apply playbook' })).toBeInTheDocument();
   });
 
   it('opens the first pending draft', async () => {

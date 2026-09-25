@@ -10,6 +10,11 @@ export const fetchVersion = (n) => get(`/api/workflow/versions/${n}`);
 
 export const fetchRebased = (n) => get(`/api/workflow/versions/${n}/rebased`);
 
+/** The compiled graph and why it routes the way it does, for a version
+ * (default: active). */
+export const fetchGraph = (version) =>
+  get('/api/workflow/graph' + (version ? `?version=${version}` : ''));
+
 export const validateWorkflow = (config) => post('/api/workflow/validate', { config });
 
 export const saveDraft = ({ config, note, basedOn }) =>

@@ -1,6 +1,7 @@
 import { mono } from '../lib/format';
 import { Drawer } from '../ui/Drawer';
 import { Chip } from './StepCard';
+import { DecisionTree } from './DecisionTree';
 import { SETTINGS_FOR_STEP, decidedByChips, humanize, showValue } from './workflowModel';
 
 function Section({ title, children }) {
@@ -34,10 +35,81 @@ function Keys({ keys }) {
   );
 }
 
-export function StepPanel({ step, config, schema, reasoner, onClose }) {
+/** Router rule + escalation codes + where it's defined, for a step that can
+ *  escalate; the Apply playbook step also gets the full decision tree. */
+function HowItDecides({ step, graph, reasoner }) {
+  if (!graph) return null;
+
+  if (step.name === 'escalate') {
+    const esc = graph.logic.escalate;
+    return (
+      <Section title="How it decides">
+        <p className="text-[12px] mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+          Ends the run. The reason code says which step could not proceed.
+        </p>
+        <ul className="flex flex-col gap-0.5 mb-1.5">
+          {esc.reasons.map((code) => (
+            <li key={code} className="text-[11px]" style={mono}>
+              {code}
+            </li>
+          ))}
+        </ul>
+        <p className="text-[10.5px]" style={{ ...mono, color: 'var(--text-muted)' }}>
+          {esc.defined_in}
+        </p>
+      </Section>
+    );
+  }
+
+  const logic = graph.logic[step.name];
+  if (!logic) return null;
+  const canEscalate = logic.escalates_when.length > 0;
+
+  return (
+    <Section title="How it decides">
+      {canEscalate && (
+        <>
+          <p className="text-[12px] mb-1" style={{ color: 'var(--text-secondary)' }}>
+            {graph.router.rule}
+          </p>
+          <p className="text-[10.5px] mb-2" style={{ ...mono, color: 'var(--text-muted)' }}>
+            {graph.router.defined_in}
+          </p>
+          <h5 className="text-[10.5px] font-bold uppercase tracking-wide mb-1" style={{ color: 'var(--text-muted)' }}>
+            Escalates when
+          </h5>
+          <ul className="flex flex-col gap-1 mb-2">
+            {logic.escalates_when.map(({ code, when }) => (
+              <li key={code} data-testid={`escalates-${code}`} className="text-[11.5px]">
+                <span style={mono} className="font-semibold">
+                  {code}
+                </span>{' '}
+                — {when}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      <p className="text-[10.5px] mb-2" style={{ ...mono, color: 'var(--text-muted)' }}>
+        {logic.defined_in}
+      </p>
+      {step.name === 'reason' && (
+        <>
+          <h5 className="text-[10.5px] font-bold uppercase tracking-wide mb-1.5" style={{ color: 'var(--text-muted)' }}>
+            Decision tree
+          </h5>
+          <DecisionTree decision={graph.decision} reasoner={reasoner} />
+        </>
+      )}
+    </Section>
+  );
+}
+
+export function StepPanel({ step, config, schema, reasoner, graph, onClose }) {
   const sections = SETTINGS_FOR_STEP[step.name] || [];
   return (
     <Drawer title={step.label} subtitle={`${step.name} · ${step.description}`} width={480} onClose={onClose}>
+      <HowItDecides step={step} graph={graph} reasoner={reasoner} />
       <Section title="Decided by">
         <div className="flex flex-wrap gap-1">
           {decidedByChips(step.decided_by, reasoner).map((c) => (

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as api from '../data/workflowApi';
@@ -103,6 +103,56 @@ describe('WorkflowView', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
     expect(await screen.findByRole('button', { name: 'Open Apply playbook' })).toBeInTheDocument();
+  });
+
+  it('drops a graph response for a version superseded by a newer request (out-of-order guard)', async () => {
+    let resolveV3;
+    const v3Graph = {
+      ...graphFixture,
+      version: 3,
+      nodes: graphFixture.nodes.filter((n) => n.id !== 'rank'),
+      edges: graphFixture.edges.filter((e) => e.source !== 'rank' && e.target !== 'rank'),
+    };
+    const v5Graph = { ...graphFixture, version: 5 };
+    api.fetchGraph.mockImplementation((version) => {
+      if (version === 3) {
+        return new Promise((resolve) => {
+          resolveV3 = resolve;
+        });
+      }
+      return Promise.resolve(v5Graph);
+    });
+
+    render(<WorkflowView callerKey="praveen" />);
+    expect(await screen.findByText('Workflow v3')).toBeInTheDocument();
+    // v3's graph fetch (requested for the initial active version) is still
+    // in flight — never resolved yet.
+    expect(screen.getByText('Loading the diagram…')).toBeInTheDocument();
+
+    // The active version moves to 5 (an approval) while that request is
+    // still outstanding — this requests the graph for 5 too.
+    api.fetchWorkflow.mockResolvedValueOnce(overview({ active: { ...fixture.active, number: 5 } }));
+    api.approveVersion.mockResolvedValue({ number: 5, status: 'active' });
+    await userEvent.click(await screen.findByRole('button', { name: 'Approve' }));
+    const dialog = screen.getByRole('dialog');
+    for (const box of within(dialog).getAllByRole('checkbox')) await userEvent.click(box);
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Approve and activate' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    // v5's request resolved synchronously and is what's shown.
+    expect(await screen.findByRole('button', { name: 'Open Rank causes' })).toBeInTheDocument();
+
+    // v3's now-stale response arrives late — it must be dropped rather
+    // than clobber the already-current v5 graph with an outdated one.
+    // act() flushes the resolved promise's continuation (setGraph) and its
+    // passive effects synchronously, so the assertion below isn't racing
+    // React's own scheduler the way an arbitrary setTimeout would.
+    await act(async () => {
+      resolveV3(v3Graph);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(screen.getByRole('button', { name: 'Open Rank causes' })).toBeInTheDocument();
   });
 
   it('opens the first pending draft', async () => {

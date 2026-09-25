@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { fetchGraph, fetchVersions, fetchWorkflow } from '../data/workflowApi';
 import { ActiveStrip } from './ActiveStrip';
 import { ActiveWorkflowGraph } from './ActiveWorkflowGraph';
@@ -75,12 +75,22 @@ export function WorkflowView({ callerKey }) {
   // tab: a failure here shows its own retry without blocking versions,
   // drafting or anything else. Re-fetched whenever the active version moves.
   const activeNumber = load.state === 'ready' ? load.overview.active.number : null;
+  // The active version can move on (an approval elsewhere) while a graph
+  // fetch for the previous one is still in flight; nothing guarantees that
+  // fetch resolves before the new one's. This ref holds the version most
+  // recently requested — a response is applied only when it's still the
+  // latest ask, so a slow, superseded response can never clobber a newer
+  // one that already landed.
+  const requestedGraphVersion = useRef(null);
   const loadGraph = useCallback(async (version) => {
+    requestedGraphVersion.current = version;
     setGraph({ state: 'loading' });
     try {
       const g = await fetchGraph(version);
+      if (requestedGraphVersion.current !== version) return;
       setGraph({ state: 'ready', graph: g });
     } catch (e) {
+      if (requestedGraphVersion.current !== version) return;
       setGraph({ state: 'error', error: e.message });
     }
   }, []);

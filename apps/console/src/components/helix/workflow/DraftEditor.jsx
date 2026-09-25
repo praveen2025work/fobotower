@@ -70,6 +70,7 @@ export function DraftEditor({
   catalogue,
   schema,
   overrides,
+  activeNumber,
   onSaved,
   onCancel,
   debounceMs = 400,
@@ -95,6 +96,11 @@ export function DraftEditor({
   };
   const reasoner = effectiveReasoner(config, overrides);
   const known = byName(catalogue);
+  // A reload elsewhere (another reviewer's approve/reject/withdraw) keeps
+  // this editor mounted rather than discarding it — but the version it is
+  // based on can now be behind. Say so; Save still submits against the
+  // base this draft was opened with.
+  const staleActive = typeof activeNumber === 'number' && activeNumber !== initial.basedOn;
 
   return (
     <section aria-label="Draft editor" className="flex flex-col gap-4">
@@ -111,6 +117,16 @@ export function DraftEditor({
           Cancel
         </button>
       </div>
+      {staleActive && (
+        <div
+          role="status"
+          className="rounded-lg px-3 py-2 text-[12px]"
+          style={{ background: 'var(--clr-amber-bg)', color: 'var(--clr-amber)' }}
+        >
+          v{activeNumber} went live while you were editing. This draft is based on v{initial.basedOn}{' '}
+          and will need a redraft after saving.
+        </div>
+      )}
       {initial.conflicts?.length > 0 && (
         <div
           role="status"

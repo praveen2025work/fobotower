@@ -11,7 +11,7 @@ vi.mock('../data/workflowApi', () => ({
   saveDraft: vi.fn(),
 }));
 
-const renderEditor = (initial = {}) => {
+const renderEditor = (initial = {}, extra = {}) => {
   const props = { onSaved: vi.fn(), onCancel: vi.fn() };
   render(
     <DraftEditor
@@ -21,6 +21,7 @@ const renderEditor = (initial = {}) => {
       overrides={{}}
       debounceMs={0}
       {...props}
+      {...extra}
     />,
   );
   return props;
@@ -106,6 +107,18 @@ describe('DraftEditor', () => {
   it('lists conflicts carried over from a redraft', () => {
     renderEditor({ conflicts: ['settings.gather.priors_lookback_days'] });
     expect(screen.getByText(/settings.gather.priors_lookback_days/)).toBeInTheDocument();
+  });
+
+  it('warns when the active version moves on while this draft is still open', () => {
+    renderEditor({ basedOn: 3 }, { activeNumber: 5 });
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'v5 went live while you were editing. This draft is based on v3 and will need a redraft after saving.',
+    );
+  });
+
+  it('says nothing about the active version when it has not moved', () => {
+    renderEditor({ basedOn: 3 }, { activeNumber: 3 });
+    expect(screen.queryByText(/went live while you were editing/)).toBeNull();
   });
 
   it('can put a removed step back', async () => {

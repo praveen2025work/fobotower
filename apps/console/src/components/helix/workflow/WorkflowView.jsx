@@ -30,6 +30,12 @@ export function WorkflowView({ callerKey }) {
   const [selected, setSelected] = useState(null);
   const [generation, setGeneration] = useState(0);
   const [mode, setMode] = useState({ kind: 'view' });
+  // Its own id per opened editor, bumped on every New draft or Redraft —
+  // never on a reload. Keying DraftEditor on this (not on basedOn or
+  // generation) means a Redraft always remounts it with the fresh config,
+  // even onto the same base version, and a sidebar action's reload never
+  // remounts — and so never discards — an editor already open.
+  const [editorId, setEditorId] = useState(0);
   const [panel, setPanel] = useState(null);
   const [uploading, setUploading] = useState(false);
 
@@ -77,16 +83,18 @@ export function WorkflowView({ callerKey }) {
   const isPc = overview.caller.roles.includes('PC');
   const editing = mode.kind === 'edit';
 
+  const openEditor = (initial) => {
+    setEditorId((id) => id + 1);
+    setMode({ kind: 'edit', initial });
+  };
+
   return (
     <div className="flex flex-col gap-4">
       <ActiveStrip
         overview={overview}
         canDraft={isPc && !editing}
         onNewDraft={() =>
-          setMode({
-            kind: 'edit',
-            initial: { config: overview.active.config, basedOn: overview.active.number, conflicts: [] },
-          })
+          openEditor({ config: overview.active.config, basedOn: overview.active.number, conflicts: [] })
         }
         onUpload={() => setUploading(true)}
         onShowDrafts={() => setSelected(firstDraft(history) ?? selected)}
@@ -96,11 +104,12 @@ export function WorkflowView({ callerKey }) {
           {editing ? (
             <Card>
               <DraftEditor
-                key={`${mode.initial.basedOn}-${generation}`}
+                key={editorId}
                 initial={mode.initial}
                 catalogue={overview.steps}
                 schema={overview.settings_schema}
                 overrides={overview.overrides}
+                activeNumber={overview.active.number}
                 onCancel={() => setMode({ kind: 'view' })}
                 onSaved={(v) => {
                   setMode({ kind: 'view' });
@@ -125,7 +134,7 @@ export function WorkflowView({ callerKey }) {
                 number={selected}
                 caller={overview.caller}
                 onChanged={() => reload(selected)}
-                onRedraft={(initial) => setMode({ kind: 'edit', initial })}
+                onRedraft={openEditor}
               />
             </Card>
           )}

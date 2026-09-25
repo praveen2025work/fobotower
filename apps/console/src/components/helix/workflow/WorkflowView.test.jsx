@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as api from '../data/workflowApi';
@@ -75,5 +75,52 @@ describe('WorkflowView', () => {
     render(<WorkflowView callerKey="praveen" />);
     await userEvent.click(await screen.findByRole('button', { name: 'Retry' }));
     expect(await screen.findByText('Workflow v3')).toBeInTheDocument();
+  });
+
+  it('loads a redrafted config into an editor that is already open, even onto the same base version', async () => {
+    // A stale draft (based on v2) next to the current active v3 — the same
+    // base an already-open "New draft" (based on v3) editor carries, so a
+    // remount can't be told apart by base version alone.
+    api.fetchVersion.mockImplementation(async (n) => ({
+      ...history.find((v) => v.number === n),
+      based_on: 2,
+      active_number: 3,
+      diff: [],
+      drafted_at: '2026-09-24T14:02:00+00:00',
+    }));
+    const rebased = {
+      ...fixture.active.config,
+      settings: {
+        ...fixture.active.config.settings,
+        gather: { ...fixture.active.config.settings.gather, priors_lookback_days: 45 },
+      },
+    };
+    api.fetchRebased.mockResolvedValue({ config: rebased, based_on: 3, conflicts: [] });
+    render(<WorkflowView callerKey="praveen" />);
+    await userEvent.click(await screen.findByRole('button', { name: 'New draft' }));
+    expect(screen.getByRole('region', { name: 'Draft editor' })).toHaveTextContent('based on v3');
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Redraft on v3' }));
+
+    expect(await screen.findByLabelText('priors lookback days')).toHaveValue(45);
+  });
+
+  it('keeps unsaved edits and warns when the active version moves on while an editor stays open', async () => {
+    render(<WorkflowView callerKey="praveen" />);
+    await userEvent.click(await screen.findByRole('button', { name: 'New draft' }));
+    await userEvent.type(screen.getByLabelText('Change note'), 'still drafting');
+
+    // v5 (not drafted by praveen) is approved, moving the active version to 5
+    // while the note above is still sitting in an editor based on v3.
+    api.fetchWorkflow.mockResolvedValueOnce(overview({ active: { ...fixture.active, number: 5 } }));
+    api.approveVersion.mockResolvedValue({ number: 5, status: 'active' });
+    await userEvent.click(await screen.findByRole('button', { name: 'Approve' }));
+    const dialog = screen.getByRole('dialog');
+    for (const box of within(dialog).getAllByRole('checkbox')) await userEvent.click(box);
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Approve and activate' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    expect(screen.getByLabelText('Change note')).toHaveValue('still drafting');
+    expect(await screen.findByText(/went live while you were editing/)).toBeInTheDocument();
   });
 });

@@ -3,8 +3,12 @@
 No longer its own route — the classic action/group_id/break_id request body
 is dropped (spec §5); the console reaches this logic through
 `POST /api/recs/{id}/decisions` with the {ids, decision} shape instead (see
-test_helix_actions.py). Exercised directly here so the group_id and
-single-break paths, which that shape cannot express, keep their coverage.
+test_helix_actions.py, which already covers most of this through that route).
+apply_decision's group_id and single-break_id paths were pruned along with
+it (the only caller always sends break_ids — see api/decisions.py), so this
+file only exercises the break_ids path, directly rather than through HTTP:
+it can construct a case that isn't drafted for R-1055's real pattern groups
+(the "unknown break" case) more simply than the HTTP layer allows.
 """
 
 import pytest
@@ -16,17 +20,17 @@ from api.deps import ensure_fixtures
 from app.db.base import get_session
 from fixtures.history import COB
 
+# R-1055's P-204 group (FX timing lag) — see test_helix_board.py and
+# test_helix_actions.py, which approve the same six breaks as one decision.
+P204_BREAKS = ["B-1", "B-2", "B-3", "B-4", "B-5", "B-6"]
 
-async def _snapshot():
+
+async def _open_r1055():
+    """Opening the case seeds fixtures and runs the investigation."""
     async with get_session() as s:
         await ensure_fixtures(s)
         rec, run = await rec_and_run(s, "R-1055", COB)
-        return await open_case(s, rec, run)
-
-
-async def _group_id(code="P-204"):
-    snapshot = await _snapshot()
-    return next(g.group_id for g in snapshot.values["pattern_groups"] if g.pattern_code == code)
+        await open_case(s, rec, run)
 
 
 async def _decide(body: DecisionRequest, key: str, rec_id: str = "R-1055") -> dict:
@@ -34,17 +38,15 @@ async def _decide(body: DecisionRequest, key: str, rec_id: str = "R-1055") -> di
         return await apply_decision(s, rec_id, body, key)
 
 
-async def test_approving_a_group_resolves_every_break_in_it():
-    await _snapshot()  # opening the case seeds fixtures and runs the investigation
-    gid = await _group_id()
-    result = await _decide(DecisionRequest(action="approve", group_id=gid), "k-approve-1")
-    assert len(result["break_ids"]) == 6
+async def test_approving_several_breaks_resolves_them_all():
+    await _open_r1055()
+    result = await _decide(DecisionRequest(action="approve", break_ids=P204_BREAKS), "k-approve-1")
+    assert result["break_ids"] == P204_BREAKS
 
 
 async def test_a_repeated_idempotency_key_is_rejected():
-    await _snapshot()
-    gid = await _group_id()
-    body = DecisionRequest(action="approve", group_id=gid)
+    await _open_r1055()
+    body = DecisionRequest(action="approve", break_ids=P204_BREAKS)
     await _decide(body, "k-dup")
     with pytest.raises(HTTPException) as exc:
         await _decide(body, "k-dup")
@@ -53,37 +55,29 @@ async def test_a_repeated_idempotency_key_is_rejected():
 
 async def test_a_rejection_without_a_reason_is_refused():
     """An empty rejection gives the retry cycle nothing to correct."""
-    await _snapshot()
-    gid = await _group_id()
+    await _open_r1055()
     with pytest.raises(HTTPException) as exc:
-        await _decide(DecisionRequest(action="reject", group_id=gid), "k-noreason")
+        await _decide(DecisionRequest(action="reject", break_ids=P204_BREAKS), "k-noreason")
     assert exc.value.status_code == 422
 
 
 async def test_a_rejection_with_a_reason_is_accepted():
-    await _snapshot()
-    gid = await _group_id()
+    await _open_r1055()
     result = await _decide(
-        DecisionRequest(action="reject", group_id=gid, reason="Amount unverified"), "k-reason"
+        DecisionRequest(action="reject", break_ids=P204_BREAKS, reason="Amount unverified"),
+        "k-reason",
     )
     assert result["action"] == "reject"
 
 
 async def test_a_single_break_can_be_decided():
-    await _snapshot()
-    result = await _decide(DecisionRequest(action="approve", break_id="B-1"), "k-one")
+    await _open_r1055()
+    result = await _decide(DecisionRequest(action="approve", break_ids=["B-1"]), "k-one")
     assert result["break_ids"] == ["B-1"]
 
 
-async def test_an_unknown_group_is_404():
-    await _snapshot()
+async def test_a_break_not_drafted_in_the_case_is_404():
+    await _open_r1055()
     with pytest.raises(HTTPException) as exc:
-        await _decide(DecisionRequest(action="approve", group_id="nope"), "k-unknown")
+        await _decide(DecisionRequest(action="approve", break_ids=["NOPE"]), "k-unknown")
     assert exc.value.status_code == 404
-
-
-async def test_a_decision_with_neither_group_nor_break_is_refused():
-    await _snapshot()
-    with pytest.raises(HTTPException) as exc:
-        await _decide(DecisionRequest(action="approve"), "k-empty")
-    assert exc.value.status_code == 422

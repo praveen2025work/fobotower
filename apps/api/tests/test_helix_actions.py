@@ -6,7 +6,7 @@ from sqlalchemy import func, select
 
 from api.main import create_app
 from app.db.base import get_session
-from app.db.models_session import SessionMessage
+from app.db.models_session import ControllerDecision, SessionMessage
 
 
 @pytest.fixture
@@ -109,6 +109,25 @@ async def test_a_repeated_idempotency_key_records_nothing_twice(client):
     assert (await _decide(client, "k-same", {"ids": ["B-3"], "decision": "Approved"})).status_code == 409
     rec = (await client.get("/api/recs/R-1055")).json()
     assert {a["id"]: a["status"] for a in rec["adjustments"]}["B-3"] == "Pending"
+
+
+async def _decision_count(s) -> int:
+    return await s.scalar(select(func.count()).select_from(ControllerDecision))
+
+
+async def test_a_missing_idempotency_header_is_refused(client):
+    """The header is what prevents a duplicate P&L posting on retry — a
+    request without it must be refused before anything is recorded."""
+    await client.get("/api/board")
+    async with get_session() as s:
+        before = await _decision_count(s)
+
+    r = await client.post("/api/recs/R-1055/decisions",
+                          json={"ids": ["B-1"], "decision": "Approved"})
+    assert r.status_code == 422
+
+    async with get_session() as s:
+        assert await _decision_count(s) == before
 
 
 async def test_asking_stores_both_turns(client):

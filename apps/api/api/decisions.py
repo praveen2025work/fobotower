@@ -1,4 +1,4 @@
-"""Controller decisions: approve or reject a pattern group, or breaks.
+"""Controller decisions: approve or reject a set of breaks.
 
 Every request carries an Idempotency-Key. A repeat returns 409 rather than
 recording a second decision: a duplicated P&L adjustment is the worst
@@ -7,8 +7,10 @@ to cause one.
 
 Not a route module: the console reaches this through
 `POST /api/recs/{id}/decisions` in api/routes/helix.py, which is the only
-caller now that the classic action/group_id/break_id body is dropped
-(spec §5).
+caller. That handler always supplies `break_ids` (the console confirms a
+selection of adjustment rows, never a bare pattern group or a single break),
+so this module only supports that path — the classic action/group_id/break_id
+body, and the group_id-keyed decision it enabled, are dropped (spec §5).
 """
 
 import uuid
@@ -21,20 +23,16 @@ from api.auth import current_caller
 from api.cases import session_id_for
 from api.deps import checkpointer
 from app.db.models_graph import BreakEvent
-from app.db.models_session import ControllerDecision, PatternGroupRow
+from app.db.models_session import ControllerDecision
 from app.workflow.graph import graph_for_session
 from app.workflow.session import ensure_investigation_session
-
-ACTIONS = ("approve", "reject")
 
 
 class DecisionRequest(BaseModel):
     action: str = Field(pattern="^(approve|reject)$")
     reason: str | None = None
-    group_id: str | None = None
-    break_id: str | None = None
-    # Several breaks in one decision: the console confirms a selection.
-    break_ids: list[str] | None = None
+    # The breaks this decision covers — the console confirms a selection.
+    break_ids: list[str] = Field(min_length=1)
 
 
 async def _already_recorded(s, key: str) -> ControllerDecision | None:
@@ -68,51 +66,21 @@ async def apply_decision(s, rec_id: str, body: DecisionRequest,
     # too, so the decision's foreign key resolves.
     await ensure_investigation_session(s, snapshot.values)
 
-    groups = {g.group_id: g for g in snapshot.values.get("pattern_groups", [])}
-    if body.group_id and body.group_id not in groups:
-        raise HTTPException(status_code=404, detail="no such pattern group")
-
-    drafted = {b for g in groups.values() for b in g.break_ids}
-    break_ids = (
-        list(body.break_ids)
-        if body.break_ids
-        else [body.break_id]
-        if body.break_id
-        else list(groups[body.group_id].break_ids)
-        if body.group_id
-        else []
-    )
-    if not break_ids:
-        raise HTTPException(
-            status_code=422, detail="supply a group_id, a break_id or break_ids"
-        )
+    drafted = {
+        b for g in snapshot.values.get("pattern_groups", []) for b in g.break_ids
+    }
+    break_ids = list(body.break_ids)
     unknown = [b for b in break_ids if b not in drafted]
-    if body.break_ids and unknown:
+    if unknown:
         raise HTTPException(
             status_code=404, detail=f"not drafted in this case: {', '.join(unknown)}"
         )
-
-    group = groups.get(body.group_id) if body.group_id else None
-    if group is not None and await s.get(PatternGroupRow, group.group_id) is None:
-        s.add(
-            PatternGroupRow(
-                group_id=group.group_id,
-                investigation_session_id=sid,
-                pattern_code=group.pattern_code,
-                label=group.label,
-                mode=group.mode,
-                break_ids=group.break_ids,
-                historical_approval_rate=group.historical_approval_rate,
-            )
-        )
-        await s.flush()
 
     decision_id = str(uuid.uuid4())
     s.add(
         ControllerDecision(
             decision_id=decision_id,
             investigation_session_id=sid,
-            group_id=body.group_id,
             controller_user_id=caller.staff_id,
             action=body.action,
             reason=body.reason,
@@ -128,8 +96,6 @@ async def apply_decision(s, rec_id: str, body: DecisionRequest,
         )
         if row is not None:
             row.outcome = outcome
-            if group is not None:
-                row.pattern_code = group.pattern_code
     await s.commit()
 
     return {

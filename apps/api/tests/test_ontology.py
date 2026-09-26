@@ -5,13 +5,13 @@ from sqlalchemy import select
 from app.db.base import get_session
 from app.db.models_graph import Edge, Node
 from app.graph.ontology import OntologyRepository
-from fixtures.ontology import load_ontology
+from app.playbook.loader import load_playbook
 
 AS_OF = date(2026, 8, 3)
 
 
 async def _repo(s):
-    await load_ontology(s)
+    await load_playbook(s)
     return OntologyRepository(s)
 
 

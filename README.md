@@ -82,8 +82,7 @@ cd apps/console && npm run dev
 ```
 
 Then open **http://localhost:3100/fobo** (or just **http://localhost:3100**)
-for the Helix console, the finalized UI (Helix Pilot V1). The earlier console
-is kept at **http://localhost:3100/classic** until it is retired.
+for the Helix console, the finalized UI (Helix Pilot V1).
 
 ### The Helix console
 

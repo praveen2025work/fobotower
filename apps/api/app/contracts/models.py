@@ -1,11 +1,7 @@
-"""Single source of truth for the event and entity contract.
+"""Single source of truth for the entity contract."""
 
-Generated into JSON Schema and .d.ts by packages/contracts/build.py.
-The console validates inbound events against the generated schema.
-"""
-
-from datetime import date, datetime
-from typing import Annotated, Literal, Union
+from datetime import date
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -56,79 +52,3 @@ class AnalysisDraft(Strict):
     what_to_do: str
     risk: str
     confidence_basis: str
-
-
-# ---------- websocket events ----------
-
-
-class RunProgress(Strict):
-    type: Literal["run.progress"] = "run.progress"
-    session_id: str
-    node: str
-    breaks_processed: int
-    breaks_total: int
-
-
-class ApprovalRequired(Strict):
-    type: Literal["approval.required"] = "approval.required"
-    session_id: str
-    group_id: str
-    pattern_code: str
-    break_ids: list[str]
-    historical_approval_rate: float | None = None
-
-
-class EvidenceRegistered(Strict):
-    type: Literal["evidence.registered"] = "evidence.registered"
-    session_id: str
-    evidence_id: str
-    source_application: str
-    retrieved_ts: datetime
-    is_original_analysis: bool
-
-
-class AnalysisVersionEvent(Strict):
-    type: Literal["analysis.version"] = "analysis.version"
-    session_id: str
-    analysis_version_id: str
-    supersedes: str | None = None
-
-
-class DecisionRecorded(Strict):
-    type: Literal["decision.recorded"] = "decision.recorded"
-    session_id: str
-    decision_id: str
-    action: Literal["approve", "reject", "escalate"]
-    reason: str | None = None
-    idempotency_key: str
-
-
-class ErrorEvent(Strict):
-    type: Literal["error"] = "error"
-    session_id: str | None = None
-    code: str
-    message: str
-    application: str | None = None
-    recoverable: bool
-
-
-WS_EVENT_MODELS = [
-    RunProgress,
-    ApprovalRequired,
-    EvidenceRegistered,
-    AnalysisVersionEvent,
-    DecisionRecorded,
-    ErrorEvent,
-]
-
-WsEvent = Annotated[
-    Union[
-        RunProgress,
-        ApprovalRequired,
-        EvidenceRegistered,
-        AnalysisVersionEvent,
-        DecisionRecorded,
-        ErrorEvent,
-    ],
-    Field(discriminator="type"),
-]

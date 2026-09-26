@@ -4,25 +4,26 @@ Every request carries an Idempotency-Key. A repeat returns 409 rather than
 recording a second decision: a duplicated P&L adjustment is the worst
 available outcome, and a retry on a flaky connection is the likeliest way
 to cause one.
+
+Not a route module: the console reaches this through
+`POST /api/recs/{id}/decisions` in api/routes/helix.py, which is the only
+caller now that the classic action/group_id/break_id body is dropped
+(spec §5).
 """
 
 import uuid
-from datetime import date
 
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from api.auth import current_caller
-from api.deps import checkpointer
 from api.cases import session_id_for
-from app.db.base import get_session
+from api.deps import checkpointer
 from app.db.models_graph import BreakEvent
 from app.db.models_session import ControllerDecision, PatternGroupRow
 from app.workflow.graph import graph_for_session
 from app.workflow.session import ensure_investigation_session
-
-router = APIRouter(prefix="/api/recs", tags=["decisions"])
 
 ACTIONS = ("approve", "reject")
 
@@ -32,7 +33,7 @@ class DecisionRequest(BaseModel):
     reason: str | None = None
     group_id: str | None = None
     break_id: str | None = None
-    # Several breaks in one decision: the Helix console confirms a selection.
+    # Several breaks in one decision: the console confirms a selection.
     break_ids: list[str] | None = None
 
 
@@ -42,23 +43,9 @@ async def _already_recorded(s, key: str) -> ControllerDecision | None:
     )
 
 
-@router.post("/{rec_id}/decisions", status_code=201)
-async def record_decision(
-    rec_id: str,
-    body: DecisionRequest,
-    idempotency_key: str = Header(alias="Idempotency-Key"),
-) -> dict:
-    async with get_session() as s:
-        return await apply_decision(s, rec_id, body, idempotency_key)
-
-
 async def apply_decision(s, rec_id: str, body: DecisionRequest,
                          idempotency_key: str) -> dict:
-    """Record one controller decision and set its breaks' outcomes.
-
-    Shared by both consoles, so a decision made from either is the same row
-    and the same audit trail.
-    """
+    """Record one controller decision and set its breaks' outcomes."""
     if body.action == "reject" and not (body.reason or "").strip():
         # An empty rejection gives the retry cycle nothing to correct.
         raise HTTPException(status_code=422, detail="a rejection requires a reason")

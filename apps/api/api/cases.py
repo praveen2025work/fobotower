@@ -1,8 +1,8 @@
 """Open a rec's investigation: read it from the checkpoint, or run it once.
 
-The legacy rec route and the Helix board both need a rec's case. A rec with
-work to analyse runs its graph the first time anyone asks, and every later
-read comes from the checkpoint.
+The investigate endpoint and the console board both need a rec's case. A rec
+with work to analyse runs its graph the first time anyone asks, and every
+later read comes from the checkpoint.
 """
 
 import asyncio

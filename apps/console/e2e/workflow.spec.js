@@ -32,7 +32,7 @@ test('a draft goes live when a second controller approves it, and only new runs 
   await expect(page.getByText('Workflow v2', { exact: true })).toBeVisible();
 
   // A run that starts now uses v2.
-  await request.get(`${API}/api/recs/R-2031`, { timeout: 120_000 });
+  await request.post(`${API}/api/recs/R-2031/investigate`, { timeout: 120_000 });
   const fresh = await (await request.get(`${API}/api/recs/R-2031/trace`)).json();
   expect(fresh.trace.workflow_version).toBe(2);
 

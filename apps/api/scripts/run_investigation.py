@@ -7,6 +7,14 @@ Uses whatever FOBO_REASONER is set to. Unset means `none`: nothing calls a
 model, and any break the playbook cannot settle escalates to a human. That
 is the correct behaviour when no reasoner is available, and it shows exactly
 how much of the run the playbook covers on its own.
+
+Starts each run through POST /api/recs/{id}/investigate — the classic
+GET /api/recs/{id} this used to call is gone, replaced by the console's own
+rec view at that URL and this dedicated investigate endpoint (spec §5). The
+per-break findings table that route used to return is not in either
+endpoint's response, so the report below reads the LangGraph step trace
+instead (GET /api/recs/{id}/trace, unchanged) — the same steps a controller
+sees in the console's "Graph run" panel.
 """
 
 import asyncio
@@ -25,55 +33,23 @@ from api.main import create_app  # noqa: E402
 
 OPEN_RECS = ["R-1055", "R-2031", "R-2048"]
 
+STATUS_MARK = {"done": "done", "waiting": "waiting", "skipped": "skipped", "pending": "pending"}
+
 
 def _line(char="─", n=78):
     return char * n
 
 
-def _report(case: dict) -> None:
-    h = case["header"]
-    print(f"\n{_line('━')}\n{h['rec_id']}  {h['name']}  ·  {h['region']}  ·  COB {h['business_date']}")
+def _report(header: dict, investigated: dict, trace: dict) -> None:
+    print(f"\n{_line('━')}\n{header['rec_id']}  {header['name']}  ·  {header['region']}  "
+          f"·  COB {header['business_date']}")
     print(_line("━"))
-    if case["state"] == "clear":
-        print("  Nothing to review — no open breaks on this rec.")
-        return
-
-    findings = case.get("findings") or {}
-    books = case.get("break_books") or {}
-    deltas = case.get("deltas") or {}
-    print(f"  {'BOOK':14} {'AMOUNT':>12}  {'HOW SETTLED':24} {'CAT':4} VERDICT")
+    print(f"  Status: {investigated['status']:16}  Workflow v{investigated['workflow_version']}"
+          f"   Session {investigated['session_id']}")
     print(f"  {_line('-', 76)}")
-    for bid, f in findings.items():
-        how = f["rule_applied"] or f.get("pattern") or ("reasoner" if not f["deterministic"] else "?")
-        how = f"rule {how}" if f["deterministic"] else f"→ {f.get('reasoner', 'none')}"
-        amt = f"${deltas.get(bid, 0):,.2f}"
-        flag = " *" if f.get("verdict_overridden") or f.get("requires_controller_confirmation") else ""
-        print(f"  {books.get(bid, bid):14} {amt:>12}  {how:24} {f['category_code']:4} {f['verdict']}{flag}")
-
-    notes = {(tuple(f.get("guard_reasons") or []), tuple(f.get("conditional_on") or []))
-             for f in findings.values() if f.get("guard_reasons")}
-    if notes:
-        print("\n  * guard notes:")
-        for reasons, cond in sorted(notes):
-            for r in reasons:
-                print(f"      {r}")
-            if cond:
-                print(f"      unset: {', '.join(cond)}")
-
-    d = case.get("determinism") or {}
-    if d:
-        share = d.get("share")
-        print(f"\n  Settled by the playbook, no LLM:  {d['deterministic']} of {d['total']}"
-              f"  ({share:.0%})" if share is not None else "")
-        if d.get("escalated_to_reasoner"):
-            print(f"  Needed judgement:                 {d['escalated_to_reasoner']}"
-                  f"  → escalated (reasoner: {os.getenv('FOBO_REASONER', 'none')})")
-        if d.get("by_pattern"):
-            print(f"  By pattern:                       "
-                  + ", ".join(f"{k} {v}" for k, v in d["by_pattern"].items()))
-    fv = next(iter(findings.values()), {}).get("playbook_version")
-    if fv:
-        print(f"  Playbook version:                 {fv}")
+    for step in trace["steps"]:
+        mark = STATUS_MARK.get(step["status"], step["status"])
+        print(f"  {step['label']:28} {mark:8} {step.get('summary', '')}")
 
 
 async def main(recs: list[str]) -> None:
@@ -86,11 +62,16 @@ async def main(recs: list[str]) -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://local",
                            timeout=180) as client:
         for rec in recs:
-            r = await client.get(f"/api/recs/{rec}")
+            r = await client.post(f"/api/recs/{rec}/investigate")
+            if r.status_code == 409:
+                print(f"\n{rec}: nothing to review — no open breaks on this rec.")
+                continue
             if r.status_code != 200:
                 print(f"\n{rec}: HTTP {r.status_code} — {r.text[:200]}")
                 continue
-            _report(r.json())
+            investigated = r.json()
+            trace_body = (await client.get(f"/api/recs/{rec}/trace")).json()
+            _report(trace_body["header"], investigated, trace_body["trace"])
     print()
 
 

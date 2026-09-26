@@ -14,7 +14,7 @@ async def client():
 
 
 async def _board(client) -> dict:
-    r = await client.get("/api/helix/board")
+    r = await client.get("/api/board")
     assert r.status_code == 200
     return r.json()
 

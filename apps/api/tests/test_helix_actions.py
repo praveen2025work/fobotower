@@ -17,11 +17,11 @@ async def client():
 
 
 async def _ask(client, rec_id: str, message: str):
-    return await client.post(f"/api/helix/recs/{rec_id}/messages", json={"message": message})
+    return await client.post(f"/api/recs/{rec_id}/messages", json={"message": message})
 
 
 async def _decide(client, key: str, body: dict, rec_id: str = "R-1055"):
-    return await client.post(f"/api/helix/recs/{rec_id}/decisions", json=body,
+    return await client.post(f"/api/recs/{rec_id}/decisions", json=body,
                              headers={"Idempotency-Key": key})
 
 
@@ -38,16 +38,16 @@ async def test_naming_an_adjustment_explains_it_and_records_the_lookup(client):
 
 async def test_the_conversation_survives_a_reload(client):
     await _ask(client, "R-1055", "What is safe to approve?")
-    prime = (await client.get("/api/helix/recs/R-1055")).json()
+    prime = (await client.get("/api/recs/R-1055")).json()
     roles = [m["role"] for m in prime["session"]]
     assert roles == ["agent", "user", "agent"]
     assert prime["session"][1]["text"] == "What is safe to approve?"
 
 
 async def test_an_answers_calls_stay_out_of_the_analysis_turn(client):
-    before = len((await client.get("/api/helix/recs/R-1055")).json()["calls"])
+    before = len((await client.get("/api/recs/R-1055")).json()["calls"])
     await _ask(client, "R-1055", "Explain B-1")
-    after = (await client.get("/api/helix/recs/R-1055")).json()
+    after = (await client.get("/api/recs/R-1055")).json()
     assert len(after["calls"]) == before
     assert after["session"][-1]["calls"]
 
@@ -77,7 +77,7 @@ async def test_an_empty_question_is_rejected(client):
 
 
 async def test_approving_updates_the_rec_the_session_and_the_feed(client):
-    await client.get("/api/helix/board")
+    await client.get("/api/board")
     r = await _decide(client, "k-approve",
                       {"ids": ["B-1", "B-2", "B-3", "B-4", "B-5", "B-6"], "decision": "Approved"})
     assert r.status_code == 201
@@ -92,22 +92,22 @@ async def test_approving_updates_the_rec_the_session_and_the_feed(client):
 
 
 async def test_rejecting_needs_a_reason(client):
-    await client.get("/api/helix/board")
+    await client.get("/api/board")
     r = await _decide(client, "k-reject", {"ids": ["B-7"], "decision": "Rejected"})
     assert r.status_code == 422
 
 
 async def test_a_decided_adjustment_cannot_be_decided_again(client):
-    await client.get("/api/helix/board")
+    await client.get("/api/board")
     assert (await _decide(client, "k-1", {"ids": ["B-1"], "decision": "Approved"})).status_code == 201
     assert (await _decide(client, "k-2", {"ids": ["B-1"], "decision": "Approved"})).status_code == 409
 
 
 async def test_a_repeated_idempotency_key_records_nothing_twice(client):
-    await client.get("/api/helix/board")
+    await client.get("/api/board")
     assert (await _decide(client, "k-same", {"ids": ["B-2"], "decision": "Approved"})).status_code == 201
     assert (await _decide(client, "k-same", {"ids": ["B-3"], "decision": "Approved"})).status_code == 409
-    rec = (await client.get("/api/helix/recs/R-1055")).json()
+    rec = (await client.get("/api/recs/R-1055")).json()
     assert {a["id"]: a["status"] for a in rec["adjustments"]}["B-3"] == "Pending"
 
 

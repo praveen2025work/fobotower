@@ -69,8 +69,8 @@ async def test_the_board_names_the_caller_and_lists_dev_callers_only_in_dev(monk
     async with AsyncClient(transport=ASGITransport(app=create_app()),
                            base_url="http://test", timeout=120) as c:
         monkeypatch.setenv("FOBO_ENV", "dev")
-        board = (await c.get("/api/helix/board", headers={"X-Dev-Caller": "asha"})).json()
+        board = (await c.get("/api/board", headers={"X-Dev-Caller": "asha"})).json()
         assert board["caller"]["id"] == "asha"
         assert [d["id"] for d in board["devCallers"]] == ["praveen", "asha"]
         monkeypatch.delenv("FOBO_ENV")
-        assert "devCallers" not in (await c.get("/api/helix/board")).json()
+        assert "devCallers" not in (await c.get("/api/board")).json()

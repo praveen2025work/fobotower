@@ -7,7 +7,7 @@ import * as api from './data/helixApi';
 import workflowFixture from './workflow/__fixtures__/workflow.json';
 import HelixApp from './HelixApp';
 
-// The fixture is a trimmed copy of a real /api/helix/board response.
+// The fixture is a trimmed copy of a real /api/board response.
 vi.mock('./data/helixApi', () => ({
   fetchBoard: vi.fn(),
   fetchRec: vi.fn(),
@@ -67,7 +67,7 @@ describe('HelixApp', () => {
 
   it('offers a retry when the API cannot be reached', async () => {
     api.fetchBoard
-      .mockRejectedValueOnce(new Error('GET /api/helix/board failed: 500'))
+      .mockRejectedValueOnce(new Error('GET /api/board failed: 500'))
       .mockResolvedValueOnce(served());
     render(<HelixApp />);
     expect(await screen.findByText(/failed: 500/)).toBeInTheDocument();

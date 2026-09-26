@@ -1,12 +1,13 @@
-"""The Helix console's API.
+"""The console's API.
 
-  GET  /api/helix/board                   every rec, its session, the feed
-  GET  /api/helix/recs/{rec_id}           one rec, after something changed
-  POST /api/helix/recs/{rec_id}/messages  ask the session a question
-  POST /api/helix/recs/{rec_id}/decisions approve or reject adjustments
+  GET  /api/board                   every rec, its session, the feed
+  GET  /api/recs/{rec_id}           one rec, after something changed
+  POST /api/recs/{rec_id}/messages  ask the session a question
+  POST /api/recs/{rec_id}/decisions approve or reject adjustments
 
 Views are composed in app.helix; this layer opens investigations (it owns
-the checkpointer) and turns requests into database writes.
+the checkpointer) and turns requests into database writes. Starting a run
+from scratch is a separate verb — see api/routes/investigations.py.
 """
 
 from datetime import date
@@ -18,8 +19,8 @@ from sqlalchemy import select
 
 from api.auth import current_caller, dev_callers
 from api.cases import open_case, rec_and_run, session_id_for
+from api.decisions import DecisionRequest, apply_decision
 from api.deps import ensure_fixtures
-from api.routes.decisions import DecisionRequest, apply_decision
 from app.db.base import get_session
 from app.db.models_ops import Reconciliation, Run
 from app.helix import activity
@@ -39,7 +40,7 @@ from app.queries.analytics import hours_saved
 from app.workflow import versions
 from fixtures.history import COB
 
-router = APIRouter(prefix="/api/helix", tags=["helix"])
+router = APIRouter(prefix="/api", tags=["helix"])
 
 # How a caller's role reads in the header, most senior first.
 ROLE_TITLES = [("PC", "FOBO Controller"), ("FO", "Front Office")]

@@ -94,12 +94,13 @@ Everything on screen is read from the API; the browser generates nothing.
 | Drafted adjustments, verdicts, fixes | the LangGraph investigation's checkpoint and the playbook |
 | Analysis (what, why, action, risk) | the draft node, plus grounding and carry flags |
 | MCP data (N) | `source_call` rows, with the rows each tool returned |
-| Agent One answers | `POST /api/helix/recs/{id}/messages`: a deterministic intent router; anything it cannot answer goes to the reasoner (none by default) |
-| Approve / Reject | `POST /api/helix/recs/{id}/decisions`, double-confirmed, one idempotency key per decision |
+| Agent One answers | `POST /api/recs/{id}/messages`: a deterministic intent router; anything it cannot answer goes to the reasoner (none by default) |
+| Approve / Reject | `POST /api/recs/{id}/decisions`, double-confirmed, one idempotency key per decision |
 | Notification bell | derived from runs and today's decisions |
 | **Graph run** (session header) | `GET /api/recs/{id}/trace`: each LangGraph step from the checkpoints |
 
-The whole board is one call: `GET /api/helix/board`.
+The whole board is one call: `GET /api/board`. A rec's investigation is
+started explicitly with `POST /api/recs/{id}/investigate`.
 
 To reset the scenario (undo every decision and question), clear the app tables
 and checkpoints; the next request reseeds:

@@ -1,98 +1,89 @@
+"""apply_decision: record one controller decision and set its breaks' outcomes.
+
+No longer its own route — the classic action/group_id/break_id request body
+is dropped (spec §5); the console reaches this logic through
+`POST /api/recs/{id}/decisions` with the {ids, decision} shape instead (see
+test_helix_actions.py). Exercised directly here so the group_id and
+single-break paths, which that shape cannot express, keep their coverage.
+"""
+
 import pytest
-from httpx import ASGITransport, AsyncClient
+from fastapi import HTTPException
 
-from api.main import create_app
-
-
-@pytest.fixture
-async def client():
-    app = create_app()
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test", timeout=120
-    ) as c:
-        # Opening the case seeds fixtures and runs the investigation.
-        await c.get("/api/recs/R-1055")
-        yield c
+from api.cases import open_case, rec_and_run
+from api.decisions import DecisionRequest, apply_decision
+from api.deps import ensure_fixtures
+from app.db.base import get_session
+from fixtures.history import COB
 
 
-async def _group_id(client, code="P-204"):
-    d = (await client.get("/api/recs/R-1055")).json()
-    return next(g["group_id"] for g in d["pattern_groups"] if g["pattern_code"] == code)
+async def _snapshot():
+    async with get_session() as s:
+        await ensure_fixtures(s)
+        rec, run = await rec_and_run(s, "R-1055", COB)
+        return await open_case(s, rec, run)
 
 
-async def test_approving_a_group_resolves_every_break_in_it(client):
-    gid = await _group_id(client)
-    r = await client.post(
-        "/api/recs/R-1055/decisions",
-        json={"action": "approve", "group_id": gid},
-        headers={"Idempotency-Key": "k-approve-1"},
-    )
-    assert r.status_code == 201
-    assert len(r.json()["break_ids"]) == 6
+async def _group_id(code="P-204"):
+    snapshot = await _snapshot()
+    return next(g.group_id for g in snapshot.values["pattern_groups"] if g.pattern_code == code)
 
 
-async def test_a_repeated_idempotency_key_is_rejected(client):
-    gid = await _group_id(client)
-    body = {"action": "approve", "group_id": gid}
-    headers = {"Idempotency-Key": "k-dup"}
-    first = await client.post("/api/recs/R-1055/decisions", json=body, headers=headers)
-    assert first.status_code == 201
-    second = await client.post("/api/recs/R-1055/decisions", json=body, headers=headers)
-    assert second.status_code == 409
+async def _decide(body: DecisionRequest, key: str, rec_id: str = "R-1055") -> dict:
+    async with get_session() as s:
+        return await apply_decision(s, rec_id, body, key)
 
 
-async def test_a_rejection_without_a_reason_is_refused(client):
+async def test_approving_a_group_resolves_every_break_in_it():
+    await _snapshot()  # opening the case seeds fixtures and runs the investigation
+    gid = await _group_id()
+    result = await _decide(DecisionRequest(action="approve", group_id=gid), "k-approve-1")
+    assert len(result["break_ids"]) == 6
+
+
+async def test_a_repeated_idempotency_key_is_rejected():
+    await _snapshot()
+    gid = await _group_id()
+    body = DecisionRequest(action="approve", group_id=gid)
+    await _decide(body, "k-dup")
+    with pytest.raises(HTTPException) as exc:
+        await _decide(body, "k-dup")
+    assert exc.value.status_code == 409
+
+
+async def test_a_rejection_without_a_reason_is_refused():
     """An empty rejection gives the retry cycle nothing to correct."""
-    gid = await _group_id(client)
-    r = await client.post(
-        "/api/recs/R-1055/decisions",
-        json={"action": "reject", "group_id": gid},
-        headers={"Idempotency-Key": "k-noreason"},
+    await _snapshot()
+    gid = await _group_id()
+    with pytest.raises(HTTPException) as exc:
+        await _decide(DecisionRequest(action="reject", group_id=gid), "k-noreason")
+    assert exc.value.status_code == 422
+
+
+async def test_a_rejection_with_a_reason_is_accepted():
+    await _snapshot()
+    gid = await _group_id()
+    result = await _decide(
+        DecisionRequest(action="reject", group_id=gid, reason="Amount unverified"), "k-reason"
     )
-    assert r.status_code == 422
+    assert result["action"] == "reject"
 
 
-async def test_a_rejection_with_a_reason_is_accepted(client):
-    gid = await _group_id(client)
-    r = await client.post(
-        "/api/recs/R-1055/decisions",
-        json={"action": "reject", "group_id": gid, "reason": "Amount unverified"},
-        headers={"Idempotency-Key": "k-reason"},
-    )
-    assert r.status_code == 201
+async def test_a_single_break_can_be_decided():
+    await _snapshot()
+    result = await _decide(DecisionRequest(action="approve", break_id="B-1"), "k-one")
+    assert result["break_ids"] == ["B-1"]
 
 
-async def test_a_single_break_can_be_decided(client):
-    r = await client.post(
-        "/api/recs/R-1055/decisions",
-        json={"action": "approve", "break_id": "B-1"},
-        headers={"Idempotency-Key": "k-one"},
-    )
-    assert r.status_code == 201
-    assert r.json()["break_ids"] == ["B-1"]
+async def test_an_unknown_group_is_404():
+    await _snapshot()
+    with pytest.raises(HTTPException) as exc:
+        await _decide(DecisionRequest(action="approve", group_id="nope"), "k-unknown")
+    assert exc.value.status_code == 404
 
 
-async def test_an_unknown_group_is_404(client):
-    r = await client.post(
-        "/api/recs/R-1055/decisions",
-        json={"action": "approve", "group_id": "nope"},
-        headers={"Idempotency-Key": "k-unknown"},
-    )
-    assert r.status_code == 404
-
-
-async def test_a_decision_with_neither_group_nor_break_is_refused(client):
-    r = await client.post(
-        "/api/recs/R-1055/decisions",
-        json={"action": "approve"},
-        headers={"Idempotency-Key": "k-empty"},
-    )
-    assert r.status_code == 422
-
-
-async def test_the_missing_idempotency_header_is_refused(client):
-    gid = await _group_id(client)
-    r = await client.post(
-        "/api/recs/R-1055/decisions", json={"action": "approve", "group_id": gid}
-    )
-    assert r.status_code == 422
+async def test_a_decision_with_neither_group_nor_break_is_refused():
+    await _snapshot()
+    with pytest.raises(HTTPException) as exc:
+        await _decide(DecisionRequest(action="approve"), "k-empty")
+    assert exc.value.status_code == 422

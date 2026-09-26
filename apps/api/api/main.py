@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 
 from api.auth import dev_caller_middleware
 from api.deps import setup_checkpointer
-from api.routes import decisions, helix, recs, sessions, workflow
+from api.routes import helix, investigations, workflow
 from app.workflow.versions import Invalid, VersionError
 
 
@@ -51,9 +51,9 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     app.add_exception_handler(VersionError, _version_error)
-    app.include_router(sessions.router)
-    app.include_router(recs.router)
-    app.include_router(decisions.router)
+    # /api/recs/{id} GET is the console view (helix); investigations only
+    # adds /investigate and /trace, so the two routers never collide.
+    app.include_router(investigations.router)
     app.include_router(helix.router)
     app.include_router(workflow.router)
 

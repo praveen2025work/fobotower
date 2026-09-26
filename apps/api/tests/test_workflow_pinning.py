@@ -4,6 +4,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select, update
 
+from api.cases import initial_state, rec_and_run
 from api.deps import checkpointer
 from api.main import create_app
 from app.contracts.models import Caller
@@ -18,7 +19,8 @@ from app.workflow.config import (
     settings,
     use_workflow,
 )
-from app.workflow.graph import graph_for_session, pinned_for_session
+from app.workflow.graph import graph_for_session, pinned_for_session, run_investigation
+from fixtures.history import COB, breaks_for_rec
 
 PRAVEEN = Caller(staff_id="praveen", roles=["FO", "PC"], entity_scope=["LE-APAC-01"], region="APAC")
 ASHA = Caller(staff_id="asha", roles=["PC"], entity_scope=["LE-APAC-01"], region="APAC")
@@ -57,7 +59,7 @@ async def _trace(client, rec: str) -> dict:
 
 
 async def test_a_run_started_on_v1_keeps_v1_after_v2_goes_live(client):
-    await client.get("/api/recs/R-1055")
+    await client.post("/api/recs/R-1055/investigate")
     await _activate_v2_without_rank_and_a_30_day_lookback()
     trace = await _trace(client, "R-1055")
     assert trace["workflow_version"] == 1
@@ -67,7 +69,7 @@ async def test_a_run_started_on_v1_keeps_v1_after_v2_goes_live(client):
 
 async def test_a_run_started_after_the_approval_runs_v2(client):
     await _activate_v2_without_rank_and_a_30_day_lookback()
-    await client.get("/api/recs/R-2031")
+    await client.post("/api/recs/R-2031/investigate")
     trace = await _trace(client, "R-2031")
     assert trace["workflow_version"] == 2
     assert "rank" not in [s["node"] for s in trace["steps"]]
@@ -76,7 +78,7 @@ async def test_a_run_started_after_the_approval_runs_v2(client):
 
 
 async def test_the_run_records_its_version_on_the_session_row(client):
-    await client.get("/api/recs/R-1055")
+    await client.post("/api/recs/R-1055/investigate")
     async with get_session() as s:
         row = await s.get(InvestigationSession, "sess-r-1055")
     assert row.workflow_version == 1
@@ -87,11 +89,21 @@ async def test_a_second_run_on_a_thread_re_pins_the_row_to_its_own_version(clien
     thread — not just the first one ever. Otherwise a re-run after an
     approval leaves the row and the checkpoints that run wrote disagreeing
     about which version produced them, and every later reader rebuilds the
-    wrong graph over them."""
+    wrong graph over them.
+
+    The console's own path to a run (POST /investigate, api/cases.open_case)
+    is deliberately idempotent — a repeat call reads the checkpoint rather
+    than running it again — so it cannot force this second run. Only
+    run_investigation itself still can, the way a resumed worker would.
+    """
     sid = "sess-r-1055"
-    await client.post(f"/api/sessions/{sid}/investigate")
+    await client.post("/api/recs/R-1055/investigate")
     await _activate_v2_without_rank_and_a_30_day_lookback()
-    await client.post(f"/api/sessions/{sid}/investigate")
+
+    async with get_session() as s, checkpointer() as cp:
+        rec, run = await rec_and_run(s, "R-1055", COB)
+        state = initial_state(rec, run, breaks_for_rec("R-1055"))
+        await run_investigation(state, thread_id=sid, session=s, checkpointer=cp)
 
     async with get_session() as s:
         row = await s.get(InvestigationSession, sid)
@@ -107,7 +119,7 @@ async def test_a_second_run_on_a_thread_re_pins_the_row_to_its_own_version(clien
 
 
 async def test_a_run_from_before_versioning_is_read_as_v1(client):
-    await client.get("/api/recs/R-1055")
+    await client.post("/api/recs/R-1055/investigate")
     async with get_session() as s:
         await s.execute(update(InvestigationSession)
                         .where(InvestigationSession.investigation_session_id == "sess-r-1055")

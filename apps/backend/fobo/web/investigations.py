@@ -18,7 +18,7 @@ from fobo.db.models_ops import Reconciliation, Run
 from fobo.investigation.graph import graph_for_session, run_investigation
 from seed_data.history import breaks_for_rec
 
-# Maps each fixture break's declared cause to the snapshot fields that make
+# Maps each seed-data break's declared cause to the snapshot fields that make
 # the corresponding check fire. Phase 3 replaces this with the CATS and
 # MOTIF adapters.
 CAUSE_TO_SNAPSHOT = {

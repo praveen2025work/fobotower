@@ -9,7 +9,6 @@ node_modules/
 .next-build/
 apps/console/test-results/
 apps/console/playwright-report/
-packages/contracts/dist/
 .env
 .env.*
 .DS_Store

@@ -22,7 +22,7 @@ from fobo.knowledge_graph.ontology import OntologyRepository
 from fobo.console_views import analysis
 from fobo.console_views.adjustments import live_adjustments, recorded_adjustments
 from fobo.console_views.fmt import hhmm
-from fobo.console_views.rec_state import helix_status, steps
+from fobo.console_views.rec_state import status_label, steps
 
 
 def rec_header(rec, run) -> dict:
@@ -37,7 +37,7 @@ def rec_header(rec, run) -> dict:
         "eventId": run.ready_event_id,
         "mb": {"available": run.mb_available, "total": rec.books_total},
         "bookStats": run.book_stats,
-        "status": helix_status(run.status),
+        "status": status_label(run.status),
         "steps": steps(run.status),
         "booksUnlocked": run.books_unlocked,
         "updated": f"{hhmm(stamp)} IST" if stamp else "—",

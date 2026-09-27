@@ -2,7 +2,7 @@
 
     .venv/bin/python scripts/demo_investigation.py
 
-Loads fixtures, runs the workflow to the human interrupt, prints the drafted
+Loads seed data, runs the workflow to the human interrupt, prints the drafted
 analysis and pattern groups, then resumes with per-group approvals and shows
 the recorded outcome.
 """

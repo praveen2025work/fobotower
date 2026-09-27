@@ -34,7 +34,7 @@ def _display_row(row: dict, ccy: str) -> dict:
     return out
 
 
-def helix_call(call: dict, ccy: str) -> dict:
+def call_view(call: dict, ccy: str) -> dict:
     """A recorded source_call, shaped for the session panel and inspector."""
     server, _, tool = call["tool"].partition(".")
     return {
@@ -51,14 +51,14 @@ def helix_call(call: dict, ccy: str) -> dict:
 
 
 async def session_calls(s, session_id: str, ccy: str) -> list[dict]:
-    return [helix_call(c, ccy) for c in await calls_for(s, session_id)]
+    return [call_view(c, ccy) for c in await calls_for(s, session_id)]
 
 
 async def calls_by_id(s, ids: list[str], ccy: str) -> list[dict]:
     if not ids:
         return []
     rows = {c["call_id"]: c for c in await _calls(s, ids)}
-    return [helix_call(rows[i], ccy) for i in ids if i in rows]
+    return [call_view(rows[i], ccy) for i in ids if i in rows]
 
 
 async def _calls(s, ids: list[str]) -> list[dict]:

@@ -2,7 +2,7 @@
 
 Nothing here is hand-typed. The graph comes from build_graph(...).get_graph()
 — the same call the running workflow compiles from — the escalation and
-pattern/guard lists live next to the code that applies them (registry.py,
+pattern/guard lists live next to the code that applies them (step_registry.py,
 determinism.py, guards.py), and defined_in() points at wherever a piece is
 actually defined. The Workflow tab renders this; it invents nothing itself.
 """

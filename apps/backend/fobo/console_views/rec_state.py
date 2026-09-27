@@ -30,7 +30,7 @@ ADJ_STATUS = {
 }
 
 
-def helix_status(run_status: str) -> str:
+def status_label(run_status: str) -> str:
     return STATUS[run_status]
 
 

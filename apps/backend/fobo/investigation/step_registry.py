@@ -5,7 +5,7 @@ order be configured safely: the validator checks each step's inputs are
 produced by an earlier step, so a reordering that cannot work is rejected
 before a run starts rather than failing half way through with a KeyError.
 
-Adding a step: write the node, register it here with honest `needs` and
+Adding a step: write the step, register it here with honest `needs` and
 `produces`, then list it in config/workflow/fobo-investigation.yaml.
 """
 

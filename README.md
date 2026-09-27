@@ -64,7 +64,7 @@ before each test.
 cd apps/backend && .venv/bin/python scripts/demo_investigation.py
 ```
 
-Loads fixtures, runs the workflow to the human interrupt, prints the drafted
+Loads seed data, runs the workflow to the human interrupt, prints the drafted
 analysis and pattern groups exactly as a controller would see them, then
 resumes with per-group approvals and reports the recorded outcome.
 
@@ -238,8 +238,10 @@ cd apps/backend && .venv/bin/python scripts/run_investigation.py
 
 With `FOBO_REASONER` unset, no model is called. Breaks the playbook can
 settle get a verdict from it; breaks it cannot settle escalate to a human.
-The report shows the deterministic share per rec, which is the
-orchestrator's headline figure.
+For each rec, the script prints its status, workflow version, and session
+id, then the LangGraph step trace (`GET /api/recs/{id}/trace`) — one line
+per step with its status and summary, the same sequence a controller sees
+in the console's "Graph run" panel.
 
 | `FOBO_REASONER` | Judgement-based breaks go to |
 |---|---|

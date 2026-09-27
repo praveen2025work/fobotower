@@ -43,7 +43,7 @@ from fobo.reports.hours_saved import hours_saved
 from fobo.investigation import versions
 from seed_data.history import COB
 
-router = APIRouter(prefix="/api", tags=["helix"])
+router = APIRouter(prefix="/api", tags=["console"])
 
 # How a caller's role reads in the header, most senior first.
 ROLE_TITLES = [("PC", "FOBO Controller"), ("FO", "Front Office")]
@@ -147,14 +147,14 @@ async def ask(rec_id: str, body: Question, business_date: date = COB) -> dict:
         }
 
 
-class HelixDecision(BaseModel):
+class ConsoleDecision(BaseModel):
     ids: list[str] = Field(min_length=1)
     decision: Literal["Approved", "Rejected"]
     reason: str | None = None
 
 
 @router.post("/recs/{rec_id}/decisions", status_code=201)
-async def decide(rec_id: str, body: HelixDecision,
+async def decide(rec_id: str, body: ConsoleDecision,
                  idempotency_key: str = Header(alias="Idempotency-Key"),
                  business_date: date = COB) -> dict:
     """Approve or reject the selected adjustments, once both confirmations

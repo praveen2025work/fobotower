@@ -196,13 +196,6 @@ async def test_an_approval_is_seen_by_the_next_read_without_a_restart():
         assert (await versions.active(s)).config.settings.gather.priors_lookback_days == 90
 
 
-async def test_a_run_without_a_version_reads_version_one():
-    d = await _draft()
-    await _approve(d.number)
-    async with get_session() as s:
-        assert await versions.config_for(s, None) == read_workflow()
-
-
 async def test_the_view_is_json_ready():
     d = await _draft()
     v = versions.view(d)

@@ -23,8 +23,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from fobo.db.base import Base
 
-STATUSES = ("draft", "active", "superseded", "rejected")
-
 
 class WorkflowVersion(Base):
     __tablename__ = "workflow_version"

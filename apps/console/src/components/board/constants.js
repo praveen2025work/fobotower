@@ -110,14 +110,6 @@ export const STATUS = {
   },
 };
 
-export const STATUS_ORDER = [
-  'Cleared',
-  'In Progress',
-  'Awaiting Sign-off',
-  'Blocked',
-  'Awaiting Ready',
-];
-
 export const ACTIVITY_STYLE = {
   cleared: {
     icon: CircleCheck,

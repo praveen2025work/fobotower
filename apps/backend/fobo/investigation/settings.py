@@ -176,10 +176,6 @@ def workflow() -> WorkflowConfig:
     return read_workflow()
 
 
-def reset_workflow_cache() -> None:
-    workflow.cache_clear()
-
-
 # The workflow of the run executing in this context. run_investigation binds
 # the run's pinned version for the length of the run; LangGraph copies the
 # context into the tasks that execute each step, so every step reads it.

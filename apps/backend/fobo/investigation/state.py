@@ -3,9 +3,6 @@ from typing import Any, TypedDict
 
 from fobo.contracts.models import AnalysisDraft, Caller, CandidateCause, PatternGroup
 
-MAX_HYPOTHESIS_ATTEMPTS = 3
-MAX_REVIEW_CYCLES = 2
-
 
 class InvestigationState(TypedDict, total=False):
     """Session-grained, not break-grained.

@@ -1,7 +1,6 @@
 """Single source of truth for the entity contract."""
 
 import sys
-from datetime import date
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -19,15 +18,6 @@ class Caller(Strict):
     roles: list[str]
     entity_scope: list[str]
     region: str
-
-
-class BreakRecord(Strict):
-    break_id: str
-    book_ref: str
-    line_code: str
-    cob_date: date
-    fo_value: float | None = None
-    bo_value: float | None = None
 
 
 class CandidateCause(Strict):

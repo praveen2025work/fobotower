@@ -151,11 +151,6 @@ async def pinned(s, number: int) -> Pinned:
     return Pinned(number, as_config((await get(s, number)).config))
 
 
-async def config_for(s, number: int | None) -> WorkflowConfig:
-    """A run's workflow. None: the run predates versioning — version 1."""
-    return (await pinned(s, number or 1)).config
-
-
 async def list_versions(s) -> list[WorkflowVersion]:
     await ensure_seeded(s)
     rows = await s.scalars(select(WorkflowVersion).order_by(WorkflowVersion.number.desc()))

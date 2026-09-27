@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from fobo.contracts.models import BreakRecord, Caller
+from fobo.contracts.models import Caller, PatternGroup
 
 
 def test_caller_requires_entity_scope():
@@ -9,14 +9,13 @@ def test_caller_requires_entity_scope():
     assert c.entity_scope == ["LE1"]
 
 
-def test_break_record_rejects_unknown_fields():
+def test_strict_models_reject_unknown_fields():
     with pytest.raises(ValidationError):
-        BreakRecord(
-            break_id="b1",
-            book_ref="PRIME-MB-01",
-            line_code="CASH",
-            cob_date="2026-08-03",
-            fo_value=1.0,
-            bo_value=2.0,
+        PatternGroup(
+            group_id="g1",
+            pattern_code="P-1",
+            label="test",
+            mode="auto",
+            break_ids=["b1"],
             surprise=True,
         )

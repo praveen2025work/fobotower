@@ -41,10 +41,6 @@ def _edge(edge_id, src, dst, edge_type, since, attrs=None) -> Edge:
                 edge_type=edge_type, attrs=attrs or {}, valid_from=since)
 
 
-ONTOLOGY_NODE_PREFIXES = ("component:", "category:", "verdict:", "finding:",
-                          "test:", "evidence:", "policy:", "team:", "playbook:")
-
-
 async def _clear(session) -> None:
     ids = select(Node.node_id).where(Node.legal_entity_id == ONTOLOGY_ENTITY)
     await session.execute(delete(Edge).where(Edge.from_node_id.in_(ids)))

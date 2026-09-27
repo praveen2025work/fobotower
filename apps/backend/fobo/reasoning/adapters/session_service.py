@@ -27,8 +27,6 @@ from pydantic import ValidationError
 from fobo.reasoning.contracts import SkillVerdict
 from fobo.reasoning.port import ReasoningUnavailable
 
-DEFAULT_TIMEOUT_SECONDS = 120.0
-
 # The orchestrator's graph and engines, as the model sees them.
 FOBO_MCP_TOOLS = (
     "mcp__fobo__fobo_list_tests",

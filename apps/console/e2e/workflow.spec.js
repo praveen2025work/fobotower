@@ -2,11 +2,16 @@ import { expect, test } from '@playwright/test';
 
 const API = 'http://localhost:8101';
 
+test('/fobo redirects to the console at /', async ({ page }) => {
+  await page.goto('/fobo');
+  await expect(page).toHaveURL('/');
+});
+
 test('a draft goes live when a second controller approves it, and only new runs use it', async ({
   page,
   request,
 }) => {
-  await page.goto('/fobo');
+  await page.goto('/');
   await expect(page.getByText('FOBO Controller')).toBeVisible({ timeout: 120_000 });
 
   // Loading the board ran R-1055's investigation on v1.

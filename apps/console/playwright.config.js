@@ -23,7 +23,7 @@ export default defineConfig({
     },
     {
       command: 'npx next dev -p 3101',
-      url: `${CONSOLE}/fobo`,
+      url: CONSOLE,
       env: { NEXT_PUBLIC_API_BASE: API, NEXT_DIST_DIR: '.next-e2e' },
       reuseExistingServer: false,
       timeout: 180_000,

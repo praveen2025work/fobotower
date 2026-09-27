@@ -10,8 +10,8 @@ export default defineConfig({
   use: { baseURL: CONSOLE, trace: 'retain-on-failure' },
   webServer: [
     {
-      command: '.venv/bin/uvicorn api.main:app --port 8101',
-      cwd: '../api',
+      command: '.venv/bin/uvicorn fobo.web.main:app --port 8101',
+      cwd: '../backend',
       url: `${API}/health`,
       env: {
         FOBO_ENV: 'dev',
@@ -23,7 +23,7 @@ export default defineConfig({
     },
     {
       command: 'npx next dev -p 3101',
-      url: `${CONSOLE}/fobo`,
+      url: CONSOLE,
       env: { NEXT_PUBLIC_API_BASE: API, NEXT_DIST_DIR: '.next-e2e' },
       reuseExistingServer: false,
       timeout: 180_000,

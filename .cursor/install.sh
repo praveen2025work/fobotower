@@ -37,7 +37,7 @@ if ! sudo -u postgres psql -p 5433 -tAc "SELECT 1 FROM pg_database WHERE datname
 fi
 
 echo "==> Installing API dependencies (Python 3.12 venv)"
-cd "${REPO_ROOT}/apps/api"
+cd "${REPO_ROOT}/apps/backend"
 if [ ! -x ".venv/bin/python" ]; then
   uv venv --python 3.12
 fi

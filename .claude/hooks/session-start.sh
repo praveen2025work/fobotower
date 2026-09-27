@@ -25,7 +25,7 @@ su postgres -c "psql -p 5433 -tAc \"SELECT 1 FROM pg_database WHERE datname='fob
   || su postgres -c "createdb -p 5433 -O fobo fobo"
 
 # API
-cd "$ROOT/apps/api"
+cd "$ROOT/apps/backend"
 [ -x .venv/bin/python ] || uv venv --python 3.12 -q
 uv pip install -q -e ".[dev]"
 .venv/bin/alembic upgrade head >/dev/null

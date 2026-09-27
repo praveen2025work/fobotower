@@ -9,7 +9,7 @@ and a one-break payload is what keeps that auditable.
 
 | Piece | Where |
 |---|---|
-| Orchestrator adapter | `apps/api/app/reasoning/adapters/session_service.py` |
+| Orchestrator adapter | `apps/backend/fobo/reasoning/adapters/session_service.py` |
 | Reference session handler | [`reference/session_handler.py`](reference/session_handler.py) |
 | Skill to deploy | [`skills/fobo-investigation/SKILL.md`](../../skills/fobo-investigation/SKILL.md) |
 | Full source skill (reference) | [`docs/skills/fobo-investigation-cats-vs-motif.md`](../skills/fobo-investigation-cats-vs-motif.md) |

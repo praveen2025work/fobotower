@@ -15,7 +15,7 @@
 # use the new version; a run keeps the version it started with.
 #
 # To check an edit to this file:
-#   apps/api/.venv/bin/python -m app.workflow.cli validate
+#   apps/backend/.venv/bin/python -m fobo.investigation.cli validate
 #
 # The validator rejects an order that cannot work — a step placed before the
 # step whose output it needs — and refuses to drop the safety steps: the

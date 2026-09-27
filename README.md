@@ -44,6 +44,11 @@ cd apps/backend && .venv/bin/alembic upgrade head
 After pulling this change, run the same command — it applies the migration
 that added workflow versioning.
 
+Investigations opened before the 2026-09-26 naming cleanup checkpointed
+their state under the old `app.contracts.models` path; `fobo/contracts/models.py`
+registers that name as a compatibility alias, so those older checkpoints
+still load with real typed objects — no reset of the dev database needed.
+
 ### 3. Run the suite
 
 ```bash

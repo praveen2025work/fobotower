@@ -106,8 +106,10 @@ Everything on screen is read from the API; the browser generates nothing.
 | Notification bell | derived from runs and today's decisions |
 | **Graph run** (session header) | `GET /api/recs/{id}/trace`: each LangGraph step from the checkpoints |
 
-The whole board is one call: `GET /api/board`. A rec's investigation is
-started explicitly with `POST /api/recs/{id}/investigate`.
+The whole board is one call: `GET /api/board`, which also opens (running, if
+needed) each rec's investigation — the console never calls
+`POST /api/recs/{id}/investigate` itself; that endpoint exists for
+`scripts/run_investigation.py` and the e2e test to start a run directly.
 
 To reset the scenario (undo every decision and question), clear the app tables
 and checkpoints; the next request reseeds:
@@ -138,17 +140,6 @@ ports 8101/3101.
 ```bash
 docker compose down -v && docker compose up -d postgres && sleep 8 && cd apps/backend && .venv/bin/alembic upgrade head && .venv/bin/python -m pytest -q
 ```
-
-### Regenerating design tokens
-
-```bash
-cd apps/console && npm run build:tokens
-```
-
-Regenerates `src/styles/tokens.css` from `docs/design/mock-tokens.css`. The
-source is extracted verbatim from the mock and is read-only; the build strips
-its Google Fonts `@import`, because that file is inlined into `globals.css`
-and an `@import` must precede every other rule. Fonts load via `next/font`.
 
 ### Recreating the venv
 

@@ -47,7 +47,7 @@ Run with `uvicorn fobo.web.main:app`; tests from `apps/backend` with
 | `fobo/knowledge_graph/` | books, desks, ownership lineage — bitemporal (`as_of` + entitlement on every read) | `steps/resolve.py`, `steps/gather.py` (priors), `console_views/` |
 | `fobo/cause_checks/` | the six deterministic cause checks (C1–C6) and their controller-facing wording | `steps/reason.py`, `steps/group.py` |
 | `fobo/console_views/` | what the console shows for a rec: board row, detail, chat answers, activity feed, session view | `fobo/web/routes/console.py` |
-| `fobo/reports/` | analytics tiles and the execution trace (from LangGraph checkpoints) | `routes/investigations.py`, the console's Analytics panel |
+| `fobo/reports/` | the board's hours-saved tile (`hours_saved.py`) and the execution trace (`trace.py`, from LangGraph checkpoints) | `hours_saved` → `routes/console.py`; `execution_trace` → `routes/investigations.py`; the console's Analytics panel |
 | `fobo/reasoning/` | the reasoning port: routes judgement-based breaks to a model (or none), plus the verdict guards that graph code — not the model — enforces | `steps/reason.py` |
 | `fobo/playbook/` | loads and validates the playbook YAML into the knowledge graph | `python -m fobo.playbook.cli validate\|load` |
 | `fobo/grounding/` | records every retrieval as a `source_call` row | `steps/gather.py`, the console's Grounding panel and MCP data column |

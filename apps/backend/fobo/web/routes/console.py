@@ -36,7 +36,7 @@ from fobo.console_views.session import (
     open_recorded_session,
     workspace,
 )
-from fobo.reports.analytics import hours_saved
+from fobo.reports.hours_saved import hours_saved
 from fobo.investigation import versions
 from seed_data.history import COB
 

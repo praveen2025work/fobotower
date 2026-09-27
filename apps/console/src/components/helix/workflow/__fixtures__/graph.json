@@ -176,7 +176,7 @@
   ],
   "router": {
     "rule": "After a step that can escalate: if the step set outcome = escalated the run goes to Escalate and ends; otherwise it continues to the next configured step.",
-    "defined_in": "apps/api/app/workflow/graph.py · _router"
+    "defined_in": "apps/backend/fobo/investigation/graph.py · _router"
   },
   "logic": {
     "resolve": {
@@ -190,7 +190,7 @@
           "when": "more than one matches; never auto-picked"
         }
       ],
-      "defined_in": "apps/api/app/workflow/nodes/resolve.py · resolve"
+      "defined_in": "apps/backend/fobo/investigation/steps/resolve.py · resolve"
     },
     "gather": {
       "escalates_when": [
@@ -203,35 +203,35 @@
           "when": "the cause checks did not all run"
         }
       ],
-      "defined_in": "apps/api/app/workflow/nodes/gather.py · gather"
+      "defined_in": "apps/backend/fobo/investigation/steps/gather.py · gather"
     },
     "group": {
       "escalates_when": [],
-      "defined_in": "apps/api/app/workflow/nodes/group.py · group"
+      "defined_in": "apps/backend/fobo/investigation/steps/group.py · group"
     },
     "reason": {
       "escalates_when": [],
-      "defined_in": "apps/api/app/workflow/nodes/reason.py · reason"
+      "defined_in": "apps/backend/fobo/investigation/steps/reason.py · reason"
     },
     "rank": {
       "escalates_when": [],
-      "defined_in": "apps/api/app/workflow/nodes/rank.py · rank"
+      "defined_in": "apps/backend/fobo/investigation/steps/rank.py · rank"
     },
     "draft": {
       "escalates_when": [],
-      "defined_in": "apps/api/app/workflow/nodes/draft.py · draft"
+      "defined_in": "apps/backend/fobo/investigation/steps/draft.py · draft"
     },
     "validate": {
       "escalates_when": [],
-      "defined_in": "apps/api/app/workflow/nodes/validate.py · validate"
+      "defined_in": "apps/backend/fobo/investigation/steps/validate.py · validate"
     },
     "review": {
       "escalates_when": [],
-      "defined_in": "apps/api/app/workflow/registry.py · review"
+      "defined_in": "apps/backend/fobo/investigation/step_registry.py · review"
     },
     "record": {
       "escalates_when": [],
-      "defined_in": "apps/api/app/workflow/nodes/record.py · record"
+      "defined_in": "apps/backend/fobo/investigation/steps/record.py · record"
     },
     "escalate": {
       "raised_by": [
@@ -257,13 +257,13 @@
         "UNMAPPED_BOOK",
         "VALIDATION_FAILED"
       ],
-      "defined_in": "apps/api/app/workflow/nodes/escalate.py · escalate"
+      "defined_in": "apps/backend/fobo/investigation/steps/escalate.py · escalate"
     }
   },
   "decision": {
     "defined_in": [
-      "apps/api/app/reasoning/determinism.py · classify",
-      "apps/api/app/reasoning/guards.py · guard_verdict"
+      "apps/backend/fobo/reasoning/determinism.py · classify",
+      "apps/backend/fobo/reasoning/guards.py · guard_verdict"
     ],
     "patterns": [
       {

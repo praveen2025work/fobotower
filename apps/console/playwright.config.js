@@ -10,8 +10,8 @@ export default defineConfig({
   use: { baseURL: CONSOLE, trace: 'retain-on-failure' },
   webServer: [
     {
-      command: '.venv/bin/uvicorn api.main:app --port 8101',
-      cwd: '../api',
+      command: '.venv/bin/uvicorn fobo.web.main:app --port 8101',
+      cwd: '../backend',
       url: `${API}/health`,
       env: {
         FOBO_ENV: 'dev',

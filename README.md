@@ -23,7 +23,7 @@ AgentOne is a separate, manual step.
 ## Prerequisites
 
 - Docker (for Postgres 16 + pgvector)
-- Python 3.12 — the venv is already created at `apps/api/.venv`
+- Python 3.12 — the venv is already created at `apps/backend/.venv`
 - Node 20+ — console dependencies are already installed
 
 ## Testing
@@ -37,7 +37,7 @@ docker compose up -d postgres
 ### 2. Apply migrations
 
 ```bash
-cd apps/api && .venv/bin/alembic upgrade head
+cd apps/backend && .venv/bin/alembic upgrade head
 ```
 
 After pulling this change, run the same command — it applies the migration
@@ -46,7 +46,7 @@ that added workflow versioning.
 ### 3. Run the suite
 
 ```bash
-cd apps/api && .venv/bin/python -m pytest -v
+cd apps/backend && .venv/bin/python -m pytest -v
 ```
 
 374 tests. They are re-runnable: `tests/conftest.py` truncates every table
@@ -55,7 +55,7 @@ before each test.
 ### 4. See an investigation run
 
 ```bash
-cd apps/api && .venv/bin/python scripts/demo_investigation.py
+cd apps/backend && .venv/bin/python scripts/demo_investigation.py
 ```
 
 Loads fixtures, runs the workflow to the human interrupt, prints the drafted
@@ -71,7 +71,7 @@ docker compose up -d postgres
 ```
 
 ```bash
-cd apps/api && FOBO_ENV=dev .venv/bin/uvicorn api.main:app --port 8100 --reload
+cd apps/backend && FOBO_ENV=dev .venv/bin/uvicorn fobo.web.main:app --port 8100 --reload
 ```
 
 `FOBO_ENV=dev` enables the **Act as** switch in the console header, so a
@@ -90,7 +90,7 @@ Everything on screen is read from the API; the browser generates nothing.
 
 | On screen | Comes from |
 |---|---|
-| Recs, Ready events, master-book readiness, book states | `reconciliation` and `run` rows (`fixtures/catalogue.py` seeds them) |
+| Recs, Ready events, master-book readiness, book states | `reconciliation` and `run` rows (`seed_data/catalogue.py` seeds them) |
 | Drafted adjustments, verdicts, fixes | the LangGraph investigation's checkpoint and the playbook |
 | Analysis (what, why, action, risk) | the draft node, plus grounding and carry flags |
 | MCP data (N) | `source_call` rows, with the rows each tool returned |
@@ -129,7 +129,7 @@ ports 8101/3101.
 ### Starting completely clean
 
 ```bash
-docker compose down -v && docker compose up -d postgres && sleep 8 && cd apps/api && .venv/bin/alembic upgrade head && .venv/bin/python -m pytest -q
+docker compose down -v && docker compose up -d postgres && sleep 8 && cd apps/backend && .venv/bin/alembic upgrade head && .venv/bin/python -m pytest -q
 ```
 
 ### Regenerating design tokens
@@ -146,7 +146,7 @@ and an `@import` must precede every other rule. Fonts load via `next/font`.
 ### Recreating the venv
 
 ```bash
-cd apps/api && uv venv --python 3.12 && uv pip install -e ".[dev]"
+cd apps/backend && uv venv --python 3.12 && uv pip install -e ".[dev]"
 ```
 
 ## What the tests actually prove
@@ -177,11 +177,11 @@ verdict for each category and side, escalation routes, and the policy
 thresholds. It is loaded into the knowledge graph with an effective date.
 
 ```bash
-cd apps/api && .venv/bin/python -m app.playbook.cli validate
+cd apps/backend && .venv/bin/python -m fobo.playbook.cli validate
 ```
 
 ```bash
-cd apps/api && .venv/bin/python -m app.playbook.cli load
+cd apps/backend && .venv/bin/python -m fobo.playbook.cli load
 ```
 
 `validate` rejects the file if anything references a test, category, verdict
@@ -226,7 +226,7 @@ Workflow tab shows a banner while it does.
 
 The validator refuses the right-hand column with a message naming the
 problem. Each step declares what it needs and produces
-(`apps/api/app/workflow/registry.py`), which is how an order that cannot
+(`apps/backend/fobo/investigation/step_registry.py`), which is how an order that cannot
 work is caught before a run starts.
 
 The **playbook** (`config/playbook/`) holds *what the rules are*; the
@@ -235,7 +235,7 @@ The **playbook** (`config/playbook/`) holds *what the rules are*; the
 ## Running without an LLM
 
 ```bash
-cd apps/api && .venv/bin/python scripts/run_investigation.py
+cd apps/backend && .venv/bin/python scripts/run_investigation.py
 ```
 
 With `FOBO_REASONER` unset, no model is called. Breaks the playbook can

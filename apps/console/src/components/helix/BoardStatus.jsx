@@ -32,8 +32,8 @@ export function BoardStatus({ load, onRetry }) {
             >
               The console reads from the orchestrator API on{' '}
               <code>http://localhost:8100</code>. Start it from{' '}
-              <code>apps/api</code> with{' '}
-              <code>uvicorn api.main:app --port 8100</code>.
+              <code>apps/backend</code> with{' '}
+              <code>uvicorn fobo.web.main:app --port 8100</code>.
             </p>
             <button
               type="button"

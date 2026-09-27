@@ -1,10 +1,10 @@
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-const api = fileURLToPath(new URL('../../api', import.meta.url));
+const backend = fileURLToPath(new URL('../../backend', import.meta.url));
 
 execFileSync('.venv/bin/python', ['scripts/reset_e2e_db.py'], {
-  cwd: api,
+  cwd: backend,
   stdio: 'inherit',
   env: {
     ...process.env,

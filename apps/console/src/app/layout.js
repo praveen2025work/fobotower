@@ -40,7 +40,7 @@ const FONT_VARS = {
   '--hx-font-mono': family(jetbrainsMono),
 };
 
-export default function HelixLayout({ children }) {
+export default function ConsoleLayout({ children }) {
   return (
     <html lang="en" style={FONT_VARS}>
       <body>{children}</body>

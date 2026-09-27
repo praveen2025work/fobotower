@@ -51,7 +51,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     app.add_exception_handler(VersionError, _version_error)
-    # /api/recs/{id} GET is the console view (helix); investigations only
+    # /api/recs/{id} GET is the console's rec view; investigations only
     # adds /investigate and /trace, so the two routers never collide.
     app.include_router(investigations.router)
     app.include_router(console.router)

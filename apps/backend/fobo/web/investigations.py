@@ -98,12 +98,3 @@ async def open_investigation(s, rec, run):
                 graph, _ = await graph_for_session(cp, s, sid)
                 snapshot = await graph.aget_state(config)
     return snapshot
-
-
-async def read_investigation(s, rec_id: str):
-    """The checkpointed state only; never runs anything."""
-    sid = session_id_for(rec_id)
-    async with checkpointer() as cp:
-        graph, _ = await graph_for_session(cp, s, sid)
-        snapshot = await graph.aget_state({"configurable": {"thread_id": sid}})
-    return snapshot if snapshot.values else None

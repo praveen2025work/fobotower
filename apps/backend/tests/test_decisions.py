@@ -3,7 +3,7 @@
 No longer its own route — the classic action/group_id/break_id request body
 is dropped (spec §5); the console reaches this logic through
 `POST /api/recs/{id}/decisions` with the {ids, decision} shape instead (see
-test_helix_actions.py, which already covers most of this through that route).
+test_console_actions.py, which already covers most of this through that route).
 apply_decision's group_id and single-break_id paths were pruned along with
 it (the only caller always sends break_ids — see fobo/web/decisions.py), so this
 file only exercises the break_ids path, directly rather than through HTTP:
@@ -20,8 +20,8 @@ from fobo.web.dependencies import ensure_seed_data
 from fobo.db.base import get_session
 from seed_data.history import COB
 
-# R-1055's P-204 group (FX timing lag) — see test_helix_board.py and
-# test_helix_actions.py, which approve the same six breaks as one decision.
+# R-1055's P-204 group (FX timing lag) — see test_console_board.py and
+# test_console_actions.py, which approve the same six breaks as one decision.
 P204_BREAKS = ["B-1", "B-2", "B-3", "B-4", "B-5", "B-6"]
 
 

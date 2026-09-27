@@ -8,6 +8,7 @@ replayable audit trail.
 Built to AgentOne component conventions but runs standalone. Migration into
 AgentOne is a separate, manual step.
 
+- **Architecture:** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — what each folder is, who uses it, and where to change what
 - **Design:** [`docs/superpowers/specs/2026-09-21-fobo-investigation-console-design.md`](docs/superpowers/specs/2026-09-21-fobo-investigation-console-design.md)
 - **Phase 1 plan:** [`docs/superpowers/plans/2026-09-21-fobo-phase-1-skeleton.md`](docs/superpowers/plans/2026-09-21-fobo-phase-1-skeleton.md)
 
@@ -49,7 +50,7 @@ that added workflow versioning.
 cd apps/backend && .venv/bin/python -m pytest -v
 ```
 
-374 tests. They are re-runnable: `tests/conftest.py` truncates every table
+388 tests. They are re-runnable: `tests/conftest.py` truncates every table
 before each test.
 
 ### 4. See an investigation run
@@ -81,8 +82,9 @@ second person can approve a workflow draft.
 cd apps/console && npm run dev
 ```
 
-Then open **http://localhost:3100/fobo** (or just **http://localhost:3100**)
-for the Helix console, the finalized UI (Helix Pilot V1).
+Then open **http://localhost:3100** for the Helix console, the finalized UI
+(Helix Pilot V1). (`/fobo` still works — it redirects to `/` for old
+bookmarks.)
 
 ### The Helix console
 
@@ -115,7 +117,7 @@ docker compose exec postgres psql -U fobo -d fobo -c "TRUNCATE session_message, 
 cd apps/console && npm test
 ```
 
-127 tests. No database needed — components are tested against props.
+185 tests. No database needed — components are tested against props.
 
 ### 7. End-to-end test
 
@@ -156,13 +158,13 @@ These are the ones worth reading, not just running.
 | Claim | Test |
 |---|---|
 | A run parks at the human interrupt and a **fresh process** resumes it to completion | `test_checkpoint_resume.py::test_state_survives_a_fresh_process_and_resumes_to_completion` |
-| 14 breaks collapse into 4 decisions — the "decisions saved" metric | `test_node_group.py::test_group_sizes_match_the_mock` |
-| The 88% approval rate is **derived** from 42 priors, not hard-coded | `test_node_group.py::test_p204_carries_the_historical_approval_rate` |
+| 14 breaks collapse into 4 decisions — the "decisions saved" metric | `test_step_group.py::test_group_sizes_match_the_mock` |
+| The 88% approval rate is **derived** from 42 priors, not hard-coded | `test_step_group.py::test_p204_carries_the_historical_approval_rate` |
 | A caller outside the entity scope cannot resolve a book, and cannot tell that from the book not existing | `test_repository.py::test_a_caller_outside_the_entity_scope_cannot_resolve` |
 | A graph read returns the hierarchy in force on the COB date, not today's | `test_repository.py::test_as_of_returns_the_hierarchy_in_force_on_that_date` |
-| The same snapshot produces byte-identical cause-check output | `test_recon.py::test_is_deterministic` |
-| A figure that does not trace to a computed delta is rejected | `test_nodes_rank_draft_validate.py::test_validate_rejects_an_ungrounded_figure` |
-| A failed priors lookup degrades and flags a gap — it does not fabricate | `test_nodes_resolve_gather.py::test_gather_degrades_when_priors_are_unavailable` |
+| The same snapshot produces byte-identical cause-check output | `test_cause_checks.py::test_is_deterministic` |
+| A figure that does not trace to a computed delta is rejected | `test_steps_rank_draft_validate.py::test_validate_rejects_an_ungrounded_figure` |
+| A failed priors lookup degrades and flags a gap — it does not fabricate | `test_steps_resolve_gather.py::test_gather_degrades_when_priors_are_unavailable` |
 | An approved run stamps breaks so they become tomorrow's priors | `test_checkpoint_resume.py::test_an_approved_run_writes_tomorrows_priors` |
 
 ## The investigation playbook

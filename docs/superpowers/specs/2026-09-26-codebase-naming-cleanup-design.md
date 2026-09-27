@@ -97,7 +97,7 @@ The Python distribution becomes `fobo-backend`; `pyproject.toml` packages
 | Old | New |
 |---|---|
 | `GET /api/helix/board` | `GET /api/board` |
-| `GET /api/helix/recs/{id}` | `GET /api/recs/{id}` (the console's rec view) |
+| `GET /api/helix/recs/{id}` | `GET /api/recs/{id}` (the console's rec view) — *amended during review:* removed instead; nothing in the console called it (`fetchRec` was only mocked in a test), and `GET /api/board` already returns the same per-rec view |
 | `POST /api/helix/recs/{id}/messages` | `POST /api/recs/{id}/messages` |
 | `POST /api/helix/recs/{id}/decisions` | `POST /api/recs/{id}/decisions` (the console's decision; the classic body shape is dropped) |
 | `GET /api/recs/{id}` (classic detail; also used to *start* a run) | `POST /api/recs/{id}/investigate` — runs the investigation if it has not run, returns `{session_id, status, workflow_version}` |

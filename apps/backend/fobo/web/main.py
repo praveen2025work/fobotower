@@ -51,8 +51,9 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     app.add_exception_handler(VersionError, _version_error)
-    # /api/recs/{id} GET is the console's rec view; investigations only
-    # adds /investigate and /trace, so the two routers never collide.
+    # console.router owns POST /api/recs/{id}/messages and /decisions;
+    # investigations.router only adds /investigate and /trace, so the two
+    # routers never collide.
     app.include_router(investigations.router)
     app.include_router(console.router)
     app.include_router(workflow_config.router)

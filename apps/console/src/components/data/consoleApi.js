@@ -4,8 +4,6 @@ import { get, post } from '@/lib/apiClient';
 
 export const fetchBoard = () => get('/api/board');
 
-export const fetchRec = (recId) => get(`/api/recs/${recId}`);
-
 export const fetchTrace = (recId) => get(`/api/recs/${recId}/trace`);
 
 export const askSession = (recId, message) =>

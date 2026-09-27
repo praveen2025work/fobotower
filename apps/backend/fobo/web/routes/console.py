@@ -1,13 +1,16 @@
 """The console's API.
 
   GET  /api/board                   every rec, its session, the feed
-  GET  /api/recs/{rec_id}           one rec, after something changed
   POST /api/recs/{rec_id}/messages  ask the session a question
   POST /api/recs/{rec_id}/decisions approve or reject adjustments
 
 Views are composed in fobo.console_views; this layer opens investigations (it owns
 the checkpointer) and turns requests into database writes. Starting a run
-from scratch is a separate verb — see fobo.web/routes/investigations.py.
+from scratch is a separate verb — see fobo/web/routes/investigations.py.
+
+A single rec's view was previously also exposed at GET /api/recs/{rec_id};
+removed as an unused duplicate of what /api/board already returns per rec —
+nothing in the console called it (see ARCHITECTURE.md).
 """
 
 from datetime import date
@@ -105,14 +108,6 @@ async def board(business_date: date = COB) -> dict:
         if callers:
             body["devCallers"] = callers
         return body
-
-
-@router.get("/recs/{rec_id}")
-async def rec(rec_id: str, business_date: date = COB) -> dict:
-    async with get_session() as s:
-        await ensure_seed_data(s)
-        r, run = await rec_and_run(s, rec_id, business_date)
-        return await _view(s, r, run)
 
 
 class Question(BaseModel):

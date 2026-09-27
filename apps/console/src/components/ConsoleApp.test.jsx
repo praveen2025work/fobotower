@@ -10,7 +10,6 @@ import ConsoleApp from './ConsoleApp';
 // The fixture is a trimmed copy of a real /api/board response.
 vi.mock('./data/consoleApi', () => ({
   fetchBoard: vi.fn(),
-  fetchRec: vi.fn(),
   fetchTrace: vi.fn(),
   askSession: vi.fn(),
   decide: vi.fn(),

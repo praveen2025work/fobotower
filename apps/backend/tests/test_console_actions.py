@@ -20,6 +20,14 @@ async def _ask(client, rec_id: str, message: str):
     return await client.post(f"/api/recs/{rec_id}/messages", json={"message": message})
 
 
+async def _rec(client, rec_id: str) -> dict:
+    """A rec's view via the board — the same data GET /api/recs/{id} used to
+    return before that route was removed as an unused duplicate (nothing in
+    the console called it; see fetchRec's removal from consoleApi.js)."""
+    board = (await client.get("/api/board")).json()
+    return next(r for r in board["recs"] if r["id"] == rec_id)
+
+
 async def _decide(client, key: str, body: dict, rec_id: str = "R-1055"):
     return await client.post(f"/api/recs/{rec_id}/decisions", json=body,
                              headers={"Idempotency-Key": key})
@@ -38,16 +46,16 @@ async def test_naming_an_adjustment_explains_it_and_records_the_lookup(client):
 
 async def test_the_conversation_survives_a_reload(client):
     await _ask(client, "R-1055", "What is safe to approve?")
-    prime = (await client.get("/api/recs/R-1055")).json()
+    prime = await _rec(client, "R-1055")
     roles = [m["role"] for m in prime["session"]]
     assert roles == ["agent", "user", "agent"]
     assert prime["session"][1]["text"] == "What is safe to approve?"
 
 
 async def test_an_answers_calls_stay_out_of_the_analysis_turn(client):
-    before = len((await client.get("/api/recs/R-1055")).json()["calls"])
+    before = len((await _rec(client, "R-1055"))["calls"])
     await _ask(client, "R-1055", "Explain B-1")
-    after = (await client.get("/api/recs/R-1055")).json()
+    after = await _rec(client, "R-1055")
     assert len(after["calls"]) == before
     assert after["session"][-1]["calls"]
 
@@ -107,7 +115,7 @@ async def test_a_repeated_idempotency_key_records_nothing_twice(client):
     await client.get("/api/board")
     assert (await _decide(client, "k-same", {"ids": ["B-2"], "decision": "Approved"})).status_code == 201
     assert (await _decide(client, "k-same", {"ids": ["B-3"], "decision": "Approved"})).status_code == 409
-    rec = (await client.get("/api/recs/R-1055")).json()
+    rec = await _rec(client, "R-1055")
     assert {a["id"]: a["status"] for a in rec["adjustments"]}["B-3"] == "Pending"
 
 

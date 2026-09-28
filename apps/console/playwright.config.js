@@ -1,6 +1,8 @@
 import { defineConfig } from '@playwright/test';
 
 const API = 'http://localhost:8101';
+// The virtualenv's executables live in Scripts\ on Windows, bin/ elsewhere.
+const VENV_BIN = process.platform === 'win32' ? '.venv/Scripts' : '.venv/bin';
 const CONSOLE = 'http://localhost:3101';
 
 export default defineConfig({
@@ -10,7 +12,7 @@ export default defineConfig({
   use: { baseURL: CONSOLE, trace: 'retain-on-failure' },
   webServer: [
     {
-      command: '.venv/bin/uvicorn fobo.web.main:app --port 8101',
+      command: `${VENV_BIN}/uvicorn fobo.web.main:app --port 8101 --loop asyncio:SelectorEventLoop`,
       cwd: '../backend',
       url: `${API}/health`,
       env: {

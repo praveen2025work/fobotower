@@ -3,7 +3,9 @@ import { fileURLToPath } from 'node:url';
 
 const backend = fileURLToPath(new URL('../../backend', import.meta.url));
 
-execFileSync('.venv/bin/python', ['scripts/reset_e2e_db.py'], {
+const python = process.platform === 'win32' ? '.venv/Scripts/python.exe' : '.venv/bin/python';
+
+execFileSync(python, ['scripts/reset_e2e_db.py'], {
   cwd: backend,
   stdio: 'inherit',
   env: {

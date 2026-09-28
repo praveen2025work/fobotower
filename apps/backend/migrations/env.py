@@ -20,9 +20,13 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-from fobo.db.base import Base
+from fobo.db.base import DATABASE_URL, Base
 from fobo.db import models_graph, models_ops, models_session, models_workflow  # noqa: F401  register tables
 target_metadata = Base.metadata
+
+# Migrate the same database the app uses: FOBO_DATABASE_URL when set, else the
+# local dev default. `%` is doubled because the ini parser interpolates it.
+config.set_main_option("sqlalchemy.url", DATABASE_URL.replace("%", "%%"))
 
 # LangGraph's Postgres checkpointer creates and owns these. They are not in
 # our metadata, so autogenerate would emit DROP statements for them.

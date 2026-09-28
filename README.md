@@ -8,6 +8,7 @@ replayable audit trail.
 Built to AgentOne component conventions but runs standalone. Migration into
 AgentOne is a separate, manual step.
 
+- **Deployment:** [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — running it on a shared demo or UAT server
 - **Architecture:** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — what each folder is, who uses it, and where to change what
 - **Design:** [`docs/superpowers/specs/2026-09-21-fobo-investigation-console-design.md`](docs/superpowers/specs/2026-09-21-fobo-investigation-console-design.md)
 - **Phase 1 plan:** [`docs/superpowers/plans/2026-09-21-fobo-phase-1-skeleton.md`](docs/superpowers/plans/2026-09-21-fobo-phase-1-skeleton.md)

@@ -91,6 +91,44 @@ Then open **http://localhost:3100** for the Helix console, the finalized UI
 (Helix Pilot V1). (`/fobo` still works — it redirects to `/` for old
 bookmarks.)
 
+### Running on Windows
+
+Prerequisites: **Python 3.12**, **Node 20+**, **Git**, and a container runtime
+that runs `docker compose` (Docker Desktop with WSL 2, Rancher Desktop or
+Podman Desktop). The virtualenv and `node_modules` are not in the repo, so the
+first run creates them. Commands are for PowerShell, from the repo root.
+
+One-time setup:
+
+```powershell
+docker compose up -d postgres
+cd apps\backend
+py -3.12 -m venv .venv
+.venv\Scripts\pip install -e ".[dev]"
+.venv\Scripts\alembic upgrade head
+cd ..\console
+npm install
+```
+
+Then two terminals:
+
+```powershell
+cd apps\backend
+$env:FOBO_ENV = "dev"
+.venv\Scripts\uvicorn fobo.web.main:app --port 8100 --reload --loop asyncio:SelectorEventLoop
+```
+
+```powershell
+cd apps\console
+npm run dev
+```
+
+`--loop asyncio:SelectorEventLoop` is required on Windows: the LangGraph
+checkpointer uses psycopg, which cannot run on Windows' default event loop.
+The CLIs, scripts and tests pick the right loop on their own
+(`fobo/__init__.py`). Everything else — tests, scripts, the reset command —
+works as above with `.venv\Scripts\` in place of `.venv/bin/`.
+
 ### The Helix console
 
 Everything on screen is read from the API; the browser generates nothing.

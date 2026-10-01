@@ -74,7 +74,11 @@ export function DataTable({ columns, rows, max }) {
                           : 'var(--text-primary)',
                     }}
                   >
-                    {v === undefined || v === null ? '—' : String(v)}
+                    {v === undefined || v === null
+                      ? '—'
+                      : typeof v === 'object'
+                        ? JSON.stringify(v)
+                        : String(v)}
                   </td>
                 );
               })}

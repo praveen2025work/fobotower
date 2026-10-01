@@ -293,6 +293,9 @@ async def test_lifecycle_commits_before_waiting_and_stores_the_response(monkeypa
     assert call.error_detail is None
     assert call.result_rows == calls
     assert call.validated_parameters["harness_session_id"] == "h-1"
+    assert call.validated_parameters["status"] == "completed"
+    assert call.validated_parameters["total_cost_usd"] == 0.12
+    assert call.validated_parameters["num_turns"] == 9
     assert sorted(call.validated_parameters["breaks"]) == ["B-1", "B-2", "B-3"]
 
 
@@ -307,6 +310,8 @@ async def test_timeout_marks_the_row_failed():
     assert out.error == row.error
     [call] = await _agent_calls()
     assert call.error_detail == row.error and call.result_rows == []
+    params = call.validated_parameters
+    assert (params["status"], params["total_cost_usd"], params["num_turns"]) == ("failed", None, None)
 
 
 async def test_harness_failure_marks_the_row_failed():
@@ -344,10 +349,20 @@ async def _seed_row(status, harness_session_id=None, response=None, error=None):
 
 async def test_a_running_row_resumes_polling_without_a_second_start():
     await _seed_row("running", harness_session_id="h-old")
-    h = FakeHarness(polls=[_running("h-old"), _completed(sid="h-old")])
+    open_during_poll = []
+    s = None
+
+    async def check_tx():
+        open_during_poll.append(s.in_transaction())
+
+    h = FakeHarness(polls=[_running("h-old"), _completed(sid="h-old")], on_poll=check_tx)
     t = FakeTime()
     async with get_session() as s:
+        # The step has read from this session before, as reason() does.
+        await repo.get_for_investigation(s, SID)
         out = await run_agent(s, _state(), UNSETTLED, reasoner=h, sleep=t.sleep, clock=t.clock)
+    # No transaction is held open while the step waits on the harness.
+    assert open_during_poll == [False, False]
     assert h.starts == []
     assert h.polled == ["h-old", "h-old"]
     assert out.error is None and out.harness_session_id == "h-old"

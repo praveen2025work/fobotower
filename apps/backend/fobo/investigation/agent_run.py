@@ -256,6 +256,9 @@ async def _new_session(session, state, unsettled, reasoner, *, sleep, clock):
 
 
 async def _resume(session, row, reasoner, *, sleep, clock) -> AgentOutcome:
+    # End the transaction the earlier reads opened: nothing is held open
+    # while waiting on the harness (spec §3).
+    await session.commit()
     try:
         status = await reasoner.poll(row.harness_session_id)
         status = await _wait(reasoner, status, sleep=sleep, clock=clock)
@@ -275,7 +278,8 @@ async def _record(session, sid: str, unsettled: dict, outcome: AgentOutcome, lat
     if existing is not None:
         return
     patterns = sorted({e.get("pattern_code", UNGROUPED) for e in unsettled.values()})
-    tool_calls = (outcome.payload or {}).get("tool_calls") or []
+    payload = outcome.payload or {}
+    tool_calls = payload.get("tool_calls") or []
     await GroundingRecorder(session, sid).record(
         application="agent",
         tool=SESSION_TOOL,
@@ -283,6 +287,9 @@ async def _record(session, sid: str, unsettled: dict, outcome: AgentOutcome, lat
             "harness_session_id": outcome.harness_session_id,
             "patterns": patterns,
             "breaks": sorted(unsettled),
+            "status": "completed" if outcome.rec_verdict is not None else "failed",
+            "total_cost_usd": payload.get("total_cost_usd"),
+            "num_turns": payload.get("num_turns"),
         },
         row_count=len(unsettled),
         summary=outcome.rec_verdict.summary if outcome.rec_verdict else outcome.error,

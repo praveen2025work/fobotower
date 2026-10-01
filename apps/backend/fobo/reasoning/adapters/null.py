@@ -8,7 +8,7 @@ deterministic guess.
 
 from fobo.reasoning.port import HarnessStatus, ReasoningUnavailable
 
-_MESSAGE = (
+NO_REASONER_MESSAGE = (
     "no reasoner configured — set FOBO_REASONER to route judgement-based "
     "breaks to the session service"
 )
@@ -18,7 +18,7 @@ class NullReasoner:
     name = "none"
 
     async def start(self, request: dict) -> HarnessStatus:
-        raise ReasoningUnavailable(_MESSAGE)
+        raise ReasoningUnavailable(NO_REASONER_MESSAGE)
 
     async def poll(self, session_id: str) -> HarnessStatus:
-        raise ReasoningUnavailable(_MESSAGE)
+        raise ReasoningUnavailable(NO_REASONER_MESSAGE)

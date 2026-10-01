@@ -91,7 +91,15 @@ async def reason(state: InvestigationState, *, session, reasoner=None) -> dict:
             try:
                 if active is None:
                     raise ReasoningUnavailable(reasoning_error or "no reasoner")
-                verdict = await active.investigate(_evidence(state, brk))
+                # Interim bridge: the port is rec-level now (start/poll) and
+                # this step is rewired to it in the per-L4 session work. Until
+                # then a reasoner without a per-break call counts as unavailable.
+                investigate = getattr(active, "investigate", None)
+                if investigate is None:
+                    raise ReasoningUnavailable(
+                        "per-break reasoning is retired; awaiting per-L4 sessions"
+                    )
+                verdict = await investigate(_evidence(state, brk))
                 finding = {
                     "root_cause": verdict.root_cause.statement,
                     "established": verdict.root_cause.established,

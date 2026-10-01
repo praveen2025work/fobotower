@@ -45,6 +45,10 @@ class ReasonSettings(Strict):
         "none",
         description="Who handles breaks the playbook cannot settle: none (a person), "
                     "session_service (the Agent SDK session service), direct (local development)")
+    sample_breaks_per_pattern: int = Field(
+        5, ge=1, le=50,
+        description="Break records sent per pattern in the agent request; "
+                    "the agent fetches the rest through MCP")
     verdict_policy_params: list[str] = Field(
         default_factory=lambda: ["materiality_threshold", "posting_policy_reference"],
         description="Policy thresholds a POST verdict depends on; when any is unset the "
@@ -72,7 +76,13 @@ class ReviewSettings(Strict):
 
 class SessionServiceSettings(Strict):
     timeout_seconds: float = Field(
-        120.0, gt=0, le=1800, description="Seconds allowed per judgement-based break")
+        120.0, gt=0, le=1800, description="Seconds allowed per HTTP call to the session service")
+    max_wait_seconds: float = Field(
+        900.0, gt=0, le=3600,
+        description="How long one agent session may run before the breaks escalate")
+    poll_interval_seconds: float = Field(
+        5.0, gt=0, le=60,
+        description="Seconds between status checks while an agent session runs")
 
 
 class Settings(Strict):

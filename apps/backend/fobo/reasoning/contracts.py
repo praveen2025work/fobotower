@@ -94,3 +94,26 @@ class SkillVerdict(BaseModel):
         description="Rule P1: local parameters this conclusion depends on that were "
         "not supplied. Never substitute a plausible-sounding number.",
     )
+
+
+class PatternVerdict(SkillVerdict):
+    """A §12 verdict that applies to every break in one pattern group."""
+
+    pattern_code: str
+
+
+class BreakException(BaseModel):
+    """A break that does not fit its pattern's verdict, with its own."""
+
+    break_id: str
+    reason: str = Field(description="Why this break differs from its pattern")
+    verdict: SkillVerdict
+
+
+class RecVerdict(BaseModel):
+    """What one L4 agent session returns: a verdict per pattern, plus the
+    breaks that need their own."""
+
+    summary: str
+    patterns: list[PatternVerdict]
+    exceptions: list[BreakException] = Field(default_factory=list)

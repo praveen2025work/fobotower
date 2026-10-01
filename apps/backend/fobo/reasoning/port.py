@@ -5,14 +5,18 @@ delegated through a port so the transport — an existing session service, a
 direct SDK call, or nothing at all — is a deployment choice rather than a
 code change.
 
-The port's contract is deliberately narrow: hand over one break's evidence,
-get back a §12 verdict, or raise. There is no partial success. A verdict the
-caller cannot trust is worse than an escalation.
+The port is rec-level: one request per L4 rec run, not one per break. A rec
+can carry thousands of breaks, and a model call (or agent session) per break
+is neither affordable nor fast; breaks are grouped into patterns and the
+agent answers per pattern, plus exceptions. Because an agent session can
+outlast one HTTP call, the port is start-then-poll. There is no partial
+success: a verdict the caller cannot trust is worse than an escalation.
 """
 
-from typing import Protocol
+from dataclasses import dataclass, field
+from typing import Literal, Protocol
 
-from fobo.reasoning.contracts import SkillVerdict
+from fobo.reasoning.contracts import RecVerdict
 
 
 class ReasoningUnavailable(RuntimeError):
@@ -24,17 +28,29 @@ class ReasoningUnavailable(RuntimeError):
     """
 
 
+@dataclass(frozen=True)
+class HarnessStatus:
+    """Where one agent session stands. `output` is set only once completed;
+    `error` only when failed (a failed session is data for the step to
+    record, not an exception)."""
+
+    session_id: str
+    status: Literal["running", "completed", "failed"]
+    output: RecVerdict | None = None
+    payload: dict = field(default_factory=dict)
+    error: str | None = None
+
+
 class ReasoningPort(Protocol):
     """What the orchestrator needs from whatever performs the reasoning."""
 
     name: str
 
-    async def investigate(self, evidence: dict) -> SkillVerdict:
-        """Apply the FOBO investigation skill to one break's evidence.
+    async def start(self, request: dict) -> HarnessStatus:
+        """Open one agent session for a rec's unsettled breaks."""
+        ...
 
-        `evidence` carries only what the break record and the graph already
-        established — never the whole run. Keeping the payload to one break
-        is what makes the escalation auditable: every figure in the verdict
-        must trace to something in here.
-        """
+    async def poll(self, session_id: str) -> HarnessStatus:
+        """Check a session started earlier. Waiting and sleeping live in the
+        caller, so adapters stay a single request each."""
         ...

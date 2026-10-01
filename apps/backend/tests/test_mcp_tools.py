@@ -7,7 +7,8 @@ audit wrapper is what puts every call in the console's data panel.
 from datetime import date
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import select, text
+from sqlalchemy.exc import DBAPIError
 
 from fobo.contracts.models import Caller
 from fobo.db.base import get_session
@@ -216,7 +217,7 @@ async def test_audited_records_one_agent_source_call():
         ctx = _ctx(breaks={f"B-{i:03d}": _brk(i) for i in range(1, 4)})
         out = await audited(
             s, ctx, "fobo_list_breaks", {"page": 1},
-            lambda: tools.fobo_list_breaks(s, ctx, page=1))
+            lambda: tools.fobo_list_breaks(s, ctx, page=1), rows_key="breaks")
         assert out["total"] == 3
         (call,) = await _calls(s)
         assert call.application_name == "agent"
@@ -239,3 +240,55 @@ async def test_audited_records_failures_and_reraises():
         (call,) = await _calls(s)
         assert call.application_name == "agent"
         assert "B-999" in call.error_detail
+
+
+async def test_audited_break_detail_is_one_record_not_its_checks():
+    async with get_session() as s:
+        await _investigation(s)
+        brk = {**_brk(1), "checks": [{"id": "C1"}, {"id": "C2"}]}
+        ctx = _ctx(breaks={"B-001": brk})
+        detail = await audited(
+            s, ctx, "fobo_break_detail", {"break_id": "B-001"},
+            lambda: tools.fobo_break_detail(s, ctx, break_id="B-001"))
+        (call,) = await _calls(s)
+        assert call.row_count == 1
+        assert call.result_rows == [detail]
+
+
+async def test_audited_unset_policies_counts_the_unset_ones():
+    async with get_session() as s:
+        await _seeded(s)
+        await _investigation(s)
+        ctx = _ctx()
+        params = ["no_such_a", "no_such_b", "no_such_c"]
+        out = await audited(
+            s, ctx, "fobo_unset_policies", {"params": params},
+            lambda: tools.fobo_unset_policies(s, ctx, params=params), rows_key="unset")
+        (call,) = await _calls(s)
+        assert call.row_count == len(out["unset"]) == 3
+        assert [r["value"] for r in call.result_rows] == out["unset"]
+
+
+async def test_audited_after_a_database_error_commits_the_row_and_session_survives():
+    async with get_session() as s:
+        await _investigation(s)
+        await s.commit()
+        ctx = _ctx()
+
+        async def bad():
+            await s.execute(text("SELECT * FROM no_such_table"))
+
+        with pytest.raises(DBAPIError):
+            await audited(s, ctx, "fobo_bad", {}, bad)
+        assert (await s.execute(text("SELECT 1"))).scalar() == 1
+    async with get_session() as s2:
+        (call,) = await _calls(s2)
+        assert call.tool_name == "fobo_bad" and call.error_detail
+
+
+async def test_similar_breaks_without_a_line_code_is_rejected():
+    async with get_session() as s:
+        await _seeded(s)
+        ctx = _ctx(breaks={"B-001": {**_brk(1), "line_code": None}})
+        with pytest.raises(ToolInputError):
+            await tools.fobo_similar_breaks(s, ctx, break_id="B-001")

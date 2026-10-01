@@ -16,6 +16,16 @@ from fobo.mcp_server.context import AgentContext
 
 SIDES = ("FO", "BO")
 MAX_PAGE_SIZE = 100
+# Which key of each tool's result holds its rows, for the audit row. A tool
+# not listed returns a single record.
+ROWS_KEY = {
+    "fobo_list_tests": "tests",
+    "fobo_evidence_required": "evidence",
+    "fobo_required_on_fail": "tests",
+    "fobo_unset_policies": "unset",
+    "fobo_similar_breaks": "breaks",
+    "fobo_list_breaks": "breaks",
+}
 LIST_FIELDS = ("break_id", "book", "pattern_code", "break_amount", "line_code")
 
 
@@ -79,12 +89,12 @@ async def fobo_similar_breaks(
     session: AsyncSession, ctx: AgentContext, *, break_id: str
 ) -> dict:
     evidence = _session_break(ctx, break_id)
-    book_id = evidence.get("book_id")
-    if not book_id:
-        raise ToolInputError(f"Break {break_id} has no resolved book to look up")
+    book_id, line_code = evidence.get("book_id"), evidence.get("line_code")
+    if not book_id or not line_code:
+        raise ToolInputError(f"Break {break_id} has no resolved book or line to look up")
     gather = settings().gather
     rows = await GraphRepository(session).similar_breaks(
-        book_id, evidence["line_code"], ctx.business_date,
+        book_id, line_code, ctx.business_date,
         gather.priors_lookback_days, ctx.caller, limit=gather.max_similar_breaks,
     )
     return {

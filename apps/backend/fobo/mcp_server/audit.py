@@ -17,15 +17,17 @@ from fobo.mcp_server.tools import ToolInputError
 APPLICATION = "agent"
 
 
-def _main_list(result: dict) -> list | None:
-    return next((v for v in result.values() if isinstance(v, list)), None)
+def _shape(result: dict, rows_key: str | None) -> tuple[int, str, list[dict]]:
+    """Row count and rows for the audit row.
 
-
-def _shape(result: dict) -> tuple[int, str, list[dict]]:
-    items = _main_list(result)
-    if items is None:
+    The caller names which key holds the result's rows; without one the result
+    is a single record. Guessing the first list would count a break's checks
+    as the break's rows.
+    """
+    if rows_key is None:
         return 1, "1 record", [result]
-    rows = items if all(isinstance(i, dict) for i in items) else [result]
+    items = result[rows_key]
+    rows = [i if isinstance(i, dict) else {"value": i} for i in items]
     return len(items), f"{len(items)} rows", rows
 
 
@@ -35,6 +37,7 @@ async def audited(
     tool_name: str,
     params: dict,
     fn: Callable[[], Awaitable[dict]],
+    rows_key: str | None = None,
 ) -> dict:
     recorder = GroundingRecorder(session, ctx.investigation_session_id)
     started = time.perf_counter()
@@ -50,7 +53,7 @@ async def audited(
         )
         await session.commit()
         raise
-    row_count, summary, rows = _shape(result)
+    row_count, summary, rows = _shape(result, rows_key)
     await recorder.record(
         application=APPLICATION, tool=tool_name, params=params, row_count=row_count,
         summary=summary, latency_ms=_ms(started), rows=rows,

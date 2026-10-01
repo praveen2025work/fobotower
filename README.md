@@ -8,6 +8,7 @@ replayable audit trail.
 Built to AgentOne component conventions but runs standalone. Migration into
 AgentOne is a separate, manual step.
 
+- **Learning guide:** [`docs/learning/agentic-systems-primer.html`](docs/learning/agentic-systems-primer.html) — LLMs, agents, MCP, LangGraph and knowledge graphs explained from first principles (open in a browser)
 - **Deployment:** [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — running it on a shared demo or UAT server
 - **Architecture:** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — what each folder is, who uses it, and where to change what
 - **Design:** [`docs/superpowers/specs/2026-09-21-fobo-investigation-console-design.md`](docs/superpowers/specs/2026-09-21-fobo-investigation-console-design.md)

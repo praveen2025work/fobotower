@@ -54,6 +54,8 @@ settings:
     #   direct          a direct Anthropic SDK call (local development)
     # The FOBO_REASONER environment variable overrides this.
     reasoner: none
+    # Break records sent per pattern; the agent fetches the rest through MCP.
+    sample_breaks_per_pattern: 5
     # A POST that depends on any of these unset thresholds is flagged
     # "requires controller confirmation" (Rule P1).
     verdict_policy_params: [materiality_threshold, posting_policy_reference]
@@ -65,4 +67,6 @@ settings:
     max_review_cycles: 2          # reject-and-redraft rounds before escalation
 
   session_service:
-    timeout_seconds: 120          # per judgement-based break
+    timeout_seconds: 120          # per HTTP call to the session service
+    max_wait_seconds: 900         # how long one agent session may run
+    poll_interval_seconds: 5      # between status checks while it runs

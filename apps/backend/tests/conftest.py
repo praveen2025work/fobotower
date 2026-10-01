@@ -32,6 +32,7 @@ TABLES = [
     "pattern_group",
     "evidence_item",
     "analysis_version",
+    "agent_session",
     "investigation_session",
     "workflow_version",
     "break_embedding",

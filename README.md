@@ -289,6 +289,49 @@ in the console's "Graph run" panel.
 | `session_service` | the Agent SDK session service |
 | `direct` | a direct Anthropic SDK call (local development) |
 
+## Running with the stub agent harness
+
+`apps/backend/scripts/stub_harness.py` stands in for the bank's agent harness.
+It speaks the session contract
+([`docs/integration/session-service-contract.md`](docs/integration/session-service-contract.md)),
+reads each run's breaks through the backend's MCP server, and answers with a
+fixed verdict. It is a demo double, not a reasoner. Three terminals, from the
+repo root:
+
+```bash
+cd apps/backend && .venv/bin/uvicorn scripts.stub_harness:app --port 8200
+```
+
+```bash
+cd apps/backend && FOBO_ENV=dev FOBO_REASONER=session_service FOBO_SESSION_SERVICE_URL=http://localhost:8200 FOBO_MCP_URL=http://localhost:8100/mcp .venv/bin/uvicorn fobo.web.main:app --port 8100
+```
+
+```bash
+cd apps/console && npm run dev
+```
+
+Collateral (R-2048, one break left for the agent) runs on the board's first
+read; its agent finding shows in the console, and the MCP data panel shows each
+tool call the stub made (`application: agent`) plus one `agent.session` row.
+FI Credit (R-2031, five breaks) is seeded as still running, so the board does
+not start it; start it yourself and read its step trace:
+
+```bash
+curl -X POST localhost:8100/api/recs/R-2031/investigate && curl localhost:8100/api/recs/R-2031/trace
+```
+
+A rec that has already run keeps its result; use the reset command under
+*The Helix console* first to see it run again.
+
+`FOBO_MCP_URL` both turns on the MCP server at `/mcp` and is the URL the
+harness is told to call. Each agent session gets its own MCP token; there is
+no shared one. Three workflow settings govern a session:
+`session_service.poll_interval_seconds` (5), `session_service.max_wait_seconds`
+(900) and `reason.sample_breaks_per_pattern` (5).
+
+Known limitation: investigations still start on the board's first read, so a
+long agent session holds that board request open until it finishes.
+
 ## Known deviations from the mock
 
 Both mocks state *"14 breaks across 9 … books"*, but their own adjustment rows
@@ -314,5 +357,6 @@ source for yet, so the port shows what the backend actually has instead:
 | Console | 3100 |
 | API | 8100 |
 | Postgres | 5433 |
+| Stub agent harness | 8200 |
 
 All offset from AgentOne's defaults so both stacks run simultaneously.

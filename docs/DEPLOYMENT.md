@@ -39,8 +39,21 @@ Backend (environment variables):
 | `FOBO_ENV` | no | `dev` turns on the **Act as** switch (acting as another user). **Leave it unset on a shared server**, except for a four-eyes demo. |
 | `FOBO_REASONER` | no | `none` (default in the workflow file), `session_service`, or `direct`. `direct` is for local development only. |
 | `FOBO_SESSION_SERVICE_URL`, `FOBO_SESSION_SERVICE_TOKEN`, `FOBO_SESSION_SKILL_ID` | with `session_service` | The session service the reasoner calls. See `docs/integration/session-service-contract.md`. |
-| `FOBO_MCP_URL`, `FOBO_MCP_TOKEN` | with `session_service` | This backend's MCP address and token, passed to the session so the model can query the graph. |
+| `FOBO_MCP_URL` | with `session_service` | Set it to this backend's `/mcp` URL **as the harness reaches it**. Setting it does two things: the backend serves its MCP server at `/mcp`, and each agent session request tells the harness to use that URL. Unset, there is no `/mcp` and the agent gets no tools. There is no shared MCP token: each agent session gets its own, which dies when the session ends. |
 | `FOBO_PLAYBOOK_PATH`, `FOBO_WORKFLOW_PATH` | no | Use a different playbook or workflow file than the ones in `config/`. |
+
+With `session_service`, three workflow settings govern each agent session.
+Change them in the console's Workflow tab:
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `session_service.poll_interval_seconds` | 5 | Seconds between status checks while a session runs. |
+| `session_service.max_wait_seconds` | 900 | How long a session may run before its breaks escalate. |
+| `reason.sample_breaks_per_pattern` | 5 | Break records sent per pattern; the agent reads the rest through `/mcp`. |
+
+Known limitation: investigations still start on the board's first read, so
+with a real harness that board request stays open for as long as the agent
+session runs (up to `max_wait_seconds`).
 
 Keep tokens and the database password in your secret store or the service's
 environment. Never commit them.

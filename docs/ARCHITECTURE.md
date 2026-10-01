@@ -16,6 +16,8 @@ console (apps/console/src)
           → fobo/knowledge_graph/*             books, desks, lineage (bitemporal)
           → fobo/cause_checks/*                the six deterministic cause checks
           → fobo/reasoning/*                   the model call, only for what the checks can't settle
+          → fobo/investigation/agent_run.py    one agent session per L4 run (agent_session row), start then poll
+  → POST /mcp                              fobo/mcp_server/* — the agent's read-only tools, per-session token
   → fobo/console_views/*                   what the console shows, from the checkpoint + real rows
   → fobo/db/*                              SQLAlchemy models and the async session
 ```
@@ -44,6 +46,7 @@ Run with `uvicorn fobo.web.main:app`; tests from `apps/backend` with
 | `fobo/web/decisions.py` | apply a controller decision (idempotent on its key) | `routes/console.py`; `tests/test_decisions.py` (calls `apply_decision` directly) |
 | `fobo/investigation/` | the LangGraph investigation itself: graph wiring, state, sessions, versioning | `fobo/web/*`, `scripts/*`, the CLI |
 | `fobo/investigation/steps/` | one module per graph step (gather, group, rank, draft, validate, reason, escalate, resolve, record) | `graph.py`, wired in the order `step_registry.py` + the workflow config allow |
+| `fobo/investigation/agent_run.py` | one agent-harness session per L4 rec run: builds the request (patterns with sample breaks), starts it, polls it, maps the response back to a verdict per break; the `agent_session` table makes it restart safe | `steps/reason.py` |
 | `fobo/investigation/step_registry.py` | every step's declared inputs/outputs, so an invalid order is caught before a run starts | `investigation/graph.py` (`STEPS`, builds the graph), `investigation/graph_view.py` (`STEPS`, the Workflow tab's graph view), `investigation/cli.py`, `reports/trace.py`, `web/routes/workflow_config.py` (`catalogue`), `settings.py` (validation) |
 | `fobo/investigation/settings.py` | reads and validates the workflow config (steps, order, pauses, settings) | `web/routes/workflow_config.py`, `reasoning/registry.py`, `reasoning/adapters/session_service.py`, `investigation/{graph,cli,yaml_io,graph_view,versions}.py`, `investigation/steps/{gather,reason,validate}.py` |
 | `fobo/investigation/versions.py` | workflow versions: draft, diff, four-eyes approval, which version a run started with | `web/main.py` (`Invalid`, `VersionError` handler), `web/routes/console.py`, `web/routes/workflow_config.py`, `investigation/graph.py` |
@@ -54,13 +57,14 @@ Run with `uvicorn fobo.web.main:app`; tests from `apps/backend` with
 | `fobo/console_views/` | what the console shows for a rec: board row, detail, chat answers, activity feed, session view | `fobo/web/routes/console.py` |
 | `fobo/reports/` | the board's hours-saved tile (`hours_saved.py`) and the execution trace (`trace.py`, from LangGraph checkpoints) | `hours_saved` → `routes/console.py`; `execution_trace` → `routes/investigations.py`; the console's Analytics panel |
 | `fobo/reasoning/` | the reasoning port: routes judgement-based breaks to a model (or none), plus the verdict guards that graph code — not the model — enforces | `steps/reason.py`; `graph_view.py` (derives the compiled decision logic from `determinism.py`/`guards.py`) |
+| `fobo/mcp_server/` | the MCP server the agent harness calls during a session, at `/mcp` (mounted only when `FOBO_MCP_URL` is set): eight read-only tools over the graph and the session's breaks, a per-session bearer token resolved through the `agent_session` row, one `source_call` row (`application_name="agent"`) per call | `web/main.py` (mounts it); the harness over HTTP; `scripts/stub_harness.py` |
 | `fobo/playbook/` | loads and validates the playbook YAML into the knowledge graph | `fobo/web/dependencies.py` (`ensure_seed_data` → `load_playbook`/`loaded_version`), `fobo/reasoning/determinism.py` (`read_playbook`), `fobo/investigation/graph_view.py` (`read_playbook`), `fobo/investigation/steps/reason.py` (`loaded_version`), plus `python -m fobo.playbook.cli validate\|load` |
 | `fobo/grounding/` | records every retrieval as a `source_call` row | `steps/gather.py`, `steps/validate.py`, `console_views/calls.py`, the console's Grounding panel and MCP data column |
-| `fobo/db/` | SQLAlchemy models and the async session factory | everywhere |
+| `fobo/db/` | SQLAlchemy models and the async session factory; `models_session.py` includes `agent_session`, one row per investigation that needed the agent (status, harness session id, token hash, request, response) | everywhere |
 | `fobo/contracts/` | the entity contract shared across the backend (`Caller`, break/adjustment shapes) | `fobo/knowledge_graph/`, `fobo/cause_checks/`, `fobo/investigation/`, `fobo/web/auth.py` (not `console_views`) |
 | `seed_data/` | the demo scenario (recs, run history, breaks) loaded on first request | `fobo/web/dependencies.py` (`ensure_seed_data`); also read live by `fobo/web/investigations.py` and `fobo/web/routes/investigations.py` (`breaks_for_rec`, for `/investigate` and `/trace`) and the route modules (`COB`, the default business date), `scripts/`, tests |
 | `migrations/` | Alembic migrations for the schema in `fobo/db/` | `alembic upgrade head` |
-| `scripts/` | `run_investigation.py` (deterministic run, no LLM), `demo_investigation.py` (one rec end to end), `reset_e2e_db.py` (rebuild `fobo_e2e`) | developers, the e2e harness (`apps/console/e2e/reset-db.mjs`) |
+| `scripts/` | `run_investigation.py` (deterministic run, no LLM), `demo_investigation.py` (one rec end to end), `reset_e2e_db.py` (rebuild `fobo_e2e`), `stub_harness.py` (a demo agent harness on port 8200: contract v2, reads breaks through `/mcp`, fixed verdict — not a reasoner) | developers, the e2e harness (`apps/console/e2e/reset-db.mjs`) |
 | `tests/` | pytest suite; one file per module or route, named to match what it covers | `pytest -q` |
 
 ## apps/console — the Next.js console (`src/`)

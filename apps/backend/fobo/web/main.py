@@ -1,10 +1,13 @@
 import os
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, nullcontext
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from mcp.server.mcpserver import MCPServer
+from starlette.routing import Route
 
+from fobo.mcp_server.server import MCP_PATH, build_mcp_server, mcp_http_app
 from fobo.web.auth import dev_caller_middleware
 from fobo.web.dependencies import setup_checkpointer
 from fobo.web.routes import console, investigations, workflow_config
@@ -29,17 +32,33 @@ async def _version_error(_request, exc: VersionError) -> JSONResponse:
     return JSONResponse(status_code=exc.status, content={"detail": detail})
 
 
-@asynccontextmanager
-async def _lifespan(_app: FastAPI):
-    # Creates the checkpoint tables/indexes before this process serves its
-    # first request — see setup_checkpointer's docstring for why doing this
-    # lazily, inside a request, can deadlock forever on a fresh database.
-    await setup_checkpointer()
-    yield
+def _mcp_url() -> str | None:
+    """The URL the reasoner hands the harness for the MCP server. Unset, the
+    server is neither mounted nor run."""
+    return os.getenv("FOBO_MCP_URL", "").strip() or None
+
+
+def _lifespan(mcp: MCPServer | None):
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI):
+        # Creates the checkpoint tables/indexes before this process serves its
+        # first request — see setup_checkpointer's docstring for why doing this
+        # lazily, inside a request, can deadlock forever on a fresh database.
+        await setup_checkpointer()
+        # The stateless MCP transport serves every request from the session
+        # manager's task group, which only exists while run() is entered.
+        async with mcp.session_manager.run() if mcp is not None else nullcontext():
+            yield
+
+    return lifespan
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="FOBO Investigation API", version="0.1.0", lifespan=_lifespan)
+    mcp_url = _mcp_url()
+    mcp = build_mcp_server() if mcp_url else None
+    # Built before the app so the session manager exists when the lifespan runs.
+    mcp_app = mcp_http_app(mcp, mcp_url) if mcp is not None else None
+    app = FastAPI(title="FOBO Investigation API", version="0.1.0", lifespan=_lifespan(mcp))
     # Registered before CORS so CORS wraps it: a refused dev caller still
     # gets the CORS headers the browser needs to read the 400.
     app.middleware("http")(dev_caller_middleware)
@@ -57,6 +76,9 @@ def create_app() -> FastAPI:
     app.include_router(investigations.router)
     app.include_router(console.router)
     app.include_router(workflow_config.router)
+    if mcp_app is not None:
+        # A route, not a mount: a mount would answer only /mcp/ and redirect /mcp.
+        app.router.routes.append(Route(MCP_PATH, endpoint=mcp_app))
 
     @app.get("/health")
     async def health() -> dict:

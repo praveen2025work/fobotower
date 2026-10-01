@@ -36,7 +36,11 @@ def _display_row(row: dict, ccy: str) -> dict:
 
 def call_view(call: dict, ccy: str) -> dict:
     """A recorded source_call, shaped for the session panel and inspector."""
-    server, _, tool = call["tool"].partition(".")
+    server, dot, tool = call["tool"].partition(".")
+    if not dot:
+        # Agent MCP tools are recorded under bare names (fobo_list_breaks);
+        # label them by the application that called them instead.
+        server, tool = call.get("application") or "", call["tool"]
     return {
         "id": call["call_id"],
         "server": server,
@@ -65,7 +69,8 @@ async def _calls(s, ids: list[str]) -> list[dict]:
     found = (await s.scalars(select(SourceCall).where(SourceCall.call_id.in_(ids)))).all()
     return [
         {
-            "call_id": r.call_id, "tool": r.tool_name, "params": r.validated_parameters,
+            "call_id": r.call_id, "tool": r.tool_name, "application": r.application_name,
+            "params": r.validated_parameters,
             "rows": r.result_rows, "summary": r.result_summary,
             "latency_ms": r.latency_ms, "error": r.error_detail,
         }

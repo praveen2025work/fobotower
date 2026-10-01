@@ -1,5 +1,6 @@
 """Contract v2 adapter: one session per L4 rec run, started then polled."""
 
+import json
 import re
 from pathlib import Path
 
@@ -15,6 +16,7 @@ from fobo.reasoning.port import HarnessStatus, ReasoningUnavailable
 from fobo.reasoning.requests import FOBO_MCP_TOOLS, build_request
 
 SKILL = Path(__file__).parents[3] / "skills" / "fobo-investigation" / "SKILL.md"
+CONTRACT = Path(__file__).parents[3] / "docs" / "integration" / "session-service-contract.md"
 
 REC = {"reconciliation_id": "R-2031", "master_book": "FICR-MB",
        "business_date": "2026-08-03", "run_id": "run-R-2031-20260803"}
@@ -86,14 +88,37 @@ def test_mcp_and_tools_only_with_a_server_and_carry_the_session_token(monkeypatc
 
 
 def test_the_skill_names_the_tools_the_request_offers():
-    """If they drift, the model calls tools it may not use. The skill does
-    not yet describe the two rec-level tools (list_breaks, break_detail);
-    it is updated with the contract documentation."""
+    """If they drift, the model calls tools it may not use."""
     text = SKILL.read_text()
     for tool in FOBO_MCP_TOOLS:
-        if tool.endswith(("fobo_list_breaks", "fobo_break_detail")):
-            continue
         assert tool.removeprefix("mcp__fobo__") in text, tool
+
+
+def _contract_examples() -> tuple[dict, dict]:
+    """The contract doc's first two ```json blocks: request, then response."""
+    blocks = re.findall(r"```json\n(.*?)\n```", CONTRACT.read_text(), re.S)
+    assert len(blocks) >= 2, "contract doc lost its request/response examples"
+    return json.loads(blocks[0]), json.loads(blocks[1])
+
+
+def test_the_contract_doc_request_matches_build_request(monkeypatch):
+    """The doc is what the harness team builds against. If its request drifts
+    from what the orchestrator sends, they build the wrong thing."""
+    documented, _ = _contract_examples()
+    sent = _request(monkeypatch, FOBO_MCP_URL="https://orch/mcp")
+    assert set(documented) == set(sent)
+    assert set(documented["inputs"]) == set(sent["inputs"])
+    assert set(documented["inputs"]["rec"]) == set(sent["inputs"]["rec"])
+    assert set(documented["inputs"]["patterns"][0]) == set(sent["inputs"]["patterns"][0])
+    assert set(documented["mcp"]) == set(sent["mcp"])
+    assert documented["tools"] == list(FOBO_MCP_TOOLS)
+
+
+def test_the_contract_doc_response_output_is_a_valid_rec_verdict():
+    _, documented = _contract_examples()
+    assert documented["status"] == "completed"
+    verdict = RecVerdict.model_validate(documented["output"])
+    assert verdict.patterns and verdict.exceptions
 
 
 async def test_start_posts_to_sessions_and_parses_running():

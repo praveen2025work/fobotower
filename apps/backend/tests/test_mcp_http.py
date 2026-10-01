@@ -9,6 +9,7 @@ from datetime import date
 
 from contextlib import asynccontextmanager
 
+import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 
@@ -187,3 +188,10 @@ async def test_list_breaks_returns_the_session_breaks(monkeypatch):
         assert not result.get("isError")
         assert result["structuredContent"]["total"] == 1
         assert result["structuredContent"]["breaks"][0]["break_id"] == "B-001"
+
+
+@pytest.mark.parametrize("bad", ["orch/mcp", "ftp://orch/mcp", "/mcp", "https:///mcp"])
+def test_a_malformed_mcp_url_fails_at_app_build(monkeypatch, bad):
+    monkeypatch.setenv("FOBO_MCP_URL", bad)
+    with pytest.raises(ValueError, match="FOBO_MCP_URL.*https://host/mcp"):
+        create_app()

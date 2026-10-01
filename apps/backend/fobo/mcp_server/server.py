@@ -173,7 +173,12 @@ def build_mcp_server() -> MCPServer:
 
 def _transport_security(mcp_url: str) -> TransportSecuritySettings:
     """Accept the host the harness was told to call, plus the local ones."""
-    hosts = dict.fromkeys(h for h in (urlparse(mcp_url).hostname, *LOCAL_HOSTS) if h)
+    parsed = urlparse(mcp_url)
+    if parsed.scheme not in ("http", "https") or not parsed.hostname:
+        raise ValueError(
+            f"FOBO_MCP_URL must be an absolute http(s) URL such as https://host/mcp, got {mcp_url!r}"
+        )
+    hosts = dict.fromkeys(h for h in (parsed.hostname, *LOCAL_HOSTS) if h)
     return TransportSecuritySettings(
         enable_dns_rebinding_protection=True,
         allowed_hosts=[p for h in hosts for p in (h, f"{h}:*")],

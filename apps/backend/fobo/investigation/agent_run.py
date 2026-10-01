@@ -40,6 +40,8 @@ from fobo.reasoning.requests import build_request
 
 UNGROUPED = "UNGROUPED"
 UNGROUPED_LABEL = "No cause identified"
+# Consecutive poll errors tolerated before the session is failed.
+MAX_POLL_FAILURES = 3
 NOT_COVERED = "not covered by the agent's response"
 REDACTED = "<redacted>"
 SESSION_TOOL = "agent.session"
@@ -169,6 +171,7 @@ async def _wait(reasoner, status: HarnessStatus, *, sleep, clock) -> HarnessStat
     """Poll until the session leaves `running`, or fail it past max_wait."""
     cfg = settings().session_service
     deadline = clock() + cfg.max_wait_seconds
+    poll_failures = 0
     while status.status == "running":
         if clock() >= deadline:
             return HarnessStatus(
@@ -178,7 +181,19 @@ async def _wait(reasoner, status: HarnessStatus, *, sleep, clock) -> HarnessStat
                 error=f"agent session timed out after {cfg.max_wait_seconds:g}s",
             )
         await sleep(cfg.poll_interval_seconds)
-        status = await reasoner.poll(status.session_id)
+        try:
+            status = await reasoner.poll(status.session_id)
+        except ReasoningUnavailable as exc:
+            poll_failures += 1
+            if poll_failures > MAX_POLL_FAILURES:
+                return HarnessStatus(
+                    session_id=status.session_id,
+                    status="failed",
+                    payload=status.payload,
+                    error=str(exc),
+                )
+        else:
+            poll_failures = 0
     return status
 
 
@@ -252,6 +267,11 @@ async def _new_session(session, state, unsettled, reasoner, *, sleep, clock):
         status = await _wait(reasoner, status, sleep=sleep, clock=clock)
     except ReasoningUnavailable as exc:
         return await _fail(session, row, str(exc))
+    except Exception as exc:
+        # e.g. a harness session id the column cannot hold: the commit fails
+        # and the row must not be left starting/running (cancellation passes).
+        await session.rollback()
+        return await _fail(session, row, f"agent session failed: {exc}")
     return await _finish(session, row, status)
 
 
@@ -279,7 +299,9 @@ async def _record(session, sid: str, unsettled: dict, outcome: AgentOutcome, lat
         return
     patterns = sorted({e.get("pattern_code", UNGROUPED) for e in unsettled.values()})
     payload = outcome.payload or {}
-    tool_calls = payload.get("tool_calls") or []
+    # The harness payload is untrusted: only a list of dicts yields rows.
+    raw_calls = payload.get("tool_calls")
+    tool_calls = [c for c in raw_calls if isinstance(c, dict)] if isinstance(raw_calls, list) else []
     await GroundingRecorder(session, sid).record(
         application="agent",
         tool=SESSION_TOOL,

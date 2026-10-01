@@ -97,6 +97,25 @@ async def test_find_active_by_token():
         assert await repo.find_active_by_token(s, token) is None
 
 
+async def test_a_row_older_than_the_session_window_is_not_active():
+    from datetime import datetime, timedelta, timezone
+
+    from fobo.investigation.settings import settings
+
+    window = settings().session_service.max_wait_seconds + 300
+    token, digest = repo.new_token()
+    async with get_session() as s:
+        await _investigation(s)
+        row = await _create(s, token_hash=digest)
+        await repo.mark_running(s, row, "h")
+        row.created_ts = datetime.now(timezone.utc) - timedelta(seconds=window - 30)
+        await s.flush()
+        assert await repo.find_active_by_token(s, token) is not None
+        row.created_ts = datetime.now(timezone.utc) - timedelta(seconds=window + 30)
+        await s.flush()
+        assert await repo.find_active_by_token(s, token) is None
+
+
 async def test_failed_row_is_not_active():
     token, digest = repo.new_token()
     async with get_session() as s:

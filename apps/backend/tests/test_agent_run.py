@@ -8,6 +8,7 @@ No test really sleeps: the waiting loop takes a fake clock and sleep.
 
 from datetime import date
 
+import pytest
 from sqlalchemy import func, select
 
 from fobo.contracts.models import Caller, PatternGroup
@@ -116,9 +117,10 @@ class FakeHarness:
         self.polled.append(session_id)
         if self._on_poll:
             await self._on_poll()
-        if len(self._polls) > 1:
-            return self._polls.pop(0)
-        return self._polls[0]
+        item = self._polls.pop(0) if len(self._polls) > 1 else self._polls[0]
+        if isinstance(item, Exception):
+            raise item
+        return item
 
 
 def _running(sid="h-1"):
@@ -221,6 +223,30 @@ async def test_a_session_that_never_completes_times_out():
     assert "timed out" in out.error and "900" in out.error
     assert t.now >= 900
     assert len(h.polled) == 180
+
+
+async def test_poll_errors_are_tolerated_up_to_three_in_a_row():
+    boom = ReasoningUnavailable("blip")
+    h = FakeHarness(start=_running(), polls=[boom, boom, _completed()])
+    t = FakeTime()
+    out = await run_agent(None, _state(), UNSETTLED, reasoner=h, sleep=t.sleep, clock=t.clock)
+    assert out.error is None and out.rec_verdict is not None
+
+
+async def test_a_successful_poll_resets_the_poll_failure_count():
+    boom = ReasoningUnavailable("blip")
+    h = FakeHarness(start=_running(), polls=[boom, boom, boom, _running(), boom, boom, boom, _completed()])
+    t = FakeTime()
+    out = await run_agent(None, _state(), UNSETTLED, reasoner=h, sleep=t.sleep, clock=t.clock)
+    assert out.error is None
+
+
+async def test_four_consecutive_poll_errors_fail_the_session():
+    h = FakeHarness(start=_running(), polls=[ReasoningUnavailable("down")])
+    t = FakeTime()
+    out = await run_agent(None, _state(), UNSETTLED, reasoner=h, sleep=t.sleep, clock=t.clock)
+    assert out.rec_verdict is None and out.error == "down"
+    assert len(h.polled) == 4
 
 
 async def test_a_failed_harness_carries_its_error():
@@ -333,6 +359,39 @@ async def test_start_unavailable_marks_the_row_failed():
     row = await _row()
     assert (row.status, row.error) == ("failed", "connection refused")
     assert out.error == "connection refused"
+
+
+async def test_a_non_unavailable_start_error_fails_the_row_and_escalates():
+    await _investigation()
+    h = FakeHarness(start=_running(sid="x" * 200), polls=[_completed()])
+    async with get_session() as s:
+        out = await run_agent(s, _state(), UNSETTLED, reasoner=h)
+    row = await _row()
+    assert row.status == "failed" and row.error
+    assert out.rec_verdict is None and out.error == row.error
+
+
+@pytest.mark.parametrize("bad", ["oops", {"tool": "x"}, None, 7])
+async def test_malformed_tool_calls_do_not_break_recording(bad):
+    await _investigation()
+    h = FakeHarness(start=_completed())
+    h._start.payload["tool_calls"] = bad
+    async with get_session() as s:
+        out = await run_agent(s, _state(), UNSETTLED, reasoner=h)
+    assert out.error is None
+    [call] = await _agent_calls()
+    assert call.result_rows == []
+
+
+async def test_only_dict_tool_calls_become_rows():
+    await _investigation()
+    h = FakeHarness(start=_completed(tool_calls=[1, {"tool": "x", "arguments": {}}]))
+    async with get_session() as s:
+        out = await run_agent(s, _state(), UNSETTLED, reasoner=h)
+    assert out.error is None
+    [call] = await _agent_calls()
+    assert call.result_rows == [{"tool": "x", "arguments": {}}]
+    assert (await _row()).status == "completed"
 
 
 async def _seed_row(status, harness_session_id=None, response=None, error=None):

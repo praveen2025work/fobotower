@@ -324,3 +324,14 @@ async def test_no_reasoner_leaves_no_agent_session_or_source_call(monkeypatch):
         assert out["findings"]["FX-0"]["verdict"] == "ESCALATE"
         for model in (AgentSession, SourceCall):
             assert await s.scalar(select(func.count()).select_from(model)) == 0
+
+
+async def test_uncovered_breaks_are_counted_and_capped_at_ten_ids():
+    from fobo.investigation.steps.reason import _uncovered_error
+
+    ids = [f"B-{i}" for i in range(25)]
+    msg = _uncovered_error(ids)
+    assert msg.startswith("25 breaks not covered by the agent's response (")
+    assert "B-9" in msg and "B-10" not in msg
+    assert msg.endswith("and 15 more)")
+    assert _uncovered_error(["B-1", "B-2"]) == "2 breaks not covered by the agent's response (B-1, B-2)"

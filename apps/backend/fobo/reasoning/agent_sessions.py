@@ -11,12 +11,17 @@ Helpers flush nothing and commit nothing; the caller owns the transaction.
 
 import hashlib
 import secrets
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fobo.db.models_session import AgentSession
+from fobo.investigation.settings import settings
+
+# Past max_wait a session is dead even if its row never got closed (the
+# backend died mid-session); the slack covers start-up and the final commit.
+TOKEN_GRACE_SECONDS = 300
 
 ACTIVE_STATUSES = ("starting", "running")
 
@@ -97,10 +102,13 @@ async def find_active_by_token(
     session: AsyncSession, token: str
 ) -> AgentSession | None:
     """The row this token belongs to, only while its session is live."""
+    window = settings().session_service.max_wait_seconds + TOKEN_GRACE_SECONDS
+    oldest = datetime.now(timezone.utc) - timedelta(seconds=window)
     result = await session.execute(
         select(AgentSession).where(
             AgentSession.token_hash == hash_token(token),
             AgentSession.status.in_(ACTIVE_STATUSES),
+            AgentSession.created_ts > oldest,
         )
     )
     return result.scalar_one_or_none()

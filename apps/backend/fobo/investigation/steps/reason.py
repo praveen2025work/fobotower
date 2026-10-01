@@ -122,8 +122,19 @@ async def _reason_unsettled(session, state, unsettled, determinations, reasoner)
             verdict.root_cause.established,
         )
     if error is None and uncovered:
-        error = f"{NOT_COVERED}: {', '.join(uncovered)}"
+        error = _uncovered_error(uncovered)
     return proposals, gaps, error
+
+
+UNCOVERED_IDS_SHOWN = 10
+
+
+def _uncovered_error(uncovered: list[str]) -> str:
+    """Count plus the first few ids: production volume is thousands of breaks."""
+    shown = ", ".join(uncovered[:UNCOVERED_IDS_SHOWN])
+    more = len(uncovered) - UNCOVERED_IDS_SHOWN
+    tail = f", and {more} more" if more > 0 else ""
+    return f"{len(uncovered)} breaks {NOT_COVERED} ({shown}{tail})"
 
 
 async def reason(state: InvestigationState, *, session, reasoner=None) -> dict:

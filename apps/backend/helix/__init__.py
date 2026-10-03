@@ -1,0 +1,11 @@
+"""Helix: the capability platform.
+
+Orchestration (LangGraph), the MCP gateway to onboarded connectors, central
+entitlement, a knowledge graph of past decisions, and a manifest-driven
+console. A capability is configuration (config/helix/capabilities/*.yaml);
+the Helix team supplies connectors. The LLM and tracing backends plug in by
+configuration (see helix/config.py) so the same code runs here with stubs and
+in the office against the real services.
+
+Nothing in this package imports `fobo`.
+"""

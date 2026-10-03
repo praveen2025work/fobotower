@@ -1,0 +1,29 @@
+# Development stand-in for the central entitlements system.
+# Used only when HELIX_ENTITLEMENT_URL is unset. Same shape the real
+# service is asked for: roles, and data scopes per dimension ("*" = all).
+
+users:
+  alice:
+    name: Alice (Finance preparer, UK)
+    roles: [FIN_PREPARER]
+    data_scopes: { entity: [UK01] }
+  bob:
+    name: Bob (Finance reviewer, all entities)
+    roles: [FIN_REVIEWER, HELIX_FIN_VARCOMM_OWNER]
+    data_scopes: { entity: ["*"] }
+  carol:
+    name: Carol (Finance capability owner)
+    roles: [HELIX_FIN_VARCOMM_OWNER]
+    data_scopes: { entity: ["*"] }
+  dan:
+    name: Dan (Cash operations, UK and US)
+    roles: [CASH_OPS, HELIX_CASH_RECON_OWNER]
+    data_scopes: { entity: [UK01, US01] }
+  erin:
+    name: Erin (Cash operations owner)
+    roles: [CASH_OPS, HELIX_CASH_RECON_OWNER]
+    data_scopes: { entity: ["*"] }
+  viewer:
+    name: Viewer (no Helix roles)
+    roles: []
+    data_scopes: {}

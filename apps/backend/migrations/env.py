@@ -22,7 +22,9 @@ if config.config_file_name is not None:
 # target_metadata = mymodel.Base.metadata
 from fobo.db.base import DATABASE_URL, Base
 from fobo.db import models_graph, models_ops, models_session, models_workflow  # noqa: F401  register tables
-target_metadata = Base.metadata
+from helix import models as helix_models  # noqa: F401  register helix_* tables
+from helix.db import HelixBase
+target_metadata = [Base.metadata, HelixBase.metadata]
 
 # Migrate the same database the app uses: FOBO_DATABASE_URL when set, else the
 # local dev default. `%` is doubled because the ini parser interpolates it.

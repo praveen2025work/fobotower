@@ -1,0 +1,63 @@
+# Onboarded MCP connectors — owned by the Helix team.
+#
+# Each entry is one bank system exposed as an MCP server. Only tools listed
+# here can be used by any capability (an allow-list); `scope` names the
+# argument that carries the data scope, which the gateway checks against the
+# caller's entitlements on every call.
+#
+# These four are stubs that run in-process (helix/stub_connectors). In the
+# office, point an entry at the real connector:
+#
+#   gl:
+#     name: General ledger
+#     transport: http
+#     url: https://gl-mcp.internal.example/mcp
+#     headers_env: { Authorization: GL_MCP_AUTHORIZATION }   # value read from env
+#     tools: ...same allow-list...
+
+connectors:
+  gl:
+    name: General ledger (stub)
+    transport: inproc
+    target: helix.stub_connectors.finance:build_gl
+    classification: internal
+    tools:
+      balances:
+        description: Actual and budget per account and cost centre
+        scope: { arg: entity, key: entity }
+      journal_lines:
+        description: Largest journal lines for an account
+        scope: { arg: entity, key: entity }
+
+  budget:
+    name: Budget and plan (stub)
+    transport: inproc
+    target: helix.stub_connectors.finance:build_budget
+    classification: internal
+    tools:
+      plan_lines:
+        description: Budget lines and planning notes for an account
+        scope: { arg: entity, key: entity }
+
+  bank:
+    name: Bank statements (stub)
+    transport: inproc
+    target: helix.stub_connectors.finance:build_bank
+    classification: confidential
+    tools:
+      statement:
+        description: Bank statement lines for a value date
+        scope: { arg: entity, key: entity }
+
+  ledger:
+    name: Ledger cash postings (stub)
+    transport: inproc
+    target: helix.stub_connectors.finance:build_ledger
+    classification: confidential
+    tools:
+      postings:
+        description: Ledger cash postings for a value date
+        scope: { arg: entity, key: entity }
+      counterparty_history:
+        description: Recent settled items with a counterparty
+        scope: { arg: entity, key: entity }

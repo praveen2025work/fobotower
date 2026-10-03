@@ -17,7 +17,7 @@ from helix import capabilities
 from helix.db import get_session
 from helix.entitlement import Caller
 from helix.manifest import Manifest
-from helix.models import Case, CaseItem, Decision, ProposalGroup, ToolCall
+from helix.models import Case, CaseItem, Decision, ProposalGroup, PublishApproval, ToolCall
 from helix.observability import current_trace_id, span
 from helix.rules import render
 from helix.workflow import build_graph, checkpointer
@@ -54,6 +54,8 @@ async def _status_after_run(app, config, case_id: str) -> str:
         case = await s.get(Case, case_id)
         if "review" in snapshot.next:
             case.status = "awaiting_review"
+        elif "publish" in snapshot.next:
+            case.status = "awaiting_publish"
         elif snapshot.next:
             case.status = f"paused_before_{snapshot.next[0]}"
         await s.commit()
@@ -175,6 +177,49 @@ async def _resume_if_complete(case_id: str, m: Manifest) -> str:
         raise
 
 
+async def approve_publish(case_id: str, idempotency_key: str, caller: Caller) -> dict:
+    """A second person releases the write-back. Four-eyes: nobody who signed
+    off a group in this case may release it."""
+    async with get_session() as s:
+        case = await s.get(Case, case_id)
+        if case is None:
+            raise LookupError(case_id)
+        m = await _pinned(case)
+        if not may_see_case(caller, m, case.case_key):
+            raise LookupError(case_id)
+        existing = await s.get(PublishApproval, case_id)
+        if existing is not None:
+            if existing.idempotency_key == idempotency_key:
+                return {"replayed": True, "status": case.status}
+            raise CaseError("write-back was already released")
+        if m.publish is None or case.status != "awaiting_publish":
+            raise CaseError(f"case is {case.status}, not awaiting publish")
+        if not caller.has_any_role(m.publish.approver_roles):
+            raise PermissionError(f"{caller.user_id} may not release write-back")
+        deciders = set((await s.execute(select(Decision.decided_by).where(
+            Decision.case_id == case_id))).scalars())
+        if caller.user_id in deciders:
+            raise PermissionError("four-eyes: a reviewer of this case cannot release its write-back")
+        s.add(PublishApproval(case_id=case_id, approved_by=caller.user_id,
+                              idempotency_key=idempotency_key))
+        await s.commit()
+
+    config = {"configurable": {"thread_id": f"helix:{case_id}"}}
+    with span("publish.approval", root=True, case_id=case_id, user=caller.user_id):
+        try:
+            async with checkpointer() as cp:
+                app = build_graph(m.steps, m.pause_before, cp)
+                await app.aupdate_state(config, {"publish_approval": {"approved_by": caller.user_id}})
+                await app.ainvoke(None, config)
+                status = await _status_after_run(app, config, case_id)
+        except Exception as e:
+            await _fail(case_id, e)
+            raise
+    async with get_session() as s:
+        status = (await s.get(Case, case_id)).status
+    return {"replayed": False, "status": status}
+
+
 # ---------- reads ----------
 
 def _case_summary(c: Case) -> dict:
@@ -239,4 +284,9 @@ async def case_detail(case_id: str, caller: Caller) -> dict:
                         "error": c.error, "latency_ms": c.latency_ms, "called_at": c.called_at,
                         "result": c.result} for c in calls],
         "can_decide": caller.has_any_role(m.review.roles) and case.status == "awaiting_review",
+        "publish": ({"tool": m.publish.tool, "approver_roles": m.publish.approver_roles,
+                     "can_release": (case.status == "awaiting_publish"
+                                     and caller.has_any_role(m.publish.approver_roles)
+                                     and caller.user_id not in {d.decided_by for d in decisions})}
+                    if m.publish else None),
     }

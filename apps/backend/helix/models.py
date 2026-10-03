@@ -145,6 +145,20 @@ class Decision(HelixBase):
     )
 
 
+class PublishApproval(HelixBase):
+    """The second person releasing a case's write-back. One per case."""
+
+    __tablename__ = "helix_publish_approval"
+    case_id: Mapped[str] = mapped_column(
+        String(128), ForeignKey("helix_case.case_id", ondelete="CASCADE"), primary_key=True
+    )
+    approved_by: Mapped[str] = mapped_column(String(64))
+    idempotency_key: Mapped[str] = mapped_column(String(128), unique=True)
+    approved_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
 class KgNode(HelixBase):
     """Knowledge graph node. Namespaced per capability; bitemporal by valid_from/valid_to."""
 
@@ -177,6 +191,6 @@ class KgEdge(HelixBase):
 
 
 HELIX_TABLES = [  # child tables first, for truncation in tests
-    "helix_decision", "helix_proposal_group", "helix_case_item", "helix_tool_call",
+    "helix_publish_approval", "helix_decision", "helix_proposal_group", "helix_case_item", "helix_tool_call",
     "helix_case", "helix_capability_version", "helix_kg_edge", "helix_kg_node",
 ]

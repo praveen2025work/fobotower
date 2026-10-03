@@ -1,0 +1,22 @@
+# Data protection between bank data and the model — owned by the Helix team.
+#
+# Field names match at any depth, case-insensitively, in tool results and in
+# what the reason step sends the model. `applies_to_tools` uses
+# connector.tool patterns ("*" = every tool).
+#
+#   mask          irreversible: ***MASKED*** for the model, traces and the
+#                 audit copy of tool results
+#   pseudonymize  per-case tokens such as «COUNTERPARTY:QXKD»: the model reasons
+#                 and calls tools with them, the gateway turns them back into
+#                 real values for connectors, reviewers see real values
+#
+# trace_payloads: masked hides payloads in auto-instrumented spans (LangGraph
+# state, Agent SDK messages); Helix's own spans carry protected payloads only.
+
+trace_payloads: masked
+
+data_protection:
+  - name: counterparty identity
+    applies_to_tools: ["*"]
+    pseudonymize: [counterparty, client_name]
+    mask: [counterparty_account, iban, account_number, tax_id]

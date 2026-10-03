@@ -61,3 +61,14 @@ connectors:
       counterparty_history:
         description: Recent settled items with a counterparty
         scope: { arg: entity, key: entity }
+
+  reporting:
+    name: Management reporting pack (stub)
+    transport: inproc
+    target: helix.stub_connectors.finance:build_reporting
+    classification: internal
+    tools:
+      publish_commentary:
+        description: Publish approved variance commentary to the reporting pack
+        access: write          # never offered to the model; publish step only, after release
+        scope: { arg: entity, key: entity }

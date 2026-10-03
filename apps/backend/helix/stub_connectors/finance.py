@@ -13,6 +13,7 @@ Serve one over HTTP, e.g. to try the http transport:
 
 import argparse
 import random
+import zlib
 
 from mcp.server.mcpserver import MCPServer
 
@@ -88,9 +89,13 @@ def build_budget() -> MCPServer:
 
 def _cash(entity: str, date: str) -> list[dict]:
     r = _rng("cash", entity, date)
-    return [{"ref": f"TX{i:04d}", "counterparty": r.choice(COUNTERPARTIES),
-             "amount": round(r.uniform(-250_000, 250_000), 2), "value_date": date}
-            for i in range(1, 25)]
+    rows = []
+    for i in range(1, 25):
+        cp = r.choice(COUNTERPARTIES)
+        rows.append({"ref": f"TX{i:04d}", "counterparty": cp,
+                     "counterparty_account": f"GB{zlib.crc32(cp.encode()) % 10**8:08d}",
+                     "amount": round(r.uniform(-250_000, 250_000), 2), "value_date": date})
+    return rows
 
 
 def statement(entity: str, date: str) -> dict:
@@ -138,7 +143,28 @@ def build_ledger() -> MCPServer:
     return server
 
 
-BUILDERS = {"gl": build_gl, "budget": build_budget, "bank": build_bank, "ledger": build_ledger}
+# ---------- reporting (write) ----------
+
+PUBLISHED: list[dict] = []   # what the stub reporting system received, for tests and demos
+
+
+def publish_commentary(entity: str, period: str, account: str, commentary: str) -> dict:
+    """Publish approved variance commentary for one account to the reporting pack."""
+    receipt = f"RPT-{zlib.crc32(f'{entity}|{period}|{account}'.encode()) % 10**6:06d}"
+    PUBLISHED.append({"entity": entity, "period": period, "account": account,
+                      "commentary": commentary, "receipt": receipt})
+    return {"receipt": receipt, "published": True}
+
+
+def build_reporting() -> MCPServer:
+    server = MCPServer(name="reporting", instructions="Management reporting pack (stub).")
+    server.add_tool(publish_commentary, name="publish_commentary",
+                    description=publish_commentary.__doc__)
+    return server
+
+
+BUILDERS = {"gl": build_gl, "budget": build_budget, "bank": build_bank, "ledger": build_ledger,
+            "reporting": build_reporting}
 
 
 def main() -> None:

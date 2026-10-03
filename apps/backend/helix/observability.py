@@ -40,6 +40,9 @@ def setup_tracing() -> str:
         if s.phoenix_endpoint:
             from phoenix.otel import register  # optional dependency
 
+            from helix.governance import configure_trace_hiding
+            configure_trace_hiding()  # before instrumentors read their config
+
             # auto_instrument picks up every installed OpenInference instrumentor —
             # with the [phoenix] extra: the Claude Agent SDK and LangChain/LangGraph.
             register(project_name=s.phoenix_project, endpoint=_otlp_endpoint(s.phoenix_endpoint),
@@ -105,7 +108,7 @@ def set_output(s, value: Any) -> None:
 def _json(value: Any) -> str:
     import json
 
-    text = value if isinstance(value, str) else json.dumps(value, default=str)
+    text = value if isinstance(value, str) else json.dumps(value, default=str, ensure_ascii=False)
     return text[:20000]  # keep spans bounded; the full record is the audit row
 
 

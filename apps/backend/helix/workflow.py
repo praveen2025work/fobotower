@@ -46,11 +46,13 @@ STEPS: dict[str, Step] = {s.name: s for s in [
          _s("review_cycles"), gate=True),
     Step("record", steps.record, "Record", _s("groups", "findings", "decisions"),
          _s("outcome"), gate=True),
+    Step("publish", steps.publish, "Publish (write-back)", _s("groups", "findings", "decisions"),
+         _s("outcome", "published")),
 ]}
 
 GATES = ("validate", "review", "record")
 INITIAL = _s("case_id", "capability_id", "manifest_version", "manifest", "case_key", "caller")
-ON_RESUME = _s("decisions")
+ON_RESUME = _s("decisions", "publish_approval")
 
 
 def catalogue() -> list[dict]:
@@ -71,8 +73,12 @@ def order_problems(order: list[str], pause_before: list[str]) -> list[str]:
         order.index("validate") < order.index("review") < order.index("record")
     ):
         out.append("gates must run in the order validate → review → record")
-    if "review" in order and order[-1] != "record":
-        out.append("`record` must be the last step")
+    tail = ["record", "publish"] if "publish" in order else ["record"]
+    if "review" in order and order[-len(tail):] != tail:
+        out.append("`record` must be the last step" if tail == ["record"]
+                   else "`publish` must come right after `record`, last")
+    if "publish" in order and "publish" not in pause_before:
+        out.append("the run must pause before `publish` for a second approval")
     if "review" not in pause_before:
         out.append("the run must pause before `review`")
     out += [f"pause_before: unknown step `{n}`" for n in pause_before if n not in order]
@@ -104,7 +110,7 @@ def build_graph(order: list[str], pause_before: list[str], checkpointer):
     for current, following in zip(order, order[1:] + [None]):
         if following is None:
             g.add_edge(current, END)
-        elif current in ("review", "record"):
+        elif current in ("review", "record", "publish"):
             g.add_edge(current, following)
         else:
             g.add_conditional_edges(

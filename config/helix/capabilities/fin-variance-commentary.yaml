@@ -35,8 +35,8 @@ compare: { measure: actual, baseline: budget, as: variance }
 policy:
   materiality: { value: 50000, unit: GBP }
 
-steps: [load, compare, group, reason, draft, validate, review, record]
-pause_before: [review]
+steps: [load, compare, group, reason, draft, validate, review, record, publish]
+pause_before: [review, publish]
 group_by: [account]
 
 rules:
@@ -59,3 +59,10 @@ reasoning:
 
 review:
   roles: [FIN_PREPARER, FIN_REVIEWER]
+
+# Write-back: approved commentary goes to the reporting pack only after a
+# reviewer who did not sign off the lane releases it (four-eyes).
+publish:
+  tool: reporting.publish_commentary
+  args: { entity: $case.entity, period: $case.period, account: $group.account, commentary: $comment }
+  approver_roles: [FIN_REVIEWER]

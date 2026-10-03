@@ -157,6 +157,17 @@ async def decide(case_id: str, body: DecisionIn, c: Caller = Depends(caller)) ->
     return {**result, "case": await cases.case_detail(case_id, c)}
 
 
+class PublishIn(BaseModel):
+    idempotency_key: str = Field(min_length=8, max_length=128)
+
+
+@app.post("/api/cases/{case_id}/publish", status_code=201)
+@_errors
+async def release_publish(case_id: str, body: PublishIn, c: Caller = Depends(caller)) -> dict:
+    result = await cases.approve_publish(case_id, body.idempotency_key, c)
+    return {**result, "case": await cases.case_detail(case_id, c)}
+
+
 @app.get("/api/platform")
 async def platform(c: Caller = Depends(caller)) -> dict:
     """What this Helix instance offers: steps, connector tools, adapters."""

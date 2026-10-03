@@ -91,6 +91,15 @@ class ReasoningSpec(Strict):
     output: Literal["verdict", "commentary", "classification"] = "commentary"
 
 
+class PublishSpec(Strict):
+    """Write approved results back to a bank system, after a second approval."""
+    tool: str                          # a connector tool with access: write
+    # literals, "$case.<field>", "$group.<field>" (group key), "$comment" (the
+    # approved explanation: the reviewer's comment, else the finding's)
+    args: dict[str, Any] = Field(default_factory=dict)
+    approver_roles: list[str]          # who may release the write-back
+
+
 class ReviewSpec(Strict):
     roles: list[str]                   # who may decide
     approve_by: Literal["group"] = "group"
@@ -112,6 +121,7 @@ class Manifest(Strict):
     rules: list[Rule] = Field(default_factory=list)
     reasoning: ReasoningSpec = Field(default_factory=ReasoningSpec)
     review: ReviewSpec
+    publish: PublishSpec | None = None
 
     def policy_values(self) -> dict[str, Any]:
         return {k: v.value for k, v in self.policy.items()}
@@ -122,7 +132,12 @@ class Manifest(Strict):
             used.add(self.items.load.tool)
         if self.match:
             used |= {self.match.left.tool, self.match.right.tool}
+        if self.publish:
+            used.add(self.publish.tool)
         return used
+
+    def read_tools(self) -> set[str]:
+        return self.tools_used() - ({self.publish.tool} if self.publish else set())
 
     def visible_to_roles(self) -> set[str]:
         return set(self.review.roles) | ({self.owners.role} if self.owners.role else set())
@@ -139,6 +154,16 @@ def problems(m: Manifest) -> list[str]:
         out.append("step `load` needs `items.load`")
     if "match" in m.steps and m.match is None:
         out.append("step `match` needs a `match` section")
+    if "publish" in m.steps and m.publish is None:
+        out.append("step `publish` needs a `publish` section")
+    if m.publish and "publish" not in m.steps:
+        out.append("a `publish` section needs the `publish` step")
+    reg = registry()
+    if m.publish and (found := reg.tool(m.publish.tool)) and found[2].access != "write":
+        out.append(f"publish.tool `{m.publish.tool}` is not a write tool")
+    for t in sorted(set(m.reasoning.tools) | ({m.items.load.tool} if m.items.load else set())):
+        if (found := reg.tool(t)) and found[2].access == "write":
+            out.append(f"tool `{t}` writes to a bank system; only `publish` may use it")
     if "compare" in m.steps and m.compare is None:
         out.append("step `compare` needs a `compare` section")
     if "load" not in m.steps and "match" not in m.steps:

@@ -6,6 +6,7 @@ MCP gateway; steps that persist write helix_* rows so the console and the
 audit read real records, not the checkpoint.
 """
 
+import hashlib
 import re
 from typing import Any, TypedDict
 
@@ -14,6 +15,7 @@ from sqlalchemy import select
 from helix import gateway, knowledge, rules
 from helix.db import get_session
 from helix.entitlement import Caller
+from helix.governance import Protector, fields_for
 from helix.llm import ReasonRequest, llm
 from helix.manifest import Manifest, ToolCallSpec
 from helix.models import Case, CaseItem, ProposalGroup, ToolCall
@@ -38,6 +40,8 @@ class CaseState(TypedDict, total=False):
     validation_errors: list[str]
     review_cycles: int
     decisions: list[dict]          # written on resume, from helix_decision
+    publish_approval: dict         # written on resume, from helix_publish_approval
+    published: list[dict]
     outcome: str | None
     escalation_reason: str | None
 
@@ -58,7 +62,7 @@ def _ctx(state: CaseState, step: str, tools: set[str] | None = None) -> gateway.
     m = _manifest(state)
     return gateway.CallContext(
         capability_id=state["capability_id"], caller=_caller(state),
-        allowed_tools=frozenset(tools if tools is not None else m.tools_used()),
+        allowed_tools=frozenset(tools if tools is not None else m.read_tools()),
         case_id=state["case_id"], requested_by=step,
     )
 
@@ -146,11 +150,21 @@ async def compare(state: CaseState) -> dict:
     return {"items": items}
 
 
+def _group_id(values: tuple, fields: list[str], protected: set[str]) -> str:
+    """Readable ("6100") unless a grouping field is protected data — then an
+    opaque hash, so names never travel in ids, URLs or span attributes."""
+    if any(f.lower() in protected for f in fields):
+        return "g-" + hashlib.sha1("|".join(values).encode()).hexdigest()[:10]
+    return "-".join(values) or "all"
+
+
 async def group(state: CaseState) -> dict:
     m = _manifest(state)
     policy = m.policy_values()
     in_scope = [it for it in state["items"]
                 if not m.items.in_scope or rules.evaluate(m.items.in_scope, {**it, "policy": policy})]
+    mask_f, pseudo_f = fields_for(m.tools_used())
+    protected = mask_f | pseudo_f
     buckets: dict[tuple, list[dict]] = {}
     for it in in_scope:
         buckets.setdefault(tuple(str(it.get(f)) for f in m.group_by), []).append(it)
@@ -158,7 +172,7 @@ async def group(state: CaseState) -> dict:
     async with get_session() as s:
         for values, members in sorted(buckets.items()):
             group_key = dict(zip(m.group_by, values))
-            group_id = "-".join(values) or "all"
+            group_id = _group_id(values, m.group_by, protected)
             label = ", ".join(f"{k} {v}" for k, v in group_key.items()) or "All items"
             total = round(sum(_num(it.get(m.items.amount_field)) for it in members), 2) \
                 if m.items.amount_field else None
@@ -195,20 +209,30 @@ async def reason(state: CaseState) -> dict:
                 finding = {"status": ESCALATED, "decided_by": "none", "comment": "",
                            "reason": "NO_REASONER"}
             if finding is None:
+                # The model sees protected data only (governance.yaml): masked fields
+                # never, pseudonymized ones as per-case tokens it can still pass to
+                # tools. Its answer is re-identified before validation and review.
+                guard = Protector.for_tools(m.tools_used(), state["case_id"])
                 ctx = _ctx(state, "reason", set(m.reasoning.tools))
+                ctx.protector = guard
+                group_view = {**g, "items": [
+                    {**items[i], "amount": items[i].get(m.items.amount_field)}
+                    for i in g["item_ids"]]}
                 request = ReasonRequest(
                     capability_id=state["capability_id"], case_id=state["case_id"],
-                    case_key=state["case_key"], skill=m.reasoning.skill,
-                    group={**g, "items": [
-                        {**items[i], "amount": items[i].get(m.items.amount_field)}
-                        for i in g["item_ids"]]},
+                    case_key=guard.protect(state["case_key"]), skill=m.reasoning.skill,
+                    group={**guard.protect(group_view),
+                           "label": guard.protect_text(g["label"], g["group_key"]),
+                           "priors": [{**p, "comment": guard.protect_text(
+                               p.get("comment", ""), g["group_key"])} for p in g["priors"]]},
                     allowed_tools=list(m.reasoning.tools), output=m.reasoning.output)
                 adapter = llm()
                 try:
                     res = await adapter.reason(request, gateway.invoker(ctx))
                     finding = {"status": res.status, "decided_by": f"llm:{adapter.name}",
-                               "comment": res.comment, "reason": res.reason, "model": res.model,
-                               "usage": res.usage}
+                               "comment": guard.reveal(res.comment),
+                               "reason": guard.reveal(res.reason) if res.reason else None,
+                               "model": res.model, "usage": res.usage}
                 except (gateway.ToolDenied, gateway.ToolFailed) as e:
                     finding = {"status": ESCALATED, "decided_by": f"llm:{adapter.name}",
                                "comment": "", "reason": f"TOOL_ERROR: {e}"}
@@ -307,11 +331,56 @@ async def record(state: CaseState) -> dict:
             group_id=d["group_id"], action=d["action"],
             comment=d.get("comment") or findings.get(d["group_id"], {}).get("comment", ""),
             decided_by=d["decided_by"])
+    if "publish" in _manifest(state).steps:
+        return {"outcome": "recorded"}       # the run pauses before publish
     async with get_session() as s:
         case = await s.get(Case, state["case_id"])
         case.status, case.outcome = "completed", "completed"
         await s.commit()
     return {"outcome": "completed"}
+
+
+def _publish_args(spec_args: dict, case_key: dict, group_key: dict, comment: str) -> dict:
+    out = {}
+    for k, v in spec_args.items():
+        if isinstance(v, str) and v.startswith("$case."):
+            v = case_key[v[6:]]
+        elif isinstance(v, str) and v.startswith("$group."):
+            v = group_key[v[7:]]
+        elif v == "$comment":
+            v = comment
+        out[k] = v
+    return out
+
+
+async def publish(state: CaseState) -> dict:
+    """Write each approved group back through the capability's write tool.
+    Runs only after a second person released it (publish_approval)."""
+    m = _manifest(state)
+    approval = state.get("publish_approval") or {}
+    ctx = _ctx(state, "publish", {m.publish.tool})
+    ctx.requested_by, ctx.write_approved_by = "publish", approval.get("approved_by")
+    findings = state.get("findings", {})
+    groups = {g["group_id"]: g for g in state["groups"]}
+    published, failed = [], []
+    for d in state.get("decisions", []):
+        if d["action"] != "approve" or d["group_id"] not in groups:
+            continue
+        g = groups[d["group_id"]]
+        comment = d.get("comment") or findings.get(d["group_id"], {}).get("comment", "")
+        args = _publish_args(m.publish.args, state["case_key"], g["group_key"], comment)
+        try:
+            receipt = await gateway.call(ctx, m.publish.tool, args)
+            published.append({"group_id": g["group_id"], "receipt": receipt})
+        except (gateway.ToolDenied, gateway.ToolFailed) as e:
+            failed.append(f"{g['group_id']}: {e}")
+    outcome = "published" if not failed else "publish_failed"
+    async with get_session() as s:
+        case = await s.get(Case, state["case_id"])
+        case.status, case.outcome = ("completed", outcome) if not failed else ("failed", outcome)
+        case.error = "; ".join(failed) or None
+        await s.commit()
+    return {"outcome": outcome, "published": published}
 
 
 async def escalate(state: CaseState) -> dict:

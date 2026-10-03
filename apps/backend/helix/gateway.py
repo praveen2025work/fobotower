@@ -31,6 +31,7 @@ from helix import plugins
 from helix.config import settings
 from helix.db import get_session
 from helix.entitlement import Caller
+from helix.governance import Protector
 from helix.models import ToolCall
 from helix.observability import TOOL, set_output, span
 
@@ -47,6 +48,9 @@ class ScopeRule(Strict):
 class ToolSpec(Strict):
     description: str = ""
     scope: ScopeRule | None = None
+    # write tools change a bank system: never offered to the model, callable
+    # only by the `publish` step after a second person approved it
+    access: Literal["read", "write"] = "read"
 
 
 class ConnectorSpec(Strict):
@@ -103,6 +107,15 @@ class CallContext:
     case_id: str | None = None
     requested_by: str = "step"
     calls: list[str] = field(default_factory=list)  # call ids made in this context
+    # set only by the publish step, from the recorded publish approval
+    write_approved_by: str | None = None
+    # Data protection for this case (helix/governance.py). Built from the
+    # allowed tools when not given, so every call is protected by default.
+    protector: Protector | None = None
+
+    def __post_init__(self):
+        if self.protector is None:
+            self.protector = Protector.for_tools(self.allowed_tools, self.case_id or "")
 
 
 @lru_cache
@@ -137,15 +150,28 @@ async def _record(**row) -> None:
 
 
 async def call(ctx: CallContext, qualified_tool: str, arguments: dict) -> dict:
+    """Call a connector tool for a step or the model.
+
+    The model works with protected data: its arguments may carry pseudonym
+    tokens (revealed here, before the scope check and the connector), and the
+    result it gets back is masked and re-tokenized. Steps get real values.
+    The audit row keeps real values minus masked fields; the span carries the
+    model's view only.
+    """
     call_id = uuid.uuid4().hex
     ctx.calls.append(call_id)
     connector_id = qualified_tool.partition(".")[0]
+    guard = ctx.protector
+    for_model = ctx.requested_by == "llm"
+    if for_model:
+        arguments = guard.reveal(arguments)
     base = dict(
         call_id=call_id, case_id=ctx.case_id, capability_id=ctx.capability_id,
         connector_id=connector_id, tool=qualified_tool, requested_by=ctx.requested_by,
-        caller=ctx.caller.user_id, arguments=arguments,
+        caller=ctx.caller.user_id, arguments=guard.protect(arguments, pseudonymize=False),
     )
-    with span("mcp.call", kind=TOOL, input=arguments, tool=qualified_tool, connector_id=connector_id,
+    with span("mcp.call", kind=TOOL, input=guard.protect(arguments), tool=qualified_tool,
+              connector_id=connector_id,
               case_id=ctx.case_id, capability_id=ctx.capability_id,
               requested_by=ctx.requested_by, user=ctx.caller.user_id) as sp:
         found = registry().tool(qualified_tool)
@@ -154,6 +180,10 @@ async def call(ctx: CallContext, qualified_tool: str, arguments: dict) -> dict:
             denied = f"{qualified_tool} is not an onboarded connector tool"
         elif qualified_tool not in ctx.allowed_tools:
             denied = f"{qualified_tool} is not allowed for capability {ctx.capability_id}"
+        elif found[2].access == "write" and (for_model or ctx.requested_by != "publish"
+                                              or not ctx.write_approved_by):
+            denied = (f"{qualified_tool} writes to a bank system: only the publish step may "
+                      "call it, after a second person approves")
         elif found[2].scope is not None:
             rule = found[2].scope
             value = arguments.get(rule.arg)
@@ -186,14 +216,14 @@ async def call(ctx: CallContext, qualified_tool: str, arguments: dict) -> dict:
         sp.set_attribute("helix.latency_ms", latency)
         if row_count is not None:
             sp.set_attribute("helix.row_count", row_count)
-        await _record(**base, allowed=True, result=result, row_count=row_count,
-                      error=error, latency_ms=latency)
+        await _record(**base, allowed=True, row_count=row_count, error=error, latency_ms=latency,
+                      result=guard.protect(result, pseudonymize=False) if result is not None else None)
         if result is not None:
-            set_output(sp, result)
+            set_output(sp, guard.protect(result))
         if error:
             sp.set_attribute("helix.error", error)
             raise ToolFailed(f"{qualified_tool}: {error}")
-        return result
+        return guard.protect(result) if for_model else result
 
 
 def invoker(ctx: CallContext):
@@ -202,7 +232,7 @@ def invoker(ctx: CallContext):
         model_ctx = CallContext(
             capability_id=ctx.capability_id, caller=ctx.caller,
             allowed_tools=ctx.allowed_tools, case_id=ctx.case_id,
-            requested_by="llm", calls=ctx.calls,
+            requested_by="llm", calls=ctx.calls, protector=ctx.protector,
         )
         return await call(model_ctx, tool, arguments)
     return invoke

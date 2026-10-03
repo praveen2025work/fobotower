@@ -45,8 +45,9 @@ async def test_decisions_complete_the_case_and_become_next_months_priors(api):
     for g in groups[:-1]:
         assert (await _decide(api, case["case_id"], g)).json()["status"] == "awaiting_review"
     last = (await _decide(api, case["case_id"], groups[-1])).json()
-    assert last["status"] == "completed"
-    assert last["case"]["outcome"] == "completed"
+    # recorded; the write-back now waits for a second person (tests/helix/test_publish.py)
+    assert last["status"] == "awaiting_publish"
+    assert last["case"]["outcome"] is None
 
     october = (await _open(api, key={"entity": "UK01", "period": "2026-10"})).json()
     with_priors = [g for g in october["groups"] if g["priors"]]

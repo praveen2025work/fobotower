@@ -5,6 +5,10 @@ capabilities from config/helix."""
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from sqlalchemy import text
 
 from helix import capabilities, llm
@@ -40,6 +44,21 @@ async def api():
             return {"X-Helix-User": user}
         c.as_user = as_user
         yield c
+
+
+_exporter = InMemorySpanExporter()
+
+
+@pytest.fixture
+def spans():
+    """Finished spans of this test. OpenTelemetry allows one global provider
+    per process, so it is installed once and cleared per test."""
+    if not isinstance(trace.get_tracer_provider(), TracerProvider):
+        provider = TracerProvider()
+        provider.add_span_processor(SimpleSpanProcessor(_exporter))
+        trace.set_tracer_provider(provider)
+    _exporter.clear()
+    return _exporter
 
 
 VARIANCE = "fin.variance-commentary"

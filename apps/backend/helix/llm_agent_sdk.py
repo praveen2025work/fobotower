@@ -38,7 +38,7 @@ from claude_agent_sdk import (
 
 from helix import gateway
 from helix.llm import ReasonRequest, ReasonResult, ToolInvoker
-from helix.observability import span
+from helix.observability import AGENT, set_output, span
 
 SERVER = "helix"
 
@@ -154,7 +154,8 @@ class ClaudeAgentSdkAdapter:
         return result
 
     async def reason(self, request: ReasonRequest, tools: ToolInvoker) -> ReasonResult:
-        with span("llm.agent_sdk", case_id=request.case_id, capability_id=request.capability_id,
+        with span("llm.agent_sdk", kind=AGENT, input=_prompt(request),
+                  case_id=request.case_id, capability_id=request.capability_id,
                   group_id=request.group.get("group_id"), model=self.model,
                   tools=",".join(request.allowed_tools)) as sp:
             options = await self._options(request, tools)
@@ -168,6 +169,7 @@ class ClaudeAgentSdkAdapter:
                 "duration_ms": result.duration_ms,
                 "session_id": result.session_id,
             }
+            set_output(sp, out)
             for k, v in usage.items():
                 if v is not None:
                     sp.set_attribute(f"helix.llm.{k}", v)

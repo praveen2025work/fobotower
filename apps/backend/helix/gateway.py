@@ -32,7 +32,7 @@ from helix.config import settings
 from helix.db import get_session
 from helix.entitlement import Caller
 from helix.models import ToolCall
-from helix.observability import span
+from helix.observability import TOOL, set_output, span
 
 
 class Strict(BaseModel):
@@ -145,7 +145,7 @@ async def call(ctx: CallContext, qualified_tool: str, arguments: dict) -> dict:
         connector_id=connector_id, tool=qualified_tool, requested_by=ctx.requested_by,
         caller=ctx.caller.user_id, arguments=arguments,
     )
-    with span("mcp.call", tool=qualified_tool, connector_id=connector_id,
+    with span("mcp.call", kind=TOOL, input=arguments, tool=qualified_tool, connector_id=connector_id,
               case_id=ctx.case_id, capability_id=ctx.capability_id,
               requested_by=ctx.requested_by, user=ctx.caller.user_id) as sp:
         found = registry().tool(qualified_tool)
@@ -188,6 +188,8 @@ async def call(ctx: CallContext, qualified_tool: str, arguments: dict) -> dict:
             sp.set_attribute("helix.row_count", row_count)
         await _record(**base, allowed=True, result=result, row_count=row_count,
                       error=error, latency_ms=latency)
+        if result is not None:
+            set_output(sp, result)
         if error:
             sp.set_attribute("helix.error", error)
             raise ToolFailed(f"{qualified_tool}: {error}")

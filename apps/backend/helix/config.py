@@ -25,6 +25,7 @@ class HelixSettings:
     llm_adapter: str
     tracing_setup: str | None
     phoenix_endpoint: str | None
+    phoenix_project: str
     entitlement_url: str | None
     entitlement_ttl_seconds: int
     console_origin: str
@@ -43,6 +44,7 @@ def settings() -> HelixSettings:
         llm_adapter=env("HELIX_LLM_ADAPTER") or "stub",
         tracing_setup=env("HELIX_TRACING_SETUP") or None,
         phoenix_endpoint=env("PHOENIX_COLLECTOR_ENDPOINT") or None,
+        phoenix_project=env("PHOENIX_PROJECT_NAME") or "helix",
         entitlement_url=env("HELIX_ENTITLEMENT_URL") or None,
         entitlement_ttl_seconds=int(env("HELIX_ENTITLEMENT_TTL_SECONDS") or 300),
         console_origin=env("HELIX_CONSOLE_ORIGIN") or "http://localhost:3100",

@@ -78,8 +78,13 @@ async def test_one_case_is_one_trace_with_helix_attributes(api, spans):
     root = next(s for s in finished if s.name == "case.run")
     assert root.attributes["helix.case_id"] == case["case_id"]
     assert root.attributes["helix.capability_id"] == VARIANCE
-    # every span in the run belongs to the case's trace, and the case row points at it
-    assert {s.context.trace_id for s in finished} == {root.context.trace_id}
+    # the case run is its own trace — a root span, not a child of the HTTP request —
+    # and every step, tool call and reasoning span of the run is inside it
+    assert root.parent is None
+    run_spans = [s for s in finished if s.name.startswith(("step.", "mcp.call", "reason."))]
+    assert run_spans and {s.context.trace_id for s in run_spans} == {root.context.trace_id}
+    assert root.attributes["session.id"] == case["case_id"]
+    assert root.attributes["openinference.span.kind"] == "CHAIN"
     assert case["trace_id"] == format(root.context.trace_id, "032x")
     call = next(s for s in finished if s.name == "mcp.call")
     assert call.attributes["helix.connector_id"] == "gl"

@@ -82,7 +82,7 @@ async def open_case(capability_id: str, case_key: dict, caller: Caller) -> str:
              "manifest": m.model_dump(by_alias=True), "case_key": key,
              "caller": caller.as_dict()}
     config = {"configurable": {"thread_id": f"helix:{case_id}"}}
-    with span("case.run", case_id=case_id, capability_id=capability_id,
+    with span("case.run", root=True, input=key, case_id=case_id, capability_id=capability_id,
               manifest_version=version, user=caller.user_id):
         trace_id = current_trace_id()
         try:
@@ -132,7 +132,7 @@ async def decide(case_id: str, group_id: str, action: str, comment: str | None,
         s.add(decision)
         await s.commit()
 
-    with span("review.decision", case_id=case_id, group_id=group_id, action=action,
+    with span("review.decision", root=True, case_id=case_id, group_id=group_id, action=action,
               user=caller.user_id):
         status = await _resume_if_complete(case_id, m)
     return {"decision_id": decision.decision_id, "replayed": False, "status": status}

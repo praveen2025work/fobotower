@@ -1,195 +1,181 @@
-# Helix — platform skeleton
+# Helix
 
-The runnable skeleton of the design in
-[`docs/superpowers/specs/2026-10-03-helix-capability-platform-design.md`](../superpowers/specs/2026-10-03-helix-capability-platform-design.md)
-and [`…-helix-how-a-use-case-works.md`](../superpowers/specs/2026-10-03-helix-how-a-use-case-works.md).
+One platform that accounting groups onboard their AI-assisted work into as
+**configuration**: reconciliations, variance commentary, reviews. The Helix
+team onboards connectors (bank systems as MCP servers); each capability is a
+versioned manifest over them, run by LangGraph, governed end to end, and
+worked in one console.
 
-Everything is real and runs end to end. The parts that live in the office —
-the LLM, Phoenix, the central entitlements service, SSO and the bank's MCP
-connectors — sit behind configuration. Here they are stubs; in the office you
-point them at the real thing. **No Helix code changes.**
+aria-ai (EAIP) has been pivoted into Helix: its UI shell, its governance
+(masking, approval-gated actions) and its BRD-to-pack authoring live here
+now — see [`aria-ai-assessment.md`](aria-ai-assessment.md) for what was
+taken and why.
 
-| | Here (stub) | In the office (configure) |
+Design: [`../superpowers/specs/2026-10-03-helix-capability-platform-design.md`](../superpowers/specs/2026-10-03-helix-capability-platform-design.md) ·
+walkthrough: [`…-helix-how-a-use-case-works.md`](../superpowers/specs/2026-10-03-helix-how-a-use-case-works.md)
+
+## What runs where
+
+| | Here (outside the office) | In the office — configure, don't code |
 |---|---|---|
-| LLM | `StubLlm` — deterministic, calls tools through the gateway | `HELIX_LLM_ADAPTER=your_pkg.llm:Adapter` (§3.1) |
-| Tracing | no-op (OpenTelemetry API, no provider) | `PHOENIX_COLLECTOR_ENDPOINT=…` or `HELIX_TRACING_SETUP=your_pkg.tracing:setup` (§3.2) |
-| Entitlement | `config/helix/dev-users.yaml` | `HELIX_ENTITLEMENT_URL=…` or `HELIX_ENTITLEMENT_ADAPTER=…` (§3.3) |
-| Identity | `X-Helix-User` from the console's user switcher | `HELIX_IDENTITY_HEADER=X-Remote-User` (your SSO proxy) |
-| Connectors | in-process MCP servers (`helix/stub_connectors/finance.py`) | `transport: http` + `url` in `config/helix/connectors.yaml` (§3.4) |
-
-FOBO is untouched and runs beside it (same database, its own API on :8100).
-Nothing in `helix/` imports `fobo/`, and a test enforces that.
+| LLM | `stub` — deterministic, calls tools through the gateway | `HELIX_LLM_ADAPTER=agent_sdk` — the **Claude Agent SDK** adapter (§3.1) |
+| Observability | local Phoenix, or no-op | your **Phoenix**: `PHOENIX_COLLECTOR_ENDPOINT`, or `HELIX_TRACING_SETUP` for your own wrapper (§3.2) |
+| Entitlement | `config/helix/dev-users.yaml` | `HELIX_ENTITLEMENT_URL` (or `HELIX_ENTITLEMENT_ADAPTER`) (§3.3) |
+| Identity | the console's user switcher | `HELIX_IDENTITY_HEADER` — the header your SSO proxy sets |
+| Connectors | in-process stub MCP servers | `transport: http` + `url` in `config/helix/connectors.yaml` (§3.4) |
+| Data protection | `config/helix/governance.yaml` | same file, your field names (§3.5) |
 
 ## 1. Run it
 
 ```bash
-docker compose up -d postgres              # or the local Postgres the web-session hook starts
 cd apps/backend && .venv/bin/alembic upgrade head
-.venv/bin/uvicorn helix.web.main:app --port 8300 --reload
+.venv/bin/uvicorn helix.web.main:app --port 8300 --reload        # the Helix API
 ```
 
 ```bash
-cd apps/console && npm run dev             # then open http://localhost:3100/helix
+cd apps/web && npm install && npm run dev                          # http://localhost:5180
 ```
 
-Pick a user in the header (they come from `dev-users.yaml`):
+Optional, to see traces: `pip install arize-phoenix && phoenix serve` (port 6006), then start the API with
+`PHOENIX_COLLECTOR_ENDPOINT=http://localhost:6006` and `pip install -e ".[phoenix]"`.
 
-| User | Can |
+Users (top-right switcher, development only):
+
+| User | Is |
 |---|---|
-| `alice` | Finance preparer, entity UK01 only — open and sign off variance lanes |
-| `bob` | Finance reviewer and capability owner, all entities |
-| `carol` | Owner of the variance capability (can change it, cannot sign off cases) |
+| `alice` | Finance preparer, UK01 only |
+| `bob` | Finance reviewer + capability owner, all entities — releases write-backs |
+| `carol` | Finance capability owner — authors and changes capabilities, cannot sign off |
 | `dan`, `erin` | Cash operations — the bank-vs-ledger reconciliation |
 | `viewer` | No roles — sees nothing |
 
-Try: as `alice`, open lane `UK01` / `2026-09`, approve every proposal; then
-open `2026-10` and see September's approved explanations as priors. Try
-`US01` as alice — refused by entitlement.
+A full pass: as **alice**, Capabilities → *P&L variance commentary* → open lane UK01 / 2026-09 →
+approve each proposal. As **bob**, the lane is in your Inbox as *Release* → release the
+write-back → it is published. As **carol**, Authoring → paste a BRD → draft → submit; as
+**bob**, approve the draft → a new capability is live.
 
-Tests: `cd apps/backend && .venv/bin/python -m pytest -q tests/helix`
-(49 tests) and `cd apps/console && npx vitest run src/helix`.
+Tests: `cd apps/backend && .venv/bin/python -m pytest -q tests/helix` (73) ·
+`cd apps/web && npm test` (10) · `npm run typecheck`.
 
 ## 2. How it is built
 
 ```
+apps/web/                         the console — aria-ai's UI shell (React, TS, Tailwind, TanStack Query)
+  Overview · Inbox · Capabilities · Case workspace (3-pane) · Authoring · Audit · Connectors
 apps/backend/helix/
-  config.py          every setting and plug point, from the environment
-  manifest.py        the capability manifest schema + validator
-  capabilities.py    manifest versions; owner draft → another owner approves
-  workflow.py        core step registry, gate rules, manifest → LangGraph
-  steps.py           load · match · compare · group · reason · draft · validate · review · record
-  rules.py           safe expressions for in_scope / rules (no eval)
-  gateway.py         the MCP gateway: allow-list, data scope, audit row, span
-  llm.py             LLM port: none · stub · your adapter
-  entitlement.py     central entitlement client, cache, dev stub — fails closed
-  knowledge.py       knowledge graph: decisions → next run's priors (bitemporal)
-  observability.py   OpenTelemetry spans; Phoenix or your setup, optional
-  cases.py           open → run → review pause → decide → resume → record
-  models.py          helix_* tables (the audit record)
-  web/main.py        FastAPI, :8300
-  stub_connectors/   stand-in GL, budget, bank, ledger MCP servers
+  web/main.py       FastAPI :8300
+  manifest.py       capability manifest schema + validator (steps, gates, tools, expressions)
+  capabilities.py   versions; owner drafts → another owner approves; new capabilities from drafts
+  authoring.py      BRD → draft manifest (Agent SDK or template), judged by the validator
+  workflow.py       core step registry + gates → a checkpointed LangGraph graph per case
+  steps.py          load · match · compare · group · reason · draft · validate · review · record · publish
+  gateway.py        the MCP gateway: allow-list, read/write, data scope, protection, audit, span
+  governance.py     mask + reversible pseudonyms between bank data and the model
+  llm.py            the reasoning port: none · stub · agent_sdk · "module:attr"
+  llm_agent_sdk.py  the Claude Agent SDK adapter
+  entitlement.py    central entitlements client, cache, dev stub — fails closed
+  knowledge.py      knowledge graph: approved decisions → next run's priors (bitemporal)
+  observability.py  OpenTelemetry + OpenInference conventions; Phoenix registration
+  views.py          overview / inbox / audit across capabilities, filtered per caller
+  stub_connectors/  GL, budget, bank, ledger, reporting (write) — real MCP servers
 config/helix/
-  connectors.yaml    onboarded connectors and their tool allow-list   (Helix team)
-  capabilities/*.yaml one manifest per capability                     (capability owners)
-  dev-users.yaml     development stand-in for central entitlements
-apps/console/src/helix/   the generic UI, rendered from the manifest  (/helix)
+  connectors.yaml   onboarded connectors, tool allow-list, read/write, data scope   (Helix team)
+  governance.yaml   mask / pseudonymize fields, trace payload policy               (Helix team)
+  capabilities/     one manifest per capability                                    (owners)
+  dev-users.yaml    development stand-in for central entitlements
 ```
 
-A run, per case:
+One case, end to end:
 
 ```
-open (entitlement + data scope) ─▶ LangGraph, pinned to the manifest version
-  load/match ── gateway ──▶ connector          every call → helix_tool_call
+open (entitlement, data scope) ─▶ LangGraph run pinned to the manifest version   ── one Phoenix trace
+  load/match ── gateway ──▶ connector                    every call → helix_tool_call (audit)
   compare · group (+ priors from the knowledge graph)
-  reason: rules first; the rest → LLM adapter, whose tool calls go through the same gateway
-  draft · validate (every figure must appear in data the run read, else escalated)
-  ── pause ── people approve / reject per group (idempotent, review roles only)
-  record: approved explanations → knowledge graph → next run's priors
+  reason: rules first; the rest → Agent SDK with ONLY the capability's read tools,
+          served in-process, each call back through the gateway; protected data only
+  draft · validate — every figure in a proposal must appear in data the run read
+  ── pause ── reviewers approve / reject per group (idempotent)
+  record — approved explanations become priors
+  ── pause ── a second person releases the write-back (four-eyes)
+  publish — write tool via the gateway, only now
 ```
 
-## 3. Plugging in the office services
+## 3. Office integration
 
-### 3.1 LLM
+### 3.1 LLM — Claude Agent SDK
 
-Write one class; point `HELIX_LLM_ADAPTER` at it. It receives the request and
-a `tools` function. **Call tools only through `tools`** — that is how the
-gateway enforces the allow-list and data scope and records what the model
-saw, which is what `validate` checks the model's figures against.
+`HELIX_LLM_ADAPTER=agent_sdk` (install `pip install -e ".[agent-sdk]"`). Per proposal group,
+`helix/llm_agent_sdk.py` runs one `claude_agent_sdk.query()`:
 
-```python
-# your_pkg/llm.py
-from helix.llm import ReasonRequest, ReasonResult
+| Option | Value | Why |
+|---|---|---|
+| `system_prompt` | the capability's `reasoning.skill` + Helix output rules | the use case's instructions, the platform's rules |
+| `tools` | `[]` | no built-in Claude Code tools (no Bash, Read, …) |
+| `mcp_servers` | one in-process SDK MCP server, `helix` | its tools are exactly the capability's `reasoning.tools`; each handler calls the Helix gateway |
+| `strict_mcp_config` | `True` | no other MCP servers load |
+| `allowed_tools` | `mcp__helix__<tool>` | those tools run without a permission prompt |
+| `permission_mode` | `dontAsk` | headless: anything else is denied |
+| `output_format` | JSON schema `{status, comment, reason}` | a structured, checkable answer |
+| `model` / `effort` / `max_turns` / `max_budget_usd` | `HELIX_LLM_MODEL` (default `claude-opus-5-5`), `HELIX_LLM_EFFORT` (high), `HELIX_LLM_MAX_TURNS` (12), `HELIX_LLM_MAX_BUDGET_USD` | per deployment |
 
-class Adapter:
-    name = "office-llm"
+Tokens, cost, turns and session id are kept on the finding and on the span.
 
-    def __init__(self):
-        self.client = make_your_llm_connector_client()      # your existing connector
+**If your office wraps the Agent SDK** (gateway URL, credentials, model routing), change only
+`ClaudeAgentSdkAdapter._run` (the `query()` call) or point `HELIX_LLM_ADAPTER` at your own class
+with the same contract: `name` and `async reason(request, tools) -> ReasonResult`. Keep tool calls
+going through `tools` — that is what lets Helix validate every figure the model states.
 
-    async def reason(self, request: ReasonRequest, tools) -> ReasonResult:
-        # request.skill         the capability's instructions (system prompt)
-        # request.group         {label, group_key, items, priors, total, count}
-        # request.allowed_tools ["gl.journal_lines", …] — expose these as model tools
-        # tools(name, args)     executes one through the Helix MCP gateway → dict
-        answer = await run_tool_loop(self.client, request, tools)   # your loop
-        return ReasonResult(status="proposed", comment=answer.text,
-                            model=answer.model, usage={"input_tokens": …, "output_tokens": …})
-```
+Authoring (§4) uses the same adapter choice, with no tools and structured output `{yaml, assumptions}`.
 
-`HELIX_LLM_ADAPTER=your_pkg.llm:Adapter`. A raised exception, a refused tool,
-or a figure no tool returned all become an escalation for a person — never a
-silent conclusion (`tests/helix/test_reasoning.py`).
+### 3.2 Observability — Phoenix
 
-### 3.2 Phoenix
-
-Helix emits OpenTelemetry spans (`case.run`, `step.*`, `reason.group`,
-`mcp.call`, `review.decision`) with `helix.case_id`, `helix.capability_id`,
-`helix.connector_id`, `helix.tool`, `helix.user`, … One case is one trace; its
-id is stored on `helix_case.trace_id`. Choose one:
-
-- `pip install -e ".[phoenix]"` and `PHOENIX_COLLECTOR_ENDPOINT=https://phoenix.internal` —
-  Helix calls `phoenix.otel.register(project_name="helix", auto_instrument=True)`,
-  which also instruments LangGraph and LLM SDKs.
-- `HELIX_TRACING_SETUP=your_pkg.tracing:setup` — your function installs
-  whatever tracer provider your office connector uses.
-
-For the console's trace link set
-`NEXT_PUBLIC_HELIX_TRACE_URL=https://phoenix.internal/projects/<project>/traces/{traceId}`.
-A tracing failure never fails a run.
+- `PHOENIX_COLLECTOR_ENDPOINT=https://phoenix.internal` (+ `PHOENIX_PROJECT_NAME`, default `helix`)
+  and `pip install -e ".[phoenix]"`: Helix calls `phoenix.otel.register(..., batch=True,
+  auto_instrument=True)`, which also instruments the **Claude Agent SDK** and **LangGraph**
+  (`openinference-instrumentation-claude-agent-sdk`, `-langchain`).
+- Or `HELIX_TRACING_SETUP=your_pkg.tracing:setup` if your Phoenix connector is a wrapper.
+- One case run is one trace; review decisions and releases are their own traces, linked.
+  `session.id` = case id (Phoenix's Sessions view shows a case's whole life), `user.id` = caller,
+  span kinds CHAIN (case, steps), TOOL (gateway calls), AGENT (the Agent SDK).
+- Console link: `VITE_HELIX_TRACE_URL=https://phoenix.internal/projects/<project>/traces/{traceId}`.
+- Verified here against Phoenix 20.19.
 
 ### 3.3 Entitlement and identity
 
-`HELIX_ENTITLEMENT_URL=https://entitlements.internal/api` — Helix calls
-`GET {url}/users/{user}/entitlements?app=helix` and expects
-`{"roles": [...], "data_scopes": {"entity": ["UK01", ...]}}`. If your
-service's shape differs, write an adapter (`async get(user_id) -> Caller`)
-and set `HELIX_ENTITLEMENT_ADAPTER=your_pkg.ent:Adapter`. Answers are cached
-`HELIX_ENTITLEMENT_TTL_SECONDS` (300); unknown user, error or outage → 403.
-
-`HELIX_IDENTITY_HEADER` names the header your SSO proxy sets with the user id.
-In the office, do not expose `/api/dev/users`'s switcher — it is empty when
-`HELIX_ENTITLEMENT_URL` is set.
+`GET {HELIX_ENTITLEMENT_URL}/users/{user}/entitlements?app=helix` →
+`{"roles": [...], "data_scopes": {"entity": ["UK01"]}}`; a different shape → an adapter
+(`HELIX_ENTITLEMENT_ADAPTER`). Cached `HELIX_ENTITLEMENT_TTL_SECONDS` (300); errors fail closed.
+The user switcher disappears when `HELIX_ENTITLEMENT_URL` is set.
 
 ### 3.4 Connectors
 
-Replace a stub entry in `config/helix/connectors.yaml`:
+Per connector in `config/helix/connectors.yaml`: `transport: http`, `url`, `headers_env`
+(header → env var with its value), and the tool allow-list. For each tool: `scope` (the argument
+carrying the data scope) and `access: read | write`. Write tools are never offered to the model and
+run only in `publish`, after release. Results may be MCP structured content or JSON text; steps read
+a list of records under `rows`.
 
-```yaml
-gl:
-  name: General ledger
-  transport: http
-  url: https://gl-mcp.internal/mcp
-  headers_env: { Authorization: GL_MCP_AUTHORIZATION }   # the value comes from this env var
-  classification: internal
-  tools:
-    balances:      { scope: { arg: entity, key: entity } }
-    journal_lines: { scope: { arg: entity, key: entity } }
-```
+### 3.5 Data protection
 
-Tool names and argument names must match what the real server exposes; the
-capability manifests reference them as `connector.tool`. Results may be MCP
-structured content or JSON text; a list of records under `rows` is what the
-steps read.
+`config/helix/governance.yaml`: `mask` fields never reach the model, traces or the audit copy;
+`pseudonymize` fields reach the model as per-case tokens (`«COUNTERPARTY:QXKD»`) that it can still
+pass to tools — the gateway restores real values for the connector — and reviewers see real values.
+Set `HELIX_PSEUDONYM_KEY` (a secret) in the office. `trace_payloads: masked` hides auto-instrumented
+payloads; Helix's own spans carry the model's view only.
 
 ## 4. Onboarding a capability
 
-1. Copy a manifest in `config/helix/capabilities/` and change it: case key and
-   label, which connector tools load the items, `compare` or `match`,
-   `in_scope`, `group_by`, `rules`, the model's `skill` and `tools`, review
-   roles, owners.
-2. Validate — loading it runs every check (steps, gates, tools, expressions);
-   problems are listed in plain words.
-3. On a fresh database it seeds version 1. After that changes are API-driven:
-   `POST /api/capabilities/{id}/versions` by an owner, then
-   `…/versions/{n}/approve` by a different owner.
+In the console: **Authoring** → paste the BRD → *Draft capability*. The model drafts a manifest
+from the onboarded tools; the validator lists anything to fix; edit the YAML; *Submit for approval*;
+another owner approves it under *Drafts awaiting approval*. Or write the YAML directly in
+`config/helix/capabilities/` (seeds version 1 on a fresh database).
 
-The two capabilities here — **P&L variance commentary** and **Cash — bank vs
-ledger** — contain no code. That is the bar for every new one.
+The two built-in capabilities — **P&L variance commentary** (with write-back) and **Cash — bank vs
+ledger** — contain no code.
 
-## 5. Not in the skeleton yet
+## 5. Next
 
-Scheduled and event-driven case opening (`opens_on` is recorded, only manual
-and API opening run); a capability builder and connector admin in the console
-(the APIs for capability versions exist); connector onboarding with approval in
-the database (today: `connectors.yaml` under code review); chat with a case;
-moving FOBO onto the platform. These are phases 3–6 of the design.
+Similarity priors over pgvector (aria-ai's precedent memory) · evals from approved decisions,
+scored in Phoenix · parallel reasoning across groups (LangGraph `Send`) · scheduled and
+event-opened cases · capability builder as a form · moving FOBO onto the platform and retiring the
+old consoles. See the design spec §14.

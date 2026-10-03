@@ -1,6 +1,6 @@
 # Helix Capability Platform — Design
 
-**Date:** 2026-10-03 · **Revision:** 2 (team answers folded in) · **Status:** draft for team review · **Skeleton:** built — see [`docs/helix/README.md`](../../helix/README.md) · **Branch:** `claude/exciting-darwin-7xukjj`
+**Date:** 2026-10-03 · **Revision:** 3 (aria-ai pivoted in; office LLM and Phoenix) · **Status:** draft for team review · **Skeleton:** built — see [`docs/helix/README.md`](../../helix/README.md) · **Branch:** `claude/exciting-darwin-7xukjj`
 
 ## 1. Purpose
 
@@ -37,6 +37,29 @@ and its test suite proves the extraction changed nothing.
 
 Out of scope: choosing the second real business capability; building
 specific bank connectors (each is its own small onboarding, §6.4).
+
+### Revision 3 (2026-10-03): aria-ai pivoted into Helix
+
+| Question | Decision |
+|---|---|
+| aria-ai | Pivoted **into** Helix: this repo is the home; aria-ai's concepts and UI come here (assessment: `docs/helix/aria-ai-assessment.md`) |
+| LLM | The office's **Claude Agent SDK** — `HELIX_LLM_ADAPTER=agent_sdk`; Helix builds the outside layer, the office may adjust only the `query()` call |
+| Observability | The office's **Phoenix** — OpenInference auto-instrumentation (Agent SDK, LangGraph) plus Helix spans |
+| Console | aria-ai's UI shell (`apps/web`): Overview, Inbox, Capabilities, case workspace (3-pane), Authoring, Audit, Connectors |
+| Taken from aria-ai | masking before model/audit/trace; approval-gated actions (as the `publish` step); BRD → manifest authoring; next: precedent memory, evals |
+
+Built in revision 3, beyond aria-ai and the earlier skeleton:
+
+- **Gateway-bridged Agent SDK.** The model's tools are an in-process SDK MCP server whose
+  handlers call the Helix gateway, so allow-list, data scope, audit and figure validation hold for
+  every model call; built-in Claude Code tools are off; output is a JSON-schema result.
+- **Reversible pseudonymization.** Protected identifiers reach the model as per-case tokens it can
+  still pass to tools; the gateway restores real values for the connector and re-tokenizes results.
+- **Trace = case.** Each case run is a root trace with `session.id` = case id and OpenInference
+  span kinds, linked to the HTTP request that started it; auto-instrumented payloads hidden.
+- **Write-back as a gated step.** `access: write` tools run only in `publish`, after a person who
+  reviewed none of the case releases it.
+- **Cross-capability inbox.** One queue of everything waiting on the signed-in user.
 
 ## 2. What is already generic, and what is FOBO
 
@@ -384,14 +407,15 @@ behaviour change** (same board, same figures, same decisions).
 
 | # | Phase | Outcome |
 |---|---|---|
-| 0 | **Rename + split** — `fobo` → `helix.core` + `helix.packs.fobo`; console `core/` + `packs/fobo/`; checkpoint alias; docs | Pure moves; the full backend (475) and console suites pass unchanged |
-| 1a | **Phoenix observability** — OpenTelemetry + OpenInference (LangGraph, Anthropic), custom spans for gateway/rules/guards/review, `helix.*` attributes, trace id on the case, Phoenix in docker-compose and the web-session hook | FOBO runs visible as traces before the refactor goes further; export failure never fails a run |
-| 1 | **Capabilities + owners** — manifest schema and validator, `capability_version` with owner four-eyes, per-capability workflow versions, FOBO manifest | `/api/capabilities` lists FOBO; Workflow tab is per capability |
-| 2 | **Central entitlement** — client for `HELIX_ENTITLEMENT_URL`, cache, fail-closed, dev stub replacing "Act as"; data scopes on case visibility | Roles and data access come from outside Helix |
-| 3 | **MCP gateway + connectors** — connector registry and approval, proxying with scope enforcement and audit, core tools; FOBO tools re-hosted as `fobo.*` | A stub bank MCP server onboarded as a connector in tests |
-| 4 | **Generic case model + core steps** — `case_run`, `case_item`, `proposal_group`, `decision`; `load`, `match`, `compare`, `group`, `enrich`, rule engine | A capability runs end to end from a manifest in tests |
-| 5 | **Generic console + capability builder** — switcher, manifest-driven case views, builder, connector admin | **The proof:** a sample capability onboarded with one stub connector and zero code, through the UI |
+| 0 | **Rename + split** — `fobo` → `helix.core` + `helix.packs.fobo` | **Deferred.** Helix was built beside FOBO instead (`apps/backend/helix`, no imports of `fobo`); FOBO moves on as a later capability |
+| 1a | **Phoenix observability** | **Done** — verified against Phoenix 20.19 |
+| 1 | **Capabilities + owners** — manifest, validator, versions, four-eyes | **Done**, plus new capabilities from drafts |
+| 2 | **Central entitlement** — URL client, cache, fail-closed, dev stub | **Done** |
+| 3 | **MCP gateway + connectors** | **Done** — inproc + HTTP, read/write, data scope, protection, audit; connector *approval* still by code review of `connectors.yaml` |
+| 4 | **Generic case model + core steps** | **Done** — load, match, compare, group, reason, draft, validate, review, record, publish; rules engine; `enrich` not yet |
+| 5 | **Generic console + capability builder** | **Done** as `apps/web` (aria-ai shell) with BRD authoring; a form-based builder is next |
 | 6 | **Second real capability** — one bank connector + configuration, chosen with the team | — |
+| 7 | **Learning and quality** — pgvector similarity priors (aria-ai precedent memory); eval sets from approved decisions scored in Phoenix; parallel group reasoning with LangGraph `Send`; scheduled/event case opening | next |
 
 Phase 0 is mechanical and large; phases 1–5 are each roughly the size of the
 MCP/agent-session change.

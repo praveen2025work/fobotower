@@ -18,6 +18,7 @@ import {
   Menu,
   ScrollText,
   User,
+  Wand2,
   type LucideIcon,
 } from "lucide-react";
 
@@ -63,6 +64,7 @@ function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
     {
       title: "Platform",
       items: [
+        { to: "/authoring", icon: Wand2, label: "Authoring" },
         { to: "/audit", icon: ScrollText, label: "Audit" },
         { to: "/connectors", icon: Cable, label: "Connectors" },
       ],

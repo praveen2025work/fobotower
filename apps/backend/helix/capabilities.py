@@ -112,14 +112,25 @@ async def draft(capability_id: str, manifest: dict, note: str, caller: Caller) -
     return number
 
 
+async def _active_or_none(capability_id: str) -> Manifest | None:
+    try:
+        return (await active(capability_id))[1]
+    except CapabilityError:
+        return None
+
+
 async def approve(capability_id: str, version: int, caller: Caller) -> None:
-    _, current = await active(capability_id)
+    async with get_session() as s:
+        row = await s.get(CapabilityVersion, (capability_id, version))
+    if row is None or row.status != "draft":
+        raise CapabilityError(f"version {version} is not a draft")
+    # A change is approved by an owner of the live capability; a brand-new
+    # capability by an owner its own draft names.
+    current = await _active_or_none(capability_id) or Manifest.model_validate(row.manifest)
     if not is_owner(caller, current):
         raise PermissionError(f"{caller.user_id} is not an owner of {capability_id}")
     async with get_session() as s:
         row = await s.get(CapabilityVersion, (capability_id, version))
-        if row is None or row.status != "draft":
-            raise CapabilityError(f"version {version} is not a draft")
         if current.owners.four_eyes and row.drafted_by == caller.user_id:
             raise PermissionError("four-eyes: the drafter cannot approve their own change")
         await s.execute(update(CapabilityVersion).where(
@@ -128,3 +139,46 @@ async def approve(capability_id: str, version: int, caller: Caller) -> None:
         row.status, row.decided_by = "active", caller.user_id
         row.decided_at = datetime.now(timezone.utc)
         await s.commit()
+
+
+async def draft_new(manifest: dict, note: str, caller: Caller) -> int:
+    """Version 1 of a capability that does not exist yet, as a draft.
+    Only someone the draft names as an owner may submit it."""
+    try:
+        m = Manifest.model_validate(manifest)
+    except ValueError as e:
+        raise CapabilityError("manifest does not match the schema", [str(e)]) from e
+    found = problems(m)
+    if found:
+        raise CapabilityError("manifest has problems", found)
+    if not is_owner(caller, m):
+        raise PermissionError("name yourself (or one of your roles) as an owner to submit it")
+    async with get_session() as s:
+        exists = (await s.execute(select(CapabilityVersion.version).where(
+            CapabilityVersion.capability_id == m.id).limit(1))).first()
+        if exists is not None:
+            raise CapabilityError(f"capability {m.id!r} already exists; draft a new version of it")
+        s.add(CapabilityVersion(capability_id=m.id, version=1, manifest=m.model_dump(by_alias=True),
+                                status="draft", note=note, drafted_by=caller.user_id))
+        await s.commit()
+    return 1
+
+
+async def drafts_for(caller: Caller) -> list[dict]:
+    """Draft versions the caller could approve or has drafted."""
+    async with get_session() as s:
+        rows = (await s.execute(select(CapabilityVersion).where(
+            CapabilityVersion.status == "draft").order_by(CapabilityVersion.drafted_at.desc())
+        )).scalars().all()
+    out = []
+    for r in rows:
+        draft = Manifest.model_validate(r.manifest)
+        live = await _active_or_none(r.capability_id)
+        owners_of = live or draft
+        if is_owner(caller, owners_of) or r.drafted_by == caller.user_id:
+            out.append({"capability_id": r.capability_id, "version": r.version, "name": draft.name,
+                        "note": r.note, "drafted_by": r.drafted_by, "drafted_at": r.drafted_at,
+                        "new": live is None, "manifest": r.manifest,
+                        "can_approve": is_owner(caller, owners_of) and (
+                            r.drafted_by != caller.user_id or not owners_of.owners.four_eyes)})
+    return out

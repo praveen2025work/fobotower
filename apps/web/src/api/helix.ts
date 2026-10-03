@@ -259,3 +259,50 @@ export function useRelease(caseId: string) {
     onSuccess: (res) => refresh(res.case),
   });
 }
+
+// ---------- authoring (BRD → draft manifest) ----------
+
+export interface DraftResult {
+  yaml: string;
+  manifest: Manifest | null;
+  problems: string[];
+  assumptions: string[];
+  author?: string;
+}
+
+export interface PendingDraft {
+  capability_id: string;
+  version: number;
+  name: string;
+  note: string;
+  drafted_by: string;
+  drafted_at: string;
+  new: boolean;
+  can_approve: boolean;
+}
+
+export const useDrafts = () =>
+  useQuery({ queryKey: ["drafts"], queryFn: () => api.get<PendingDraft[]>("/authoring/drafts") });
+
+export const useDraftFromBrd = () =>
+  useMutation({ mutationFn: (brd: string) => api.post<DraftResult>("/authoring/draft", { brd }) });
+
+export function useSubmitDraft() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { yaml: string; note: string }) =>
+      api.post<{ capability_id: string; version: number }>("/authoring/submit", v),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["drafts"] }),
+  });
+}
+
+export function useApproveVersion() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { capabilityId: string; version: number }) =>
+      api.post<{ version: number }>(`/capabilities/${enc(v.capabilityId)}/versions/${v.version}/approve`, {}),
+    onSuccess: () => {
+      for (const key of ["drafts", "capabilities", "capability", "overview"]) qc.invalidateQueries({ queryKey: [key] });
+    },
+  });
+}

@@ -12,7 +12,7 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from helix import capabilities, cases, views
+from helix import authoring, capabilities, cases, views
 from helix.config import settings
 from helix.entitlement import Caller, EntitlementError, StubEntitlement, entitlements
 from helix.gateway import registry
@@ -182,6 +182,45 @@ class PublishIn(BaseModel):
 async def release_publish(case_id: str, body: PublishIn, c: Caller = Depends(caller)) -> dict:
     result = await cases.approve_publish(case_id, body.idempotency_key, c)
     return {**result, "case": await cases.case_detail(case_id, c)}
+
+
+class BrdIn(BaseModel):
+    brd: str = Field(max_length=100_000)
+
+
+@app.post("/api/authoring/draft")
+async def authoring_draft(body: BrdIn, c: Caller = Depends(caller)) -> dict:
+    """BRD → draft manifest YAML, judged by the platform validator. Saves nothing."""
+    return await authoring.draft_from_brd(body.brd, c)
+
+
+class SubmitIn(BaseModel):
+    yaml: str = Field(max_length=200_000)
+    note: str = ""
+
+
+@app.post("/api/authoring/submit", status_code=201)
+@_errors
+async def authoring_submit(body: SubmitIn, c: Caller = Depends(caller)) -> dict:
+    """Store a judged manifest as a draft: version 1 of a new capability, or the next
+    version of an existing one (its owners only). Live only after another owner approves."""
+    judged = authoring.judge(body.yaml)
+    if judged["manifest"] is None or judged["problems"]:
+        raise capabilities.CapabilityError("the manifest has problems", judged["problems"])
+    m = judged["manifest"]
+    try:
+        await capabilities.active(m["id"])
+        version = await capabilities.draft(m["id"], m, body.note, c)
+    except capabilities.CapabilityError as e:
+        if "no active capability" not in str(e):
+            raise
+        version = await capabilities.draft_new(m, body.note, c)
+    return {"capability_id": m["id"], "version": version}
+
+
+@app.get("/api/authoring/drafts")
+async def authoring_drafts(c: Caller = Depends(caller)) -> list[dict]:
+    return await capabilities.drafts_for(c)
 
 
 @app.get("/api/platform")

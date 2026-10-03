@@ -110,6 +110,20 @@ def _parse(result: ResultMessage | None) -> dict:
     return out
 
 
+def _parse_any(result: ResultMessage | None) -> dict:
+    """A structured result as a dict, whatever its schema (used by authoring)."""
+    if result is None:
+        raise RuntimeError("the agent returned no result")
+    if result.is_error:
+        raise RuntimeError(f"agent error ({result.subtype}): {'; '.join(result.errors or [])}")
+    out = result.structured_output
+    if out is None and result.result:
+        out = json.loads(result.result)
+    if not isinstance(out, dict):
+        raise RuntimeError(f"agent result is not an object: {out!r}")
+    return out
+
+
 class ClaudeAgentSdkAdapter:
     name = "agent-sdk"
 

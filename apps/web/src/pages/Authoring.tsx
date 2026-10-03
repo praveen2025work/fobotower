@@ -1,0 +1,151 @@
+// BRD → capability — aria-ai's pack authoring, on Helix: the model drafts a
+// manifest from the requirements, the platform's own validator judges it, the
+// author fixes what it lists, and another owner approves before it goes live.
+
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { CheckCircle2, FileText, Sparkles, Upload } from "lucide-react";
+
+import { useApproveVersion, useDraftFromBrd, useDrafts, useSubmitDraft } from "../api/helix";
+import { Card, Empty, ErrorState, Loading, PageHeader, WorkflowStepper, formatTime } from "../components/ui";
+
+export default function Authoring(): JSX.Element {
+  const [brd, setBrd] = useState("");
+  const [yamlText, setYamlText] = useState("");
+  const [note, setNote] = useState("");
+  const draft = useDraftFromBrd();
+  const submit = useSubmitDraft();
+  const result = draft.data;
+
+  const onDraft = () =>
+    draft.mutate(brd, {
+      onSuccess: (r) => {
+        setYamlText(r.yaml);
+        submit.reset();
+      },
+    });
+
+  return (
+    <div>
+      <PageHeader
+        title="Authoring"
+        subtitle="Describe the work in plain words. Helix drafts the capability; its validator checks it; another owner approves it."
+      />
+      <div className="grid gap-4 xl:grid-cols-2">
+        <Card title={<span className="flex items-center gap-2"><FileText size={14} /> Business requirements</span>}>
+          <label className="block text-xs font-medium text-surface-600">
+            BRD
+            <textarea
+              value={brd}
+              onChange={(e) => setBrd(e.target.value)}
+              rows={14}
+              placeholder="What is reviewed, from which systems, how it is grouped, what is material, who signs off, where approved results go…"
+              className="mt-1 block w-full rounded-lg border border-surface-300 px-3 py-2 text-sm font-normal focus:border-primary-400 focus:outline-none"
+            />
+          </label>
+          <button
+            onClick={onDraft}
+            disabled={draft.isPending || !brd.trim()}
+            className="mt-3 inline-flex items-center gap-2 rounded-lg bg-accent-600 px-4 py-2 text-sm font-medium text-white hover:bg-accent-700 disabled:opacity-50"
+          >
+            <Sparkles size={14} /> {draft.isPending ? "Drafting…" : "Draft capability"}
+          </button>
+          {draft.error && <div className="mt-3"><ErrorState error={draft.error} /></div>}
+        </Card>
+
+        <Card
+          title="Draft manifest"
+          aside={result?.author && <span className="text-xs text-surface-500">drafted by {result.author}</span>}
+        >
+          {!result && <Empty>Draft from a BRD to see the manifest here.</Empty>}
+          {result && (
+            <div className="space-y-3">
+              {result.manifest && <WorkflowStepper steps={result.manifest.steps} pauseBefore={result.manifest.pause_before} />}
+              {result.problems.length > 0 ? (
+                <div role="alert" className="rounded-lg border border-orange-200 bg-orange-50 p-3 text-sm text-orange-800">
+                  <p className="font-medium">Fix before submitting:</p>
+                  <ul className="mt-1 list-disc pl-5">{result.problems.map((p) => <li key={p}>{p}</li>)}</ul>
+                </div>
+              ) : (
+                <p className="flex items-center gap-1.5 text-sm text-green-700"><CheckCircle2 size={14} /> Passes every platform check.</p>
+              )}
+              {result.assumptions.length > 0 && (
+                <div className="rounded-lg bg-surface-50 p-3 text-xs text-surface-600">
+                  <p className="font-semibold">Assumptions to confirm</p>
+                  <ul className="mt-1 list-disc pl-4">{result.assumptions.map((a) => <li key={a}>{a}</li>)}</ul>
+                </div>
+              )}
+              <label className="block text-xs font-medium text-surface-600">
+                Manifest (YAML) — edit freely; it is judged again on submit
+                <textarea
+                  value={yamlText}
+                  onChange={(e) => setYamlText(e.target.value)}
+                  rows={16}
+                  spellCheck={false}
+                  className="mt-1 block w-full rounded-lg border border-surface-300 bg-surface-900 px-3 py-2 font-mono text-xs text-surface-100 focus:outline-none"
+                />
+              </label>
+              <div className="flex flex-wrap items-end gap-2">
+                <label className="flex-1 text-xs font-medium text-surface-600">
+                  Note for the approver
+                  <input value={note} onChange={(e) => setNote(e.target.value)} className="mt-1 block w-full rounded-lg border border-surface-300 px-3 py-1.5 text-sm font-normal" />
+                </label>
+                <button
+                  onClick={() => submit.mutate({ yaml: yamlText, note })}
+                  disabled={submit.isPending || !yamlText.trim()}
+                  className="inline-flex items-center gap-2 rounded-lg bg-primary-700 px-4 py-2 text-sm font-medium text-white hover:bg-primary-800 disabled:opacity-50"
+                >
+                  <Upload size={14} /> Submit for approval
+                </button>
+              </div>
+              {submit.error && <ErrorState error={submit.error} />}
+              {submit.data && (
+                <p className="text-sm text-green-700">
+                  Submitted {submit.data.capability_id} v{submit.data.version}. It goes live when another owner approves it.
+                </p>
+              )}
+            </div>
+          )}
+        </Card>
+      </div>
+      <PendingDrafts />
+    </div>
+  );
+}
+
+function PendingDrafts() {
+  const drafts = useDrafts();
+  const approve = useApproveVersion();
+  return (
+    <Card title="Drafts awaiting approval" className="mt-4">
+      {drafts.isLoading && <Loading what="drafts" />}
+      {drafts.error && <ErrorState error={drafts.error} />}
+      {drafts.data?.length === 0 && <Empty>No drafts waiting.</Empty>}
+      <ul className="divide-y divide-surface-100">
+        {drafts.data?.map((d) => (
+          <li key={`${d.capability_id}-${d.version}`} className="flex flex-wrap items-center gap-3 py-2.5 text-sm">
+            <span className="font-medium">{d.name}</span>
+            <span className="font-mono text-xs text-surface-400">{d.capability_id} v{d.version}</span>
+            {d.new && <span className="rounded bg-accent-50 px-1.5 py-0.5 text-[10px] font-medium text-accent-700">new capability</span>}
+            <span className="text-xs text-surface-500">by {d.drafted_by} {formatTime(d.drafted_at)}{d.note && ` — ${d.note}`}</span>
+            <span className="ml-auto">
+              {d.can_approve ? (
+                <button
+                  onClick={() => approve.mutate({ capabilityId: d.capability_id, version: d.version })}
+                  disabled={approve.isPending}
+                  className="rounded-lg bg-accent-600 px-3 py-1 text-xs font-medium text-white hover:bg-accent-700 disabled:opacity-50"
+                >
+                  Approve
+                </button>
+              ) : (
+                <span className="text-xs text-surface-400">needs another owner</span>
+              )}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {approve.error && <ErrorState error={approve.error} />}
+      {approve.data && <p className="mt-2 text-sm text-green-700">Approved — now live in <Link className="underline" to="/capabilities">Capabilities</Link>.</p>}
+    </Card>
+  );
+}

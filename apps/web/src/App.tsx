@@ -4,6 +4,7 @@ import { Route, Routes } from "react-router-dom";
 
 import Layout from "./components/Layout";
 import Audit from "./pages/Audit";
+import Authoring from "./pages/Authoring";
 import Capabilities from "./pages/Capabilities";
 import CapabilityDetail from "./pages/CapabilityDetail";
 import CaseWorkspace from "./pages/CaseWorkspace";
@@ -28,6 +29,7 @@ function App(): JSX.Element {
         <Route path="/capabilities" element={<Capabilities />} />
         <Route path="/capabilities/:id" element={<CapabilityDetail />} />
         <Route path="/cases/:caseId" element={<CaseWorkspace />} />
+        <Route path="/authoring" element={<Authoring />} />
         <Route path="/audit" element={<Audit />} />
         <Route path="/connectors" element={<Connectors />} />
       </Route>

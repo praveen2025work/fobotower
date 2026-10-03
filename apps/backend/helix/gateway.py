@@ -204,3 +204,33 @@ def invoker(ctx: CallContext):
         )
         return await call(model_ctx, tool, arguments)
     return invoke
+
+
+_schemas: dict[str, dict] = {}
+
+
+async def tool_schema(qualified_tool: str) -> dict:
+    """The connector tool's input JSON schema, as its MCP server lists it.
+
+    Lets an LLM adapter offer the tool with the right argument names. Read
+    once per process; a connector that cannot be reached yields an open
+    object schema rather than failing the run.
+    """
+    if qualified_tool in _schemas:
+        return _schemas[qualified_tool]
+    found = registry().tool(qualified_tool)
+    if found is None:
+        raise ToolDenied(f"{qualified_tool} is not an onboarded connector tool")
+    connector_id, tool, spec = found
+    schema: dict = {"type": "object", "properties": {}}
+    try:
+        async with _client(registry().connectors[connector_id]) as client:
+            listed = await client.list_tools()
+        for t in listed.tools:
+            if t.name == tool:
+                schema = dict(t.input_schema or schema)
+                break
+    except Exception:  # unreachable connector: degrade, the call itself will fail loudly
+        return schema
+    _schemas[qualified_tool] = schema
+    return schema

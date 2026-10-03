@@ -3,6 +3,7 @@
   none   no model; anything the rules cannot settle escalates to a person
   stub   deterministic stand-in: reads evidence through the tools it is
          given and writes a comment citing only figures those tools returned
+  agent_sdk  the Claude Agent SDK (helix/llm_agent_sdk.py) — the office path
   "module:attr"  your office LLM connector: an object (or zero-argument
          factory) with `name` and `async reason(request, tools)`
 
@@ -99,6 +100,9 @@ def llm() -> LlmAdapter:
             _adapter = NoLlm()
         elif name == "stub":
             _adapter = StubLlm()
+        elif name == "agent_sdk":
+            from helix.llm_agent_sdk import ClaudeAgentSdkAdapter  # optional dependency
+            _adapter = ClaudeAgentSdkAdapter()
         else:
             obj = plugins.load(name)
             # A class or factory is called once; a ready instance is used as is.

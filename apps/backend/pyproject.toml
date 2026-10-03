@@ -24,9 +24,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.3", "pytest-asyncio>=0.24", "anyio>=4.4", "opentelemetry-sdk>=1.27"]
+dev = ["pytest>=8.3", "pytest-asyncio>=0.24", "anyio>=4.4", "opentelemetry-sdk>=1.27", "claude-agent-sdk>=0.2.163"]
 # Office: Phoenix tracing (PHOENIX_COLLECTOR_ENDPOINT); not needed to run Helix.
 phoenix = ["arize-phoenix-otel>=0.6"]
+# The office LLM path: HELIX_LLM_ADAPTER=agent_sdk.
+agent-sdk = ["claude-agent-sdk>=0.2.163"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

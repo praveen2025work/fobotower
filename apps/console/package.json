@@ -9,20 +9,22 @@
     "start": "next start -p 3100",
     "test": "vitest run",
     "test:watch": "vitest",
-    "build:tokens": "node scripts/build-tokens.mjs"
+    "test:e2e": "node e2e/reset-db.mjs && playwright test"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@dagrejs/dagre": "^3.1.1",
+    "@xyflow/react": "^12.12.0",
     "lucide-react": "^1.47.0",
     "next": "^16.3.5",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "recharts": "^3.10.1",
-    "zustand": "^5.0.15"
+    "recharts": "^3.10.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4.3.3",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",

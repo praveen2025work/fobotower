@@ -5,7 +5,10 @@ __pycache__/
 *.egg-info/
 node_modules/
 .next/
-packages/contracts/dist/
+.next-e2e/
+.next-build/
+apps/console/test-results/
+apps/console/playwright-report/
 .env
 .env.*
 .DS_Store

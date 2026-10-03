@@ -8,6 +8,9 @@ replayable audit trail.
 Built to AgentOne component conventions but runs standalone. Migration into
 AgentOne is a separate, manual step.
 
+- **Learning guide:** [`docs/learning/agentic-systems-primer.html`](docs/learning/agentic-systems-primer.html) — LLMs, agents, MCP, LangGraph and knowledge graphs explained from first principles (open in a browser)
+- **Deployment:** [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — running it on a shared demo or UAT server
+- **Architecture:** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — what each folder is, who uses it, and where to change what
 - **Design:** [`docs/superpowers/specs/2026-09-21-fobo-investigation-console-design.md`](docs/superpowers/specs/2026-09-21-fobo-investigation-console-design.md)
 - **Phase 1 plan:** [`docs/superpowers/plans/2026-09-21-fobo-phase-1-skeleton.md`](docs/superpowers/plans/2026-09-21-fobo-phase-1-skeleton.md)
 
@@ -23,7 +26,7 @@ AgentOne is a separate, manual step.
 ## Prerequisites
 
 - Docker (for Postgres 16 + pgvector)
-- Python 3.12 — the venv is already created at `apps/api/.venv`
+- Python 3.12 — the venv is already created at `apps/backend/.venv`
 - Node 20+ — console dependencies are already installed
 
 ## Testing
@@ -37,25 +40,33 @@ docker compose up -d postgres
 ### 2. Apply migrations
 
 ```bash
-cd apps/api && .venv/bin/alembic upgrade head
+cd apps/backend && .venv/bin/alembic upgrade head
 ```
+
+After pulling this change, run the same command — it applies the migration
+that added workflow versioning.
+
+Investigations opened before the 2026-09-26 naming cleanup checkpointed
+their state under the old `app.contracts.models` path; `fobo/contracts/models.py`
+registers that name as a compatibility alias, so those older checkpoints
+still load with real typed objects — no reset of the dev database needed.
 
 ### 3. Run the suite
 
 ```bash
-cd apps/api && .venv/bin/python -m pytest -v
+cd apps/backend && .venv/bin/python -m pytest -v
 ```
 
-80 tests. They are re-runnable: `tests/conftest.py` truncates every table
+388 tests. They are re-runnable: `tests/conftest.py` truncates every table
 before each test.
 
 ### 4. See an investigation run
 
 ```bash
-cd apps/api && .venv/bin/python scripts/demo_investigation.py
+cd apps/backend && .venv/bin/python scripts/demo_investigation.py
 ```
 
-Loads fixtures, runs the workflow to the human interrupt, prints the drafted
+Loads seed data, runs the workflow to the human interrupt, prints the drafted
 analysis and pattern groups exactly as a controller would see them, then
 resumes with per-group approvals and reports the recorded outcome.
 
@@ -68,16 +79,57 @@ docker compose up -d postgres
 ```
 
 ```bash
-cd apps/api && .venv/bin/uvicorn api.main:app --port 8100 --reload
+cd apps/backend && FOBO_ENV=dev .venv/bin/uvicorn fobo.web.main:app --port 8100 --reload
 ```
+
+`FOBO_ENV=dev` enables the **Act as** switch in the console header, so a
+second person can approve a workflow draft.
 
 ```bash
 cd apps/console && npm run dev
 ```
 
-Then open **http://localhost:3100/fobo** (or just **http://localhost:3100**)
-for the Helix console, the finalized UI (Helix Pilot V1). The earlier console
-is kept at **http://localhost:3100/classic** until it is retired.
+Then open **http://localhost:3100** for the Helix console, the finalized UI
+(Helix Pilot V1). (`/fobo` still works — it redirects to `/` for old
+bookmarks.)
+
+### Running on Windows
+
+Prerequisites: **Python 3.12**, **Node 20+**, **Git**, and a container runtime
+that runs `docker compose` (Docker Desktop with WSL 2, Rancher Desktop or
+Podman Desktop). The virtualenv and `node_modules` are not in the repo, so the
+first run creates them. Commands are for PowerShell, from the repo root.
+
+One-time setup:
+
+```powershell
+docker compose up -d postgres
+cd apps\backend
+py -3.12 -m venv .venv
+.venv\Scripts\pip install -e ".[dev]"
+.venv\Scripts\alembic upgrade head
+cd ..\console
+npm install
+```
+
+Then two terminals:
+
+```powershell
+cd apps\backend
+$env:FOBO_ENV = "dev"
+.venv\Scripts\uvicorn fobo.web.main:app --port 8100 --reload --loop asyncio:SelectorEventLoop
+```
+
+```powershell
+cd apps\console
+npm run dev
+```
+
+`--loop asyncio:SelectorEventLoop` is required on Windows: the LangGraph
+checkpointer uses psycopg, which cannot run on Windows' default event loop.
+The CLIs, scripts and tests pick the right loop on their own
+(`fobo/__init__.py`). Everything else — tests, scripts, the reset command —
+works as above with `.venv\Scripts\` in place of `.venv/bin/`.
 
 ### The Helix console
 
@@ -85,16 +137,19 @@ Everything on screen is read from the API; the browser generates nothing.
 
 | On screen | Comes from |
 |---|---|
-| Recs, Ready events, master-book readiness, book states | `reconciliation` and `run` rows (`fixtures/catalogue.py` seeds them) |
+| Recs, Ready events, master-book readiness, book states | `reconciliation` and `run` rows (`seed_data/catalogue.py` seeds them) |
 | Drafted adjustments, verdicts, fixes | the LangGraph investigation's checkpoint and the playbook |
 | Analysis (what, why, action, risk) | the draft node, plus grounding and carry flags |
 | MCP data (N) | `source_call` rows, with the rows each tool returned |
-| Agent One answers | `POST /api/helix/recs/{id}/messages`: a deterministic intent router; anything it cannot answer goes to the reasoner (none by default) |
-| Approve / Reject | `POST /api/helix/recs/{id}/decisions`, double-confirmed, one idempotency key per decision |
+| Agent One answers | `POST /api/recs/{id}/messages`: a deterministic intent router; anything it cannot answer goes to the reasoner (none by default) |
+| Approve / Reject | `POST /api/recs/{id}/decisions`, double-confirmed, one idempotency key per decision |
 | Notification bell | derived from runs and today's decisions |
 | **Graph run** (session header) | `GET /api/recs/{id}/trace`: each LangGraph step from the checkpoints |
 
-The whole board is one call: `GET /api/helix/board`.
+The whole board is one call: `GET /api/board`, which also opens (running, if
+needed) each rec's investigation — the console never calls
+`POST /api/recs/{id}/investigate` itself; that endpoint exists for
+`scripts/run_investigation.py` and the e2e test to start a run directly.
 
 To reset the scenario (undo every decision and question), clear the app tables
 and checkpoints; the next request reseeds:
@@ -109,29 +164,27 @@ docker compose exec postgres psql -U fobo -d fobo -c "TRUNCATE session_message, 
 cd apps/console && npm test
 ```
 
-25 tests. No database needed — components are tested against props.
+185 tests. No database needed — components are tested against props.
+
+### 7. End-to-end test
+
+```bash
+cd apps/console && npm run test:e2e
+```
+
+Runs the workflow end-to-end test against a fresh `fobo_e2e` database on
+ports 8101/3101.
 
 ### Starting completely clean
 
 ```bash
-docker compose down -v && docker compose up -d postgres && sleep 8 && cd apps/api && .venv/bin/alembic upgrade head && .venv/bin/python -m pytest -q
+docker compose down -v && docker compose up -d postgres && sleep 8 && cd apps/backend && .venv/bin/alembic upgrade head && .venv/bin/python -m pytest -q
 ```
-
-### Regenerating design tokens
-
-```bash
-cd apps/console && npm run build:tokens
-```
-
-Regenerates `src/styles/tokens.css` from `docs/design/mock-tokens.css`. The
-source is extracted verbatim from the mock and is read-only; the build strips
-its Google Fonts `@import`, because that file is inlined into `globals.css`
-and an `@import` must precede every other rule. Fonts load via `next/font`.
 
 ### Recreating the venv
 
 ```bash
-cd apps/api && uv venv --python 3.12 && uv pip install -e ".[dev]"
+cd apps/backend && uv venv --python 3.12 && uv pip install -e ".[dev]"
 ```
 
 ## What the tests actually prove
@@ -141,13 +194,13 @@ These are the ones worth reading, not just running.
 | Claim | Test |
 |---|---|
 | A run parks at the human interrupt and a **fresh process** resumes it to completion | `test_checkpoint_resume.py::test_state_survives_a_fresh_process_and_resumes_to_completion` |
-| 14 breaks collapse into 4 decisions — the "decisions saved" metric | `test_node_group.py::test_group_sizes_match_the_mock` |
-| The 88% approval rate is **derived** from 42 priors, not hard-coded | `test_node_group.py::test_p204_carries_the_historical_approval_rate` |
+| 14 breaks collapse into 4 decisions — the "decisions saved" metric | `test_step_group.py::test_group_sizes_match_the_mock` |
+| The 88% approval rate is **derived** from 42 priors, not hard-coded | `test_step_group.py::test_p204_carries_the_historical_approval_rate` |
 | A caller outside the entity scope cannot resolve a book, and cannot tell that from the book not existing | `test_repository.py::test_a_caller_outside_the_entity_scope_cannot_resolve` |
 | A graph read returns the hierarchy in force on the COB date, not today's | `test_repository.py::test_as_of_returns_the_hierarchy_in_force_on_that_date` |
-| The same snapshot produces byte-identical cause-check output | `test_recon.py::test_is_deterministic` |
-| A figure that does not trace to a computed delta is rejected | `test_nodes_rank_draft_validate.py::test_validate_rejects_an_ungrounded_figure` |
-| A failed priors lookup degrades and flags a gap — it does not fabricate | `test_nodes_resolve_gather.py::test_gather_degrades_when_priors_are_unavailable` |
+| The same snapshot produces byte-identical cause-check output | `test_cause_checks.py::test_is_deterministic` |
+| A figure that does not trace to a computed delta is rejected | `test_steps_rank_draft_validate.py::test_validate_rejects_an_ungrounded_figure` |
+| A failed priors lookup degrades and flags a gap — it does not fabricate | `test_steps_resolve_gather.py::test_gather_degrades_when_priors_are_unavailable` |
 | An approved run stamps breaks so they become tomorrow's priors | `test_checkpoint_resume.py::test_an_approved_run_writes_tomorrows_priors` |
 
 ## The investigation playbook
@@ -162,11 +215,11 @@ verdict for each category and side, escalation routes, and the policy
 thresholds. It is loaded into the knowledge graph with an effective date.
 
 ```bash
-cd apps/api && .venv/bin/python -m app.playbook.cli validate
+cd apps/backend && .venv/bin/python -m fobo.playbook.cli validate
 ```
 
 ```bash
-cd apps/api && .venv/bin/python -m app.playbook.cli load
+cd apps/backend && .venv/bin/python -m fobo.playbook.cli load
 ```
 
 `validate` rejects the file if anything references a test, category, verdict
@@ -180,15 +233,27 @@ on it is flagged *requires controller confirmation*. Set a value and reload.
 ## The investigation workflow
 
 How an investigation *executes* — which steps run, in what order, where it
-pauses for a person, and each step's settings — lives in:
+pauses for a person, and each step's settings — is a versioned, four-eyes
+config, not a file you hand-edit and restart for:
 
-**[`config/workflow/fobo-investigation.yaml`](config/workflow/fobo-investigation.yaml)**
+The live workflow is stored in the database; the YAML file at
+[`config/workflow/fobo-investigation.yaml`](config/workflow/fobo-investigation.yaml)
+seeds version 1 and is the Download/Upload format.
 
-```bash
-cd apps/api && .venv/bin/python -m app.workflow.cli show
-```
+In the console, open **Workflow**: the graph shows each step tagged Code /
+Playbook + Reasoner / Template / Human, the pause before sign-off, and the
+escalate branch. Click a step for its inputs, outputs and settings.
 
-Restart the API after editing; the workflow is read once per process.
+**New draft** → edit (rank on/off, order, pauses, settings, reasoner);
+problems are listed as you edit → add a note → **Save draft**.
+
+A different Product Control user opens the draft, reviews the changes
+against the active version, and approves (two confirmations). New
+investigations use it from then on; a run keeps the version it started with
+(see "workflow vN" in the Graph run drawer).
+
+`FOBO_REASONER` still overrides the reasoner for local development; the
+Workflow tab shows a banner while it does.
 
 | You can | You cannot |
 |---|---|
@@ -199,7 +264,7 @@ Restart the API after editing; the workflow is read once per process.
 
 The validator refuses the right-hand column with a message naming the
 problem. Each step declares what it needs and produces
-(`apps/api/app/workflow/registry.py`), which is how an order that cannot
+(`apps/backend/fobo/investigation/step_registry.py`), which is how an order that cannot
 work is caught before a run starts.
 
 The **playbook** (`config/playbook/`) holds *what the rules are*; the
@@ -208,19 +273,64 @@ The **playbook** (`config/playbook/`) holds *what the rules are*; the
 ## Running without an LLM
 
 ```bash
-cd apps/api && .venv/bin/python scripts/run_investigation.py
+cd apps/backend && .venv/bin/python scripts/run_investigation.py
 ```
 
 With `FOBO_REASONER` unset, no model is called. Breaks the playbook can
 settle get a verdict from it; breaks it cannot settle escalate to a human.
-The report shows the deterministic share per rec, which is the
-orchestrator's headline figure.
+For each rec, the script prints its status, workflow version, and session
+id, then the LangGraph step trace (`GET /api/recs/{id}/trace`) — one line
+per step with its status and summary, the same sequence a controller sees
+in the console's "Graph run" panel.
 
 | `FOBO_REASONER` | Judgement-based breaks go to |
 |---|---|
 | unset / `none` | nobody — they escalate (no LLM) |
 | `session_service` | the Agent SDK session service |
 | `direct` | a direct Anthropic SDK call (local development) |
+
+## Running with the stub agent harness
+
+`apps/backend/scripts/stub_harness.py` stands in for the bank's agent harness.
+It speaks the session contract
+([`docs/integration/session-service-contract.md`](docs/integration/session-service-contract.md)),
+reads each run's breaks through the backend's MCP server, and answers with a
+fixed verdict. It is a demo double, not a reasoner. Three terminals, from the
+repo root:
+
+```bash
+cd apps/backend && .venv/bin/uvicorn scripts.stub_harness:app --port 8200
+```
+
+```bash
+cd apps/backend && FOBO_ENV=dev FOBO_REASONER=session_service FOBO_SESSION_SERVICE_URL=http://localhost:8200 FOBO_MCP_URL=http://localhost:8100/mcp .venv/bin/uvicorn fobo.web.main:app --port 8100
+```
+
+```bash
+cd apps/console && npm run dev
+```
+
+Collateral (R-2048, one break left for the agent) runs on the board's first
+read; its agent finding shows in the console, and the MCP data panel shows each
+tool call the stub made (`application: agent`) plus one `agent.session` row.
+FI Credit (R-2031, five breaks) is seeded as still running, so the board does
+not start it; start it yourself and read its step trace:
+
+```bash
+curl -X POST localhost:8100/api/recs/R-2031/investigate && curl localhost:8100/api/recs/R-2031/trace
+```
+
+A rec that has already run keeps its result; use the reset command under
+*The Helix console* first to see it run again.
+
+`FOBO_MCP_URL` both turns on the MCP server at `/mcp` and is the URL the
+harness is told to call. Each agent session gets its own MCP token; there is
+no shared one. Three workflow settings govern a session:
+`session_service.poll_interval_seconds` (5), `session_service.max_wait_seconds`
+(900) and `reason.sample_breaks_per_pattern` (5).
+
+Known limitation: investigations still start on the board's first read, so a
+long agent session holds that board request open until it finishes.
 
 ## Known deviations from the mock
 
@@ -247,5 +357,6 @@ source for yet, so the port shows what the backend actually has instead:
 | Console | 3100 |
 | API | 8100 |
 | Postgres | 5433 |
+| Stub agent harness | 8200 |
 
 All offset from AgentOne's defaults so both stacks run simultaneously.

@@ -8,8 +8,8 @@
 # To change the playbook:
 #   1. Edit this file.
 #   2. Bump `version` and set `effective_from` to when the change applies.
-#   3. Validate:  apps/api/.venv/bin/python -m app.playbook.cli validate
-#   4. Load:      apps/api/.venv/bin/python -m app.playbook.cli load
+#   3. Validate:  apps/backend/.venv/bin/python -m fobo.playbook.cli validate
+#   4. Load:      apps/backend/.venv/bin/python -m fobo.playbook.cli load
 #
 # The loader rejects the file if anything references a test, category,
 # verdict or team that is not defined here — a typo fails the load, it does

@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agentic Systems Primer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a field guide — sticky chapter rail on the left, one reading column, diagrams built from HTML boxes. */
+:root{
+  --bg:#F5F7F8; --card:#FFFFFF; --fg:#18212B; --muted:#56616E; --line:#D9DFE5;
+  --accent:#0B6E78; --accent-soft:#E1F0F1; --proj:#9A4A06; --proj-soft:#FBEFE3;
+  --code-bg:#EEF2F4;
+  --f-display:'Bricolage Grotesque', 'Segoe UI', Arial, sans-serif;
+  --f-body:'Literata', Georgia, 'Times New Roman', serif;
+  --f-mono:'JetBrains Mono', ui-monospace, 'Courier New', monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F1419; --card:#161E26; --fg:#E4E9EE; --muted:#9BA7B3; --line:#27323D;
+    --accent:#5CC6CF; --accent-soft:#12303A; --proj:#F2A65A; --proj-soft:#33230F;
+    --code-bg:#1B252E; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F1419; --card:#161E26; --fg:#E4E9EE; --muted:#9BA7B3; --line:#27323D;
+  --accent:#5CC6CF; --accent-soft:#12303A; --proj:#F2A65A; --proj-soft:#33230F;
+  --code-bg:#1B252E; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:17px;line-height:1.65;padding-inline:16px;padding-block:0 64px}
+a{color:var(--accent)}
+a:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.wrap{max-width:1180px;margin-inline:auto;display:grid;grid-template-columns:1fr;gap:40px}
+@media (min-width:980px){.wrap{grid-template-columns:230px minmax(0,1fr)}}
+nav.toc{display:none}
+@media (min-width:980px){
+  nav.toc{display:block;position:sticky;top:calc(env(safe-area-inset-top,0px) + 24px);align-self:start;padding-top:40px;font-family:var(--f-display);font-size:14px}
+  nav.toc ol{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px;counter-reset:ch}
+  nav.toc li a{color:var(--muted);text-decoration:none;display:flex;gap:10px}
+  nav.toc li a:hover{color:var(--fg)}
+  nav.toc .n{font-family:var(--f-mono);font-size:12px;color:var(--accent);min-width:20px;padding-top:2px}
+}
+main{min-width:0;max-width:760px}
+header.hero{padding-block:48px 24px;border-bottom:1px solid var(--line);margin-bottom:8px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+h1{font-family:var(--f-display);font-weight:700;font-size:clamp(38px,6vw,60px);line-height:1.02;letter-spacing:-.02em;margin:12px 0 16px;text-wrap:balance}
+.lede{font-size:20px;color:var(--muted);max-width:40ch;margin:0}
+h2{font-family:var(--f-display);font-weight:700;font-size:30px;line-height:1.15;letter-spacing:-.01em;margin:0 0 8px;text-wrap:balance}
+h3{font-family:var(--f-display);font-weight:500;font-size:20px;margin:28px 0 6px}
+section{padding-block:40px;border-bottom:1px solid var(--line);scroll-margin-top:16px}
+section > .num{font-family:var(--f-mono);font-size:13px;color:var(--accent);margin-bottom:6px}
+.sum{font-size:19px;color:var(--muted);margin:0 0 20px}
+p{margin:0 0 14px}
+ul,ol{padding-left:22px;margin:0 0 14px}
+li{margin-bottom:4px}
+code{font-family:var(--f-mono);font-size:.84em;background:var(--code-bg);padding:1px 5px;border-radius:4px}
+pre{font-family:var(--f-mono);font-size:13.5px;line-height:1.55;background:var(--code-bg);border:1px solid var(--line);border-radius:8px;padding:16px;overflow-x:auto;margin:0 0 16px}
+pre code{background:none;padding:0;font-size:inherit}
+.tbl{overflow-x:auto;margin:0 0 18px}
+table{border-collapse:collapse;width:100%;font-size:15px;line-height:1.5}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--line)}
+th{font-family:var(--f-display);font-weight:500;font-size:14px;color:var(--muted);border-bottom:1.5px solid var(--fg)}
+td:first-child{font-weight:600}
+.proj{background:var(--proj-soft);border-left:3px solid var(--proj);padding:14px 18px;margin:18px 0;font-size:15.5px;border-radius:0}
+.proj .tag{font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--proj);display:block;margin-bottom:4px}
+.proj p:last-child{margin:0}
+.rule{background:var(--accent-soft);padding:14px 18px;border-radius:8px;margin:18px 0;font-family:var(--f-display);font-size:18px;line-height:1.4}
+.rule b{color:var(--accent)}
+/* stack diagram */
+.stack{display:flex;flex-direction:column;gap:6px;margin:20px 0}
+.layer{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1.4fr) minmax(0,1fr);gap:12px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.layer .who{font-family:var(--f-display);font-weight:700;font-size:16px}
+.layer .who small{display:block;font-weight:500;font-size:13px;color:var(--accent)}
+.layer .what{font-size:14.5px}
+.layer .like{font-size:13.5px;color:var(--muted);font-style:italic}
+.layer.hl{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}
+@media (max-width:640px){.layer{grid-template-columns:1fr;gap:4px}}
+.stack-head{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1.4fr) minmax(0,1fr);gap:12px;padding:0 15px;font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+@media (max-width:640px){.stack-head{display:none}}
+/* flow chips */
+.flow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:18px 0}
+.chip{font-family:var(--f-display);font-weight:500;font-size:14.5px;background:var(--card);border:1px solid var(--line);border-radius:6px;padding:7px 12px}
+.chip.ai{border-color:var(--accent);color:var(--accent)}
+.chip.human{border-style:dashed}
+.arrow{color:var(--muted);font-family:var(--f-mono)}
+.flow-note{font-size:14px;color:var(--muted);margin-top:-8px}
+/* loop */
+.loop{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:18px 0 6px}
+.loop div{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px}
+.loop b{font-family:var(--f-display);display:block;font-size:16px}
+.loop span{font-size:14px;color:var(--muted)}
+@media (max-width:640px){.loop{grid-template-columns:1fr 1fr}}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0}
+.two > div{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px;min-width:0}
+.two h4{font-family:var(--f-display);font-size:17px;margin:0 0 6px}
+@media (max-width:640px){.two{grid-template-columns:1fr}}
+details{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin-bottom:10px}
+summary{cursor:pointer;font-family:var(--f-display);font-weight:500}
+details p{margin:10px 0 0;font-size:15.5px}
+dl.gloss{display:grid;grid-template-columns:minmax(0,180px) minmax(0,1fr);gap:8px 18px;font-size:15.5px}
+dl.gloss dt{font-family:var(--f-display);font-weight:700}
+dl.gloss dd{margin:0}
+@media (max-width:640px){dl.gloss{grid-template-columns:1fr}dl.gloss dd{margin-bottom:8px}}
+.legend{display:flex;flex-wrap:wrap;gap:16px;font-size:14px;color:var(--muted);margin-top:14px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin-right:6px;border:1px solid var(--line)}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+html{scroll-behavior:smooth}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+<nav class="toc" aria-label="Chapters">
+  <ol>
+    <li><a href="#picture"><span class="n">00</span>The whole picture</a></li>
+    <li><a href="#llm"><span class="n">01</span>The LLM</a></li>
+    <li><a href="#agents"><span class="n">02</span>Agents and harnesses</a></li>
+    <li><a href="#tools"><span class="n">03</span>Tools and MCP</a></li>
+    <li><a href="#langgraph"><span class="n">04</span>LangGraph</a></li>
+    <li><a href="#kg"><span class="n">05</span>Knowledge graphs</a></li>
+    <li><a href="#vectors"><span class="n">06</span>Embeddings and RAG</a></li>
+    <li><a href="#together"><span class="n">07</span>One request, end to end</a></li>
+    <li><a href="#guard"><span class="n">08</span>Guardrails</a></li>
+    <li><a href="#cheat"><span class="n">09</span>Which tool when</a></li>
+    <li><a href="#gloss"><span class="n">10</span>Glossary</a></li>
+    <li><a href="#check"><span class="n">11</span>Check yourself</a></li>
+  </ol>
+</nav>
+
+<main>
+<header class="hero">
+  <div class="eyebrow">A learning guide</div>
+  <h1>Agentic Systems Primer</h1>
+  <p class="lede">What an LLM, an agent, a tool, a workflow engine and a knowledge graph each do, and how they fit into one system you can trust.</p>
+</header>
+
+<section id="picture">
+  <div class="num">00</div>
+  <h2>The whole picture</h2>
+  <p class="sum">Every serious AI system is a stack of parts with different jobs. Most confusion comes from expecting one part to do another part's job.</p>
+  <div class="stack-head"><span>Part</span><span>Its job</span><span>Office analogy</span></div>
+  <div class="stack">
+    <div class="layer"><div class="who">People<small>human in the loop</small></div><div class="what">Approve, reject, answer questions, own the outcome.</div><div class="like">The manager who signs off</div></div>
+    <div class="layer"><div class="who">Interface<small>UI, chat, API</small></div><div class="what">Show the work and its evidence; collect decisions.</div><div class="like">The desk and the in-tray</div></div>
+    <div class="layer hl"><div class="who">Orchestrator<small>e.g. LangGraph</small></div><div class="what">Run the procedure: which step, in what order, when to pause, what to remember.</div><div class="like">The procedure manual and the case file</div></div>
+    <div class="layer hl"><div class="who">Agent<small>LLM in a loop, in a harness</small></div><div class="what">Use judgement: read, form hypotheses, decide what to look up next, conclude.</div><div class="like">The analyst</div></div>
+    <div class="layer hl"><div class="who">Tools<small>e.g. via MCP</small></div><div class="what">Let the agent query systems safely, one defined action at a time.</div><div class="like">The phone and the terminal</div></div>
+    <div class="layer hl"><div class="who">Knowledge<small>graph, vectors, tables</small></div><div class="what">Hold facts, rules, relationships and history.</div><div class="like">The filing cabinet and the rulebook</div></div>
+  </div>
+  <div class="rule">The LLM is <b>one layer</b>. It supplies judgement. Everything around it supplies the facts, the procedure, the controls and the memory.</div>
+  <div class="proj"><span class="tag">In the FOBO project</span><p>People = controllers. Interface = the Next.js console. Orchestrator = LangGraph (<code>fobo/investigation</code>). Agent = your team's session-based harness. Tools = the planned <code>fobo_*</code> MCP tools. Knowledge = Postgres <code>node</code>/<code>edge</code> tables plus pgvector.</p></div>
+</section>
+
+<section id="llm">
+  <div class="num">01</div>
+  <h2>The LLM</h2>
+  <p class="sum">A large language model predicts the next piece of text, one token at a time. Trained on a vast amount of writing, that simple mechanism produces something that reads, reasons and writes remarkably well.</p>
+
+  <div class="two">
+    <div><h4>Strong at</h4><ul><li>Reading messy, unstructured text</li><li>Summarising and explaining</li><li>Classifying against described categories</li><li>Weighing competing explanations</li><li>Drafting in a required format</li><li>Deciding what to look up next</li></ul></div>
+    <div><h4>Weak at</h4><ul><li>Exact arithmetic over many rows</li><li>Knowing your private data or today's facts</li><li>Giving the same answer every run</li><li>Remembering anything outside its context</li><li>Reliably enforcing rules on itself</li><li>Saying "I don't know" unprompted</li></ul></div>
+  </div>
+
+  <h3>Five ideas that explain most of its behaviour</h3>
+  <div class="tbl"><table>
+    <tr><th>Idea</th><th>What it means in practice</th></tr>
+    <tr><td>Context window</td><td>Everything the model knows for this call: instructions, data, conversation so far. If a fact is not in the window, the model does not have it.</td></tr>
+    <tr><td>Tokens</td><td>Text is billed and processed in tokens (roughly ¾ of a word). More context means more cost and more latency.</td></tr>
+    <tr><td>Non-determinism</td><td>The same question can produce different wording or even different conclusions. Design for that; don't assume replay gives the same answer.</td></tr>
+    <tr><td>Hallucination</td><td>When information is missing, the model can produce something plausible and wrong. Grounding it in retrieved facts is the main defence.</td></tr>
+    <tr><td>Structured output</td><td>You can require the answer to match a JSON schema (fields, allowed values), so code can check it instead of parsing prose.</td></tr>
+  </table></div>
+
+  <div class="rule">Use the LLM for <b>judgement</b>. Get <b>facts</b> from data and <b>rules</b> from code.</div>
+  <div class="proj"><span class="tag">In the FOBO project</span><p>Break categories A–F are settled by rules in code. Only G (corporate action) and H (novel) are "judgement" categories that go to the model. The model must answer in the <code>SkillVerdict</code> schema.</p></div>
+</section>
+
+<section id="agents">
+  <div class="num">02</div>
+  <h2>Agents and harnesses</h2>
+  <p class="sum">A plain LLM call is one question and one answer. An agent is an LLM running in a loop, choosing actions until it can answer.</p>
+  <div class="loop" role="list" aria-label="The agent loop">
+    <div role="listitem"><b>Think</b><span>What do I know? What do I need?</span></div>
+    <div role="listitem"><b>Act</b><span>Call a tool, e.g. fetch evidence</span></div>
+    <div role="listitem"><b>Observe</b><span>Read the tool's result</span></div>
+    <div role="listitem"><b>Repeat or answer</b><span>Loop until confident, then conclude</span></div>
+  </div>
+  <p class="flow-note">The model decides which tool to call and when to stop. That flexibility is the point, and also the risk.</p>
+
+  <h3>The harness</h3>
+  <p>The model alone cannot run a loop, call a database or remember a conversation. A <b>harness</b> is the software around it that does:</p>
+  <ul>
+    <li><b>Runs the loop</b>: sends the prompt, executes the tool calls the model asks for, feeds results back.</li>
+    <li><b>Gives it tools</b>: an allow-list of what it may call.</li>
+    <li><b>Loads skills</b>: packaged instructions for a task, kept as files instead of pasted into every prompt.</li>
+    <li><b>Keeps the session</b>: the running history, so a follow-up question continues where the last one left off.</li>
+    <li><b>Enforces limits</b>: maximum turns, timeouts, output schema, cost.</li>
+    <li><b>Logs</b>: every tool call and token count.</li>
+  </ul>
+  <p>Examples: the Claude Agent SDK, the OpenAI Agents SDK, and LangGraph's own prebuilt agent. Many firms run an internal harness as a shared service.</p>
+
+  <h3>Workflow or agent?</h3>
+  <p>This is the most important design choice. Anthropic's guide <a href="https://www.anthropic.com/engineering/building-effective-agents">Building effective agents</a> draws the same line.</p>
+  <div class="tbl"><table>
+    <tr><th></th><th>Workflow</th><th>Agent</th></tr>
+    <tr><td>Who picks the path</td><td>Your code</td><td>The model</td></tr>
+    <tr><td>Predictability</td><td>High: same steps every time</td><td>Lower: path varies</td></tr>
+    <tr><td>Audit</td><td>Easy: fixed, named steps</td><td>Needs full tool-call logs</td></tr>
+    <tr><td>Best for</td><td>Known procedures</td><td>Open-ended investigation</td></tr>
+  </table></div>
+  <div class="rule">Build the <b>process as a workflow</b>, and put an <b>agent inside the one step</b> that needs open-ended judgement.</div>
+  <div class="proj"><span class="tag">In the FOBO project</span><p>The harness runs one session per L4 rec (Rates, Prime, FI Credit…) per business day. The session loads the <code>fobo-investigation</code> skill, uses MCP tools to look things up, and returns a verdict per pattern. Ask Agent One can continue the same session for follow-up questions.</p></div>
+</section>
+
+<section id="tools">
+  <div class="num">03</div>
+  <h2>Tools and MCP</h2>
+  <p class="sum">A tool is a function the model may ask to run. The model never touches your systems directly; it asks, the harness runs the tool, and the result comes back as text.</p>
+  <p>Each tool is described to the model by a name, a plain-language description and an input schema:</p>
+<pre><code>{
+  "name": "evidence_required",
+  "description": "List the evidence a playbook test needs before it can conclude.",
+  "input_schema": {
+    "type": "object",
+    "properties": { "test_id": { "type": "string", "description": "e.g. FO-6" } },
+    "required": ["test_id"]
+  }
+}</code></pre>
+  <p>The model reads the description to decide when the tool is useful, so good descriptions matter as much as good code.</p>
+
+  <h3>MCP, the Model Context Protocol</h3>
+  <p>MCP is an open standard, introduced by Anthropic in 2024, for exposing tools (and read-only resources and prompt templates) to any AI client. You build an <b>MCP server</b> once in front of a system; any MCP-capable harness can connect to it as a <b>client</b>. It runs locally over stdio or remotely over HTTP.</p>
+  <div class="flow"><span class="chip ai">Agent (harness)</span><span class="arrow">→ MCP →</span><span class="chip">MCP server</span><span class="arrow">→</span><span class="chip">Graph · database · APIs</span></div>
+  <ul>
+    <li><b>Reuse</b>: one server serves every agent and model.</li>
+    <li><b>Control</b>: the server decides what is exposed, checks the token, and can enforce entitlements.</li>
+    <li><b>Audit</b>: every call is a logged request with inputs and outputs.</li>
+  </ul>
+  <div class="proj"><span class="tag">In the FOBO project</span><p>Six planned tools (<code>fobo_list_tests</code>, <code>fobo_evidence_required</code>, <code>fobo_similar_breaks</code>, <code>fobo_book_context</code>…) put the knowledge graph in front of the agent. The console's MCP data panel shows each lookup with its request and rows. The server itself is not built yet.</p></div>
+</section>
+
+<section id="langgraph">
+  <div class="num">04</div>
+  <h2>LangGraph</h2>
+  <p class="sum">LangGraph is an open-source Python and JavaScript library for building stateful, multi-step workflows and agents. You describe the process as a graph of steps; it runs them, saves state after each one, and can pause for a person.</p>
+
+  <h3>The six concepts</h3>
+  <div class="tbl"><table>
+    <tr><th>Concept</th><th>Meaning</th></tr>
+    <tr><td>State</td><td>One typed record shared by all steps: the case file.</td></tr>
+    <tr><td>Node</td><td>A step. A function that reads state and returns updates. It can call code, a database or an LLM.</td></tr>
+    <tr><td>Edge</td><td>"After this step, run that one."</td></tr>
+    <tr><td>Conditional edge</td><td>A branch decided by a function: "if anything is unexplained, go to the agent; otherwise go to review."</td></tr>
+    <tr><td>Checkpointer</td><td>Saves the state after every step (in memory, SQLite or Postgres). This is what makes runs resumable and auditable.</td></tr>
+    <tr><td>Interrupt</td><td>Pause before or inside a step and wait, for seconds or days, until someone resumes the run with their input.</td></tr>
+  </table></div>
+
+  <div class="flow" aria-label="Example workflow">
+    <span class="chip">Gather</span><span class="arrow">→</span><span class="chip">Reason by rules</span><span class="arrow">→</span><span class="chip ai">Agent (only if needed)</span><span class="arrow">→</span><span class="chip human">Pause: review</span><span class="arrow">→</span><span class="chip">Post</span>
+  </div>
+
+  <h3>A minimal example</h3>
+<pre><code>from typing import TypedDict
+from langgraph.graph import StateGraph, START, END
+from langgraph.checkpoint.memory import MemorySaver
+
+class State(TypedDict, total=False):
+    breaks: list
+    verdicts: dict
+    approved: bool
+
+def gather(state):  return {"breaks": load_breaks()}
+def reason(state):  return {"verdicts": apply_rules(state["breaks"])}
+def agent(state):   return {"verdicts": ask_agent(state["verdicts"])}
+def review(state):  return {}
+def post(state):    return post_if_approved(state)
+
+def route(state):
+    unsettled = [v for v in state["verdicts"].values() if v == "UNKNOWN"]
+    return "agent" if unsettled else "review"
+
+g = StateGraph(State)
+for name, fn in [("gather", gather), ("reason", reason), ("agent", agent),
+                 ("review", review), ("post", post)]:
+    g.add_node(name, fn)
+g.add_edge(START, "gather")
+g.add_edge("gather", "reason")
+g.add_conditional_edges("reason", route, {"agent": "agent", "review": "review"})
+g.add_edge("agent", "review")
+g.add_edge("review", "post")
+g.add_edge("post", END)
+
+app = g.compile(checkpointer=MemorySaver(), interrupt_before=["review"])
+run = {"configurable": {"thread_id": "prime-2026-08-03"}}
+
+app.invoke({}, run)                          # runs until the pause
+# ... hours or days later, after a controller approves:
+app.update_state(run, {"approved": True})
+app.invoke(None, run)                        # resumes from the saved checkpoint</code></pre>
+  <p>In production the <code>MemorySaver</code> is replaced by a database checkpointer (for example <code>langgraph-checkpoint-postgres</code>) so paused runs survive restarts.</p>
+
+  <h3>What LangGraph is not</h3>
+  <ul>
+    <li><b>Not an LLM.</b> It calls one when a step needs it; a graph can run with no LLM at all.</li>
+    <li><b>Not a database</b>, although it stores its checkpoints in one.</li>
+    <li><b>Not a knowledge graph.</b> The word "graph" here means a flowchart of steps, not a network of data.</li>
+  </ul>
+  <p>Alternatives by need: plain code (a short script with no pauses), Temporal (durable enterprise workflows in many languages), Airflow or Prefect (scheduled batch pipelines), CrewAI or AutoGen (multi-agent conversations).</p>
+  <div class="proj"><span class="tag">In the FOBO project</span><p>Steps: resolve → gather → group → reason → rank → draft → validate → <b>pause</b> → review → record. Checkpoints live in Postgres. The console's Graph run panel replays them; the Workflow tab edits the step order under four-eyes approval.</p></div>
+</section>
+
+<section id="kg">
+  <div class="num">05</div>
+  <h2>Knowledge graphs</h2>
+  <p class="sum">A knowledge graph stores facts as things (nodes) and the relationships between them (edges), each with properties. It answers "how is this connected to that?"</p>
+  <div class="flow"><span class="chip">Book PRIME-MB-05</span><span class="arrow">— BELONGS_TO →</span><span class="chip">Desk APAC-CASH</span></div>
+  <p class="flow-note">One fact: a node, an edge type, another node. Properties can sit on both, such as the date range the link is valid for.</p>
+
+  <h3>Key ideas</h3>
+  <div class="tbl"><table>
+    <tr><th>Idea</th><th>Meaning</th></tr>
+    <tr><td>Ontology</td><td>The vocabulary: which node types and relationships are allowed (Book, Desk, BELONGS_TO…). The graph's schema.</td></tr>
+    <tr><td>Traversal</td><td>Following edges hop by hop: book → desk → legal entity → region.</td></tr>
+    <tr><td>Bitemporal</td><td>Two time axes: when a fact was true in the world, and when the system recorded it. Lets you ask "what did we believe on that date?"</td></tr>
+    <tr><td>Rules as data</td><td>Rule chains stored as edges (test → finding → category → verdict) so changing a rule means changing data, not code or prompts.</td></tr>
+  </table></div>
+
+  <h3>Three ways to store one</h3>
+  <div class="tbl"><table>
+    <tr><th>Option</th><th>Query language</th><th>Choose when</th></tr>
+    <tr><td>Relational tables (node + edge in Postgres)</td><td>SQL, recursive CTEs</td><td>Small or shallow graphs; you want one database</td></tr>
+    <tr><td>Property graph database (Neo4j, Neptune, Memgraph)</td><td>Cypher / Gremlin</td><td>Deep or variable-depth paths, large graphs, graph algorithms</td></tr>
+    <tr><td>RDF triple store (GraphDB, Stardog)</td><td>SPARQL</td><td>Formal ontologies, standards, data shared across organisations</td></tr>
+  </table></div>
+
+  <h3>The same question in SQL and in Cypher</h3>
+  <p>"Walk from test FO-3 to its default verdict."</p>
+<pre><code>-- Postgres
+WITH RECURSIVE walk AS (
+  SELECT node_id, 0 AS depth FROM node WHERE node_id = 'test:FO-3'
+  UNION ALL
+  SELECT e.to_node_id, w.depth + 1
+  FROM walk w JOIN edge e ON e.from_node_id = w.node_id
+  WHERE w.depth &lt; 5
+)
+SELECT * FROM walk;</code></pre>
+<pre><code>// Neo4j
+MATCH (:Test {key:'FO-3'})-[:ON_FAIL_REQUIRES]-&gt;(:Test)-[:HAS_FINDING]-&gt;(:Finding)
+      -[:INDICATES]-&gt;(:Category)-[:DEFAULT_VERDICT]-&gt;(v:Verdict)
+RETURN v</code></pre>
+
+  <h3>When to switch storage</h3>
+  <p>The number of hops a query walks matters more than the total size. If each node links to 10 others, 2 hops touch about 100 rows and 6 hops about a million.</p>
+  <div class="tbl"><table>
+    <tr><th>Edges</th><th>Hops per query</th><th>Choose</th></tr>
+    <tr><td>Under 1 million</td><td>1–3</td><td>Relational is fine</td></tr>
+    <tr><td>1–50 million</td><td>4–6 or unknown depth</td><td>Test both</td></tr>
+    <tr><td>Any size</td><td>6+, all paths, graph algorithms</td><td>Graph database</td></tr>
+  </table></div>
+  <div class="proj"><span class="tag">In the FOBO project</span><p>103 nodes and 67 edges in two Postgres tables. Sources: the playbook YAML (rules), seed data for books and desks (a reference-data feed in production), and the Record step (each day's decisions). PRIME-MB-05 moved from APAC-TREASURY to APAC-CASH on 1 July 2026: two edge rows with date ranges, nothing overwritten.</p></div>
+</section>
+
+<section id="vectors">
+  <div class="num">06</div>
+  <h2>Embeddings and RAG</h2>
+  <p class="sum">An embedding turns text into a list of numbers so that similar meanings sit close together. It finds things that are alike, where a graph finds things that are connected.</p>
+  <div class="tbl"><table>
+    <tr><th>Question</th><th>Best tool</th></tr>
+    <tr><td>"Give me break B-7."</td><td>Table lookup (exact)</td></tr>
+    <tr><td>"Which desk owns this book on 3 August?"</td><td>Knowledge graph (connected)</td></tr>
+    <tr><td>"Have we seen a break like this before?"</td><td>Vector search (similar)</td></tr>
+    <tr><td>"Is this break a timing issue or a booking error?"</td><td>LLM (judgement)</td></tr>
+  </table></div>
+  <h3>RAG and GraphRAG</h3>
+  <p><b>Retrieval-augmented generation</b> means fetching relevant facts first and putting them in the model's context, so it answers from evidence instead of memory. <b>GraphRAG</b> does the fetching by walking relationships in a knowledge graph, which is better when the answer depends on how things connect. With tools, the agent does its own retrieval, step by step, as it reasons.</p>
+  <div class="proj"><span class="tag">In the FOBO project</span><p>A <code>break_embedding</code> table (pgvector) powers "similar past breaks", shown as <code>similar_breaks</code> in the MCP data panel: e.g. break B-1 had 4 similar priors, all 4 approved.</p></div>
+</section>
+
+<section id="together">
+  <div class="num">07</div>
+  <h2>One request, end to end</h2>
+  <p class="sum">Follow one case through every layer. The same shape fits reconciliation, claims, KYC reviews or incident triage.</p>
+  <div class="tbl"><table>
+    <tr><th>Step</th><th>What happens</th><th>Who does it</th></tr>
+    <tr><td>1. Trigger</td><td>An event says the data is ready.</td><td>Source system</td></tr>
+    <tr><td>2. Resolve</td><td>Pin each item to the right entity and date.</td><td>Orchestrator step → knowledge graph</td></tr>
+    <tr><td>3. Gather</td><td>Pull numbers, run checks, look up lineage and history.</td><td>Orchestrator step → data, graph, vectors</td></tr>
+    <tr><td>4. Rules</td><td>Settle everything a written rule can settle.</td><td>Orchestrator step → rules in the graph</td></tr>
+    <tr><td>5. Judgement</td><td>Send what is left to the agent; it investigates with tools.</td><td>Agent via harness and MCP</td></tr>
+    <tr><td>6. Guard</td><td>Check the agent's answer against hard rules.</td><td>Code</td></tr>
+    <tr><td>7. Pause</td><td>Show the draft with evidence; wait for a person.</td><td>Orchestrator interrupt → interface</td></tr>
+    <tr><td>8. Act and record</td><td>Carry out the approved action; save the outcome as tomorrow's history.</td><td>Orchestrator step → database, graph</td></tr>
+  </table></div>
+  <div class="rule">Facts from <b>data</b>. Rules from the <b>graph and code</b>. Order from the <b>orchestrator</b>. Judgement from the <b>LLM</b>. Decisions from <b>people</b>.</div>
+</section>
+
+<section id="guard">
+  <div class="num">08</div>
+  <h2>Guardrails</h2>
+  <p class="sum">In regulated work the controls around the model matter as much as the model. These are the usual ones.</p>
+  <div class="tbl"><table>
+    <tr><th>Control</th><th>What it prevents</th></tr>
+    <tr><td>Output schema</td><td>Free-text answers code cannot check; missing fields; invented verdict values.</td></tr>
+    <tr><td>Guards in code</td><td>The model overruling a hard rule ("an FO-side cause never posts").</td></tr>
+    <tr><td>Human approval</td><td>Any irreversible action taken without a person's sign-off.</td></tr>
+    <tr><td>Least-privilege tools</td><td>The agent reading or changing more than the task needs.</td></tr>
+    <tr><td>Audit trail</td><td>"Why did it decide that?" going unanswered. Keep checkpoints and every tool call.</td></tr>
+    <tr><td>Fail to a person</td><td>Guessing when data is missing. Escalate instead.</td></tr>
+    <tr><td>Versioning</td><td>Silent changes. Version prompts, skills, rules and workflows; record which version each run used.</td></tr>
+    <tr><td>Evaluations</td><td>Quality drifting unnoticed. Re-run a fixed set of known cases on every change.</td></tr>
+    <tr><td>Idempotency</td><td>A double-click posting twice. One key per decision.</td></tr>
+  </table></div>
+</section>
+
+<section id="cheat">
+  <div class="num">09</div>
+  <h2>Which tool when</h2>
+  <div class="tbl"><table>
+    <tr><th>If you need to…</th><th>Reach for</th></tr>
+    <tr><td>Read, summarise or judge unstructured information</td><td>An LLM</td></tr>
+    <tr><td>Investigate where the next step depends on what you find</td><td>An agent in a harness</td></tr>
+    <tr><td>Let any agent query your systems safely</td><td>An MCP server</td></tr>
+    <tr><td>Run a fixed procedure with steps, branches and pauses</td><td>A workflow engine such as LangGraph</td></tr>
+    <tr><td>Wait days for a human and resume exactly</td><td>Checkpointing and interrupts</td></tr>
+    <tr><td>Answer "how is this connected?"</td><td>A knowledge graph</td></tr>
+    <tr><td>Answer "what is this similar to?"</td><td>Embeddings and vector search</td></tr>
+    <tr><td>Answer "give me exactly this record"</td><td>A regular table and SQL</td></tr>
+    <tr><td>Guarantee a rule is always followed</td><td>Code, not a prompt</td></tr>
+  </table></div>
+</section>
+
+<section id="gloss">
+  <div class="num">10</div>
+  <h2>Glossary</h2>
+  <dl class="gloss">
+    <dt>Agent</dt><dd>An LLM running in a loop that chooses actions (tool calls) until it can answer.</dd>
+    <dt>Checkpoint</dt><dd>A saved copy of a workflow's state after a step. Enables resume, replay and audit.</dd>
+    <dt>Context window</dt><dd>All the text a model can see in one call.</dd>
+    <dt>Cypher</dt><dd>Neo4j's query language, written as patterns of nodes and arrows.</dd>
+    <dt>Edge</dt><dd>Two meanings. In LangGraph: the link between two steps. In a knowledge graph: a relationship between two things.</dd>
+    <dt>Embedding</dt><dd>A list of numbers representing meaning; close vectors mean similar content.</dd>
+    <dt>Evaluation (eval)</dt><dd>A fixed set of test cases used to measure an AI system's quality over time.</dd>
+    <dt>GraphRAG</dt><dd>Retrieval that follows relationships in a knowledge graph before prompting the model.</dd>
+    <dt>Hallucination</dt><dd>A confident, plausible and wrong model output.</dd>
+    <dt>Harness</dt><dd>The software that runs an agent: loop, tools, skills, session, limits, logs.</dd>
+    <dt>Human in the loop</dt><dd>A person reviews or approves before the system acts.</dd>
+    <dt>Idempotency</dt><dd>Doing the same action twice has the same effect as doing it once.</dd>
+    <dt>Interrupt</dt><dd>A deliberate pause in a workflow that waits for outside input.</dd>
+    <dt>MCP</dt><dd>Model Context Protocol: an open standard for exposing tools and data to AI clients.</dd>
+    <dt>Node</dt><dd>Two meanings. In LangGraph: a step. In a knowledge graph: a thing (book, desk, rule).</dd>
+    <dt>Ontology</dt><dd>The allowed types of things and relationships in a knowledge graph.</dd>
+    <dt>RAG</dt><dd>Retrieval-augmented generation: fetch facts, then let the model answer from them.</dd>
+    <dt>Session</dt><dd>A conversation with an agent that keeps its history, so later turns build on earlier ones.</dd>
+    <dt>Skill</dt><dd>Packaged instructions for a task, loaded by the harness as a file.</dd>
+    <dt>SPARQL</dt><dd>The query language for RDF triple stores.</dd>
+    <dt>State</dt><dd>The shared record a workflow's steps read and update.</dd>
+    <dt>Structured output</dt><dd>A model answer forced to match a JSON schema.</dd>
+    <dt>Token</dt><dd>The unit of text a model reads and writes, roughly ¾ of a word.</dd>
+    <dt>Tool</dt><dd>A described function the model may ask the harness to run.</dd>
+    <dt>Workflow</dt><dd>A process whose steps and order are defined in code, not chosen by the model.</dd>
+  </dl>
+</section>
+
+<section id="check" style="border-bottom:none">
+  <div class="num">11</div>
+  <h2>Check yourself</h2>
+  <p class="sum">Answer each in your head, then open it.</p>
+  <details><summary>If the LLM can do the analysis, why do we need LangGraph?</summary><p>The LLM supplies judgement for one step. LangGraph runs the whole procedure around it: fixed order, rules first, pausing for days until a person approves, resuming exactly, and keeping a checkpoint of every step for audit. An LLM call cannot wait, cannot enforce rules on itself, and forgets everything after the call.</p></details>
+  <details><summary>Could Neo4j replace LangGraph?</summary><p>No. Neo4j stores connected data; LangGraph runs steps. They share the word "graph" but do different jobs. Neo4j could replace where the knowledge graph is stored.</p></details>
+  <details><summary>Where should "an FO-side cause never posts" live: in the prompt or in code?</summary><p>In code (and as data in the rulebook), applied after the model answers. A prompt can ask the model to follow a rule; only code can guarantee it.</p></details>
+  <details><summary>A controller asks a follow-up question the next morning. What keeps the agent from starting cold?</summary><p>The harness session. The orchestrator saved the session id in its state, so the chat can continue the same session with the earlier analysis in context.</p></details>
+  <details><summary>"Have we seen this before?" versus "Who owns this book?": which store answers each?</summary><p>The first is similarity: embeddings and vector search. The second is a relationship on a date: the knowledge graph.</p></details>
+  <details><summary>Why send the agent one L4 rec per session instead of one break per session?</summary><p>Tens of sessions a day instead of thousands, and the agent sees each pattern across all its breaks. It pulls detail through MCP tools when it needs it, and code still checks every break against the guards.</p></details>
+  <div class="legend"><span><i style="background:var(--accent-soft);border-color:var(--accent)"></i>Key principle</span><span><i style="background:var(--proj-soft);border-color:var(--proj)"></i>How the FOBO project does it</span></div>
+</section>
+</main>
+</div>
+</body>
+</html>

@@ -33,6 +33,7 @@ and its test suite proves the extraction changed nothing.
 | Where roles and data access come from | The bank's **central entitlements system**, at data level, called by Helix through a configured entitlement URL |
 | What the unit of work is called | Core term **case**; each capability sets its own UI label (FOBO: "Rec run"; others may use "lane", "review", …) — §3 |
 | Name | **Helix** (package `helix`, UI title "Helix") |
+| Observability | **Arize Phoenix**, self-hosted, via OpenTelemetry/OpenInference; one trace per case, one Phoenix project per capability. Postgres stays the audit system of record. Walkthrough: [`2026-10-03-helix-how-a-use-case-works.md`](2026-10-03-helix-how-a-use-case-works.md) |
 
 Out of scope: choosing the second real business capability; building
 specific bank connectors (each is its own small onboarding, §6.4).
@@ -384,6 +385,7 @@ behaviour change** (same board, same figures, same decisions).
 | # | Phase | Outcome |
 |---|---|---|
 | 0 | **Rename + split** — `fobo` → `helix.core` + `helix.packs.fobo`; console `core/` + `packs/fobo/`; checkpoint alias; docs | Pure moves; the full backend (475) and console suites pass unchanged |
+| 1a | **Phoenix observability** — OpenTelemetry + OpenInference (LangGraph, Anthropic), custom spans for gateway/rules/guards/review, `helix.*` attributes, trace id on the case, Phoenix in docker-compose and the web-session hook | FOBO runs visible as traces before the refactor goes further; export failure never fails a run |
 | 1 | **Capabilities + owners** — manifest schema and validator, `capability_version` with owner four-eyes, per-capability workflow versions, FOBO manifest | `/api/capabilities` lists FOBO; Workflow tab is per capability |
 | 2 | **Central entitlement** — client for `HELIX_ENTITLEMENT_URL`, cache, fail-closed, dev stub replacing "Act as"; data scopes on case visibility | Roles and data access come from outside Helix |
 | 3 | **MCP gateway + connectors** — connector registry and approval, proxying with scope enforcement and audit, core tools; FOBO tools re-hosted as `fobo.*` | A stub bank MCP server onboarded as a connector in tests |

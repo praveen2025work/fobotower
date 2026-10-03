@@ -12,7 +12,7 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from helix import capabilities, cases
+from helix import capabilities, cases, views
 from helix.config import settings
 from helix.entitlement import Caller, EntitlementError, StubEntitlement, entitlements
 from helix.gateway import registry
@@ -79,6 +79,22 @@ async def dev_users() -> list[dict]:
     if settings().entitlement_url:
         return []
     return [{"user_id": u, **body} for u, body in StubEntitlement().users().items()]
+
+
+@app.get("/api/overview")
+async def overview(c: Caller = Depends(caller)) -> dict:
+    return await views.overview(c)
+
+
+@app.get("/api/inbox")
+async def inbox(c: Caller = Depends(caller)) -> list[dict]:
+    return await views.inbox(c)
+
+
+@app.get("/api/audit")
+async def audit(capability_id: str | None = None, limit: int = 200,
+                c: Caller = Depends(caller)) -> list[dict]:
+    return await views.audit(c, capability_id=capability_id, limit=min(limit, 1000))
 
 
 @app.get("/api/capabilities")
@@ -177,6 +193,7 @@ async def platform(c: Caller = Depends(caller)) -> dict:
         "connectors": [{"id": cid, "name": spec.name, "transport": spec.transport,
                         "classification": spec.classification,
                         "tools": [{"name": f"{cid}.{t}", "description": ts.description,
+                                   "access": ts.access,
                                    "scope": ts.scope.model_dump() if ts.scope else None}
                                   for t, ts in spec.tools.items()]}
                        for cid, spec in reg.connectors.items()],

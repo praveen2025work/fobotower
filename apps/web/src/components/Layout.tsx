@@ -1,0 +1,224 @@
+// The app shell — aria-ai's Layout (navy collapsible sidebar, top bar, error
+// boundary per page), wired to Helix: navigation for the unified case view,
+// the signed-in user from the Helix API, and the dev user switcher only when
+// Helix runs on fixture entitlements.
+
+import { useEffect, useRef, useState } from "react";
+import { NavLink, Outlet } from "react-router-dom";
+import clsx from "clsx";
+import {
+  Activity,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Cable,
+  Inbox,
+  LayoutDashboard,
+  Layers,
+  Menu,
+  ScrollText,
+  User,
+  type LucideIcon,
+} from "lucide-react";
+
+import { currentUser, setCurrentUser } from "../api/client";
+import { useDevUsers, useInbox, useMe, usePlatform } from "../api/helix";
+import ErrorBoundary from "./ErrorBoundary";
+
+interface NavItem {
+  readonly to: string;
+  readonly icon: LucideIcon;
+  readonly label: string;
+  readonly badge?: number;
+}
+
+function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [userMenu, setUserMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const user = currentUser();
+  const me = useMe(user);
+  const devUsers = useDevUsers();
+  const inbox = useInbox();
+  const platform = usePlatform();
+
+  useEffect(() => {
+    const onDown = (e: MouseEvent) => {
+      if (userMenu && menuRef.current && !menuRef.current.contains(e.target as Node)) setUserMenu(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [userMenu]);
+
+  const sections: { title: string; items: NavItem[] }[] = [
+    {
+      title: "Work",
+      items: [
+        { to: "/", icon: LayoutDashboard, label: "Overview" },
+        { to: "/inbox", icon: Inbox, label: "Inbox", badge: inbox.data?.length || undefined },
+        { to: "/capabilities", icon: Layers, label: "Capabilities" },
+      ],
+    },
+    {
+      title: "Platform",
+      items: [
+        { to: "/audit", icon: ScrollText, label: "Audit" },
+        { to: "/connectors", icon: Cable, label: "Connectors" },
+      ],
+    },
+  ];
+  const fixtures = devUsers.data ?? [];
+  const meName = fixtures.find((u) => u.user_id === user)?.name ?? user ?? "Not signed in";
+
+  return (
+    <div className="flex h-screen overflow-hidden bg-surface-50">
+      {mobileOpen && <div className="fixed inset-0 z-20 bg-black/50 lg:hidden" onClick={() => setMobileOpen(false)} />}
+
+      <aside
+        className={clsx(
+          "fixed inset-y-0 left-0 z-30 flex flex-col bg-primary-800 text-white transition-all duration-300 lg:static lg:translate-x-0",
+          collapsed ? "lg:w-16" : "lg:w-60",
+          mobileOpen ? "w-60 translate-x-0" : "-translate-x-full",
+        )}
+      >
+        <div className={clsx("flex h-14 items-center border-b border-primary-700/50", collapsed ? "justify-center px-2" : "px-4")}>
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-500 font-bold text-white">H</div>
+            {!collapsed && (
+              <div>
+                <h1 className="text-base font-bold leading-none tracking-tight">Helix</h1>
+                <p className="mt-0.5 text-[10px] leading-none text-primary-400">Capabilities, governed</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <nav className="scrollbar-hide flex-1 overflow-y-auto py-2" aria-label="Main">
+          {sections.map((section) => (
+            <div key={section.title} className="mb-1">
+              {!collapsed ? (
+                <p className="px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-primary-500">{section.title}</p>
+              ) : (
+                <div className="mx-3 my-2 border-t border-primary-700/50" />
+              )}
+              <div className="space-y-0.5 px-2">
+                {section.items.map(({ to, icon: Icon, label, badge }) => (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    end={to === "/"}
+                    title={collapsed ? label : undefined}
+                    onClick={() => setMobileOpen(false)}
+                    className={({ isActive }) =>
+                      clsx(
+                        "relative flex items-center rounded-lg transition-colors",
+                        collapsed ? "justify-center p-2.5" : "gap-2.5 px-3 py-2 text-sm font-medium",
+                        isActive ? "bg-accent-500/20 text-accent-300" : "text-primary-200 hover:bg-primary-700 hover:text-white",
+                      )
+                    }
+                  >
+                    <Icon size={collapsed ? 18 : 16} />
+                    {!collapsed && <span>{label}</span>}
+                    {!collapsed && badge ? (
+                      <span className="ml-auto rounded-full bg-accent-500 px-1.5 py-0.5 text-[9px] font-bold text-white">{badge}</span>
+                    ) : null}
+                    {collapsed && badge ? <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-accent-500" /> : null}
+                  </NavLink>
+                ))}
+              </div>
+            </div>
+          ))}
+        </nav>
+
+        <div className="hidden border-t border-primary-700/50 lg:block">
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className={clsx(
+              "flex w-full items-center gap-2 py-3 text-xs text-primary-400 transition-colors hover:bg-primary-700 hover:text-white",
+              collapsed ? "justify-center px-2" : "px-4",
+            )}
+          >
+            {collapsed ? <ChevronRight size={16} /> : <><ChevronLeft size={16} /><span>Collapse</span></>}
+          </button>
+        </div>
+      </aside>
+
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <header className="flex h-14 items-center justify-between border-b border-surface-200 bg-white px-4">
+          <div className="flex items-center gap-3">
+            <button onClick={() => setMobileOpen(true)} className="rounded-lg p-2 hover:bg-surface-100 lg:hidden" aria-label="Open menu">
+              <Menu size={18} className="text-surface-500" />
+            </button>
+            {platform.data && (
+              <span className="hidden text-xs text-surface-500 sm:inline">
+                LLM <span className="font-medium text-surface-700">{platform.data.llm}</span> · Entitlement{" "}
+                <span className="font-medium text-surface-700">{platform.data.entitlement}</span>
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 text-xs text-surface-500">
+              <Activity size={14} />
+              <span>API</span>
+              <span className={clsx("h-2 w-2 rounded-full", platform.isError ? "bg-red-400" : platform.data ? "bg-green-400" : "bg-surface-400")} />
+            </div>
+            <div className="h-5 w-px bg-surface-200" />
+            <div className="relative" ref={menuRef}>
+              <button
+                onClick={() => fixtures.length > 0 && setUserMenu(!userMenu)}
+                className="flex items-center gap-2 rounded-lg bg-surface-50 px-2.5 py-1.5 transition-colors hover:bg-surface-100"
+                aria-label="Signed-in user"
+              >
+                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary-100 text-primary-600">
+                  <User size={12} />
+                </div>
+                <div className="text-left text-xs">
+                  <span className="font-medium text-surface-700">{meName}</span>
+                  {me.data && me.data.roles.length > 0 && (
+                    <span className="ml-1.5 rounded bg-surface-200 px-1 py-0.5 text-[10px] text-surface-500">{me.data.roles.join(", ")}</span>
+                  )}
+                </div>
+                {fixtures.length > 0 && <ChevronDown size={12} className="text-surface-400" />}
+              </button>
+              {userMenu && (
+                <div className="absolute right-0 top-full z-50 mt-1 w-72 rounded-lg border border-surface-200 bg-white py-1 shadow-lg">
+                  <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-surface-400">Switch user (development)</p>
+                  {fixtures.map((u) => (
+                    <button
+                      key={u.user_id}
+                      onClick={() => {
+                        setCurrentUser(u.user_id);
+                        setUserMenu(false);
+                        onUserChange(u.user_id);
+                      }}
+                      className={clsx(
+                        "flex w-full items-start gap-2 px-3 py-2 text-left text-sm hover:bg-surface-50",
+                        user === u.user_id && "bg-primary-50 font-medium text-primary-700",
+                      )}
+                    >
+                      <span className={clsx("mt-1.5 h-2 w-2 rounded-full", user === u.user_id ? "bg-primary-500" : "bg-surface-300")} />
+                      <span>
+                        <span className="block">{u.name ?? u.user_id}</span>
+                        <span className="block text-[10px] text-surface-400">{u.roles.join(", ") || "no roles"}</span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </header>
+
+        <main className="scrollbar-hide flex-1 overflow-y-auto p-4 lg:p-6">
+          <ErrorBoundary>
+            <Outlet />
+          </ErrorBoundary>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+export default Layout;

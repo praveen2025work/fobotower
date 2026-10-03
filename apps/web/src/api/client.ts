@@ -1,0 +1,71 @@
+// The Helix API client. Identity is one header: in the office the SSO proxy
+// sets it and this module sends nothing; in development the user switcher
+// picks a fixture user. Roles and data scopes are always the server's call.
+
+export const API_BASE = import.meta.env.VITE_HELIX_API ?? "/api";
+const USER_KEY = "helix.user";
+let memoryUser: string | null = null;
+
+export function currentUser(): string | null {
+  try {
+    return window.localStorage.getItem(USER_KEY) ?? memoryUser;
+  } catch {
+    return memoryUser;
+  }
+}
+
+export function setCurrentUser(id: string): void {
+  memoryUser = id;
+  try {
+    window.localStorage.setItem(USER_KEY, id);
+  } catch {
+    // storage blocked: the choice lasts until reload
+  }
+}
+
+export class ApiError extends Error {
+  readonly status: number;
+  readonly problems: string[];
+
+  constructor(message: string, status: number, problems: string[] = []) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.problems = problems;
+  }
+}
+
+async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const user = currentUser();
+  const res = await fetch(`${API_BASE}${path}`, {
+    method,
+    headers: {
+      ...(user ? { "X-Helix-User": user } : {}),
+      ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+    },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  if (res.ok) return (await res.json()) as T;
+  let message = `${method} ${path} failed (${res.status})`;
+  let problems: string[] = [];
+  try {
+    const detail = (await res.json()).detail;
+    if (typeof detail === "string") message = detail;
+    else if (detail?.message) {
+      message = detail.message;
+      problems = detail.problems ?? [];
+    }
+  } catch {
+    // keep the generic message
+  }
+  throw new ApiError(message, res.status, problems);
+}
+
+export const api = {
+  get: <T,>(path: string) => request<T>("GET", path),
+  post: <T,>(path: string, body: unknown) => request<T>("POST", path, body),
+};
+
+export function newIdempotencyKey(): string {
+  return globalThis.crypto?.randomUUID?.() ?? `key-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}

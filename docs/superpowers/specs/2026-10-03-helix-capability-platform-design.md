@@ -1,6 +1,6 @@
 # Helix Capability Platform — Design
 
-**Date:** 2026-10-03 · **Revision:** 2 (team answers folded in) · **Status:** draft for team review · **Branch:** `claude/exciting-darwin-7xukjj`
+**Date:** 2026-10-03 · **Revision:** 2 (team answers folded in) · **Status:** draft for team review · **Skeleton:** built — see [`docs/helix/README.md`](../../helix/README.md) · **Branch:** `claude/exciting-darwin-7xukjj`
 
 ## 1. Purpose
 

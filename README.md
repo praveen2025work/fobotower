@@ -8,6 +8,13 @@ replayable audit trail.
 Built to AgentOne component conventions but runs standalone. Migration into
 AgentOne is a separate, manual step.
 
+> **Helix platform (new).** This repo is becoming **Helix**: one platform that
+> accounting groups onboard capabilities into as configuration. The runnable
+> skeleton — API on :8300, console at `/helix`, two zero-code capabilities, and
+> the plug points for the office LLM, Phoenix, entitlements and connectors — is
+> described in [`docs/helix/README.md`](docs/helix/README.md). FOBO keeps running
+> unchanged beside it.
+
 - **Learning guide:** [`docs/learning/agentic-systems-primer.html`](docs/learning/agentic-systems-primer.html) — LLMs, agents, MCP, LangGraph and knowledge graphs explained from first principles (open in a browser)
 - **Deployment:** [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — running it on a shared demo or UAT server
 - **Architecture:** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — what each folder is, who uses it, and where to change what
@@ -358,5 +365,7 @@ source for yet, so the port shows what the backend actually has instead:
 | API | 8100 |
 | Postgres | 5433 |
 | Stub agent harness | 8200 |
+| Helix API | 8300 |
+| Helix stub connectors over HTTP (optional) | 9101+ |
 
 All offset from AgentOne's defaults so both stacks run simultaneously.

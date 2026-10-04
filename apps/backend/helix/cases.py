@@ -524,6 +524,11 @@ def _documents(case_id: str, calls: list[ToolCall]) -> list[dict]:
     return out
 
 
+async def _evidence(case_id: str) -> list[dict]:
+    from helix import evidence
+    return await evidence.for_case(case_id)
+
+
 async def published_document(case_id: str, name: str, caller: Caller) -> tuple[str, str]:
     """(scope, name) of a report this case published, if the caller may see the case."""
     detail = await case_detail(case_id, caller)          # LookupError if not visible
@@ -581,6 +586,7 @@ async def case_detail(case_id: str, caller: Caller) -> dict:
                         "error": c.error, "latency_ms": c.latency_ms, "called_at": c.called_at,
                         "result": c.result} for c in calls],
         "documents": _documents(case_id, calls),
+        "evidence": await _evidence(case_id),
         "can_decide": (caller.has_any_role(m.review.roles) and case.status == "awaiting_review"
                        and (m.review.opener_may_decide or caller.user_id != case.opened_by)),
         "can_rerun": case.status in RERUNNABLE and capabilities.can_see(caller, m),

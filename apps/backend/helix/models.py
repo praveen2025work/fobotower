@@ -255,6 +255,11 @@ class Document(HelixBase):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+    # report: written by a publish step · evidence: uploaded into a case by a person
+    kind: Mapped[str] = mapped_column(String(16), default="report", server_default="report")
+    case_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    uploaded_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class CaseMessage(HelixBase):

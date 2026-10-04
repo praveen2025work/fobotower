@@ -19,6 +19,7 @@ from helix.models import (
     Case,
     CapabilityVersion,
     Decision,
+    Document,
     ProposalGroup,
     PublishApproval,
     ToolCall,
@@ -163,6 +164,9 @@ async def audit(caller: Caller, *, capability_id: str | None = None, limit: int 
                                      .order_by(Decision.decided_at.desc()).limit(limit))).scalars().all()
         releases = (await s.execute(select(PublishApproval).where(PublishApproval.case_id.in_(ids))
                                     )).scalars().all()
+        uploads = (await s.execute(select(Document.case_id, Document.name, Document.uploaded_by,
+                                          Document.created_at, Document.sha256).where(
+            Document.case_id.in_(ids), Document.kind == "evidence"))).all()
     events = []
     for t in calls:
         c, _ = visible[t.case_id]
@@ -183,6 +187,11 @@ async def audit(caller: Caller, *, capability_id: str | None = None, limit: int 
         events.append({"kind": "release", "at": r.approved_at, "case_id": r.case_id,
                        "subject": c.subject, "capability_id": c.capability_id,
                        "actor": r.approved_by, "detail": "write-back released"})
+    for u in uploads:
+        c, _ = visible[u.case_id]
+        events.append({"kind": "evidence", "at": u.created_at, "case_id": u.case_id,
+                       "subject": c.subject, "capability_id": c.capability_id,
+                       "actor": u.uploaded_by, "detail": f"uploaded {u.name} (sha256 {u.sha256[:12]}…)"})
     return sorted(events, key=lambda e: e["at"], reverse=True)[:limit]
 
 

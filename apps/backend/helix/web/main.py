@@ -10,12 +10,12 @@ import hmac
 from contextlib import asynccontextmanager
 from functools import wraps
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
-from helix import authoring, capabilities, cases, chat, knowledge, notify, retention, runner, scheduler, views
+from helix import authoring, capabilities, cases, chat, evidence, knowledge, notify, retention, runner, scheduler, views
 from helix import groups as team_groups
 from helix.config import settings
 from helix.entitlement import Caller, EntitlementError, StubEntitlement, entitlements
@@ -299,6 +299,31 @@ async def reinvestigate(case_id: str, group_id: str, body: ReinvestigateIn,
                         c: Caller = Depends(caller)) -> dict:
     result = await cases.reinvestigate(case_id, group_id, body.note, body.idempotency_key, c)
     return {**result, "case": await cases.case_detail(case_id, c)}
+
+
+@app.post("/api/cases/{case_id}/evidence", status_code=201)
+@_errors
+async def add_evidence(case_id: str, file: UploadFile = File(...), note: str | None = Form(None),
+                       c: Caller = Depends(caller)) -> dict:
+    content = await file.read(evidence.MAX_BYTES + 1)
+    saved = await evidence.upload(case_id, file.filename or "evidence", content, note, c)
+    return {**saved, "case": await cases.case_detail(case_id, c)}
+
+
+@app.get("/api/cases/{case_id}/evidence/{name}")
+@_errors
+async def get_evidence(case_id: str, name: str, c: Caller = Depends(caller)) -> Response:
+    content, content_type = await evidence.download(case_id, name, c)
+    return Response(content, media_type=content_type,
+                    headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+
+@app.get("/api/cases/{case_id}/evidence-pack")
+@_errors
+async def evidence_pack(case_id: str, c: Caller = Depends(caller)) -> Response:
+    content, name = await evidence.pack(case_id, c)
+    return Response(content, media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="{name}"'})
 
 
 class AskIn(BaseModel):

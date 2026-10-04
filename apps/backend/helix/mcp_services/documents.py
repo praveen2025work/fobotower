@@ -56,13 +56,6 @@ def _outbox(scope: str) -> Path:
     return settings().reports_dir / _safe(scope, "scope")
 
 
-def _file(scope: str, name: str) -> Path:
-    path = _inbox(scope) / _safe(name, "document name")
-    if not path.is_file():
-        raise DocumentError(f"no document {name!r} for {scope}")
-    return path
-
-
 def _cell(v: Any) -> Any:
     return v.isoformat() if isinstance(v, (dt.datetime, dt.date, dt.time)) else v
 
@@ -78,25 +71,58 @@ def _when(v: Any) -> Any:
 
 # ---------- tools ----------
 
-def list_documents(entity: str) -> dict:
-    """Documents available to read for one data scope (PDF and Excel)."""
+READABLE = (".pdf", ".xlsx", ".xlsm")
+
+
+async def _uploaded(scope: str) -> list:
+    """Evidence people uploaded into cases of this scope (helix_document)."""
+    from sqlalchemy import select
+
+    from helix.db import get_session
+    from helix.models import Document
+
+    async with get_session() as s:
+        return (await s.execute(select(Document).where(
+            Document.scope == _safe(scope, "scope"), Document.kind == "evidence")
+            .order_by(Document.name))).scalars().all()
+
+
+async def _bytes(scope: str, name: str) -> bytes:
+    """A document's content: from the team's folder, else uploaded evidence."""
+    _safe(name, "document name")
+    path = _inbox(scope) / name
+    if path.is_file():
+        return path.read_bytes()
+    for d in await _uploaded(scope):
+        if d.name == name:
+            return d.content
+    raise DocumentError(f"no document {name!r} for {scope}")
+
+
+async def list_documents(entity: str) -> dict:
+    """Documents available to read for one data scope (PDF and Excel): the
+    team's folder, and evidence people uploaded into its cases."""
     folder = _inbox(entity)
     rows = []
     if folder.is_dir():
         for p in sorted(folder.iterdir()):
-            if p.is_file() and p.suffix.lower() in (".pdf", ".xlsx", ".xlsm"):
+            if p.is_file() and p.suffix.lower() in READABLE:
                 st = p.stat()
                 rows.append({"name": p.name, "kind": p.suffix.lower().lstrip("."),
-                             "bytes": st.st_size,
+                             "bytes": st.st_size, "source": "folder",
                              "modified": dt.datetime.fromtimestamp(st.st_mtime, dt.timezone.utc).isoformat()})
+    for d in await _uploaded(entity):
+        rows.append({"name": d.name, "kind": d.name.rsplit(".", 1)[-1].lower(), "bytes": len(d.content),
+                     "source": "uploaded", "case_id": d.case_id, "uploaded_by": d.uploaded_by,
+                     "note": d.note, "modified": d.created_at.isoformat()})
     return {"rows": rows}
 
 
-def read_pdf(entity: str, name: str, max_pages: int = 50) -> dict:
+async def read_pdf(entity: str, name: str, max_pages: int = 50) -> dict:
     """Text of a PDF, page by page."""
     from pypdf import PdfReader
 
-    reader = PdfReader(str(_file(entity, name)))
+    reader = PdfReader(io.BytesIO(await _bytes(entity, name)))
     limit = max(1, min(int(max_pages), MAX_PAGES))
     rows = [{"page": i + 1, "text": (page.extract_text() or "").strip()}
             for i, page in enumerate(reader.pages[:limit])]
@@ -104,12 +130,12 @@ def read_pdf(entity: str, name: str, max_pages: int = 50) -> dict:
             "rows": rows}
 
 
-def read_workbook(entity: str, name: str, sheet: str | None = None, header_row: int = 1,
-                  max_rows: int = 5000) -> dict:
+async def read_workbook(entity: str, name: str, sheet: str | None = None, header_row: int = 1,
+                        max_rows: int = 5000) -> dict:
     """Rows of one sheet of an Excel workbook, keyed by the header row."""
     from openpyxl import load_workbook
 
-    wb = load_workbook(str(_file(entity, name)), read_only=True, data_only=True)
+    wb = load_workbook(io.BytesIO(await _bytes(entity, name)), read_only=True, data_only=True)
     try:
         if sheet is not None and sheet not in wb.sheetnames:
             raise DocumentError(f"no sheet {sheet!r} in {name} (sheets: {', '.join(wb.sheetnames)})")
@@ -142,15 +168,26 @@ async def render_pdf_report(entity: str, name: str, title: str, subtitle: str = 
     """Write a PDF report: a title, sections (heading, body, optional table of
     columns and rows) and a sign-off block. The same name replaces the report,
     so a repeated write is the same write."""
+    file_name = _safe(name, "report name")
+    if not file_name.lower().endswith(".pdf"):
+        file_name += ".pdf"
+    data, pages = build_pdf(title, subtitle or entity, sections, sign_off)
+    digest = hashlib.sha256(data).hexdigest()
+    await save_report(entity, file_name, data, "application/pdf", digest)
+    return {"document": file_name, "scope": entity, "pages": pages, "bytes": len(data),
+            "sha256": digest, "published": True}
+
+
+def build_pdf(title: str, subtitle: str, sections: list[dict] | None,
+              sign_off: list[dict] | None) -> tuple[bytes, int]:
+    """A Barclays-styled PDF: title, sections (heading, body, optional table of
+    columns and rows) and a sign-off block. Returns (content, pages)."""
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4, landscape
     from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
     from reportlab.lib.units import mm
     from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-    file_name = _safe(name, "report name")
-    if not file_name.lower().endswith(".pdf"):
-        file_name += ".pdf"
     navy, cyan, grey = colors.HexColor("#00395D"), colors.HexColor("#00AEEF"), colors.HexColor("#61778C")
     base = getSampleStyleSheet()
     h1 = ParagraphStyle("h1", parent=base["Title"], textColor=navy, alignment=0, fontSize=18, spaceAfter=2)
@@ -166,7 +203,7 @@ async def render_pdf_report(entity: str, name: str, title: str, subtitle: str = 
 
     story: list = [Paragraph(escape(title), h1)]
     stamp = dt.datetime.now(dt.timezone.utc).strftime("%d %b %Y %H:%M UTC")
-    story.append(Paragraph(f"{escape(subtitle or entity)} · generated {stamp}", sub))
+    story.append(Paragraph(f"{escape(subtitle)} · generated {stamp}", sub))
     for s in sections or []:
         story.append(Paragraph(escape(str(s.get("heading", ""))), h2))
         if s.get("body"):
@@ -207,11 +244,7 @@ async def render_pdf_report(entity: str, name: str, title: str, subtitle: str = 
     doc = SimpleDocTemplate(buf, pagesize=landscape(A4) if wide else A4, title=title, author="Helix",
                             leftMargin=15 * mm, rightMargin=15 * mm, topMargin=15 * mm, bottomMargin=15 * mm)
     doc.build(story, onFirstPage=footer, onLaterPages=footer)
-    data = buf.getvalue()
-    digest = hashlib.sha256(data).hexdigest()
-    await save_report(entity, file_name, data, "application/pdf", digest)
-    return {"document": file_name, "scope": entity, "pages": doc.page, "bytes": len(data),
-            "sha256": digest, "published": True}
+    return buf.getvalue(), doc.page
 
 
 def build_documents() -> MCPServer:

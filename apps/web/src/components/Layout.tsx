@@ -39,8 +39,27 @@ interface NavItem {
   readonly badge?: number;
 }
 
+// The sidebar starts collapsed (icons only); a person's choice is remembered.
+const COLLAPSED_KEY = "helix.nav.collapsed";
+
+function readCollapsed(): boolean {
+  try {
+    return localStorage.getItem(COLLAPSED_KEY) !== "0";
+  } catch {
+    return true;
+  }
+}
+
 function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsedState] = useState(() => readCollapsed());
+  const setCollapsed = (v: boolean) => {
+    setCollapsedState(v);
+    try {
+      localStorage.setItem(COLLAPSED_KEY, v ? "1" : "0");
+    } catch {
+      /* storage unavailable: the choice lasts for this visit */
+    }
+  };
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenu, setUserMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -78,6 +97,8 @@ function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
       ],
     },
   ];
+  // Collapsing is for the desktop sidebar; the phone menu always shows labels.
+  const compact = collapsed && !mobileOpen;
   const fixtures = devUsers.data ?? [];
   const meName = fixtures.find((u) => u.user_id === user)?.name ?? user ?? "Not signed in";
 
@@ -92,10 +113,10 @@ function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
           mobileOpen ? "w-60 translate-x-0" : "-translate-x-full",
         )}
       >
-        <div className={clsx("flex h-14 items-center border-b border-nav-line", collapsed ? "justify-center px-2" : "px-4")}>
+        <div className={clsx("flex h-14 items-center border-b border-nav-line", compact ? "justify-center px-2" : "px-4")}>
           <div className="flex items-center gap-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-nav-mark font-bold text-nav-bg">H</div>
-            {!collapsed && (
+            {!compact && (
               <div>
                 <h1 className="text-base font-bold leading-none tracking-tight">Helix</h1>
                 <p className="mt-0.5 text-[10px] leading-none text-nav-muted">Capabilities, governed</p>
@@ -107,7 +128,7 @@ function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
         <nav className="scrollbar-hide flex-1 overflow-y-auto py-2" aria-label="Main">
           {sections.map((section) => (
             <div key={section.title} className="mb-1">
-              {!collapsed ? (
+              {!compact ? (
                 <p className="px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-nav-muted">{section.title}</p>
               ) : (
                 <div className="mx-3 my-2 border-t border-nav-line" />
@@ -118,22 +139,22 @@ function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
                     key={to}
                     to={to}
                     end={to === "/"}
-                    title={collapsed ? label : undefined}
+                    title={compact ? label : undefined}
                     onClick={() => setMobileOpen(false)}
                     className={({ isActive }) =>
                       clsx(
                         "relative flex items-center rounded-lg transition-colors",
-                        collapsed ? "justify-center p-2.5" : "gap-2.5 px-3 py-2 text-sm font-medium",
+                        compact ? "justify-center p-2.5" : "gap-2.5 px-3 py-2 text-sm font-medium",
                         isActive ? "bg-nav-active text-nav-active-fg" : "text-nav-fg hover:bg-nav-hover hover:text-white",
                       )
                     }
                   >
-                    <Icon size={collapsed ? 18 : 16} />
-                    {!collapsed && <span>{label}</span>}
-                    {!collapsed && badge ? (
+                    <Icon size={compact ? 18 : 16} />
+                    {!compact && <span>{label}</span>}
+                    {!compact && badge ? (
                       <span className="ml-auto rounded-full bg-nav-mark px-1.5 py-0.5 text-[9px] font-bold text-nav-bg">{badge}</span>
                     ) : null}
-                    {collapsed && badge ? <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-nav-mark" /> : null}
+                    {compact && badge ? <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-nav-mark" /> : null}
                   </NavLink>
                 ))}
               </div>
@@ -193,10 +214,11 @@ function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
                 <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary-100 text-primary-600">
                   <User size={12} />
                 </div>
-                <div className="text-left text-xs">
+                {/* Phones show the avatar only; the menu still names who is signed in. */}
+                <div className="hidden text-left text-xs md:block">
                   <span className="font-medium text-surface-700">{meName}</span>
                   {me.data && me.data.roles.length > 0 && (
-                    <span className="ml-1.5 rounded bg-surface-200 px-1 py-0.5 text-[10px] text-surface-500">{me.data.roles.join(", ")}</span>
+                    <span className="ml-1.5 hidden rounded xl:inline bg-surface-200 px-1 py-0.5 text-[10px] text-surface-500">{me.data.roles.join(", ")}</span>
                   )}
                 </div>
                 {fixtures.length > 0 && <ChevronDown size={12} className="text-surface-400" />}
@@ -204,6 +226,7 @@ function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
               {userMenu && (
                 <div className="absolute right-0 top-full z-50 mt-1 w-72 rounded-lg border border-surface-200 bg-card py-1 shadow-lg">
                   <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-surface-400">Switch user (development)</p>
+                  <p className="px-3 pb-1.5 text-xs text-surface-700 md:hidden">Signed in as {meName}</p>
                   {fixtures.map((u) => (
                     <button
                       key={u.user_id}

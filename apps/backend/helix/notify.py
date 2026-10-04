@@ -61,7 +61,7 @@ async def case_changed(case_id: str) -> None:
 
     async with get_session() as s:
         case = await s.get(Case, case_id)
-        if case is None:
+        if case is None or case.shadow_of:        # trial runs tell nobody
             return
         last = (await s.execute(select(Notification.kind).where(Notification.case_id == case_id)
                                 .order_by(Notification.created_at.desc()).limit(1))).scalar()

@@ -117,6 +117,9 @@ class Case(HelixBase):
     # Data-scope values (scope -> value) the case belongs to, for filtering in SQL.
     scope: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     legal_hold: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    # Trial runs: a hidden replay of a past case under another version, for an eval run.
+    shadow_of: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    eval_run_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     legal_hold_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     updated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=True
@@ -345,6 +348,25 @@ class Switch(HelixBase):
     history: Mapped[list] = mapped_column(JSONB, default=list)
 
 
+class EvalRun(HelixBase):
+    """A trial of one capability (or group) version against people's past
+    decisions: the shadow runs it made, and how often it agreed."""
+
+    __tablename__ = "helix_eval_run"
+    run_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    capability_id: Mapped[str] = mapped_column(String(64), index=True)
+    version: Mapped[int] = mapped_column(Integer)
+    team_group: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    group_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    status: Mapped[str] = mapped_column(String(16))            # running | done | failed
+    started_by: Mapped[str] = mapped_column(String(64))
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    summary: Mapped[dict] = mapped_column(JSONB, default=dict)
+    results: Mapped[list] = mapped_column(JSONB, default=list)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
 class SchedulerTick(HelixBase):
     """A minute the scheduler has run — so only one API instance runs it."""
 
@@ -354,7 +376,7 @@ class SchedulerTick(HelixBase):
 
 
 HELIX_TABLES = [  # child tables first, for truncation in tests
-    "helix_switch", "helix_scheduler_tick",
+    "helix_eval_run", "helix_switch", "helix_scheduler_tick",
     "helix_notification_read", "helix_notification",
     "helix_case_message", "helix_document", "helix_retention_event",
     "helix_publish_approval", "helix_decision", "helix_proposal_group", "helix_case_item", "helix_tool_call",

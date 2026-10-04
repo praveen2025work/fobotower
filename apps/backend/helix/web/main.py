@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
-from helix import authoring, capabilities, cases, chat, controls, evidence, knowledge, notify, retention, runner, scheduler, views
+from helix import authoring, capabilities, cases, chat, controls, evals, evidence, knowledge, notify, retention, runner, scheduler, views
 from helix import groups as team_groups
 from helix.config import settings
 from helix.entitlement import Caller, EntitlementError, StubEntitlement, entitlements
@@ -518,6 +518,45 @@ async def set_switch(body: SwitchIn, c: Caller = Depends(caller)) -> dict:
         return await controls.set_switch(c, body.kind, body.target, body.off, body.reason)
     except ValueError as e:
         raise HTTPException(422, str(e)) from e
+
+
+class EvalIn(BaseModel):
+    version: int | None = None
+    team_group: str | None = None
+    group_version: int | None = None
+    limit: int = Field(default=20, ge=1, le=200)
+
+
+@app.post("/api/capabilities/{capability_id}/evals", status_code=201)
+@_errors
+async def start_eval(capability_id: str, body: EvalIn, c: Caller = Depends(caller)) -> dict:
+    try:
+        run_id = await evals.start(capability_id, c, version=body.version, team_group=body.team_group,
+                                   group_version=body.group_version, limit=body.limit)
+    except evals.EvalError as e:
+        raise HTTPException(409, str(e)) from e
+    return await evals.get(run_id)
+
+
+@app.get("/api/capabilities/{capability_id}/evals")
+@_errors
+async def list_evals(capability_id: str, c: Caller = Depends(caller)) -> list[dict]:
+    from helix import groups as team_groups
+    _, m = await capabilities.active(capability_id)
+    if not await team_groups.visible(c, capability_id, m):
+        raise PermissionError(f"{c.user_id} has no role for {capability_id}")
+    return await evals.runs(capability_id)
+
+
+@app.get("/api/evals/{run_id}")
+@_errors
+async def get_eval(run_id: str, c: Caller = Depends(caller)) -> dict:
+    from helix import groups as team_groups
+    run = await evals.get(run_id)
+    _, m = await capabilities.active(run["capability_id"])
+    if not await team_groups.visible(c, run["capability_id"], m):
+        raise LookupError(run_id)
+    return run
 
 
 class InvalidateIn(BaseModel):

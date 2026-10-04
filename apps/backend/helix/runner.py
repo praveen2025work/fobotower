@@ -192,7 +192,8 @@ async def drain() -> None:
 async def recover() -> list[str]:
     """At startup: finish every case left running by a stopped server."""
     async with get_session() as s:
-        ids = (await s.execute(select(Case.case_id).where(Case.status == "running"))).scalars().all()
+        ids = (await s.execute(select(Case.case_id).where(
+            Case.status == "running", Case.shadow_of.is_(None)))).scalars().all()
     for case_id in ids:
         await submit(case_id, "recover")
     return list(ids)

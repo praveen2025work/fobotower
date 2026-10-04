@@ -78,7 +78,8 @@ async def visible_cases(caller: Caller, *, capability_id: str | None = None,
             if capability_id in (None, m.id) and await team_groups.visible(caller, m.id, m)]
     if not caps:
         return []
-    query = select(Case).where(Case.capability_id.in_(caps), scope_clause(caller))
+    query = select(Case).where(Case.capability_id.in_(caps), scope_clause(caller),
+                               Case.shadow_of.is_(None))     # trial runs are never on anyone's desk
     if team_group:
         query = query.where(Case.team_group == team_group)
     if statuses:

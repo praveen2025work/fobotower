@@ -275,6 +275,26 @@ async def _ask(self: "ClaudeAgentSdkAdapter", request, tools):
 
 ClaudeAgentSdkAdapter.ask = _ask
 
+JUDGE_SCHEMA = {"type": "object", "properties": {"score": {"type": "number", "minimum": 0, "maximum": 1},
+                                                 "reason": {"type": "string"}},
+                "required": ["score"], "additionalProperties": False}
+
+
+async def _judge(self: "ClaudeAgentSdkAdapter", expected: str, actual: str) -> float:
+    """LLM-as-judge for eval runs: does the new explanation say what the
+    approved one said (same cause, same figures, same action)? 0–1."""
+    options = ClaudeAgentOptions(
+        system_prompt=("You compare two explanations of the same accounting difference. Score 1 when they "
+                       "give the same cause, figures and action; 0 when they disagree; in between for partly. "
+                       "Reply with the structured result only."),
+        tools=[], strict_mcp_config=True, permission_mode="dontAsk", max_turns=2,
+        model=self.model, effort="low", output_format={"type": "json_schema", "schema": JUDGE_SCHEMA})
+    out = _parse_any(await self._run(json.dumps({"approved": expected, "new": actual}), options))
+    return max(0.0, min(1.0, float(out["score"])))
+
+
+ClaudeAgentSdkAdapter.judge = _judge
+
 
 def describe(adapter: ClaudeAgentSdkAdapter) -> dict:
     """What `/api/platform` reports about the configured adapter."""

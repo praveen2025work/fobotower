@@ -21,7 +21,7 @@ from helix import capabilities, knowledge
 from helix.db import engine, get_session
 from helix.models import Case, Document, RetentionEvent, ToolCall
 
-FINISHED = ("completed", "failed", "escalated")
+FINISHED = ("completed", "failed", "escalated", "shadow")
 
 
 async def due(now: datetime | None = None) -> list[tuple[Case, int]]:

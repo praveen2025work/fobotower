@@ -43,7 +43,7 @@ async def test_a_group_only_shows_its_cases_to_its_own_people(api):
     assert fobo["case_id"] not in {c["case_id"] for c in dan_listed}
     # a FOBO controller sees the capability through their group
     caps = {c["id"]: c for c in (await api.get("/api/capabilities", headers=api.as_user("frank"))).json()}
-    assert {g["group"] for g in caps[RECON]["groups"]} == {CASH, FOBO}
+    assert {g["group"] for g in caps[RECON]["groups"]} == {CASH, FOBO, "cats-motif-rates"}
 
 
 async def test_a_capability_with_groups_needs_one_to_open_a_case(api):

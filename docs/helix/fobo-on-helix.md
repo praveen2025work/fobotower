@@ -9,9 +9,10 @@ platform when the team is ready, and other rec groups get the same machinery.
 
 | What | Where |
 |---|---|
-| The FOBO rec group (CATS vs MOTIF) | `config/helix/groups/recon.investigation/cats-motif.yaml` |
+| The FOBO rec groups (CATS vs MOTIF) | Prime: `config/helix/groups/recon.investigation/cats-motif.yaml` · Rates: `cats-motif-rates.yaml` |
 | FOBO's reference lineage (books → desks → teams) | `config/helix/knowledge/fobo-reference.yaml` |
 | Behaviour tests | `apps/backend/tests/helix/test_fobo_playbook.py` |
+| Worked examples (Prime vs Rates) | [`examples.md`](examples.md) |
 
 **How a FOBO run goes on Helix:**
 

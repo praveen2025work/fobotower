@@ -36,7 +36,7 @@ async def test_the_fleet_and_kpis_only_count_what_the_caller_may_see(api):
     await api.post(f"/api/capabilities/{RECON}/cases", headers=api.as_user("dan"),
                    json={"case_key": {"entity": "UK01", "date": "2026-10-02"}, "team_group": CASH})
     frank, dan = await _ops(api, "frank"), await _ops(api, "dan")
-    assert [f["name"] for f in frank["fleet"]] == ["CATS vs MOTIF (FOBO)"]
+    assert [f["name"] for f in frank["fleet"]] == ["CATS vs MOTIF — Prime (FOBO)"]
     assert [f["name"] for f in dan["fleet"]] == ["Cash — bank vs ledger"]
     assert frank["kpi"]["runs24"] == 1 and frank["kpi"]["pendingApprovals"] == 1
     assert frank["fleet"][0]["href"] == f"/capabilities/{RECON}/groups/{FOBO}"

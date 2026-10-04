@@ -11,8 +11,11 @@ aria-ai (EAIP) has been pivoted into Helix: its UI shell, its governance
 now — see [`aria-ai-assessment.md`](aria-ai-assessment.md) for what was
 taken and why.
 
-FOBO's behaviour on Helix — its playbook as configuration of the CATS vs MOTIF rec group:
+FOBO's behaviour on Helix — its playbook as configuration of the CATS vs MOTIF rec groups:
 [`fobo-on-helix.md`](fobo-on-helix.md).
+
+Worked examples — FOBO Prime vs Rates (real runs) and other accounting capabilities
+(accruals, substantiation, intercompany, journal controls, suspense): [`examples.md`](examples.md).
 
 What Helix inherits from the office agent platform (MCP, plugins, RAG), what
 is still missing, and the order to add it:

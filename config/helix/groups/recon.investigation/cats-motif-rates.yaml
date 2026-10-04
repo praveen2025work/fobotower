@@ -1,26 +1,24 @@
-# The FOBO Prime rec group: CATS (front office) vs MOTIF (back office) positions
-# per Prime book and COB, run on the shared reconciliation engine with FOBO's own
-# playbook — the same rules as the FOBO app's
-# config/playbook/fobo-cats-vs-motif.yaml, expressed as Helix configuration:
+# The FOBO Rates rec group: CATS vs MOTIF for the Rates books (London and New
+# York). The same reconciliation capability and the same FOBO playbook as the
+# Prime group (cats-motif) — checks C1–C6, tests FO-1…BO-6, categories,
+# verdict table, the R2 guard — run by a different team with its own:
 #
-#   enrich    the dated FO/BO snapshot per instrument (motif.break_snapshots)
-#   resolve   each book's desk and escalation team, as of the COB, from the
-#             fobo-reference knowledge graph (config/helix/knowledge/)
-#   classify  the six cause checks C1–C6 on every break — all run, negatives
-#             kept — giving each break a category (A–H) and a side (FO/BO/UNKNOWN)
-#   group     breaks collapse into patterns by category and side
-#   reason    deterministic categories with a proven side are settled by the
-#             verdict table; judgement categories, and any break whose side is
-#             not proven (R2: never assume FO is right), go to the model and to
-#             an SME. Guards in code: an FO-side cause never POSTs (R2).
-#             A POST while a policy threshold is unset is flagged "requires
-#             controller confirmation" (P1).
-group: cats-motif
-name: CATS vs MOTIF — Prime (FOBO)
-description: Front-office CATS positions matched to back-office MOTIF per book and COB; breaks classified by FOBO's playbook, settled by its verdict table, judgement calls investigated from booking events.
+#   books and data scope   RATES-LDN-01…04, RATES-NY-01…02 (scope: book)
+#   owners and reviewers   rita and raj (HELIX_FOBO_RATES_OWNER); FOBO_RATES_CONTROLLER signs off
+#   thresholds             1.00 MTM tolerance (Prime 0.50); materiality and posting
+#                          policy confirmed by Product Control, so a POST is not
+#                          flagged "requires controller confirmation" (Prime's are unset)
+#   schedule               07:15 on business days, after the Rates EOD curves (Prime 06:30)
+#   instructions           Rates-specific: curve datasets and fixings first
+#
+# What it cannot change stays with the capability: the workflow and its gates
+# (validate → review → record), ownership of the capability, retention.
+group: cats-motif-rates
+name: CATS vs MOTIF — Rates (FOBO)
+description: CATS vs MOTIF for the Rates books (London, New York); same FOBO playbook, Rates thresholds and reviewers, run after the Rates EOD curves.
 owners:
-  people: [frank]
-  role: HELIX_FOBO_RECON_OWNER
+  people: [rita, raj]
+  role: HELIX_FOBO_RATES_OWNER
   four_eyes: true
 set:
   case:
@@ -29,17 +27,18 @@ set:
     key: [book, cob]
     subject: "{book} · COB {cob}"
     scopes: { book: book }
-    # Each business morning, open yesterday's COB for every Prime book; MOTIF's
+    # Each business morning after the Rates EOD curves, open yesterday's COB for
+    # every Rates book; MOTIF's
     # end-of-day feed can also open one as soon as it lands (POST /api/events).
     opens_on: schedule
-    schedule: "30 6 * * 1-5"
+    schedule: "15 7 * * 1-5"
     schedule_keys:
-      - { book: PRIME-MB-01, cob: "{prev_business_day}" }
-      - { book: PRIME-MB-02, cob: "{prev_business_day}" }
-      - { book: PRIME-MB-03, cob: "{prev_business_day}" }
-      - { book: PRIME-MB-04, cob: "{prev_business_day}" }
-      - { book: PRIME-MB-05, cob: "{prev_business_day}" }
-      - { book: PRIME-MB-06, cob: "{prev_business_day}" }
+      - { book: RATES-LDN-01, cob: "{prev_business_day}" }
+      - { book: RATES-LDN-02, cob: "{prev_business_day}" }
+      - { book: RATES-LDN-03, cob: "{prev_business_day}" }
+      - { book: RATES-LDN-04, cob: "{prev_business_day}" }
+      - { book: RATES-NY-01, cob: "{prev_business_day}" }
+      - { book: RATES-NY-02, cob: "{prev_business_day}" }
     events: true
     opens_as: helix-scheduler
   items:
@@ -51,7 +50,7 @@ set:
     right: { tool: motif.positions, args: { book: $case.book, cob: $case.cob } }
     keys: [instrument]
     amount_field: mtm
-    tolerance: 0.5
+    tolerance: 1.0
     left_label: cats
     right_label: motif
   enrich:
@@ -68,8 +67,8 @@ set:
     - { node: "book:{book}", path: [belongs_to, escalates_to], as: owner_team }
   # Rule P1: a threshold Product Control has not confirmed stays null.
   policy:
-    materiality_threshold: { value: null, unit: GBP }
-    posting_policy_reference: { value: null }
+    materiality_threshold: { value: 10000, unit: GBP }   # confirmed by Product Control
+    posting_policy_reference: { value: PC-RATES-2026-03 }
     mtm_market_movement_tolerance: { value: null, unit: GBP }      # FO-4
     calculation_reasonable_tolerance: { value: null, unit: GBP }   # FO-6
   playbook:
@@ -167,8 +166,9 @@ set:
   rules: []
   reasoning:
     skill: |
-      You are a FOBO controller's assistant reconciling CATS (front office) to
-      MOTIF (back office). The playbook has already classified each break; the
+      You are a FOBO Rates controller's assistant reconciling CATS (front office)
+      to MOTIF (back office) for Rates books. Check curve datasets and fixings
+      first: most Rates breaks are a curve or fixing taken at a different time. The playbook has already classified each break; the
       ones you see are judgement calls (corporate actions, novel breaks) or
       breaks whose side is not proven. Use the booking events to find why the
       systems differ — late booking, price amendment, FX fixing, cancel/rebook
@@ -186,5 +186,5 @@ set:
           that none do. Do not conclude a verdict.
         tools: [motif.booking_events]
   review:
-    roles: [FOBO_CONTROLLER]
+    roles: [FOBO_RATES_CONTROLLER]
     require_comment: [reject, escalated]

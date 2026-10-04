@@ -1,0 +1,55 @@
+# Example — a capability: ledger (journal entry) controls. Every manual
+# journal of the period is checked by a playbook — segregation of duties,
+# posting outside hours, round amounts, posting to closed periods — and
+# what the playbook cannot settle goes to the model and a controller.
+# Needs: a journals connector serving `gl.journal_entries` (entity, period)
+# with fields posted_by, approved_by, posted_at, amount, source, period_status.
+id: ctl.journal-entry-controls
+name: Journal entry controls
+description: Manual journals checked against ledger controls; exceptions explained and signed off by a financial controller.
+owners: { people: [], role: HELIX_LEDGER_CONTROLS_OWNER, four_eyes: true }
+case:
+  label: JE review
+  item_label: Journal
+  key: [entity, period]
+  subject: "{entity} journals · {period}"
+  scopes: { entity: entity }
+items:
+  load: { tool: gl.journal_entries, args: { entity: $case.entity, period: $case.period } }
+  id_field: journal_id
+  amount_field: amount
+  display: [journal_id, account, amount, posted_by, approved_by, posted_at, source]
+  in_scope: source == 'manual'
+steps: [load, classify, group, reason, draft, validate, review, record]
+group_by: [category]
+policy:
+  round_amount_threshold: { value: 10000, unit: GBP }
+playbook:
+  checks:
+    - { id: SOD,     when: "posted_by == approved_by",                   category: S, side: CONTROL, reason: "Posted and approved by the same person" }
+    - { id: CLOSED,  when: "period_status == 'closed'",                  category: P, side: CONTROL, reason: "Posted to a closed period" }
+    - { id: HOURS,   when: "contains(posted_at, 'T2') or contains(posted_at, 'T0')", category: H, side: CONTROL, reason: "Posted outside business hours" }
+    - { id: ROUND,   when: "amount % 1000 == 0 and abs(amount) >= policy.round_amount_threshold", category: R, side: CONTROL, reason: "Large round amount" }
+  categories:
+    S: { name: Segregation of duties, determinism: deterministic, escalate_to: Financial controller }
+    P: { name: Closed period posting,  determinism: deterministic, escalate_to: Financial controller }
+    H: { name: Out-of-hours posting,   determinism: judgement,     escalate_to: Ledger team }
+    R: { name: Round amount,           determinism: judgement,     escalate_to: Ledger team }
+    N: { name: No exception,           determinism: deterministic, escalate_to: null }
+  default_category: N
+  sides: [CONTROL]
+  verdicts:
+    S: { CONTROL: ESCALATE }
+    P: { CONTROL: ESCALATE }
+    N: { CONTROL: ACCEPT }
+  comment: "{category_name}: {reasons}."
+reasoning:
+  reasoner: llm
+  tools: [gl.journal_lines]
+  skill: |
+    You review manual journals flagged by ledger controls. For out-of-hours or
+    round-amount journals, read the journal lines and say whether there is a
+    legitimate reason (period-end accrual, agreed allocation) or it needs a
+    controller. Cite only tool figures.
+review: { roles: [FINANCIAL_CONTROLLER], require_comment: [reject, escalated], opener_may_decide: false }
+retention: { days: 3650 }

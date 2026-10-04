@@ -493,7 +493,12 @@ async def schedules(c: Caller = Depends(caller)) -> list[dict]:
     out = []
     for s in await scheduler.scheduled():
         _, base = await capabilities.active(s["capability_id"])
-        if await team_groups.visible(c, s["capability_id"], base):
+        if s["team_group"]:
+            # a team's schedule names its books or entities: only for that team
+            _, cfg, gm = await team_groups.active_group(s["capability_id"], s["team_group"])
+            if capabilities.can_see(c, gm) or team_groups.is_group_owner(c, cfg):
+                out.append(s)
+        elif capabilities.can_see(c, base):
             out.append(s)
     return out
 

@@ -1,5 +1,6 @@
-# FOBO reference lineage — the same facts FOBO's own knowledge graph holds
-# (apps/backend/seed_data/loader.py): which desk each Prime book belongs to,
+# FOBO reference lineage — the facts FOBO's own knowledge graph holds
+# (apps/backend/seed_data/loader.py) for the Prime books, plus the Rates books
+# (London and New York desks): which desk each book belongs to,
 # and which team each desk escalates to. Bitemporal: a change closes the old
 # edge (valid_to, exclusive) and opens a new one (valid_from) — PRIME-MB-05
 # moved from APAC-TREASURY to APAC-CASH on 2026-07-01, so a case for a COB
@@ -17,6 +18,15 @@ nodes:
   - { id: "desk:APAC-TREASURY",  kind: desk, attrs: { name: APAC-TREASURY, owner_team: Desk } }
   - { id: "team:Operations",     kind: team, attrs: { name: Operations } }
   - { id: "team:Desk",           kind: team, attrs: { name: Desk } }
+  - { id: "desk:RATES-LDN",      kind: desk, attrs: { name: RATES-LDN, owner_team: Rates desk } }
+  - { id: "desk:RATES-NY",       kind: desk, attrs: { name: RATES-NY, owner_team: Rates desk } }
+  - { id: "team:Rates desk",     kind: team, attrs: { name: Rates desk } }
+  - { id: "book:RATES-LDN-01", kind: book, attrs: { name: RATES-LDN-01, legal_entity: LE-UK-01 } }
+  - { id: "book:RATES-LDN-02", kind: book, attrs: { name: RATES-LDN-02, legal_entity: LE-UK-01 } }
+  - { id: "book:RATES-LDN-03", kind: book, attrs: { name: RATES-LDN-03, legal_entity: LE-UK-01 } }
+  - { id: "book:RATES-LDN-04", kind: book, attrs: { name: RATES-LDN-04, legal_entity: LE-UK-01 } }
+  - { id: "book:RATES-NY-01", kind: book, attrs: { name: RATES-NY-01, legal_entity: LE-US-01 } }
+  - { id: "book:RATES-NY-02", kind: book, attrs: { name: RATES-NY-02, legal_entity: LE-US-01 } }
   - { id: "book:PRIME-MB-01", kind: book, attrs: { name: PRIME-MB-01, legal_entity: LE-APAC-01 } }
   - { id: "book:PRIME-MB-02", kind: book, attrs: { name: PRIME-MB-02, legal_entity: LE-APAC-01 } }
   - { id: "book:PRIME-MB-03", kind: book, attrs: { name: PRIME-MB-03, legal_entity: LE-APAC-01 } }
@@ -33,6 +43,14 @@ nodes:
 edges:
   - { from: "desk:APAC-CASH",     relation: escalates_to, to: "team:Operations" }
   - { from: "desk:APAC-TREASURY", relation: escalates_to, to: "team:Desk" }
+  - { from: "desk:RATES-LDN",     relation: escalates_to, to: "team:Rates desk" }
+  - { from: "desk:RATES-NY",      relation: escalates_to, to: "team:Rates desk" }
+  - { from: "book:RATES-LDN-01", relation: belongs_to, to: "desk:RATES-LDN" }
+  - { from: "book:RATES-LDN-02", relation: belongs_to, to: "desk:RATES-LDN" }
+  - { from: "book:RATES-LDN-03", relation: belongs_to, to: "desk:RATES-LDN" }
+  - { from: "book:RATES-LDN-04", relation: belongs_to, to: "desk:RATES-LDN" }
+  - { from: "book:RATES-NY-01", relation: belongs_to, to: "desk:RATES-NY" }
+  - { from: "book:RATES-NY-02", relation: belongs_to, to: "desk:RATES-NY" }
   - { from: "book:PRIME-MB-01", relation: belongs_to, to: "desk:APAC-CASH" }
   - { from: "book:PRIME-MB-02", relation: belongs_to, to: "desk:APAC-CASH" }
   - { from: "book:PRIME-MB-03", relation: belongs_to, to: "desk:APAC-CASH" }

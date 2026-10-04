@@ -145,3 +145,51 @@ async def test_hours_saved_states_its_basis(api):
     o = (await api.get("/api/overview", headers=api.as_user("frank"))).json()
     h = o["hours_saved_30d"]
     assert h["value"] >= 0 and "avoided" in h["basis"] and "settled by rule or playbook" in h["basis"]
+
+
+# ---------- two FOBO rec groups on one capability: Prime and Rates ----------
+
+RATES = "cats-motif-rates"
+
+
+async def test_rates_and_prime_run_the_same_playbook_with_their_own_settings(api):
+    prime = await _run(api, "PRIME-MB-04", "2026-08-03")
+    rates = (await api.post(f"/api/capabilities/{RECON}/cases", headers=api.as_user("rita"),
+                            json={"case_key": {"book": "RATES-LDN-01", "cob": "2026-08-03"}, "team_group": RATES})).json()
+    assert rates["status"] == "awaiting_review" and rates["team_group"] == RATES
+    # the same playbook: every break gets the six checks and fourteen tests
+    for it in rates["items"]:
+        assert len(it["checks"]) == 6 and len(it["tests"]) == 14
+        assert (it["owner_desk"], it["owner_team"]) == ("RATES-LDN", "Rates desk")
+    # Rates' thresholds are confirmed, so a POST there is never flagged; Prime's are not
+    rates_posts = [g["finding"] for g in rates["groups"] if g["finding"].get("verdict") == "POST"]
+    assert all("requires_confirmation" not in f for f in rates_posts)
+    prime_posts = [g["finding"] for g in prime["groups"] if g["finding"].get("verdict") == "POST" and not g["finding"].get("blocked_by")]
+    assert all("requires_confirmation" in f for f in prime_posts)
+
+
+async def test_each_team_sees_and_signs_off_only_its_own_books(api):
+    rates = (await api.post(f"/api/capabilities/{RECON}/cases", headers=api.as_user("rita"),
+                            json={"case_key": {"book": "RATES-LDN-02", "cob": "2026-08-03"}, "team_group": RATES})).json()
+    # rita may not open a Prime book or a New York book; frank cannot see the Rates case
+    no_prime = await api.post(f"/api/capabilities/{RECON}/cases", headers=api.as_user("rita"),
+                              json={"case_key": {"book": "PRIME-MB-01", "cob": "2026-08-03"}, "team_group": FOBO})
+    assert no_prime.status_code == 403
+    no_ny = await api.post(f"/api/capabilities/{RECON}/cases", headers=api.as_user("rita"),
+                           json={"case_key": {"book": "RATES-NY-01", "cob": "2026-08-03"}, "team_group": RATES})
+    assert no_ny.status_code == 403
+    assert (await api.get(f"/api/cases/{rates['case_id']}", headers=api.as_user("frank"))).status_code == 404
+    assert rates["can_decide"] is True
+    raj = (await api.get(f"/api/cases/{rates['case_id']}", headers=api.as_user("raj"))).json()
+    assert raj["can_decide"] is True                        # the other Rates controller
+
+
+async def test_a_rates_change_is_approved_by_the_rates_owners_only(api):
+    detail = (await api.get(f"/api/capabilities/{RECON}/groups/{RATES}", headers=api.as_user("rita"))).json()
+    changed = {**detail["config"], "set": {**detail["config"]["set"], "match": {**detail["config"]["set"]["match"], "tolerance": 2.0}}}
+    v = (await api.post(f"/api/capabilities/{RECON}/groups", headers=api.as_user("rita"),
+                        json={"config": changed, "note": "Rates tolerance 2.00"})).json()["version"]
+    url = f"/api/capabilities/{RECON}/groups/{RATES}/versions/{v}/approve"
+    assert (await api.post(url, headers=api.as_user("frank"))).status_code == 403   # Prime owner
+    assert (await api.post(url, headers=api.as_user("rita"))).status_code == 403    # the drafter
+    assert (await api.post(url, headers=api.as_user("raj"))).status_code == 200

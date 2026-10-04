@@ -13,7 +13,6 @@ import {
   Repeat,
   Scale,
   Ticket,
-  UserCheck,
   Check,
   CheckCheck,
   ExternalLink,
@@ -46,6 +45,7 @@ import {
   type ReviewFlag,
   type ToolCall,
 } from "../api/helix";
+import { ActionCard, EscalationCard, ReleaseSummary } from "../components/case/CaseActions";
 import CaseChat from "../components/case/CaseChat";
 import EvidencePanel from "../components/case/EvidencePanel";
 import CaseHistory from "../components/case/CaseHistory";
@@ -88,7 +88,12 @@ export default function CaseWorkspace(): JSX.Element {
   if (detail.error) return <ErrorState error={detail.error} />;
   if (!detail.data) return <Empty>Not found.</Empty>;
   const c = detail.data;
-  const group = c.groups.find((g) => g.group_id === selected) ?? c.groups.find((g) => !g.decision) ?? c.groups[0];
+  // Open on what most needs a person: escalated, then needing confirmation, then a judgement call.
+  const undecided = c.groups.filter((g) => !g.decision);
+  const firstWith = (f: ReviewFlag) => undecided.find((g) => (g.flags ?? []).includes(f));
+  const group =
+    c.groups.find((g) => g.group_id === selected) ??
+    firstWith("escalated") ?? firstWith("confirmation") ?? firstWith("judgement") ?? undecided[0] ?? c.groups[0];
   const decided = c.groups.filter((g) => g.decision).length;
 
   return (
@@ -124,7 +129,7 @@ export default function CaseWorkspace(): JSX.Element {
           </button>
         </div>
         {c.draft && <p className="mt-1 text-sm text-surface-500">{c.draft.headline}</p>}
-        <NextAction c={c} />
+        <ActionCard c={c} />
       </div>
 
       <CaseBanner c={c} />
@@ -173,6 +178,7 @@ export default function CaseWorkspace(): JSX.Element {
                   className={clsx(
                     "mb-1 w-full rounded-lg border px-3 py-2 text-left transition-colors",
                     group?.group_id === g.group_id ? "border-accent-400 bg-accent-50/60" : "border-transparent hover:bg-surface-50",
+                    !g.decision && g.finding?.status === "escalated" && "border-l-4 border-l-orange-400",
                   )}
                 >
                   <div className="flex items-start justify-between gap-2">
@@ -197,6 +203,7 @@ export default function CaseWorkspace(): JSX.Element {
         </aside>
 
         <section className={clsx("min-w-0 lg:block lg:overflow-y-auto", pane !== "detail" && "hidden")} aria-label="Proposal">
+          <ReleaseSummary c={c} />
           <div className="flex gap-1 overflow-x-auto border-b border-surface-100 px-2 pt-2 sm:px-3" role="tablist">
             {TABS.map((t) => (
               <button
@@ -320,34 +327,6 @@ function FlagChips({ flags }: { flags: ReviewFlag[] }) {
   );
 }
 
-/** One line on what is left for the reviewer: groups to decide, and what needs more than a click. */
-function NextAction({ c }: { c: CaseDetail }) {
-  if (c.status !== "awaiting_review") return null;
-  const open = c.groups.filter((g) => !g.decision);
-  if (!open.length) return null;
-  const count = (f: ReviewFlag) => open.filter((g) => (g.flags ?? []).includes(f)).length;
-  const parts = [`${open.length} ${open.length === 1 ? "group" : "groups"} to decide`];
-  if (count("confirmation")) parts.push(`${count("confirmation")} ${count("confirmation") === 1 ? "needs" : "need"} your confirmation`);
-  if (count("judgement")) parts.push(`${count("judgement")} judgement ${count("judgement") === 1 ? "call" : "calls"}`);
-  if (count("escalated")) parts.push(`${count("escalated")} escalated`);
-  return (
-    <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
-      <span className="inline-flex items-center gap-1.5 rounded-lg bg-primary-50 px-2.5 py-1 font-medium text-primary-800">
-        <Scale size={13} /> Next: {parts.join(" · ")}
-      </span>
-      {c.acting_for && (
-        <span className="inline-flex items-center gap-1.5 rounded-lg bg-accent-50 px-2.5 py-1 text-xs font-medium text-accent-800">
-          <UserCheck size={13} /> Covering for {c.acting_for}: your decisions are recorded on their behalf
-        </span>
-      )}
-      {c.exposure != null && (
-        <span className="text-xs text-surface-500">
-          At stake: {formatValue(c.exposure)}{c.unit ? ` ${c.unit}` : ""}
-        </span>
-      )}
-    </div>
-  );
-}
 
 interface TestResult {
   id: string;
@@ -460,11 +439,7 @@ function ProposalPanel({ c, group }: { c: CaseDetail; group: Group }) {
         </div>
         <PlaybookPanel group={group} />
         {f?.comment && <p className="mt-3 rounded-lg border border-surface-200 bg-surface-50 p-3 text-sm leading-relaxed text-surface-800">{f.comment}</p>}
-        {f?.reason && (
-          <p className="mt-2 flex items-start gap-1.5 text-sm text-orange-700">
-            <ShieldAlert size={14} className="mt-0.5 shrink-0" /> Escalated: {f.reason}
-          </p>
-        )}
+        <EscalationCard group={group} canDecide={c.can_decide} />
         {f?.previous && (
           <p className="mt-2 text-xs text-surface-500">
             Before “{f.reviewer_note}”: {f.previous.comment || f.previous.reason}
@@ -782,13 +757,7 @@ function ContextPanel({ c }: { c: CaseDetail }) {
             review this case releases it.
           </p>
           {c.status === "awaiting_publish" && c.publish.can_release && (
-            <button
-              disabled={release.isPending}
-              onClick={() => release.mutate()}
-              className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-brand-fg hover:bg-brand-strong disabled:opacity-50"
-            >
-              <Send size={13} /> Release write-back
-            </button>
+            <p className="mt-2 text-xs font-medium text-primary-700">You can release it: use the button at the top, after checking what will be written.</p>
           )}
           {c.status === "awaiting_publish" && !c.publish.can_release && (
             <p className="mt-2 text-xs font-medium text-surface-500">Waiting for a second person to release it.</p>

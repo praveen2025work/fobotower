@@ -243,8 +243,23 @@ export interface CaseDetail extends CaseSummary {
     bulk_exclude?: ReviewFlag[];
     confirm?: "none" | "tick" | "tick_and_comment";
     allow_delegation?: boolean;
+    roles?: string[];
   };
-  publish: { tool: string; approver_roles: string[]; can_release: boolean } | null;
+  publish: {
+    tool: string;
+    approver_roles: string[];
+    can_release: boolean;
+    per?: "group" | "case";
+    released?: { by: string; at: string } | null;
+  } | null;
+  /** Who the case waits on; when it is not the viewer, why not. */
+  waiting_on?: {
+    step: "review" | "release";
+    roles: string[];
+    you: boolean;
+    why_not: string | null;
+    reviewed_by?: string[];
+  } | null;
 }
 
 export interface CaseMessage {

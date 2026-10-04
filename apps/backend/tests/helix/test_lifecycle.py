@@ -220,3 +220,26 @@ async def test_a_case_with_nothing_in_scope_does_not_wait_for_a_review(api, monk
     case = await _open(api)
     assert case["groups"] == [] and case["status"] != "awaiting_review"
     assert case["status"] == "completed" and case["outcome"] == "published"   # nothing was written
+
+
+# ---------- who the case waits on ----------
+
+async def test_a_case_says_who_it_waits_on_and_why_not_the_viewer(api):
+    case = await _open(api)
+    assert case["waiting_on"] == {"step": "review", "roles": ["FIN_PREPARER", "FIN_REVIEWER"],
+                                  "you": True, "why_not": None}
+    ids = [g["group_id"] for g in case["groups"]]
+    res = await api.post(f"/api/cases/{case['case_id']}/decisions/bulk", headers=api.as_user("alice"),
+                         json={"group_ids": ids, "action": "approve", "comment": "Checked against the plan",
+                               "idempotency_key": "waiting-on-1"})
+    reviewed = res.json()["case"]
+    assert reviewed["status"] == "awaiting_publish"
+    mine = reviewed["waiting_on"]
+    assert (mine["step"], mine["you"], mine["reviewed_by"]) == ("release", False, ["alice"])
+    assert "FIN_REVIEWER" in mine["why_not"]
+    bob = (await api.get(f"/api/cases/{case['case_id']}", headers=api.as_user("bob"))).json()
+    assert bob["waiting_on"]["you"] is True and bob["publish"]["can_release"] is True
+    res = await api.post(f"/api/cases/{case['case_id']}/publish", headers=api.as_user("bob"),
+                         json={"idempotency_key": "release-waiting-on-1"})
+    done = res.json()["case"]
+    assert done["waiting_on"] is None and done["publish"]["released"]["by"] == "bob"

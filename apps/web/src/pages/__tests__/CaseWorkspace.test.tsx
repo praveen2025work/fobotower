@@ -81,7 +81,8 @@ describe("CaseWorkspace", () => {
     mockApi({ "GET /cases/fin.c1": detail() });
     open();
     await userEvent.click(await screen.findByRole("button", { name: /account 7200/ }));
-    expect(screen.getByText(/Escalated: UNGROUNDED_FIGURE: 4,444.00/)).toBeInTheDocument();
+    const why = screen.getByRole("region", { name: "Why it was escalated" });
+    expect(within(why).getByText(/quoted figures that are not in the data \(4,444.00\)/)).toBeInTheDocument();
     expect(screen.getByText(/refused: alice is not entitled to entity=US01/)).toBeInTheDocument();
   });
 
@@ -103,6 +104,21 @@ describe("CaseWorkspace", () => {
     expect(screen.getByText("Payroll accrual", { selector: "p" })).toBeInTheDocument();
   });
 
+  it("tells someone who cannot release who will, and why not them", async () => {
+    mockApi({
+      "GET /cases/fin.c1": detail({
+        status: "awaiting_publish",
+        can_decide: false,
+        publish: { tool: "reporting.publish_commentary", approver_roles: ["FIN_REVIEWER"], can_release: false },
+        waiting_on: { step: "release", roles: ["FIN_REVIEWER"], you: false, why_not: "you reviewed this case; a second person who did not review it releases it", reviewed_by: ["bob"] },
+      }),
+    });
+    open();
+    const card = await screen.findByRole("status", { name: "Waiting for release" });
+    expect(card).toHaveTextContent("You reviewed it, so it can't be you.");
+    expect(within(card).queryByRole("button")).not.toBeInTheDocument();
+  });
+
   it("offers release only to someone allowed to release, and says who it waits for", async () => {
     mockApi({ "GET /cases/fin.c1": detail({ status: "awaiting_publish", can_decide: false }) });
     open();
@@ -112,11 +128,21 @@ describe("CaseWorkspace", () => {
 
   it("releases the write-back", async () => {
     const calls = mockApi({
-      "GET /cases/fin.c1": detail({ status: "awaiting_publish", can_decide: false, publish: { tool: "reporting.publish_commentary", approver_roles: ["FIN_REVIEWER"], can_release: true } }),
+      "GET /cases/fin.c1": detail({
+        status: "awaiting_publish",
+        can_decide: false,
+        groups: [group("6100", { decision: { action: "approve", comment: "Payroll accrual", decided_by: "alice", decided_at: "2026-10-03T11:00:00Z" } })],
+        publish: { tool: "reporting.publish_commentary", approver_roles: ["FIN_REVIEWER"], can_release: true },
+        waiting_on: { step: "release", roles: ["FIN_REVIEWER"], you: true, why_not: null, reviewed_by: ["alice"] },
+      }),
       "POST /cases/fin.c1/publish": { case: detail({ status: "completed", outcome: "published", can_decide: false }) },
     });
     open();
-    await userEvent.click(await screen.findByRole("button", { name: /Release write-back/ }));
+    // the release is offered at the top, with what will be written listed before it is
+    expect(await screen.findByRole("status", { name: "Ready for your release" })).toHaveTextContent("Reviewed by alice");
+    const summary = screen.getByRole("region", { name: "What will be released" });
+    expect(within(summary).getByText("Payroll accrual")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /Release write-back/ }));
     expect(await screen.findByText("Published.")).toBeInTheDocument();
     expect(calls.find((c) => c.method === "POST")!.path).toBe("/cases/fin.c1/publish");
   });

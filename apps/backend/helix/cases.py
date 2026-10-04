@@ -600,6 +600,7 @@ async def case_detail(case_id: str, caller: Caller) -> dict:
                                      .order_by(Decision.decided_at))).scalars().all()
         calls = (await s.execute(select(ToolCall).where(ToolCall.case_id == case_id)
                                  .order_by(ToolCall.called_at))).scalars().all()
+        release = await s.get(PublishApproval, case_id)
     latest = _latest(decisions)
     in_group = {i for g in groups for i in g.item_ids}
     tickets = await escalation.for_case(case_id)
@@ -660,11 +661,37 @@ async def case_detail(case_id: str, caller: Caller) -> dict:
                    "opener_may_decide": m.review.opener_may_decide,
                    "dual_review_when": m.review.dual_review_when,
                    "max_reinvestigations": m.review.max_reinvestigations,
+                   "roles": list(m.review.roles),
                    "bulk_exclude": m.review.bulk_exclude, "confirm": m.review.confirm,
                    "allow_delegation": m.review.allow_delegation},
         "publish": ({"tool": m.publish.tool, "approver_roles": m.publish.approver_roles,
+                     "per": m.publish.per,
                      "can_release": (case.status == "awaiting_publish"
                                      and caller.has_any_role(m.publish.approver_roles)
-                                     and caller.user_id not in {d.decided_by for d in decisions})}
+                                     and caller.user_id not in {d.decided_by for d in decisions}),
+                     "released": ({"by": release.approved_by, "at": release.approved_at} if release else None)}
                     if m.publish else None),
+        # Who the case waits on, and — when it is not this caller — why not, in plain words.
+        "waiting_on": _waiting_on(case, m, caller, decisions, may_decide, on_behalf_of),
     }
+
+
+def _waiting_on(case: Case, m: Manifest, caller: Caller, decisions: list[Decision],
+                may_decide: bool, on_behalf_of: str | None) -> dict | None:
+    deciders = {d.decided_by for d in decisions}
+    if case.status == "awaiting_review":
+        why_not = None
+        if not may_decide:
+            why_not = f"reviewing needs one of: {', '.join(m.review.roles)}"
+        elif not m.review.opener_may_decide and case.opened_by in (caller.user_id, on_behalf_of):
+            why_not = "you opened this case, and its capability needs someone else to sign it off"
+        return {"step": "review", "roles": list(m.review.roles), "you": why_not is None, "why_not": why_not}
+    if case.status == "awaiting_publish" and m.publish:
+        why_not = None
+        if not caller.has_any_role(m.publish.approver_roles):
+            why_not = f"releasing needs one of: {', '.join(m.publish.approver_roles)}"
+        elif caller.user_id in deciders:
+            why_not = "you reviewed this case; a second person who did not review it releases it"
+        return {"step": "release", "roles": list(m.publish.approver_roles), "you": why_not is None,
+                "why_not": why_not, "reviewed_by": sorted(deciders)}
+    return None

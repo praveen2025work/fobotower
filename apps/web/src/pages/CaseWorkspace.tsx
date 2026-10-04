@@ -249,7 +249,7 @@ function TestsCell({ tests }: { tests: TestResult[] }) {
   const failed = tests.filter((t) => t.status === "fail");
   const notRun = tests.filter((t) => t.status === "not_run");
   return (
-    <span className="inline-flex flex-wrap gap-0.5">
+    <span className="inline-flex flex-nowrap items-center gap-0.5 whitespace-nowrap">
       {failed.map((t) => (
         <span key={t.id} title={`${t.id} failed: ${t.check} — ${t.on_fail}`} className="rounded bg-red-100 px-1 font-mono text-[10px] font-semibold text-red-700">
           {t.id}
@@ -267,7 +267,7 @@ function TestsCell({ tests }: { tests: TestResult[] }) {
 
 function ChecksCell({ checks }: { checks: CheckResult[] }) {
   return (
-    <span className="inline-flex gap-0.5">
+    <span className="inline-flex flex-nowrap gap-0.5 whitespace-nowrap">
       {checks.map((ch) => (
         <span
           key={ch.id}

@@ -36,6 +36,7 @@ def _s(*names: str) -> frozenset[str]:
 STEPS: dict[str, Step] = {s.name: s for s in [
     Step("load", steps.load, "Load items", _s("case_key"), _s("items")),
     Step("match", steps.match, "Match two sides", _s("case_key"), _s("items")),
+    Step("resolve", steps.resolve, "Reference lookups", _s("items"), _s("items")),
     Step("compare", steps.compare, "Compare to baseline", _s("items"), _s("items")),
     Step("group", steps.group, "Group", _s("items"), _s("groups")),
     Step("reason", steps.reason, "Rules, then model", _s("items", "groups"), _s("findings")),

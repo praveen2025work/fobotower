@@ -1,0 +1,48 @@
+# FOBO reference lineage — the same facts FOBO's own knowledge graph holds
+# (apps/backend/seed_data/loader.py): which desk each Prime book belongs to,
+# and which team each desk escalates to. Bitemporal: a change closes the old
+# edge (valid_to, exclusive) and opens a new one (valid_from) — PRIME-MB-05
+# moved from APAC-TREASURY to APAC-CASH on 2026-07-01, so a case for a COB
+# before that date resolves the old desk.
+#
+# Read by the `resolve` step of capabilities whose `knowledge.reference` is
+# this namespace (the CATS vs MOTIF rec group). Loaded at startup; a new
+# version of a fact is a new entry with its own valid_from.
+
+namespace: fobo-reference
+valid_from: 2020-01-01
+
+nodes:
+  - { id: "desk:APAC-CASH",      kind: desk, attrs: { name: APAC-CASH, owner_team: Operations } }
+  - { id: "desk:APAC-TREASURY",  kind: desk, attrs: { name: APAC-TREASURY, owner_team: Desk } }
+  - { id: "team:Operations",     kind: team, attrs: { name: Operations } }
+  - { id: "team:Desk",           kind: team, attrs: { name: Desk } }
+  - { id: "book:PRIME-MB-01", kind: book, attrs: { name: PRIME-MB-01, legal_entity: LE-APAC-01 } }
+  - { id: "book:PRIME-MB-02", kind: book, attrs: { name: PRIME-MB-02, legal_entity: LE-APAC-01 } }
+  - { id: "book:PRIME-MB-03", kind: book, attrs: { name: PRIME-MB-03, legal_entity: LE-APAC-01 } }
+  - { id: "book:PRIME-MB-04", kind: book, attrs: { name: PRIME-MB-04, legal_entity: LE-APAC-01 } }
+  - { id: "book:PRIME-MB-05", kind: book, attrs: { name: PRIME-MB-05, legal_entity: LE-APAC-01 } }
+  - { id: "book:PRIME-MB-06", kind: book, attrs: { name: PRIME-MB-06, legal_entity: LE-APAC-01 } }
+  - { id: "book:PRIME-MB-07", kind: book, attrs: { name: PRIME-MB-07, legal_entity: LE-APAC-01 } }
+  - { id: "book:PRIME-MB-08", kind: book, attrs: { name: PRIME-MB-08, legal_entity: LE-APAC-01 } }
+  - { id: "book:PRIME-MB-09", kind: book, attrs: { name: PRIME-MB-09, legal_entity: LE-APAC-01 } }
+  - { id: "book:PRIME-MB-10", kind: book, attrs: { name: PRIME-MB-10, legal_entity: LE-APAC-01 } }
+  - { id: "book:PRIME-MB-11", kind: book, attrs: { name: PRIME-MB-11, legal_entity: LE-APAC-01 } }
+  - { id: "book:PRIME-MB-12", kind: book, attrs: { name: PRIME-MB-12, legal_entity: LE-APAC-01 } }
+
+edges:
+  - { from: "desk:APAC-CASH",     relation: escalates_to, to: "team:Operations" }
+  - { from: "desk:APAC-TREASURY", relation: escalates_to, to: "team:Desk" }
+  - { from: "book:PRIME-MB-01", relation: belongs_to, to: "desk:APAC-CASH" }
+  - { from: "book:PRIME-MB-02", relation: belongs_to, to: "desk:APAC-CASH" }
+  - { from: "book:PRIME-MB-03", relation: belongs_to, to: "desk:APAC-CASH" }
+  - { from: "book:PRIME-MB-04", relation: belongs_to, to: "desk:APAC-CASH" }
+  - { from: "book:PRIME-MB-05", relation: belongs_to, to: "desk:APAC-TREASURY", valid_to: 2026-07-01 }
+  - { from: "book:PRIME-MB-05", relation: belongs_to, to: "desk:APAC-CASH", valid_from: 2026-07-01 }
+  - { from: "book:PRIME-MB-06", relation: belongs_to, to: "desk:APAC-CASH" }
+  - { from: "book:PRIME-MB-07", relation: belongs_to, to: "desk:APAC-CASH" }
+  - { from: "book:PRIME-MB-08", relation: belongs_to, to: "desk:APAC-CASH" }
+  - { from: "book:PRIME-MB-09", relation: belongs_to, to: "desk:APAC-CASH" }
+  - { from: "book:PRIME-MB-10", relation: belongs_to, to: "desk:APAC-CASH" }
+  - { from: "book:PRIME-MB-11", relation: belongs_to, to: "desk:APAC-CASH" }
+  - { from: "book:PRIME-MB-12", relation: belongs_to, to: "desk:APAC-CASH" }

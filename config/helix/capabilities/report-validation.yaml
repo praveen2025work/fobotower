@@ -61,6 +61,11 @@ reasoning:
     or the ledger needs correcting. Cite only figures from the tools or the
     report lines. If nothing explains a difference, say so and escalate.
 
+knowledge:
+  entities: [account, cost_centre]
+retention:
+  days: 2555
+
 review:
   roles: [FIN_PREPARER, FIN_REVIEWER]
 

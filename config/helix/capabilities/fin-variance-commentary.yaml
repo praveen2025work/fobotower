@@ -57,6 +57,13 @@ reasoning:
     in the items. Do not estimate. If the evidence does not explain the
     variance, say so and escalate.
 
+# Decisions link to the accounts and cost centres they concern, so priors also
+# come from related accounts; finished cases are kept seven years.
+knowledge:
+  entities: [account, cost_centre]
+retention:
+  days: 2555
+
 review:
   roles: [FIN_PREPARER, FIN_REVIEWER]
 

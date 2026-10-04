@@ -61,6 +61,11 @@ reasoning:
     find the likely cause of each group of breaks and the next action. Cite only
     figures from the tools or the breaks.
 
+knowledge:
+  entities: [counterparty]
+retention:
+  days: 2555
+
 review:
   roles: [CASH_OPS]
 
@@ -79,3 +84,7 @@ configurable:
   - reasoning.skill
   - reasoning.tools
   - review.roles
+  - review.require_comment
+  - review.dual_review_when
+  - knowledge
+  - resolve

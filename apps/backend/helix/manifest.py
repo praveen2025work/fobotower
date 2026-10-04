@@ -84,6 +84,31 @@ class Rule(Strict):
     then: RuleThen
 
 
+class KnowledgeSpec(Strict):
+    """What the capability learns from and looks up in the knowledge graph."""
+    # Fields whose values link a decision to the things it concerns
+    # (account, book, counterparty…), so priors come from related groups too.
+    entities: list[str] = Field(default_factory=list)
+    # The reference namespace (config/helix/knowledge/<file>.yaml) `resolve` reads.
+    reference: str | None = None
+    # The case-key field holding the business date reference data is read as of.
+    as_of: str | None = None
+
+
+class ResolveSpec(Strict):
+    """One lookup the `resolve` step makes per item, e.g. a book's desk."""
+    node: str                          # start node template, e.g. "book:{book}"
+    path: list[str]                    # relations to follow, e.g. [belongs_to]
+    as_: str = Field(alias="as")       # the item field to set
+    take: str = "name"                 # an attribute of the node reached, or "id"
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+
+class RetentionSpec(Strict):
+    """How long the capability's finished cases are kept (legal hold aside)."""
+    days: int = Field(ge=1)
+
+
 class ReasoningSpec(Strict):
     reasoner: Literal["llm", "none"] = "llm"
     skill: str = ""                    # instructions to the model
@@ -144,6 +169,9 @@ class Manifest(Strict):
     reasoning: ReasoningSpec = Field(default_factory=ReasoningSpec)
     review: ReviewSpec
     publish: PublishSpec | None = None
+    knowledge: KnowledgeSpec = Field(default_factory=KnowledgeSpec)
+    resolve: list[ResolveSpec] = Field(default_factory=list)
+    retention: RetentionSpec | None = None
     # What a group (a team's configuration of this capability, e.g. one rec group)
     # may set: dotted paths; "x.*" = anything under x. Owners stay the capability's.
     configurable: list[str] = Field(default_factory=list)
@@ -201,6 +229,10 @@ def problems(m: Manifest) -> list[str]:
     for t in sorted(reads):
         if (found := reg.tool(t)) and found[2].access == "write":
             out.append(f"tool `{t}` writes to a bank system; only `publish` may use it")
+    if "resolve" in m.steps and not (m.resolve and m.knowledge.reference):
+        out.append("step `resolve` needs `resolve` lookups and `knowledge.reference`")
+    if m.knowledge.as_of and m.knowledge.as_of not in m.case.key:
+        out.append(f"knowledge.as_of: `{m.knowledge.as_of}` is not in case.key")
     if "compare" in m.steps and m.compare is None:
         out.append("step `compare` needs a `compare` section")
     if "load" not in m.steps and "match" not in m.steps:
@@ -227,9 +259,9 @@ def problems(m: Manifest) -> list[str]:
         head = path.split(".")[0]
         if head not in top:
             out.append(f"configurable: `{path}` is not a manifest field")
-        if head in ("id", "owners", "configurable", "steps", "pause_before", "publish"):
+        if head in ("id", "owners", "configurable", "steps", "pause_before", "publish", "retention"):
             out.append(f"configurable: `{path}` cannot be set by a group "
-                       "(identity, ownership, workflow gates and write-back stay with the capability)")
+                       "(identity, ownership, workflow gates, write-back and retention stay with the capability)")
     if m.reasoning.reasoner == "llm" and not m.reasoning.skill.strip():
         out.append("reasoning.skill: an llm reasoner needs instructions")
     return out

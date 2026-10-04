@@ -221,24 +221,24 @@ class KgNode(HelixBase):
     node_id: Mapped[str] = mapped_column(String(256), primary_key=True)
     kind: Mapped[str] = mapped_column(String(32))
     attrs: Mapped[dict] = mapped_column(JSONB, default=dict)
-    valid_from: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    # Part of the key: a node changes by closing one version and opening the next.
+    valid_from: Mapped[datetime] = mapped_column(DateTime(timezone=True), primary_key=True)
     valid_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class KgEdge(HelixBase):
     __tablename__ = "helix_kg_edge"
-    __table_args__ = (Index("idx_helix_kg_edge_to", "namespace", "to_id", "relation"),)
+    __table_args__ = (
+        Index("idx_helix_kg_edge_to", "namespace", "to_id", "relation"),
+        Index("idx_helix_kg_edge_from", "namespace", "from_id", "relation"),
+    )
 
     namespace: Mapped[str] = mapped_column(String(64), primary_key=True)
     from_id: Mapped[str] = mapped_column(String(256), primary_key=True)
     relation: Mapped[str] = mapped_column(String(32), primary_key=True)
     to_id: Mapped[str] = mapped_column(String(256), primary_key=True)
     attrs: Mapped[dict] = mapped_column(JSONB, default=dict)
-    valid_from: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    valid_from: Mapped[datetime] = mapped_column(DateTime(timezone=True), primary_key=True)
     valid_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 

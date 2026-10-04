@@ -142,6 +142,24 @@ async def match(state: CaseState) -> dict:
     return {"items": items}
 
 
+async def resolve(state: CaseState) -> dict:
+    """Reference lookups per item from the knowledge graph, as of the case's
+    business date: e.g. a book's desk, or the team a desk escalates to."""
+    m = _manifest(state)
+    as_of = state["case_key"].get(m.knowledge.as_of) if m.knowledge.as_of else None
+    items = [dict(it) for it in state["items"]]
+    for spec in m.resolve:
+        starts = {i: rules.render(spec.node, it) for i, it in enumerate(items)}
+        found = await knowledge.walk(m.knowledge.reference, set(starts.values()), spec.path, as_of=as_of)
+        for i, sid in starts.items():
+            node = found.get(sid)
+            items[i][spec.as_] = (None if node is None
+                                  else node.node_id.split(":", 1)[-1] if spec.take == "id"
+                                  else node.attrs.get(spec.take))
+    await _save_items(state["case_id"], items)
+    return {"items": items}
+
+
 async def compare(state: CaseState) -> dict:
     spec = _manifest(state).compare
     items = [{**it, spec.as_: round(_num(it.get(spec.measure)) - _num(it.get(spec.baseline)), 2)}
@@ -177,7 +195,8 @@ async def group(state: CaseState) -> dict:
             total = round(sum(_num(it.get(m.items.amount_field)) for it in members), 2) \
                 if m.items.amount_field else None
             priors = await knowledge.similar_decisions(
-                state["capability_id"], group_key, exclude_case=state["case_id"])
+                state["capability_id"], group_key, exclude_case=state["case_id"],
+                entities=knowledge.entity_values(m.knowledge.entities, group_key, members))
             g = {"group_id": group_id, "label": label, "group_key": group_key,
                  "item_ids": [it["item_id"] for it in members], "count": len(members),
                  "total": total, "priors": priors}
@@ -339,8 +358,10 @@ async def review(state: CaseState) -> dict:
 
 async def record(state: CaseState) -> dict:
     """Gate: approved decisions become priors the next run reads."""
+    m = _manifest(state)
     findings = state.get("findings", {})
     groups = {g["group_id"]: g for g in state["groups"]}
+    items = {it["item_id"]: it for it in state.get("items", [])}
     for d in state.get("decisions", []):
         g = groups.get(d["group_id"])
         if g is None:
@@ -349,7 +370,10 @@ async def record(state: CaseState) -> dict:
             state["capability_id"], g["group_key"], case_id=state["case_id"],
             group_id=d["group_id"], action=d["action"],
             comment=d.get("comment") or findings.get(d["group_id"], {}).get("comment", ""),
-            decided_by=d["decided_by"])
+            decided_by=d["decided_by"],
+            entities=knowledge.entity_values(
+                m.knowledge.entities, g["group_key"],
+                [items[i] for i in g["item_ids"] if i in items]))
     if "publish" in _manifest(state).steps:
         return {"outcome": "recorded"}       # the run pauses before publish
     async with get_session() as s:

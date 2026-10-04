@@ -11,7 +11,7 @@ from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from sqlalchemy import text
 
-from helix import capabilities, llm
+from helix import capabilities, knowledge, llm
 from helix import groups as team_groups
 from helix.db import HelixBase, engine, get_session
 from helix.models import HELIX_TABLES
@@ -35,6 +35,7 @@ async def helix_clean(helix_schema, clean_tables):
         await s.commit()
     await capabilities.seed()
     await team_groups.seed()
+    await knowledge.seed_reference()
     llm._adapter = None  # each test picks its own LLM adapter
     yield
     llm._adapter = None

@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
-from helix import authoring, capabilities, cases, runner, views
+from helix import authoring, capabilities, cases, knowledge, retention, runner, views
 from helix import groups as team_groups
 from helix.config import settings
 from helix.entitlement import Caller, EntitlementError, StubEntitlement, entitlements
@@ -30,6 +30,7 @@ async def lifespan(_app: FastAPI):
     await setup_checkpointer()
     await capabilities.seed()
     await team_groups.seed()
+    await knowledge.seed_reference()
     await runner.recover()          # finish runs a stopped server left behind
     yield
     await runner.drain()
@@ -294,6 +295,18 @@ async def reinvestigate(case_id: str, group_id: str, body: ReinvestigateIn,
                         c: Caller = Depends(caller)) -> dict:
     result = await cases.reinvestigate(case_id, group_id, body.note, body.idempotency_key, c)
     return {**result, "case": await cases.case_detail(case_id, c)}
+
+
+class LegalHoldIn(BaseModel):
+    hold: bool
+    reason: str | None = Field(default=None, max_length=1000)
+
+
+@app.post("/api/cases/{case_id}/legal-hold")
+@_errors
+async def legal_hold(case_id: str, body: LegalHoldIn, c: Caller = Depends(caller)) -> dict:
+    await retention.set_legal_hold(case_id, body.hold, body.reason, c)
+    return await cases.case_detail(case_id, c)
 
 
 @app.post("/api/cases/{case_id}/rerun", status_code=201)

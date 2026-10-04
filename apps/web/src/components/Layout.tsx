@@ -22,7 +22,6 @@ import {
   Moon,
   ScrollText,
   Sun,
-  User,
   Wand2,
   type LucideIcon,
 } from "lucide-react";
@@ -38,6 +37,18 @@ interface NavItem {
   readonly icon: LucideIcon;
   readonly label: string;
   readonly badge?: number;
+}
+
+/** "Frank (FOBO controller, all books; owner)" -> name "Frank", role "FOBO controller", the rest as description. */
+function splitName(full: string): { name: string; role: string | null; description: string | null } {
+  const m = full.match(/^([^(]+?)\s*\((.*)\)\s*$/);
+  if (!m) return { name: full, role: null, description: null };
+  return { name: m[1], role: m[2].split(/[,;—]/)[0].trim() || null, description: m[2] };
+}
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  return ((parts[0]?.[0] ?? "?") + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
 }
 
 // The sidebar starts collapsed (icons only); a person's choice is remembered.
@@ -102,6 +113,7 @@ function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
   const compact = collapsed && !mobileOpen;
   const fixtures = devUsers.data ?? [];
   const meName = fixtures.find((u) => u.user_id === user)?.name ?? user ?? "Not signed in";
+  const who = splitName(meName);
 
   return (
     <div className="flex h-screen overflow-hidden bg-surface-50">
@@ -194,13 +206,14 @@ function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
             )}
           </div>
 
-          <div className="flex items-center gap-1.5 sm:gap-3">
-            <div className="hidden items-center gap-1.5 text-xs text-surface-500 sm:flex">
-              <Activity size={14} />
-              <span>API</span>
-              <span className={clsx("h-2 w-2 rounded-full", platform.isError ? "bg-red-400" : platform.data ? "bg-green-400" : "bg-surface-400")} />
-            </div>
-            <div className="hidden h-5 w-px bg-surface-200 sm:block" />
+          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+            {me.data?.is_admin && (
+              <span className="mr-1 hidden items-center gap-1.5 text-xs text-surface-500 sm:flex" title="Helix API">
+                <Activity size={14} />
+                API
+                <span className={clsx("h-2 w-2 rounded-full", platform.isError ? "bg-red-400" : platform.data ? "bg-green-400" : "bg-surface-400")} />
+              </span>
+            )}
             <NotificationBell enabled={!!user} />
             <button
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
@@ -212,46 +225,67 @@ function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
             </button>
             <div className="relative" ref={menuRef}>
               <button
-                onClick={() => fixtures.length > 0 && setUserMenu(!userMenu)}
-                className="flex items-center gap-2 rounded-lg bg-surface-50 px-2.5 py-1.5 transition-colors hover:bg-surface-100"
+                onClick={() => setUserMenu(!userMenu)}
+                className="flex max-w-[13rem] items-center gap-2 rounded-lg py-1 pl-1 pr-2 transition-colors hover:bg-surface-100"
                 aria-label="Signed-in user"
+                aria-expanded={userMenu}
               >
-                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary-100 text-primary-600">
-                  <User size={12} />
-                </div>
-                {/* Phones show the avatar only; the menu still names who is signed in. */}
-                <div className="hidden text-left text-xs md:block">
-                  <span className="font-medium text-surface-700">{meName}</span>
-                  {me.data && me.data.roles.length > 0 && (
-                    <span className="ml-1.5 hidden rounded xl:inline bg-surface-200 px-1 py-0.5 text-[10px] text-surface-500">{me.data.roles.join(", ")}</span>
-                  )}
-                </div>
-                {fixtures.length > 0 && <ChevronDown size={12} className="text-surface-400" />}
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-primary-700">
+                  {initials(who.name)}
+                </span>
+                {/* Name and one short role; everything else is in the menu. Phones: initials only. */}
+                <span className="hidden min-w-0 text-left leading-tight md:block">
+                  <span className="block truncate text-sm font-medium text-surface-800">{who.name}</span>
+                  {who.role && <span className="block truncate text-[11px] text-surface-500">{who.role}</span>}
+                </span>
+                <ChevronDown size={14} className="shrink-0 text-surface-400" />
               </button>
               {userMenu && (
-                <div className="absolute right-0 top-full z-50 mt-1 w-72 rounded-lg border border-surface-200 bg-card py-1 shadow-lg">
-                  <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-surface-400">Switch user (development)</p>
-                  <p className="px-3 pb-1.5 text-xs text-surface-700 md:hidden">Signed in as {meName}</p>
-                  {fixtures.map((u) => (
-                    <button
-                      key={u.user_id}
-                      onClick={() => {
-                        setCurrentUser(u.user_id);
-                        setUserMenu(false);
-                        onUserChange(u.user_id);
-                      }}
-                      className={clsx(
-                        "flex w-full items-start gap-2 px-3 py-2 text-left text-sm hover:bg-surface-50",
-                        user === u.user_id && "bg-primary-50 font-medium text-primary-700",
-                      )}
-                    >
-                      <span className={clsx("mt-1.5 h-2 w-2 rounded-full", user === u.user_id ? "bg-primary-500" : "bg-surface-300")} />
-                      <span>
-                        <span className="block">{u.name ?? u.user_id}</span>
-                        <span className="block text-[10px] text-surface-400">{u.roles.join(", ") || "no roles"}</span>
-                      </span>
-                    </button>
-                  ))}
+                <div className="absolute right-0 top-full z-50 mt-1 w-80 max-w-[calc(100vw-1.5rem)] rounded-lg border border-surface-200 bg-card shadow-lg">
+                  <div className="border-b border-surface-100 px-3 py-2.5">
+                    <p className="text-sm font-semibold text-surface-900">{who.name}</p>
+                    {who.description && <p className="text-xs text-surface-500">{who.description}</p>}
+                    {me.data && me.data.roles.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {me.data.roles.map((r) => (
+                          <span key={r} className="rounded bg-surface-100 px-1.5 py-0.5 text-[10px] font-medium text-surface-600">{r}</span>
+                        ))}
+                      </div>
+                    )}
+                    {me.data && Object.keys(me.data.data_scopes).length > 0 && (
+                      <p className="mt-1.5 text-[11px] text-surface-500">
+                        Data: {Object.entries(me.data.data_scopes).map(([k, v]) => `${k} ${v.includes("*") ? "all" : v.join(", ")}`).join(" · ")}
+                      </p>
+                    )}
+                    {!!me.data?.covering_for?.length && (
+                      <p className="mt-1 text-[11px] font-medium text-accent-700">Covering for {me.data.covering_for.join(", ")}</p>
+                    )}
+                  </div>
+                  {fixtures.length > 0 && (
+                    <div className="max-h-[50vh] overflow-y-auto py-1">
+                      <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-surface-400">Switch user (development)</p>
+                      {fixtures.map((u) => (
+                        <button
+                          key={u.user_id}
+                          onClick={() => {
+                            setCurrentUser(u.user_id);
+                            setUserMenu(false);
+                            onUserChange(u.user_id);
+                          }}
+                          className={clsx(
+                            "flex w-full items-start gap-2 px-3 py-1.5 text-left text-sm hover:bg-surface-50",
+                            user === u.user_id && "bg-primary-50 font-medium text-primary-700",
+                          )}
+                        >
+                          <span className={clsx("mt-1.5 h-2 w-2 shrink-0 rounded-full", user === u.user_id ? "bg-primary-500" : "bg-surface-300")} />
+                          <span className="min-w-0">
+                            <span className="block">{splitName(u.name ?? u.user_id).name}</span>
+                            <span className="block truncate text-[10px] text-surface-400">{splitName(u.name ?? u.user_id).description || u.roles.join(", ") || "no roles"}</span>
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

@@ -6,10 +6,14 @@ import { Play } from "lucide-react";
 import { Users } from "lucide-react";
 
 import { useCapability, useCases, useGroups, useOpenCase, type Manifest, type TeamGroup } from "../api/helix";
+import EvalsPanel from "../components/capability/EvalsPanel";
+import FlowDiagram from "../components/capability/FlowDiagram";
+import InstructionsEditor from "../components/capability/InstructionsEditor";
+import VersionsPanel from "../components/capability/VersionsPanel";
 import StatusBadge from "../components/StatusBadge";
 import { Card, Empty, ErrorState, Loading, PageHeader, WorkflowStepper, formatTime } from "../components/ui";
 
-type Tab = "groups" | "cases" | "definition" | "versions";
+type Tab = "groups" | "cases" | "flow" | "definition" | "instructions" | "evals" | "versions";
 
 export default function CapabilityDetail(): JSX.Element {
   const { id = "" } = useParams();
@@ -34,7 +38,7 @@ export default function CapabilityDetail(): JSX.Element {
         <WorkflowStepper steps={m.steps} pauseBefore={m.pause_before} />
       </div>
       <div className="mb-4 inline-flex rounded-lg border border-surface-200 bg-card p-1" role="tablist">
-        {((hasGroups ? ["groups"] : []).concat(["cases", "definition", "versions"]) as Tab[]).map((t) => (
+        {((hasGroups ? ["groups"] : []).concat(["cases", "flow", "definition", "instructions", "evals", "versions"]) as Tab[]).map((t) => (
           <button
             key={t}
             role="tab"
@@ -58,21 +62,22 @@ export default function CapabilityDetail(): JSX.Element {
           <ManifestDefinition manifest={m} />
         </>
       )}
+      {tab === "flow" && (
+        <Card title="Workflow"><FlowDiagram capabilityId={id} /></Card>
+      )}
+      {tab === "instructions" && (
+        <Card title="Model instructions">
+          <InstructionsEditor capabilityId={id} current={m.reasoning.skill} />
+        </Card>
+      )}
+      {tab === "evals" && (
+        <Card title="Evals — try a version on past decisions">
+          <EvalsPanel capabilityId={id} versions={cap.data.versions.map((v) => v.version)} groups={(groups.data ?? []).map((g) => g.group)} />
+        </Card>
+      )}
       {tab === "versions" && (
         <Card title="Versions" aside={<span className="text-xs text-surface-500">An owner drafts; a different owner approves.</span>}>
-          <ul className="divide-y divide-surface-100 text-sm">
-            {cap.data.versions.map((v) => (
-              <li key={v.version} className="flex flex-wrap items-center gap-3 py-2">
-                <span className="font-mono text-xs">v{v.version}</span>
-                <StatusBadge status={v.status} />
-                <span className="text-surface-600">{v.note || "—"}</span>
-                <span className="ml-auto text-xs text-surface-500">
-                  drafted by {v.drafted_by} {formatTime(v.drafted_at)}
-                  {v.decided_by && <> · approved by {v.decided_by}</>}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <VersionsPanel capabilityId={id} versions={cap.data.versions} />
         </Card>
       )}
     </div>

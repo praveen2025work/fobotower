@@ -6,7 +6,15 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { CheckCircle2, FileText, Sparkles, Upload } from "lucide-react";
 
-import { useApproveVersion, useDraftFromBrd, useDrafts, useSubmitDraft } from "../api/helix";
+import {
+  useApproveVersion,
+  useDraftFromBrd,
+  useDrafts,
+  useImportBundle,
+  useSubmitDraft,
+  useTemplates,
+  type DraftResult,
+} from "../api/helix";
 import { Card, Empty, ErrorState, Loading, PageHeader, WorkflowStepper, formatTime } from "../components/ui";
 
 export default function Authoring(): JSX.Element {
@@ -15,11 +23,25 @@ export default function Authoring(): JSX.Element {
   const [note, setNote] = useState("");
   const draft = useDraftFromBrd();
   const submit = useSubmitDraft();
-  const result = draft.data;
+  const templates = useTemplates();
+  const [fromTemplate, setFromTemplate] = useState<DraftResult | null>(null);
+  const result = fromTemplate ?? draft.data;
+
+  const applyTemplate = (id: string) => {
+    const t = templates.data?.find((x) => x.id === id);
+    if (!t) return;
+    setYamlText(t.yaml);
+    setFromTemplate({
+      yaml: t.yaml, manifest: null, problems: [], author: `template: ${t.name}`,
+      assumptions: ["Replace every YOUR_… placeholder (roles, entity, service account) and the id before submitting."],
+    });
+    submit.reset();
+  };
 
   const onDraft = () =>
     draft.mutate(brd, {
       onSuccess: (r) => {
+        setFromTemplate(null);
         setYamlText(r.yaml);
         submit.reset();
       },
@@ -51,6 +73,14 @@ export default function Authoring(): JSX.Element {
             <Sparkles size={14} /> {draft.isPending ? "Drafting…" : "Draft capability"}
           </button>
           {draft.error && <div className="mt-3"><ErrorState error={draft.error} /></div>}
+          <label className="mt-4 block text-xs font-medium text-surface-600">
+            Or start from a template
+            <select aria-label="Template" defaultValue="" onChange={(e) => applyTemplate(e.target.value)}
+              className="mt-1 block w-full rounded-lg border border-surface-300 px-2 py-1.5 text-sm font-normal">
+              <option value="" disabled>Choose a template…</option>
+              {(templates.data ?? []).map((t) => <option key={t.id} value={t.id}>{t.name} — {t.description}</option>)}
+            </select>
+          </label>
         </Card>
 
         <Card
@@ -109,7 +139,43 @@ export default function Authoring(): JSX.Element {
         </Card>
       </div>
       <PendingDrafts />
+      <PromoteIn />
     </div>
+  );
+}
+
+/** A version exported from another environment arrives here as a draft. */
+function PromoteIn() {
+  const imp = useImportBundle();
+  const [text, setText] = useState("");
+  const [bad, setBad] = useState<string | null>(null);
+  return (
+    <Card title="Promote from another environment" className="mt-4">
+      <p className="mb-2 text-xs text-surface-500">
+        Paste a version exported from another environment (its Versions tab, download icon). It arrives as a draft
+        and goes live only when an owner here approves it. Its checksum (and signature, when this deployment has a
+        promotion key) is verified.
+      </p>
+      <textarea aria-label="Version bundle" value={text} onChange={(e) => setText(e.target.value)} rows={5} spellCheck={false}
+        className="block w-full rounded-lg border border-surface-300 bg-code-bg px-3 py-2 font-mono text-xs text-code-fg focus:outline-none" />
+      <button
+        disabled={!text.trim() || imp.isPending}
+        onClick={() => {
+          setBad(null);
+          try {
+            imp.mutate(JSON.parse(text));
+          } catch {
+            setBad("That is not a bundle (JSON expected).");
+          }
+        }}
+        className="mt-2 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-brand-fg hover:bg-brand-strong disabled:opacity-50"
+      >
+        Import as draft
+      </button>
+      {bad && <p className="mt-2 text-xs text-red-700">{bad}</p>}
+      {imp.error && <div className="mt-2"><ErrorState error={imp.error} /></div>}
+      {imp.data && <p className="mt-2 text-sm text-green-700">Drafted {imp.data.capability_id} v{imp.data.version} — {imp.data.note}</p>}
+    </Card>
   );
 }
 

@@ -61,6 +61,8 @@ Users (top-right switcher, development only):
 | `dan`, `erin` | Cash operations — the cash rec group (erin also owns the recon capability) |
 | `frank` | FOBO controller, all books — owner of the CATS vs MOTIF rec group |
 | `gina` | FOBO controller, PRIME-MB-01 only — second owner of CATS vs MOTIF |
+| `pat` | Helix platform support — off switches (incl. connectors); sees no case data |
+| `helix-scheduler` | Service account scheduled and event-opened cases run as |
 | `viewer` | No roles — sees nothing |
 
 A full pass: as **alice**, Capabilities → *P&L variance commentary* → open lane UK01 / 2026-09 →
@@ -74,8 +76,8 @@ threshold is unset; set the threshold in the group's YAML and have **gina** appr
 *Ask about this case* answers from the case's data, and *Run history* shows each step.
 **Operations** is the run-the-bank view.
 
-Tests: `cd apps/backend && .venv/bin/python -m pytest -q tests/helix` (135; the whole backend
-including FOBO: 610) · `cd apps/web && npm test` (60, including aria-ai's own tests for the components reused from it) ·
+Tests: `cd apps/backend && .venv/bin/python -m pytest -q tests/helix` (172; the whole backend
+including FOBO: 647) · `cd apps/web && npm test` (67, including aria-ai's own tests for the components reused from it) ·
 `npm run typecheck`.
 
 ## 2. How it is built
@@ -247,6 +249,13 @@ payloads; Helix's own spans carry the model's view only.
 | Reports | PDF reports in the shared database (`HELIX_REPORTS_STORE=db`), served to anyone who can see the case |
 | Retention | `retention.days` per capability; `python -m helix.retention [--dry-run]` (schedule it daily); owners put a case on legal hold with a reason |
 | Config changes | `python -m helix.config_sync` → drafts → owners approve (four-eyes) |
+| Notifications | the bell; `HELIX_NOTIFY_WEBHOOK_URL` posts each one to Teams or a Power Automate flow (email) |
+| Schedules and events | `case.opens_on: schedule` + cron + key templates, run as `case.opens_as`; `POST /api/events` with `HELIX_EVENT_SECRET`; `HELIX_SCHEDULER`, `HELIX_SCHEDULE_TZ` |
+| Evidence | reviewers attach PDFs/workbooks to a case (readable by the document tools); *Evidence pack (PDF)* for auditors |
+| Controls | off switches for a capability, a group or a connector (Operations; `HELIX_ADMIN_ROLE` for connectors); `limits` caps model spend per case and per day |
+| Scale | groups reasoned in parallel (`HELIX_REASON_CONCURRENCY`, one at a time under a spend limit); `reasoning.specialists` as Agent SDK subagents (`HELIX_SUBAGENT_TOOL`) |
+| Evals | capability page → *Evals*: replay past decided cases, hidden, on any version; agreement, verdict match, wording (judge); spans in Phoenix |
+| Developers | *Flow* diagram, *Instructions* editor, version diffs, templates in Authoring, export a version and import it elsewhere as a draft (`HELIX_ENV_NAME`, `HELIX_PROMOTION_KEY`) |
 | Smoke test | `scripts/helix_office_smoke.py --user <id> [--case <cap> --group <g> --key k=v …]` — database, entitlements, every connector, LLM, Phoenix, and one real case |
 
 ## 4. Onboarding a capability

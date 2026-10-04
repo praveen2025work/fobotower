@@ -9,6 +9,9 @@ import { parse, stringify } from "yaml";
 
 import { currentUser } from "../api/client";
 import { useApproveGroup, useDraftGroup, useGroup, type GroupConfig } from "../api/helix";
+import FlowDiagram from "../components/capability/FlowDiagram";
+import InstructionsEditor from "../components/capability/InstructionsEditor";
+import VersionsPanel from "../components/capability/VersionsPanel";
 import StatusBadge from "../components/StatusBadge";
 import { Card, Empty, ErrorState, Loading, PageHeader, formatTime } from "../components/ui";
 import { ManifestDefinition } from "./CapabilityDetail";
@@ -52,9 +55,24 @@ export default function GroupDetail(): JSX.Element {
       <h2 className="mb-2 text-sm font-semibold text-surface-800">Configuration its cases run on</h2>
       <ManifestDefinition manifest={g.manifest} />
 
+      <div className="mt-4">
+        <Card title="Workflow"><FlowDiagram capabilityId={id} teamGroup={group} /></Card>
+      </div>
+
       <div className="mt-4 grid gap-4 xl:grid-cols-2">
         {g.is_owner && <EditGroup capabilityId={id} config={g.config} />}
         <Versions capabilityId={id} group={group} versions={g.versions} isOwner={g.is_owner} fourEyes={g.owners.four_eyes} />
+      </div>
+
+      <div className="mt-4 grid gap-4 xl:grid-cols-2">
+        {g.is_owner && (
+          <Card title="This team's model instructions">
+            <InstructionsEditor capabilityId={id} teamGroup={group} current={g.manifest.reasoning.skill} />
+          </Card>
+        )}
+        <Card title="What changed between versions">
+          <VersionsPanel capabilityId={id} group={group} versions={g.versions} />
+        </Card>
       </div>
     </div>
   );

@@ -12,6 +12,7 @@ import IncidentStrip from "../components/mission-control/IncidentStrip";
 import LiveTail from "../components/mission-control/LiveTail";
 import McpServersPanel from "../components/mission-control/McpServersPanel";
 import ScanningStrip from "../components/mission-control/ScanningStrip";
+import { SchedulesPanel, SwitchesPanel } from "../components/ops/ControlsPanel";
 import StatusBadge from "../components/StatusBadge";
 import { ErrorState } from "../components/ui";
 
@@ -58,6 +59,11 @@ export default function Operations(): JSX.Element {
             <McpServersPanel connectors={ops.data?.connectors} isLoading={ops.isLoading} />
           </div>
         </div>
+      </div>
+
+      <div className="grid grid-cols-12 gap-4 px-4 pb-4">
+        <div className="col-span-12 lg:col-span-7"><SwitchesPanel /></div>
+        <div className="col-span-12 lg:col-span-5"><SchedulesPanel /></div>
       </div>
 
       <IncidentStrip incidents={ops.data?.incidents} isLoading={ops.isLoading} />

@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { api, newIdempotencyKey } from "./client";
+import { api, newIdempotencyKey, upload } from "./client";
 
 export type CaseStatus =
   | "running"
@@ -195,6 +195,7 @@ export interface CaseDetail extends CaseSummary {
   decisions: { group_id: string; action: string; comment: string | null; decided_by: string; decided_at: string }[];
   tool_calls: ToolCall[];
   documents: PublishedDocument[];
+  evidence?: Evidence[];
   attempts: { case_id: string; attempt: number; status: CaseStatus; outcome: string | null; opened_by: string; opened_at: string }[];
   can_decide: boolean;
   can_rerun: boolean;
@@ -265,6 +266,7 @@ export interface Overview {
   model_calls_24h: number;
   llm_cost_usd: number;
   llm_groups: number;
+  hours_saved_30d?: { value: number; basis: string };
   capabilities: { id: string; name: string; case_label: string; statuses: Record<string, number>; escalated_groups: number }[];
 }
 
@@ -512,5 +514,204 @@ export function useApproveGroup(capabilityId: string, group: string) {
     onSuccess: () => {
       for (const key of ["group", "groups", "capabilities"]) qc.invalidateQueries({ queryKey: [key] });
     },
+  });
+}
+
+// ---------- notifications ----------
+
+export interface NotificationItem {
+  notification_id: string;
+  kind: string;
+  title: string;
+  body: string;
+  case_id: string | null;
+  capability_id: string;
+  created_at: string;
+  read: boolean;
+}
+
+export const useNotifications = (enabled = true) =>
+  useQuery({
+    queryKey: ["notifications"],
+    queryFn: () => api.get<{ unread: number; items: NotificationItem[] }>("/notifications"),
+    refetchInterval: 30_000,
+    enabled,
+  });
+
+export function useMarkRead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (ids: string[] | null) => api.post<{ marked: number }>("/notifications/read", { ids }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["notifications"] }),
+  });
+}
+
+// ---------- run-the-bank: schedules, switches ----------
+
+export interface Schedule {
+  capability_id: string;
+  team_group: string | null;
+  schedule: string;
+  next_run: string | null;
+  opens_as: string | null;
+  keys: Record<string, string>[];
+  timezone: string;
+}
+
+export interface SwitchRow {
+  kind: "capability" | "group" | "connector";
+  target: string;
+  off: boolean;
+  reason: string;
+  set_by: string;
+  set_at: string;
+  can_switch: boolean;
+  history: { off: boolean; reason: string; by: string; at: string }[];
+}
+
+export const useSchedules = () => useQuery({ queryKey: ["schedules"], queryFn: () => api.get<Schedule[]>("/schedules") });
+export const useSwitches = () => useQuery({ queryKey: ["switches"], queryFn: () => api.get<SwitchRow[]>("/switches") });
+
+export function useSetSwitch() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { kind: string; target: string; off: boolean; reason: string }) => api.post("/switches", v),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["switches"] }),
+  });
+}
+
+// ---------- evidence ----------
+
+export interface Evidence {
+  name: string;
+  bytes: number;
+  sha256: string;
+  uploaded_by: string;
+  note: string | null;
+  uploaded_at: string;
+  url: string;
+}
+
+export function useUploadEvidence(caseId: string) {
+  const refresh = useRefreshCases();
+  return useMutation({
+    mutationFn: async (v: { file: File; note: string }) => {
+      const form = new FormData();
+      form.append("file", v.file);
+      if (v.note) form.append("note", v.note);
+      return upload<{ case: CaseDetail }>(`/cases/${enc(caseId)}/evidence`, form);
+    },
+    onSuccess: (res) => refresh(res.case),
+  });
+}
+
+// ---------- evals ----------
+
+export interface EvalSummary {
+  cases: number;
+  groups_compared: number;
+  agree: number;
+  disagree: number;
+  escalated: number;
+  missing: number;
+  new: number;
+  agreement_rate: number | null;
+  verdict_match_rate: number | null;
+  wording_mean: number | null;
+  cost_usd: number;
+}
+
+export interface EvalRunRow {
+  run_id: string;
+  capability_id: string;
+  version: number;
+  team_group: string | null;
+  group_version: number | null;
+  status: "running" | "done" | "failed";
+  started_by: string;
+  started_at: string;
+  finished_at: string | null;
+  summary: EvalSummary;
+  error: string | null;
+}
+
+export const useEvals = (id: string) =>
+  useQuery({
+    queryKey: ["evals", id],
+    queryFn: () => api.get<EvalRunRow[]>(`/capabilities/${enc(id)}/evals`),
+    refetchInterval: (q) => (q.state.data?.some((r) => r.status === "running") ? 2000 : false),
+  });
+
+export function useStartEval(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { version?: number; team_group?: string | null; group_version?: number; limit?: number }) =>
+      api.post<EvalRunRow>(`/capabilities/${enc(id)}/evals`, v),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["evals", id] }),
+  });
+}
+
+// ---------- developer tools ----------
+
+export interface FlowNode {
+  id: string;
+  gate: boolean;
+  pause: boolean;
+  tools: string[];
+  notes: string[];
+  people: string[];
+}
+
+export interface Flow {
+  capability_id: string;
+  name: string;
+  nodes: FlowNode[];
+  edges: { from: string; to: string }[];
+  opens: { on: string; schedule: string | null; events: boolean };
+}
+
+export interface Template {
+  id: string;
+  name: string;
+  description: string;
+  yaml: string;
+}
+
+export const useFlow = (id: string, teamGroup?: string | null) =>
+  useQuery({
+    queryKey: ["flow", id, teamGroup ?? ""],
+    queryFn: () => api.get<Flow>(`/capabilities/${enc(id)}/flow${teamGroup ? `?team_group=${enc(teamGroup)}` : ""}`),
+  });
+
+export const useDiff = (id: string, a: number | null, b: number | null, group?: string | null) =>
+  useQuery({
+    queryKey: ["diff", id, group ?? "", a, b],
+    queryFn: () =>
+      api.get<{ diff: string; changed: string[] }>(
+        group
+          ? `/capabilities/${enc(id)}/groups/${enc(group)}/versions/${a}/diff/${b}`
+          : `/capabilities/${enc(id)}/versions/${a}/diff/${b}`,
+      ),
+    enabled: a != null && b != null && a !== b,
+  });
+
+export const useTemplates = () => useQuery({ queryKey: ["templates"], queryFn: () => api.get<Template[]>("/authoring/templates") });
+
+export function useDraftInstructions(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { skill: string; note: string; team_group?: string | null }) =>
+      api.post<{ version: number }>(`/capabilities/${enc(id)}/instructions`, v),
+    onSuccess: () => {
+      for (const key of ["capability", "group", "drafts"]) qc.invalidateQueries({ queryKey: [key] });
+    },
+  });
+}
+
+export function useImportBundle() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (bundle: unknown) => api.post<{ capability_id: string; version: number; note: string }>("/promotion/import", { bundle }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["drafts"] }),
   });
 }

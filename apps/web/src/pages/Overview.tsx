@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { AlertTriangle, Ban, Bot, Inbox, Layers, Send } from "lucide-react";
+import { AlertTriangle, Ban, Bot, Clock, Inbox, Layers, Send } from "lucide-react";
 
 import { useInbox, useOverview } from "../api/helix";
 import StatCard from "../components/StatCard";
@@ -19,7 +19,12 @@ export default function Overview(): JSX.Element {
       {overview.error && <ErrorState error={overview.error} />}
       {overview.data && (
         <>
-          <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-5">
+          <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-6">
+            {overview.data.hours_saved_30d && (
+              <div title={overview.data.hours_saved_30d.basis}>
+                <StatCard icon={Clock} value={`${overview.data.hours_saved_30d.value} h`} label="Hours saved (30 days)" />
+              </div>
+            )}
             <StatCard icon={Inbox} value={overview.data.awaiting_my_review} label="Awaiting my review" />
             <StatCard icon={Send} value={overview.data.awaiting_my_release} label="Awaiting my release" />
             <StatCard icon={AlertTriangle} value={overview.data.escalated_groups} label="Escalated to people" />
@@ -27,6 +32,9 @@ export default function Overview(): JSX.Element {
             <StatCard icon={Ban} value={overview.data.refused_calls_24h} label="Refused calls (24h)" />
           </div>
 
+          {overview.data.hours_saved_30d && (
+            <p className="-mt-3 mb-5 text-[11px] text-surface-500">Hours saved: {overview.data.hours_saved_30d.basis}.</p>
+          )}
           <div className="grid gap-4 xl:grid-cols-3">
             <Card title="My inbox" className="xl:col-span-2" aside={<Link to="/inbox" className="text-xs font-medium text-primary-600 hover:underline">Open inbox</Link>}>
               {inbox.isLoading && <Loading what="inbox" />}

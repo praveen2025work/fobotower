@@ -61,6 +61,21 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   throw new ApiError(message, res.status, problems);
 }
 
+/** POST a multipart form (file uploads) with the identity header. */
+export async function upload<T>(path: string, form: FormData): Promise<T> {
+  const user = currentUser();
+  const res = await fetch(`${API_BASE}${path}`, { method: "POST", body: form, headers: user ? { "X-Helix-User": user } : {} });
+  if (res.ok) return (await res.json()) as T;
+  let message = `upload failed (${res.status})`;
+  try {
+    const detail = (await res.json()).detail;
+    if (typeof detail === "string") message = detail;
+  } catch {
+    // keep the generic message
+  }
+  throw new ApiError(message, res.status);
+}
+
 /** Fetch a file the API serves (it needs the identity header too) and save it. */
 export async function download(path: string, filename: string): Promise<void> {
   const user = currentUser();

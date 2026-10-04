@@ -166,15 +166,19 @@ The platform gaps found in review, and FOBO's behaviour, are now in Helix:
 - **Office readiness**: `scripts/helix_office_smoke.py` and
   `config/helix/connectors.office.example.yaml`.
 
-Still open from the lists above:
-- eval sets and shadow runs;
-- scheduled and event-triggered cases;
-- evidence upload into a case;
-- notifications;
-- cost budgets and a kill switch;
-- an evidence-pack PDF;
-- parallel group reasoning and subagents;
-- the developer tools: skill editor, version diff, workflow graph, templates, promotion.
+Then, in a second round:
+- **For users:** notifications (bell plus Teams/Power Automate webhook), scheduled and
+  event-opened cases, and evidence upload into a case.
+- **For trust:** an evidence-pack PDF; eval sets and shadow runs scored in Phoenix; cost limits
+  and off switches.
+- **For scale:** parallel group reasoning and specialist subagents.
+- **For developers:** an instructions editor, version diffs, a workflow diagram, templates, and
+  promotion between environments.
+- **For FOBO:** validation tests and findings, the 180-day lookback, and hours saved.
+
+Earlier list, kept for the record — still open from it:
+- nothing from the lists above;
+- retiring the FOBO app once its users have moved to Helix.
 
 ## 5. Suggested order
 

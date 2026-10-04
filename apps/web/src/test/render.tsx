@@ -10,7 +10,8 @@ export function mockApi(routes: Record<string, unknown | ((body: unknown) => unk
   const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
     const method = init?.method ?? "GET";
     const path = url.replace(/^\/api/, "");
-    const body = init?.body ? JSON.parse(String(init.body)) : undefined;
+    const raw = init?.body;
+    const body = raw instanceof FormData ? raw : raw ? JSON.parse(String(raw)) : undefined;
     calls.push({ method, path, body });
     const handler = routes[`${method} ${path}`];
     if (handler === undefined) return new Response(JSON.stringify({ detail: "not mocked" }), { status: 404 });

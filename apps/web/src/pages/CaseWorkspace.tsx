@@ -41,6 +41,7 @@ import {
   type ToolCall,
 } from "../api/helix";
 import CaseChat from "../components/case/CaseChat";
+import EvidencePanel from "../components/case/EvidencePanel";
 import CaseHistory from "../components/case/CaseHistory";
 import StatusBadge from "../components/StatusBadge";
 import { Empty, ErrorState, Loading, WorkflowStepper, currentStep, formatTime, formatValue } from "../components/ui";
@@ -236,6 +237,34 @@ function BulkApprove({ c }: { c: CaseDetail }) {
   );
 }
 
+interface TestResult {
+  id: string;
+  status: "pass" | "fail" | "not_run";
+  check: string;
+  on_fail: string;
+  why?: string;
+}
+
+function TestsCell({ tests }: { tests: TestResult[] }) {
+  const failed = tests.filter((t) => t.status === "fail");
+  const notRun = tests.filter((t) => t.status === "not_run");
+  return (
+    <span className="inline-flex flex-wrap gap-0.5">
+      {failed.map((t) => (
+        <span key={t.id} title={`${t.id} failed: ${t.check} — ${t.on_fail}`} className="rounded bg-red-100 px-1 font-mono text-[10px] font-semibold text-red-700">
+          {t.id}
+        </span>
+      ))}
+      {notRun.length > 0 && (
+        <span title={notRun.map((t) => `${t.id}: ${t.why}`).join("\n")} className="rounded bg-yellow-100 px-1 text-[10px] text-yellow-700">
+          {notRun.length} not run
+        </span>
+      )}
+      <span className="text-[10px] text-surface-400">{tests.length - failed.length - notRun.length} pass</span>
+    </span>
+  );
+}
+
 function ChecksCell({ checks }: { checks: CheckResult[] }) {
   return (
     <span className="inline-flex gap-0.5">
@@ -291,6 +320,7 @@ function ProposalPanel({ c, group }: { c: CaseDetail; group: Group }) {
   const needsWordsToApprove = f?.status === "escalated" && rules.includes("escalated");
   const needsWordsToReject = rules.includes("reject");
   const hasChecks = items.some((i) => Array.isArray(i.checks));
+  const hasTests = items.some((i) => Array.isArray(i.tests) && (i.tests as unknown[]).length > 0);
   const sentBack = f?.reinvestigations ?? 0;
   const canSendBack = c.can_decide && sentBack < (c.review?.max_reinvestigations ?? 2);
 
@@ -403,6 +433,7 @@ function ProposalPanel({ c, group }: { c: CaseDetail; group: Group }) {
               <tr>
                 {c.columns.map((col) => <th key={col} scope="col" className="whitespace-nowrap px-3 py-2 font-medium">{col.replace(/_/g, " ")}</th>)}
                 {hasChecks && <th scope="col" className="px-3 py-2 font-medium">checks</th>}
+                {hasTests && <th scope="col" className="px-3 py-2 font-medium">tests</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-100">
@@ -410,6 +441,7 @@ function ProposalPanel({ c, group }: { c: CaseDetail; group: Group }) {
                 <tr key={it.item_id}>
                   {c.columns.map((col) => <td key={col} className="whitespace-nowrap px-3 py-1.5 tabular-nums">{formatValue(it[col])}</td>)}
                   {hasChecks && <td className="px-3 py-1.5"><ChecksCell checks={(it.checks as CheckResult[]) ?? []} /></td>}
+                  {hasTests && <td className="px-3 py-1.5"><TestsCell tests={(it.tests as TestResult[]) ?? []} /></td>}
                 </tr>
               ))}
             </tbody>
@@ -592,6 +624,8 @@ function ContextPanel({ c }: { c: CaseDetail }) {
           {release.error && <div className="mt-2"><ErrorState error={release.error} /></div>}
         </div>
       )}
+
+      <EvidencePanel c={c} canUpload={c.can_decide || c.status === "awaiting_review"} />
 
       <LegalHold c={c} />
 

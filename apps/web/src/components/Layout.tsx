@@ -30,6 +30,7 @@ import { currentUser, setCurrentUser } from "../api/client";
 import { useDevUsers, useInbox, useMe, usePlatform } from "../api/helix";
 import { useTheme } from "../theme";
 import ErrorBoundary from "./ErrorBoundary";
+import NotificationBell from "./NotificationBell";
 
 interface NavItem {
   readonly to: string;
@@ -174,6 +175,7 @@ function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
               <span className={clsx("h-2 w-2 rounded-full", platform.isError ? "bg-red-400" : platform.data ? "bg-green-400" : "bg-surface-400")} />
             </div>
             <div className="h-5 w-px bg-surface-200" />
+            <NotificationBell enabled={!!user} />
             <button
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
               className="rounded-lg p-2 text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-700"

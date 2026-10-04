@@ -38,10 +38,10 @@ Status: **Same** = the same rule, now as Helix configuration ·
 | P1: null threshold ⇒ "requires controller confirmation" | `policy` values left `null` + `playbook.verdict_policy` | **Same** |
 | G/H → ESCALATE whichever side | a table that agrees for every side applies when the side is unknown | **Same** |
 | Bitemporal lineage, `as_of` on every read (PRIME-MB-05 moved desk) | `resolve` step over the knowledge graph, `knowledge.as_of: cob` | **Same** |
-| Priors from prior resolutions | approved decisions in the knowledge graph; same subject first, then shared entities (instrument, book) | **Different** — no 180-day lookback setting yet |
+| Priors from prior resolutions, 180-day lookback | approved decisions in the knowledge graph; same subject first, then shared entities (instrument, book); `knowledge.priors_lookback_days: 180` | **Same** |
 | Pattern groups | `group_by: [category, side]` | **Same** |
 | Reasoner: none / session_service / direct | `HELIX_LLM_ADAPTER`: none / agent_sdk / stub (or your module) | **Different** — the Agent SDK in-process; no separate session service |
-| Agent reads breaks over a per-session MCP endpoint | the model's tools are served in-process and every call goes through the Helix gateway (allow-list, scope, audit, protection) | **Different** |
+| Agent reads breaks over a per-session MCP endpoint | the model's tools are served in-process and every call goes through the Helix gateway (allow-list, scope, audit, protection); a booking-events specialist runs as an Agent SDK subagent with the same tools | **Different** |
 | Grounding: every figure traces to a computed delta | `validate` gate: every figure traces to the run's data or tool results | **Same** |
 | Idempotent controller decisions per pattern | idempotent decisions per group; bulk decide; required comments | **Same** |
 | Reject-and-redraft cycles (`max_review_cycles`) | "Investigate again" with a reviewer note (`review.max_reinvestigations`) | **Different** |
@@ -49,9 +49,11 @@ Status: **Same** = the same rule, now as Helix configuration ·
 | A rec's investigation runs once, then replays its checkpoint | a case runs once per key (re-run makes attempt 2), off the request path; LangGraph checkpoints | **Same** |
 | Chat drawer (ask about a rec) | "Ask about this case" — grounded, audited, protected | **Same** |
 | Execution trace from checkpoints | "Run history" — each step, its time, the state "as it was" | **Same** |
-| Board per COB, notification bell | Inbox and case lists per group; no notifications yet | **Not yet** (notifications) |
-| Hours-saved tile | — | **Not yet** |
-| Validation tests FO-1…FO-8, BO-1…BO-6 and FO-6 findings A/B/C | carried in the model's instructions (`reasoning.skill`); not yet structured checks with evidence requirements | **Not yet** (as structured tests) |
+| Board per COB, notification bell | Inbox and case lists per group; the bell (and Teams via webhook) for review needed, release needed, published, failed, escalated | **Same** |
+| Hours-saved tile (breaks → patterns × 12 min, basis shown) | Overview "Hours saved (30 days)" — items grouped into decisions × the capability's declared manual minutes, with its basis | **Same** |
+| Validation tests FO-1…FO-8, BO-1…BO-6 with evidence | `playbook.tests`: every test on every break — pass, fail, or not run (evidence missing, or threshold unset under P1); blocking failures (FO-1/2/4/7) hold a POST; FO-3 failing needs FO-6 | **Same** |
+| FO-6 findings A/B/C | `playbook.findings`: a finding that indicates a category explains a break no cause check did | **Same** |
+| A rec opens when its run lands (11:00 run, COB) | scheduled cases (`30 6 * * 1-5`, yesterday's COB per book) and events from MOTIF's feed (`POST /api/events`) | **Same** |
 | `rank` step (order candidate causes) | the first positive check in playbook order is the cause | **Different** |
 
 ## Changing FOBO's rules on Helix

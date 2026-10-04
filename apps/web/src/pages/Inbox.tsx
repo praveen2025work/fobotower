@@ -6,13 +6,60 @@ import { UserCheck } from "lucide-react";
 import { currentUser } from "../api/client";
 import { useInbox, type InboxRow } from "../api/helix";
 import DelegationPanel from "../components/DelegationPanel";
+import { useIsPhone } from "../hooks/useIsPhone";
 import StatusBadge from "../components/StatusBadge";
 import { DueBadge, ageText, urgency } from "../components/Urgency";
 import { Card, Empty, ErrorState, Loading, PageHeader, formatTime, formatValue } from "../components/ui";
 
+/** Phones: one card per case — what it is, what it needs, how urgent. */
+function InboxCards({ rows }: { rows: InboxRow[] }) {
+  return (
+    <ul className="divide-y divide-surface-100">
+      {rows.map((r) => (
+        <li key={r.case_id}>
+          <Link to={`/cases/${encodeURIComponent(r.case_id)}`} className="block py-3 active:bg-surface-50">
+            <div className="flex items-start justify-between gap-2">
+              <span className="min-w-0 font-medium leading-snug text-primary-700">
+                {r.subject}
+                <span className="block text-xs font-normal text-surface-500">{r.case_label} · {r.capability_name}</span>
+              </span>
+              <StatusBadge status={r.action} />
+            </div>
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-surface-600">
+              <span>{r.decided}/{r.groups} decided</span>
+              {r.escalated > 0 && <span className="font-medium text-orange-700">{r.escalated} escalated</span>}
+              {(r.needs_confirmation ?? 0) > 0 && (
+                <span className="rounded bg-yellow-100 px-1.5 text-[11px] font-semibold text-yellow-800">{r.needs_confirmation} to confirm</span>
+              )}
+              {(r.judgement_calls ?? 0) > 0 && (
+                <span className="rounded bg-purple-100 px-1.5 text-[11px] font-semibold text-purple-800">{r.judgement_calls} judgement</span>
+              )}
+              {r.acting_for && (
+                <span className="inline-flex items-center gap-1 rounded bg-accent-50 px-1.5 text-[11px] font-medium text-accent-800">
+                  <UserCheck size={10} /> for {r.acting_for}
+                </span>
+              )}
+            </div>
+            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-surface-500">
+              <DueBadge dueAt={r.due_at} state={r.due_state} compact />
+              {r.exposure != null && (
+                <span className="tabular-nums text-surface-700">{formatValue(r.exposure)}{r.unit ? ` ${r.unit}` : ""} at stake</span>
+              )}
+              <span>{ageText(r.age_hours)}</span>
+            </div>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function InboxTable({ rows }: { rows: InboxRow[] }) {
   const money = rows.some((r) => r.exposure != null);
+  const phone = useIsPhone();
+  if (phone) return <InboxCards rows={rows} />;
   return (
+    <>
     <div className="overflow-x-auto">
       <table className="w-full text-left text-sm">
         <thead className="text-xs text-surface-500">
@@ -66,6 +113,7 @@ export function InboxTable({ rows }: { rows: InboxRow[] }) {
         </tbody>
       </table>
     </div>
+    </>
   );
 }
 
@@ -108,7 +156,7 @@ export default function InboxPage(): JSX.Element {
         {rows.length > 0 && (
           <>
             <div className="mb-3 flex flex-wrap items-center gap-2">
-              <div className="flex flex-wrap gap-1" role="group" aria-label="Filter">
+              <div className="-mx-1 flex w-full gap-1 overflow-x-auto px-1 pb-1 sm:w-auto sm:flex-wrap sm:overflow-visible sm:pb-0" role="group" aria-label="Filter">
                 {FILTERS.map((f) => {
                   const n = rows.filter(f.test).length;
                   if (f.id !== "all" && n === 0) return null;
@@ -118,7 +166,7 @@ export default function InboxPage(): JSX.Element {
                       onClick={() => setFilter(f.id)}
                       aria-pressed={filter === f.id}
                       className={clsx(
-                        "rounded-full border px-2.5 py-1 text-xs font-medium",
+                        "shrink-0 whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium",
                         filter === f.id ? "border-primary-400 bg-primary-50 text-primary-800" : "border-surface-200 text-surface-600 hover:bg-surface-50",
                       )}
                     >
@@ -127,7 +175,7 @@ export default function InboxPage(): JSX.Element {
                   );
                 })}
               </div>
-              <div className="ml-auto flex flex-wrap gap-2">
+              <div className="flex w-full flex-wrap gap-2 sm:ml-auto sm:w-auto">
                 {capabilities.length > 1 && (
                   <select aria-label="Capability" value={capability} onChange={(e) => setCapability(e.target.value)} className="rounded-lg border border-surface-300 bg-card px-2 py-1 text-xs">
                     <option value="">All capabilities</option>

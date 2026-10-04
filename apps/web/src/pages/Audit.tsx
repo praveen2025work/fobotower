@@ -34,12 +34,12 @@ export default function Audit(): JSX.Element {
         title="Audit"
         subtitle="The system of record. Model behaviour (prompts, timings, tokens) is in Phoenix, joined on the case."
         actions={
-          <div className="flex gap-2">
-            <select aria-label="Capability" value={capability} onChange={(e) => setCapability(e.target.value)} className="rounded-lg border border-surface-300 bg-card px-2 py-1.5 text-sm">
+          <div className="flex min-w-0 flex-wrap gap-2">
+            <select aria-label="Capability" value={capability} onChange={(e) => setCapability(e.target.value)} className="min-w-0 max-w-full rounded-lg border border-surface-300 bg-card px-2 py-1.5 text-sm">
               <option value="">All capabilities</option>
               {caps.data?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
-            <select aria-label="Event kind" value={kind} onChange={(e) => setKind(e.target.value)} className="rounded-lg border border-surface-300 bg-card px-2 py-1.5 text-sm">
+            <select aria-label="Event kind" value={kind} onChange={(e) => setKind(e.target.value)} className="min-w-0 max-w-full rounded-lg border border-surface-300 bg-card px-2 py-1.5 text-sm">
               <option value="">All events</option>
               <option value="tool_call">Connector calls</option>
               <option value="refused">Refused calls</option>
@@ -55,7 +55,7 @@ export default function Audit(): JSX.Element {
         {events.data && rows.length === 0 && <Empty>No events.</Empty>}
         {rows.length > 0 && (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+            <table className="w-full min-w-[40rem] text-left text-sm">
               <thead className="text-xs text-surface-500">
                 <tr>
                   <th scope="col" className="px-2 py-2 font-medium">When</th>

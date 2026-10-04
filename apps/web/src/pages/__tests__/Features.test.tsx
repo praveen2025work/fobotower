@@ -62,6 +62,27 @@ describe("Inbox", () => {
   });
 });
 
+describe("Inbox on a phone", () => {
+  it("shows each case as a card with what it needs and how urgent it is", async () => {
+    const original = window.matchMedia;
+    window.matchMedia = ((q: string) => ({ matches: q.includes("max-width"), media: q, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia;
+    try {
+      mockApi({
+        "GET /inbox": [row("PRIME-MB-04", { due_state: "overdue", due_at: "2026-10-01T11:00:00Z", needs_confirmation: 1 })],
+        "GET /me/delegations": { away: [], covering: [] },
+        "GET /dev/users": [],
+      });
+      renderAt("/inbox", "/inbox", <InboxPage />);
+      const card = await screen.findByRole("link", { name: /PRIME-MB-04/ });
+      expect(within(card).getByText("1 to confirm")).toBeInTheDocument();
+      expect(within(card).getByText(/Overdue/)).toBeInTheDocument();
+      expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    } finally {
+      window.matchMedia = original;
+    }
+  });
+});
+
 describe("Settings form", () => {
   const manifest = {
     case: { opens_on: "schedule", schedule: "30 6 * * 1-5", due: { from: "cob", business_days: 1, at: "11:00" } },

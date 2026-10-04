@@ -6,9 +6,9 @@ import { ApiError } from "../api/client";
 
 export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: ReactNode; actions?: ReactNode }) {
   return (
-    <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-surface-900">{title}</h1>
+    <div className="mb-4 flex flex-wrap items-end justify-between gap-3 sm:mb-5">
+      <div className="min-w-0">
+        <h1 className="text-xl font-bold tracking-tight text-surface-900 sm:text-2xl">{title}</h1>
         {subtitle && <p className="mt-1 text-sm text-surface-500">{subtitle}</p>}
       </div>
       {actions}
@@ -18,14 +18,14 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
 
 export function Card({ title, aside, children, className }: { title?: ReactNode; aside?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <section className={clsx("rounded-xl border border-surface-200 bg-card", className)}>
+    <section className={clsx("min-w-0 rounded-xl border border-surface-200 bg-card", className)}>
       {(title || aside) && (
         <header className="flex items-center justify-between gap-2 border-b border-surface-100 px-4 py-3">
           {title && <h2 className="text-sm font-semibold text-surface-800">{title}</h2>}
           {aside}
         </header>
       )}
-      <div className="p-4">{children}</div>
+      <div className="p-3 sm:p-4">{children}</div>
     </section>
   );
 }

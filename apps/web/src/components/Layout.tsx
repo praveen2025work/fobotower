@@ -18,6 +18,7 @@ import {
   LayoutDashboard,
   Layers,
   Menu,
+  MoreHorizontal,
   Moon,
   ScrollText,
   Sun,
@@ -175,12 +176,16 @@ function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
         </div>
       </aside>
 
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex h-14 items-center justify-between border-b border-surface-200 bg-card px-4">
-          <div className="flex items-center gap-3">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <header className="flex h-14 items-center justify-between gap-2 border-b border-surface-200 bg-card px-3 sm:px-4">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <button onClick={() => setMobileOpen(true)} className="rounded-lg p-2 hover:bg-surface-100 lg:hidden" aria-label="Open menu">
               <Menu size={18} className="text-surface-500" />
             </button>
+            <span className="flex items-center gap-1.5 lg:hidden">
+              <span className="flex h-7 w-7 items-center justify-center rounded-md bg-nav-bg text-xs font-bold text-white">H</span>
+              <span className="text-sm font-bold text-surface-900">Helix</span>
+            </span>
             {platform.data && me.data?.is_admin && (
               <span className="hidden text-xs text-surface-500 sm:inline">
                 LLM <span className="font-medium text-surface-700">{platform.data.llm}</span> · Entitlement{" "}
@@ -189,13 +194,13 @@ function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
             )}
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5 text-xs text-surface-500">
+          <div className="flex items-center gap-1.5 sm:gap-3">
+            <div className="hidden items-center gap-1.5 text-xs text-surface-500 sm:flex">
               <Activity size={14} />
               <span>API</span>
               <span className={clsx("h-2 w-2 rounded-full", platform.isError ? "bg-red-400" : platform.data ? "bg-green-400" : "bg-surface-400")} />
             </div>
-            <div className="h-5 w-px bg-surface-200" />
+            <div className="hidden h-5 w-px bg-surface-200 sm:block" />
             <NotificationBell enabled={!!user} />
             <button
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
@@ -253,12 +258,39 @@ function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
           </div>
         </header>
 
-        <main className="scrollbar-hide flex-1 overflow-y-auto p-4 lg:p-6">
+        <main className="scrollbar-hide min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-3 pb-24 sm:p-4 sm:pb-24 lg:p-6">
           <ErrorBoundary>
             <Outlet />
           </ErrorBoundary>
         </main>
       </div>
+
+      {/* Phones: the main places one tap away, at the thumb; the rest under "More". */}
+      <nav
+        aria-label="Quick"
+        className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-surface-200 bg-card pb-[env(safe-area-inset-bottom)] lg:hidden"
+      >
+        {[sections[0].items[0], sections[0].items[1], sections[0].items[2], sections[1].items[0]].map(({ to, icon: Icon, label, badge }) => (
+          <NavLink
+            key={to}
+            to={to}
+            end={to === "/"}
+            className={({ isActive }) =>
+              clsx("relative flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium", isActive ? "text-primary-700" : "text-surface-500")
+            }
+          >
+            <Icon size={20} />
+            {label}
+            {badge ? (
+              <span className="absolute right-[22%] top-1 min-w-[1.1rem] rounded-full bg-nav-mark px-1 text-center text-[9px] font-bold leading-4 text-nav-bg">{badge}</span>
+            ) : null}
+          </NavLink>
+        ))}
+        <button onClick={() => setMobileOpen(true)} className="flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium text-surface-500">
+          <MoreHorizontal size={20} />
+          More
+        </button>
+      </nav>
     </div>
   );
 }

@@ -58,7 +58,7 @@ export default function VersionsPanel({ capabilityId, versions, group }: {
             <select aria-label="To version" value={b ?? ""} onChange={(e) => setB(Number(e.target.value))} className="rounded-md border border-surface-300 px-2 py-1">
               {sorted.map((v) => <option key={v.version} value={v.version}>v{v.version}</option>)}
             </select>
-            {diff.data && <span className="text-surface-500">changed: {diff.data.changed.join(", ") || "nothing"}</span>}
+            {diff.data && <span className="min-w-0 break-words text-surface-500 [overflow-wrap:anywhere]">changed: {diff.data.changed.join(", ") || "nothing"}</span>}
           </div>
           {diff.data && (
             <pre aria-label="Version diff" className="max-h-96 overflow-auto rounded-lg bg-code-bg p-3 font-mono text-[11px] leading-relaxed text-code-fg">

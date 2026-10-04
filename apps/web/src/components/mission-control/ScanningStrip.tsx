@@ -17,7 +17,7 @@ function formatSeconds(value: number): string {
 
 function PlaceholderTile({ label }: { label: string }) {
   return (
-    <div className="flex min-w-[120px] flex-col justify-center px-4">
+    <div className="flex min-w-[112px] shrink-0 flex-col justify-center px-3 sm:px-4">
       <span className="text-[11px] font-medium uppercase tracking-wider text-surface-500">
         {label}
       </span>
@@ -38,7 +38,7 @@ function ScanningStrip({ data, isLoading }: ScanningStripProps) {
     return (
       <section
         aria-label="KPI summary"
-        className="flex h-16 items-stretch divide-x divide-surface-200 border-b border-surface-200 bg-card"
+        className="flex h-16 items-stretch divide-x divide-surface-200 overflow-x-auto border-b border-surface-200 bg-card"
       >
         <PlaceholderTile label="Cost · 24h" />
         <PlaceholderTile label="Runs · 24h" />
@@ -52,7 +52,7 @@ function ScanningStrip({ data, isLoading }: ScanningStripProps) {
   return (
     <section
       aria-label="KPI summary"
-      className="flex h-16 items-stretch divide-x divide-surface-200 border-b border-surface-200 bg-card"
+      className="flex h-16 items-stretch divide-x divide-surface-200 overflow-x-auto border-b border-surface-200 bg-card"
     >
       <KpiTile
         label="Cost · 24h"

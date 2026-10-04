@@ -43,7 +43,7 @@ function KpiTile({
   return (
     <div
       className={clsx(
-        "flex min-w-[120px] flex-col justify-center px-4",
+        "flex min-w-[132px] shrink-0 flex-col justify-center px-3 sm:px-4",
         className,
       )}
     >

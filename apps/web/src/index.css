@@ -11,6 +11,12 @@
     @apply min-h-screen;
   }
 
+  /* Grid cells may shrink below their content (wide tables scroll inside
+     their own box instead of pushing the page wider than a phone). */
+  .grid > * {
+    min-width: 0;
+  }
+
   /* Form fields follow the theme instead of the browser's default. */
   input,
   textarea,

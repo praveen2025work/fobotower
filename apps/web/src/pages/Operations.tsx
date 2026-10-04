@@ -26,12 +26,12 @@ export default function Operations(): JSX.Element {
   const hidden = "Case data is hidden from platform support. Health, connectors and switches are below.";
 
   return (
-    <div className="-m-4 flex min-h-[calc(100vh-3.5rem)] flex-col lg:-m-6">
+    <div className="-m-3 flex min-h-[calc(100vh-3.5rem)] flex-col sm:-m-4 lg:-m-6">
       <HealthBanner health={ops.data?.health} />
       <ScanningStrip data={ops.data?.kpi} isLoading={ops.isLoading} />
       {ops.error && <div className="p-4"><ErrorState error={ops.error} /></div>}
 
-      <div className="grid flex-1 grid-cols-12 gap-4 p-4">
+      <div className="grid flex-1 grid-cols-12 gap-3 p-3 sm:gap-4 sm:p-4">
         <div className="col-span-12 lg:col-span-6">
           <FleetTable agents={ops.data?.fleet} isLoading={ops.isLoading} isError={ops.isError} onRetry={() => ops.refetch()} emptyMessage={support ? hidden : undefined} />
         </div>
@@ -70,7 +70,7 @@ export default function Operations(): JSX.Element {
         </div>
       </div>
 
-      <div className="grid grid-cols-12 gap-4 px-4 pb-4">
+      <div className="grid grid-cols-12 gap-3 px-3 pb-4 sm:gap-4 sm:px-4">
         <div className="col-span-12 lg:col-span-7"><SwitchesPanel /></div>
         <div className="col-span-12 lg:col-span-5"><SchedulesPanel emptyMessage={support ? "Schedules belong to the business teams' capabilities; none are visible to platform support." : undefined} /></div>
       </div>

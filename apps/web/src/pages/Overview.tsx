@@ -26,7 +26,7 @@ export default function Overview(): JSX.Element {
       {overview.error && <ErrorState error={overview.error} />}
       {overview.data && (
         <>
-          <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-6">
+          <div className="mb-5 grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-3 xl:grid-cols-6">
             {overview.data.hours_saved_30d && (
               <div title={overview.data.hours_saved_30d.basis}>
                 <StatCard icon={Clock} value={`${overview.data.hours_saved_30d.value} h`} label="Hours saved (30 days)" />

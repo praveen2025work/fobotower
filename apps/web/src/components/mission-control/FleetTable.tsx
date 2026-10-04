@@ -99,8 +99,8 @@ function FleetTable({ agents, isLoading, isError, onRetry, emptyMessage }: Fleet
           )}
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto">
-          <table className="w-full text-sm">
+        <div className="flex-1 overflow-auto">
+          <table className="w-full min-w-[30rem] text-sm">
             <thead className="bg-surface-50 text-[11px] uppercase tracking-wider text-surface-500">
               <tr>
                 <th className="w-6 px-3 py-2 text-left font-medium" />

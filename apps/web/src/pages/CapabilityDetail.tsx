@@ -44,14 +44,14 @@ export default function CapabilityDetail(): JSX.Element {
       <div className="mb-4 rounded-xl border border-surface-200 bg-card p-4">
         <WorkflowStepper steps={m.steps} pauseBefore={m.pause_before} />
       </div>
-      <div className="mb-4 inline-flex rounded-lg border border-surface-200 bg-card p-1" role="tablist">
+      <div className="mb-4 flex max-w-full overflow-x-auto rounded-lg border border-surface-200 bg-card p-1 sm:inline-flex" role="tablist">
         {((hasGroups ? ["groups"] : []).concat(["cases", "flow", "definition", "instructions", "evals", "versions"]) as Tab[]).map((t) => (
           <button
             key={t}
             role="tab"
             aria-selected={tab === t}
             onClick={() => setTab(t)}
-            className={clsx("rounded-md px-3 py-1.5 text-sm font-medium capitalize", tab === t ? "bg-brand-accent text-brand-accent-fg" : "text-surface-600 hover:bg-surface-50")}
+            className={clsx("shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium capitalize", tab === t ? "bg-brand-accent text-brand-accent-fg" : "text-surface-600 hover:bg-surface-50")}
           >
             {t === "cases" ? "Cases" : t}
           </button>

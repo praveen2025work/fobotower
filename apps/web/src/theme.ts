@@ -1,5 +1,5 @@
-// Light (Barclays blue) or dark (Barclays dark). The choice is the viewer's,
-// kept in this browser; with no choice the operating system's setting wins.
+// Light (Barclays blue) or dark (Barclays dark). Light is the default; a
+// viewer's choice is kept in this browser.
 // index.html applies it before the first paint so pages never flash.
 
 import { useCallback, useEffect, useState } from "react";
@@ -17,29 +17,16 @@ export function storedTheme(): Theme | null {
   }
 }
 
-export function systemTheme(): Theme {
-  return typeof window.matchMedia === "function" && window.matchMedia("(prefers-color-scheme: dark)").matches
-    ? "dark"
-    : "light";
-}
+export const DEFAULT_THEME: Theme = "light";
 
 export function applyTheme(theme: Theme): void {
   document.documentElement.dataset.theme = theme;
 }
 
 export function useTheme(): [Theme, (t: Theme) => void] {
-  const [theme, setState] = useState<Theme>(() => storedTheme() ?? systemTheme());
+  const [theme, setState] = useState<Theme>(() => storedTheme() ?? DEFAULT_THEME);
 
   useEffect(() => applyTheme(theme), [theme]);
-
-  // Follow the operating system until the viewer picks a theme.
-  useEffect(() => {
-    if (typeof window.matchMedia !== "function") return;
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const onChange = () => storedTheme() === null && setState(mq.matches ? "dark" : "light");
-    mq.addEventListener?.("change", onChange);
-    return () => mq.removeEventListener?.("change", onChange);
-  }, []);
 
   const set = useCallback((t: Theme) => {
     try {

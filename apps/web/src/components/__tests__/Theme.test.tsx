@@ -24,6 +24,17 @@ describe("Barclays themes", () => {
     expect(document.documentElement.dataset.theme).toBe("light");
   });
 
+  it("starts light even when the device is set to dark", () => {
+    const original = window.matchMedia;
+    window.matchMedia = ((q: string) => ({ matches: q.includes("dark"), media: q, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia;
+    try {
+      renderAt("/", "/", <Layout onUserChange={() => {}} />);
+      expect(document.documentElement.dataset.theme).toBe("light");
+    } finally {
+      window.matchMedia = original;
+    }
+  });
+
   it("opens in the saved theme", () => {
     localStorage.setItem("helix.theme", "dark");
     renderAt("/", "/", <Layout onUserChange={() => {}} />);

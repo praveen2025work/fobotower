@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
-from helix import authoring, capabilities, cases, chat, controls, evals, evidence, knowledge, notify, retention, runner, scheduler, views
+from helix import authoring, capabilities, cases, chat, controls, devtools, evals, evidence, knowledge, notify, retention, runner, scheduler, views
 from helix import groups as team_groups
 from helix.config import settings
 from helix.entitlement import Caller, EntitlementError, StubEntitlement, entitlements
@@ -557,6 +557,74 @@ async def get_eval(run_id: str, c: Caller = Depends(caller)) -> dict:
     if not await team_groups.visible(c, run["capability_id"], m):
         raise LookupError(run_id)
     return run
+
+
+@app.get("/api/capabilities/{capability_id}/versions/{a}/diff/{b}")
+@_errors
+async def diff_versions(capability_id: str, a: int, b: int, c: Caller = Depends(caller)) -> dict:
+    await _require_visible(capability_id, c)
+    return await devtools.version_diff(capability_id, a, b)
+
+
+@app.get("/api/capabilities/{capability_id}/groups/{group}/versions/{a}/diff/{b}")
+@_errors
+async def diff_group_versions(capability_id: str, group: str, a: int, b: int,
+                              c: Caller = Depends(caller)) -> dict:
+    await _require_visible(capability_id, c)
+    return await devtools.group_diff(capability_id, group, a, b)
+
+
+class InstructionsIn(BaseModel):
+    skill: str = Field(min_length=1, max_length=50_000)
+    note: str = Field(default="", max_length=1000)
+    team_group: str | None = None
+
+
+@app.post("/api/capabilities/{capability_id}/instructions", status_code=201)
+@_errors
+async def draft_instructions(capability_id: str, body: InstructionsIn, c: Caller = Depends(caller)) -> dict:
+    return await devtools.draft_instructions(capability_id, body.skill, body.note, c, body.team_group)
+
+
+@app.get("/api/capabilities/{capability_id}/flow")
+@_errors
+async def capability_flow(capability_id: str, team_group: str | None = None, c: Caller = Depends(caller)) -> dict:
+    from helix import groups as team_groups
+    await _require_visible(capability_id, c)
+    _, m = await capabilities.active(capability_id)
+    if team_group:
+        _, _, m = await team_groups.active_group(capability_id, team_group)
+    return devtools.flow(m)
+
+
+@app.get("/api/authoring/templates")
+async def authoring_templates(c: Caller = Depends(caller)) -> list[dict]:
+    return devtools.templates()
+
+
+@app.get("/api/capabilities/{capability_id}/versions/{version}/export")
+@_errors
+async def export_version(capability_id: str, version: int, group: str | None = None,
+                         c: Caller = Depends(caller)) -> dict:
+    await _require_visible(capability_id, c)
+    return await devtools.export(capability_id, version, c, group)
+
+
+class ImportIn(BaseModel):
+    bundle: dict
+
+
+@app.post("/api/promotion/import", status_code=201)
+@_errors
+async def import_version(body: ImportIn, c: Caller = Depends(caller)) -> dict:
+    return await devtools.import_bundle(body.bundle, c)
+
+
+async def _require_visible(capability_id: str, c: Caller) -> None:
+    from helix import groups as team_groups
+    _, m = await capabilities.active(capability_id)
+    if not await team_groups.visible(c, capability_id, m):
+        raise PermissionError(f"{c.user_id} has no role for {capability_id}")
 
 
 class InvalidateIn(BaseModel):

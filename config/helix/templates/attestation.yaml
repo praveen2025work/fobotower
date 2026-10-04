@@ -1,0 +1,39 @@
+# Template — close sign-off & attestation: each close control's evidence is
+# checked, exceptions are explained, owners attest, and an attestation PDF is
+# published. `controls.checklist` is a placeholder: onboard your close-controls
+# connector (or point the load at an existing tool) and the validator will pass.
+id: team.close-attestation
+name: Close sign-off and attestation (template)
+description: Check every close control's evidence, explain exceptions, owners attest, publish the attestation.
+owners: { people: [], role: YOUR_OWNER_ROLE, four_eyes: true }
+case:
+  label: Close
+  item_label: Control
+  key: [entity, period]
+  subject: "{entity} close · {period}"
+  scopes: { entity: entity }
+  opens_on: schedule
+  schedule: "0 8 3 * *"
+  schedule_keys: [{ entity: YOUR_ENTITY, period: "{prev_month}" }]
+  opens_as: YOUR_SERVICE_ACCOUNT
+items:
+  load: { tool: controls.checklist, args: { entity: $case.entity, period: $case.period } }
+  id_field: control_id
+  display: [control_id, control, owner, status, evidence]
+  in_scope: status != 'passed'
+steps: [load, group, reason, draft, validate, review, record, publish]
+pause_before: [review, publish]
+group_by: [owner]
+rules:
+  - id: evidence-missing
+    when: count >= 1
+    then: { status: escalated, comment: "{count} control(s) without passing evidence for {owner}.", reason: EVIDENCE_MISSING }
+reasoning: { reasoner: none }
+review: { roles: [YOUR_CONTROL_OWNER_ROLE] }
+publish:
+  tool: documents.render_pdf_report
+  per: case
+  args: { entity: $case.entity, name: $case_id, title: Close attestation, subtitle: $subject,
+          sections: $approved, sign_off: $sign_off }
+  approver_roles: [YOUR_FINANCIAL_CONTROLLER_ROLE]
+retention: { days: 2555 }

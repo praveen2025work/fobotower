@@ -17,6 +17,8 @@ The plug points for the office environment are here, all optional:
   HELIX_SCHEDULE_TZ        the time zone schedules are read in (UTC)
   HELIX_EVENT_SECRET       enables POST /api/events (other systems open cases)
   HELIX_ADMIN_ROLE         platform support role: switches connectors off/on (HELIX_PLATFORM_ADMIN)
+  HELIX_ENV_NAME           dev | uat | prod … — named on exported versions
+  HELIX_PROMOTION_KEY      signs exported versions; imports must carry a valid signature
   HELIX_NOTIFY_WEBHOOK_URL every notification is also POSTed here (Teams / Power Automate)
   HELIX_CONSOLE_URL        the console's address, for links in notifications
   HELIX_DOCUMENTS_DIR      documents the documents service reads (per scope)
@@ -52,6 +54,8 @@ class HelixSettings:
     scheduler: bool
     event_secret: str | None
     admin_role: str
+    env_name: str
+    promotion_key: str | None
     notify_webhook_url: str | None
     documents_dir: Path
     reports_dir: Path
@@ -90,6 +94,10 @@ def settings() -> HelixSettings:
         event_secret=env("HELIX_EVENT_SECRET") or None,
         # Platform support: may switch connectors (and anything else) off and on.
         admin_role=env("HELIX_ADMIN_ROLE") or "HELIX_PLATFORM_ADMIN",
+        # Promotion across environments: this deployment's name, and the key that
+        # signs exported versions (shared by the environments that trust each other).
+        env_name=env("HELIX_ENV_NAME") or "dev",
+        promotion_key=env("HELIX_PROMOTION_KEY") or None,
         # Links in notifications point here.
         console_url=(env("HELIX_CONSOLE_URL") or "http://localhost:5180").rstrip("/"),
         # Each notification is also POSTed here as JSON ({"text": …, "title": …, "link": …}):

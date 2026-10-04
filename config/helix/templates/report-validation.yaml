@@ -1,0 +1,40 @@
+# Template — report validation: check a report (Excel) against the ledger and
+# publish a PDF validation report.
+id: team.report-validation
+name: Report validation (template)
+description: Check a management report line by line against the ledger; publish a PDF validation report.
+owners: { people: [], role: YOUR_OWNER_ROLE, four_eyes: true }
+case:
+  label: Validation
+  item_label: Report line
+  key: [entity, period, report]
+  subject: "{report} · {entity} · {period}"
+  scopes: { entity: entity }
+items:
+  id_field: item_id
+  amount_field: difference
+  display: [account, cost_centre, report_amount, ledger_amount, difference, break_type]
+match:
+  left: { tool: documents.read_workbook, args: { entity: $case.entity, name: $case.report } }
+  right: { tool: gl.balances, args: { entity: $case.entity, period: $case.period } }
+  keys: [account, cost_centre]
+  amount_field: actual
+  tolerance: 0.01
+  left_label: report
+  right_label: ledger
+steps: [match, group, reason, draft, validate, review, record, publish]
+pause_before: [review, publish]
+group_by: [account]
+reasoning:
+  reasoner: llm
+  tools: [gl.journal_lines, documents.list_documents, documents.read_pdf]
+  skill: |
+    Say why the report and the ledger differ for each account, from the journal
+    lines and the business's documents. Cite only figures from the tools.
+review: { roles: [YOUR_REVIEWER_ROLE] }
+publish:
+  tool: documents.render_pdf_report
+  per: case
+  args: { entity: $case.entity, name: $case_id, title: Report validation, subtitle: $subject,
+          sections: $approved, sign_off: $sign_off }
+  approver_roles: [YOUR_APPROVER_ROLE]

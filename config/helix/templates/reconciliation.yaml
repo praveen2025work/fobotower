@@ -1,0 +1,41 @@
+# Template — reconciliation: match two systems, explain every break, sign off.
+# Replace the ids, tools, keys and roles; the validator lists anything left.
+id: team.reconciliation
+name: Reconciliation (template)
+description: Match two systems on a key, explain every break with rules then the model, sign off.
+owners: { people: [], role: YOUR_OWNER_ROLE, four_eyes: true }
+case:
+  label: Rec run
+  item_label: Break
+  key: [entity, date]
+  subject: "{entity} · {date}"
+  scopes: { entity: entity }
+items:
+  id_field: item_id
+  amount_field: difference
+  display: [ref, break_type, left_amount, right_amount, difference]
+match:
+  left: { tool: bank.statement, args: { entity: $case.entity, date: $case.date } }
+  right: { tool: ledger.postings, args: { entity: $case.entity, date: $case.date } }
+  keys: [ref]
+  amount_field: amount
+  tolerance: 0.01
+  left_label: left
+  right_label: right
+policy:
+  write_off_limit: { value: 100, unit: GBP }
+steps: [match, group, reason, draft, validate, review, record]
+group_by: [break_type]
+rules:
+  - id: small-break
+    when: count == 1 and abs(total) <= policy.write_off_limit
+    then: { status: proposed, comment: "One difference of {total}, within the write-off limit; propose write-off." }
+reasoning:
+  reasoner: llm
+  tools: [ledger.counterparty_history]
+  skill: |
+    You investigate reconciliation breaks between two systems. Find the likely
+    cause of each group of breaks and the next action. Cite only figures from
+    the tools or the breaks; escalate when nothing explains a difference.
+review: { roles: [YOUR_REVIEWER_ROLE] }
+retention: { days: 2555 }

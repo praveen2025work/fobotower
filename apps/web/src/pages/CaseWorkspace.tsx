@@ -4,8 +4,9 @@
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import clsx from "clsx";
-import { ArrowLeft, Bot, Check, ExternalLink, GitBranch, History, Send, ShieldAlert, User, X } from "lucide-react";
+import { ArrowLeft, Bot, Check, ExternalLink, FileDown, GitBranch, History, Send, ShieldAlert, User, X } from "lucide-react";
 
+import { download } from "../api/client";
 import { useCase, useDecide, useRelease, type CaseDetail, type Group, type ToolCall } from "../api/helix";
 import StatusBadge from "../components/StatusBadge";
 import { Empty, ErrorState, Loading, WorkflowStepper, currentStep, formatTime, formatValue } from "../components/ui";
@@ -269,7 +270,7 @@ function ContextPanel({ c }: { c: CaseDetail }) {
         <div className="rounded-lg border border-surface-200 bg-card p-3">
           <h2 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-surface-500"><Send size={12} /> Write-back</h2>
           <p className="mt-1 text-xs text-surface-600">
-            Approved explanations go to <code>{c.publish.tool}</code> once someone with {c.publish.approver_roles.join(", ")} who did not
+            Approved results go to <code>{c.publish.tool}</code> once someone with {c.publish.approver_roles.join(", ")} who did not
             review this case releases it.
           </p>
           {c.status === "awaiting_publish" && c.publish.can_release && (
@@ -285,6 +286,18 @@ function ContextPanel({ c }: { c: CaseDetail }) {
             <p className="mt-2 text-xs font-medium text-surface-500">Waiting for a second person to release it.</p>
           )}
           {c.outcome === "published" && <p className="mt-2 text-xs font-medium text-green-700">Published.</p>}
+          {(c.documents ?? []).map((d) => (
+            <button
+              key={d.url}
+              onClick={() => void download(d.url.replace(/^\/api/, ""), d.name)}
+              className="mt-2 flex w-full items-center gap-2 rounded-md border border-surface-200 px-2 py-1.5 text-left text-xs hover:bg-surface-50"
+              title={d.sha256 ? `sha256 ${d.sha256}` : undefined}
+            >
+              <FileDown size={14} className="shrink-0 text-primary-600" />
+              <span className="min-w-0 flex-1 truncate font-medium text-surface-800">{d.name}</span>
+              <span className="shrink-0 text-surface-400">{d.pages ? `${d.pages} p` : ""}</span>
+            </button>
+          ))}
           {release.error && <div className="mt-2"><ErrorState error={release.error} /></div>}
         </div>
       )}

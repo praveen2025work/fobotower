@@ -170,8 +170,20 @@ export interface CaseDetail extends CaseSummary {
   groups: Group[];
   decisions: { group_id: string; action: string; comment: string | null; decided_by: string; decided_at: string }[];
   tool_calls: ToolCall[];
+  documents: PublishedDocument[];
   can_decide: boolean;
   publish: { tool: string; approver_roles: string[]; can_release: boolean } | null;
+}
+
+/** A report the case's publish step wrote (e.g. a PDF), served by the API. */
+export interface PublishedDocument {
+  name: string;
+  tool: string;
+  pages: number | null;
+  bytes: number | null;
+  sha256: string | null;
+  written_at: string;
+  url: string;
 }
 
 export interface InboxRow {

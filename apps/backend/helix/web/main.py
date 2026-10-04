@@ -10,6 +10,7 @@ from functools import wraps
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from helix import authoring, capabilities, cases, views
@@ -258,6 +259,21 @@ class PublishIn(BaseModel):
 async def release_publish(case_id: str, body: PublishIn, c: Caller = Depends(caller)) -> dict:
     result = await cases.approve_publish(case_id, body.idempotency_key, c)
     return {**result, "case": await cases.case_detail(case_id, c)}
+
+
+@app.get("/api/cases/{case_id}/documents/{name}")
+@_errors
+async def case_document(case_id: str, name: str, c: Caller = Depends(caller)) -> FileResponse:
+    """A report this case published (e.g. its PDF), for people who can see the case."""
+    from helix.mcp_services.documents import DocumentError, report_path
+
+    scope, name = await cases.published_document(case_id, name, c)
+    try:
+        path = report_path(scope, name)
+    except DocumentError as e:
+        raise LookupError(str(e)) from e
+    return FileResponse(path, media_type="application/pdf" if name.lower().endswith(".pdf") else None,
+                        filename=name)
 
 
 class BrdIn(BaseModel):

@@ -340,40 +340,75 @@ async def record(state: CaseState) -> dict:
     return {"outcome": "completed"}
 
 
-def _publish_args(spec_args: dict, case_key: dict, group_key: dict, comment: str) -> dict:
+def _publish_args(spec_args: dict, state: CaseState, tokens: dict[str, Any]) -> dict:
+    """Resolve a publish spec's arguments: literals, "$case.<field>",
+    "$group.<field>" and the named tokens (see PublishSpec)."""
+    case_key = state["case_key"]
     out = {}
     for k, v in spec_args.items():
         if isinstance(v, str) and v.startswith("$case."):
             v = case_key[v[6:]]
         elif isinstance(v, str) and v.startswith("$group."):
-            v = group_key[v[7:]]
-        elif v == "$comment":
-            v = comment
+            v = tokens["$group"][v[7:]]
+        elif isinstance(v, str) and v in tokens:
+            v = tokens[v]
         out[k] = v
     return out
 
 
+def _subject(m: Manifest, case_key: dict) -> str:
+    try:
+        return m.case.subject.format(**case_key)
+    except (KeyError, IndexError, ValueError):
+        return ", ".join(f"{k} {v}" for k, v in case_key.items())
+
+
+def _approved(state: CaseState, m: Manifest) -> list[tuple[dict, dict, str]]:
+    """(group, decision, approved explanation) for every approved group."""
+    findings = state.get("findings", {})
+    groups = {g["group_id"]: g for g in state["groups"]}
+    return [(groups[d["group_id"]], d,
+             d.get("comment") or findings.get(d["group_id"], {}).get("comment", ""))
+            for d in state.get("decisions", [])
+            if d["action"] == "approve" and d["group_id"] in groups]
+
+
 async def publish(state: CaseState) -> dict:
-    """Write each approved group back through the capability's write tool.
+    """Write the approved results back through the capability's write tool —
+    one call per approved group, or one for the whole case (a report).
     Runs only after a second person released it (publish_approval)."""
     m = _manifest(state)
     approval = state.get("publish_approval") or {}
     ctx = _ctx(state, "publish", {m.publish.tool})
     ctx.requested_by, ctx.write_approved_by = "publish", approval.get("approved_by")
-    findings = state.get("findings", {})
-    groups = {g["group_id"]: g for g in state["groups"]}
+    approved = _approved(state, m)
+    common = {"$case_id": state["case_id"], "$subject": _subject(m, state["case_key"])}
+    calls: list[tuple[str | None, dict]] = []
+    if m.publish.per == "case":
+        items = {it["item_id"]: it for it in state.get("items", [])}
+        columns = m.items.display or []
+        sections = [{"heading": g["label"], "body": comment, "decided_by": d["decided_by"],
+                     "columns": columns,
+                     "rows": [{c: items[i].get(c) for c in columns} for i in g["item_ids"] if i in items]}
+                    for g, d, comment in approved]
+        sign_off = [{"step": f"review: {g['label']}", "by": d["decided_by"], "at": d.get("decided_at", "")}
+                    for g, d, _ in approved]
+        sign_off.append({"step": "release", "by": approval.get("approved_by"),
+                         "at": approval.get("approved_at", "")})
+        if approved:
+            calls.append((None, _publish_args(m.publish.args, state, {
+                **common, "$approved": sections, "$sign_off": sign_off})))
+    else:
+        for g, _, comment in approved:
+            calls.append((g["group_id"], _publish_args(m.publish.args, state, {
+                **common, "$group": g["group_key"], "$comment": comment})))
     published, failed = [], []
-    for d in state.get("decisions", []):
-        if d["action"] != "approve" or d["group_id"] not in groups:
-            continue
-        g = groups[d["group_id"]]
-        comment = d.get("comment") or findings.get(d["group_id"], {}).get("comment", "")
-        args = _publish_args(m.publish.args, state["case_key"], g["group_key"], comment)
+    for group_id, args in calls:
         try:
             receipt = await gateway.call(ctx, m.publish.tool, args)
-            published.append({"group_id": g["group_id"], "receipt": receipt})
+            published.append({"group_id": group_id, "receipt": receipt})
         except (gateway.ToolDenied, gateway.ToolFailed) as e:
-            failed.append(f"{g['group_id']}: {e}")
+            failed.append(f"{group_id or 'case'}: {e}")
     outcome = "published" if not failed else "publish_failed"
     async with get_session() as s:
         case = await s.get(Case, state["case_id"])

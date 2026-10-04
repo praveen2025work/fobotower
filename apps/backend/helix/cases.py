@@ -6,6 +6,7 @@ again. The run is pinned to the manifest version active when it opened and
 to the caller's entitlements at that moment.
 """
 
+from datetime import datetime, timezone
 import hashlib
 import json
 import uuid
@@ -185,7 +186,8 @@ async def _resume_if_complete(case_id: str, m: Manifest) -> str:
             return case.status
     config = {"configurable": {"thread_id": f"helix:{case_id}"}}
     payload = [{"group_id": d.group_id, "action": d.action, "comment": d.comment,
-                "decided_by": d.decided_by} for d in decisions.values()]
+                "decided_by": d.decided_by, "decided_at": d.decided_at.isoformat()}
+               for d in decisions.values()]
     try:
         async with checkpointer() as cp:
             app = build_graph(m.steps, m.pause_before, cp)
@@ -229,7 +231,9 @@ async def approve_publish(case_id: str, idempotency_key: str, caller: Caller) ->
         try:
             async with checkpointer() as cp:
                 app = build_graph(m.steps, m.pause_before, cp)
-                await app.aupdate_state(config, {"publish_approval": {"approved_by": caller.user_id}})
+                await app.aupdate_state(config, {"publish_approval": {
+                    "approved_by": caller.user_id,
+                    "approved_at": datetime.now(timezone.utc).isoformat()}})
                 await app.ainvoke(None, config)
                 status = await _status_after_run(app, config, case_id)
         except Exception as e:
@@ -266,6 +270,29 @@ async def list_cases(capability_id: str, caller: Caller, team_group: str | None 
         if may_see_case(caller, await _pinned(c), c.case_key):
             out.append(_case_summary(c))
     return out
+
+
+def _documents(case_id: str, calls: list[ToolCall]) -> list[dict]:
+    """Reports this case's publish step wrote (a write tool's receipt that names a document)."""
+    out = []
+    for c in calls:
+        r = c.result if isinstance(c.result, dict) else {}
+        if c.requested_by == "publish" and c.allowed and not c.error and r.get("document"):
+            out.append({"name": r["document"], "tool": c.tool, "pages": r.get("pages"),
+                        "bytes": r.get("bytes"), "sha256": r.get("sha256"),
+                        "written_at": c.called_at,
+                        "url": f"/api/cases/{case_id}/documents/{r['document']}"})
+    return out
+
+
+async def published_document(case_id: str, name: str, caller: Caller) -> tuple[str, str]:
+    """(scope, name) of a report this case published, if the caller may see the case."""
+    detail = await case_detail(case_id, caller)          # LookupError if not visible
+    for c in detail["tool_calls"]:
+        r = c["result"] if isinstance(c["result"], dict) else {}
+        if c["requested_by"] == "publish" and c["allowed"] and r.get("document") == name:
+            return r["scope"], name
+    raise LookupError(f"{case_id}/{name}")
 
 
 async def case_detail(case_id: str, caller: Caller) -> dict:
@@ -313,6 +340,7 @@ async def case_detail(case_id: str, caller: Caller) -> dict:
                         "denied_reason": c.denied_reason, "row_count": c.row_count,
                         "error": c.error, "latency_ms": c.latency_ms, "called_at": c.called_at,
                         "result": c.result} for c in calls],
+        "documents": _documents(case_id, calls),
         "can_decide": caller.has_any_role(m.review.roles) and case.status == "awaiting_review",
         "publish": ({"tool": m.publish.tool, "approver_roles": m.publish.approver_roles,
                      "can_release": (case.status == "awaiting_publish"

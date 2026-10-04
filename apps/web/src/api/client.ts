@@ -61,6 +61,17 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   throw new ApiError(message, res.status, problems);
 }
 
+/** Fetch a file the API serves (it needs the identity header too) and save it. */
+export async function download(path: string, filename: string): Promise<void> {
+  const user = currentUser();
+  const res = await fetch(`${API_BASE}${path}`, { headers: user ? { "X-Helix-User": user } : {} });
+  if (!res.ok) throw new ApiError(`download failed (${res.status})`, res.status);
+  const url = URL.createObjectURL(await res.blob());
+  const a = Object.assign(document.createElement("a"), { href: url, download: filename });
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 export const api = {
   get: <T,>(path: string) => request<T>("GET", path),
   post: <T,>(path: string, body: unknown) => request<T>("POST", path, body),

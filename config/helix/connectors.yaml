@@ -95,3 +95,26 @@ connectors:
       booking_events:
         description: Booking and amendment events behind a book's breaks
         scope: { arg: book, key: book }
+
+  # A Helix-provided service, not a stub: reads PDF and Excel files and writes
+  # PDF reports (helix/mcp_services/documents.py). Files are kept per entity;
+  # in the office, serve it over http next to the team share it reads.
+  documents:
+    name: Documents — PDF and Excel in, PDF reports out
+    transport: inproc
+    target: helix.mcp_services.documents:build_documents
+    classification: internal
+    tools:
+      list_documents:
+        description: PDF and Excel documents available for an entity
+        scope: { arg: entity, key: entity }
+      read_pdf:
+        description: Text of a PDF, page by page
+        scope: { arg: entity, key: entity }
+      read_workbook:
+        description: Rows of one sheet of an Excel workbook, keyed by its header row
+        scope: { arg: entity, key: entity }
+      render_pdf_report:
+        description: Write a PDF report (sections, tables, sign-off) to the entity's reports
+        access: write          # publish step only, after a second person releases the case
+        scope: { arg: entity, key: entity }

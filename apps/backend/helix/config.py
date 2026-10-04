@@ -8,6 +8,8 @@ The plug points for the office environment are here, all optional:
                            Helix registers Phoenix itself
   HELIX_ENTITLEMENT_URL    the central entitlements service; unset = dev stub
   HELIX_IDENTITY_HEADER    the header carrying the signed-in user (SSO proxy)
+  HELIX_DOCUMENTS_DIR      documents the documents service reads (per scope)
+  HELIX_REPORTS_DIR        where it writes PDF reports (per scope)
 """
 
 import os
@@ -30,6 +32,8 @@ class HelixSettings:
     entitlement_ttl_seconds: int
     console_origin: str
     identity_header: str
+    documents_dir: Path
+    reports_dir: Path
 
 
 @lru_cache
@@ -50,4 +54,7 @@ def settings() -> HelixSettings:
         console_origin=env("HELIX_CONSOLE_ORIGIN") or "http://localhost:3100",
         # Who is calling. In the office, the SSO proxy's header (e.g. X-Remote-User).
         identity_header=env("HELIX_IDENTITY_HEADER") or "X-Helix-User",
+        # The documents service: what it reads, and where its reports go.
+        documents_dir=Path(env("HELIX_DOCUMENTS_DIR") or REPO_ROOT / "apps" / "backend" / "seed_data" / "helix_documents"),
+        reports_dir=Path(env("HELIX_REPORTS_DIR") or REPO_ROOT / "var" / "helix" / "reports"),
     )

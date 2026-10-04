@@ -48,6 +48,7 @@ const detail = (extra: Partial<CaseDetail> = {}): CaseDetail => ({
     { call_id: "t3", tool: "gl.journal_lines", connector_id: "gl", requested_by: "llm", caller: "alice", arguments: { entity: "US01", account: "7200" }, allowed: false, denied_reason: "alice is not entitled to entity=US01", row_count: null, error: null, latency_ms: null, called_at: "" },
   ],
   can_decide: true,
+  documents: [],
   publish: { tool: "reporting.publish_commentary", approver_roles: ["FIN_REVIEWER"], can_release: false },
   ...extra,
 });
@@ -109,6 +110,20 @@ describe("CaseWorkspace", () => {
     await userEvent.click(await screen.findByRole("button", { name: /Release write-back/ }));
     expect(await screen.findByText("Published.")).toBeInTheDocument();
     expect(calls.find((c) => c.method === "POST")!.path).toBe("/cases/fin.c1/publish");
+  });
+
+  it("lists the published report and downloads it with the caller's identity", async () => {
+    const doc = { name: "rv.c1.pdf", tool: "documents.render_pdf_report", pages: 2, bytes: 2780, sha256: "ab", written_at: "2026-10-04T10:03:00Z", url: "/api/cases/fin.c1/documents/rv.c1.pdf" };
+    const calls = mockApi({
+      "GET /cases/fin.c1": detail({ status: "completed", outcome: "published", can_decide: false, documents: [doc] }),
+      "GET /cases/fin.c1/documents/rv.c1.pdf": {},
+    });
+    URL.createObjectURL = vi.fn(() => "blob:x");
+    URL.revokeObjectURL = vi.fn();
+    open();
+    await userEvent.click(await screen.findByRole("button", { name: /rv\.c1\.pdf/ }));
+    expect(calls.map((c) => c.path)).toContain("/cases/fin.c1/documents/rv.c1.pdf");
+    expect(URL.createObjectURL).toHaveBeenCalled();
   });
 
   it("shows the server's refusal", async () => {

@@ -59,15 +59,22 @@ class NoLlm:
 
 
 class StubLlm:
-    """Calls each allowed tool once with the group's key, then comments using
-    the group's own figures. Deterministic, so tests and demos are stable."""
+    """Calls each allowed tool it can fill from the case and group keys once,
+    then comments using the group's own figures. Deterministic, so tests and demos are stable."""
 
     name = "stub"
 
     async def reason(self, request, tools):
+        from helix.gateway import tool_schema
+
         evidence = []
+        args = {**request.case_key, **request.group["group_key"]}
         for tool in request.allowed_tools:
-            result = await tools(tool, {**request.case_key, **request.group["group_key"]})
+            # A model chooses its own arguments; the stub can only pass the keys
+            # it has, so it skips tools that need more (e.g. a document name).
+            if not set((await tool_schema(tool)).get("required", [])) <= set(args):
+                continue
+            result = await tools(tool, args)
             evidence.append((tool, len(result.get("rows", []))))
         total = sum(_num(i.get("amount")) for i in request.group["items"])
         seen = ", ".join(f"{n} rows from {t}" for t, n in evidence) or "no tool evidence"

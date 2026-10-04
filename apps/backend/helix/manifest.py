@@ -94,10 +94,22 @@ class ReasoningSpec(Strict):
 class PublishSpec(Strict):
     """Write approved results back to a bank system, after a second approval."""
     tool: str                          # a connector tool with access: write
-    # literals, "$case.<field>", "$group.<field>" (group key), "$comment" (the
-    # approved explanation: the reviewer's comment, else the finding's)
+    # group: one call per approved group (e.g. commentary per account);
+    # case: one call for the whole case (e.g. one PDF report)
+    per: Literal["group", "case"] = "group"
+    # Argument values: literals, "$case.<field>", "$case_id", "$subject".
+    # per group: "$group.<field>" (group key), "$comment" (the approved
+    #   explanation: the reviewer's comment, else the finding's).
+    # per case: "$approved" (one section per approved group: heading, body,
+    #   columns, rows), "$sign_off" (who decided, who released, when).
     args: dict[str, Any] = Field(default_factory=dict)
     approver_roles: list[str]          # who may release the write-back
+
+    def arg_problems(self) -> list[str]:
+        only = {"group": ("$group.", "$comment"), "case": ("$approved", "$sign_off")}
+        wrong = only["case" if self.per == "group" else "group"]
+        return [f"publish.args.{k}: `{v}` cannot be used with per: {self.per}"
+                for k, v in self.args.items() if isinstance(v, str) and v.startswith(wrong)]
 
 
 class ReviewSpec(Strict):
@@ -164,7 +176,12 @@ def problems(m: Manifest) -> list[str]:
     reg = registry()
     if m.publish and (found := reg.tool(m.publish.tool)) and found[2].access != "write":
         out.append(f"publish.tool `{m.publish.tool}` is not a write tool")
-    for t in sorted(set(m.reasoning.tools) | ({m.items.load.tool} if m.items.load else set())):
+    if m.publish:
+        out += m.publish.arg_problems()
+    reads = set(m.reasoning.tools) | ({m.items.load.tool} if m.items.load else set())
+    if m.match:
+        reads |= {m.match.left.tool, m.match.right.tool}
+    for t in sorted(reads):
         if (found := reg.tool(t)) and found[2].access == "write":
             out.append(f"tool `{t}` writes to a bank system; only `publish` may use it")
     if "compare" in m.steps and m.compare is None:

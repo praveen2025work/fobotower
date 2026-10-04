@@ -16,7 +16,7 @@ def _problems(**changes) -> list[str]:
 
 def test_every_seeded_capability_is_valid():
     files = capabilities.seed_files()
-    assert {m.id for m in files} == {"fin.variance-commentary", "recon.investigation"}
+    assert {m.id for m in files} == {"fin.variance-commentary", "recon.investigation", "report.validation"}
     for m in files:
         assert problems(m) == [], m.id
 

@@ -176,6 +176,15 @@ set:
       or ESCALATE. Never assume FO is correct. Cite only figures from the
       tools or the breaks; escalate if the events do not explain the difference.
     tools: [motif.booking_events]
+    # A subagent the model can hand the booking-event trawl to.
+    specialists:
+      - name: booking-events
+        description: Reads MOTIF booking and amendment events for a book and finds the ones behind a break
+        instructions: |
+          Given a book, COB and the breaks, read the booking events and return the
+          events (type, instrument, amount, time) that explain each break, or say
+          that none do. Do not conclude a verdict.
+        tools: [motif.booking_events]
   review:
     roles: [FOBO_CONTROLLER]
     require_comment: [reject, escalated]

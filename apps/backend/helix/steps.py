@@ -6,7 +6,9 @@ MCP gateway; steps that persist write helix_* rows so the console and the
 audit read real records, not the checkpoint.
 """
 
+import asyncio
 import hashlib
+import os
 from collections import Counter
 import re
 from typing import Any, TypedDict
@@ -386,7 +388,8 @@ async def reason_group(state: CaseState, g: dict, note: str | None = None,
                 reviewer_note=guard.scrub(note, [g["group_key"], *members]) if note else None,
                 previous_finding=guard.scrub(guard.protect(previous), [g["group_key"], *members])
                 if previous else None,
-                verdicts=m.playbook.verdict_names() if m.playbook else None)
+                verdicts=m.playbook.verdict_names() if m.playbook else None,
+                specialists=[sp.model_dump() for sp in m.reasoning.specialists])
             adapter = llm()
             try:
                 res = await adapter.reason(request, gateway.invoker(ctx))
@@ -480,12 +483,27 @@ def _judged(m: Manifest, play: dict, finding: dict, model_verdict: str | None, e
     return out
 
 
+def _concurrency(m: Manifest) -> int:
+    """Groups reasoned at once. A capability with spend limits goes one at a
+    time, so each group's budget check sees what the last one cost."""
+    if m.limits.max_cost_usd_per_case is not None or m.limits.max_cost_usd_per_day is not None:
+        return 1
+    return max(1, int(os.getenv("HELIX_REASON_CONCURRENCY") or 4))
+
+
 async def reason(state: CaseState) -> dict:
-    findings: dict[str, dict] = {}
-    for g in state["groups"]:
-        findings[g["group_id"]] = finding = await reason_group(state, g)
-        await _save_group_finding(state["case_id"], g["group_id"], finding)
-    return {"findings": findings}
+    """Every group's finding — several groups at a time (each its own model
+    session and gateway calls), saved as each one finishes."""
+    gate = asyncio.Semaphore(_concurrency(_manifest(state)))
+
+    async def one(g: dict) -> tuple[str, dict]:
+        async with gate:
+            finding = await reason_group(state, g)
+            await _save_group_finding(state["case_id"], g["group_id"], finding)
+            return g["group_id"], finding
+
+    results = await asyncio.gather(*(one(g) for g in state["groups"]))
+    return {"findings": dict(results)}
 
 
 async def draft(state: CaseState) -> dict:

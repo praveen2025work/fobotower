@@ -218,10 +218,21 @@ class RetentionSpec(Strict):
     days: int = Field(ge=1)
 
 
+class SpecialistSpec(Strict):
+    """A subagent the model may hand part of a group to (e.g. an FX specialist).
+    Its tools are a subset of the capability's reasoning tools, served by the
+    same gateway — a specialist can do no more than the capability can."""
+    name: str = Field(pattern=r"^[a-z][a-z0-9-]{1,40}$")
+    description: str                   # when to use it — the main agent reads this
+    instructions: str
+    tools: list[str] = Field(default_factory=list)
+
+
 class ReasoningSpec(Strict):
     reasoner: Literal["llm", "none"] = "llm"
     skill: str = ""                    # instructions to the model
     tools: list[str] = Field(default_factory=list)   # tools the model may call
+    specialists: list[SpecialistSpec] = Field(default_factory=list)
     output: Literal["verdict", "commentary", "classification"] = "commentary"
 
 
@@ -423,6 +434,10 @@ def problems(m: Manifest) -> list[str]:
         if head in ("id", "owners", "configurable", "steps", "pause_before", "publish", "retention", "limits"):
             out.append(f"configurable: `{path}` cannot be set by a group "
                        "(identity, ownership, workflow gates, write-back, retention and spend limits stay with the capability)")
+    for sp in m.reasoning.specialists:
+        extra = sorted(set(sp.tools) - set(m.reasoning.tools))
+        if extra:
+            out.append(f"reasoning.specialists[{sp.name}]: tools not in reasoning.tools: {', '.join(extra)}")
     if m.reasoning.reasoner == "llm" and not m.reasoning.skill.strip():
         out.append("reasoning.skill: an llm reasoner needs instructions")
     return out

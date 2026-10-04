@@ -36,6 +36,8 @@ class ReasonRequest:
     previous_finding: dict | None = None
     # A playbook's verdicts the model may propose (e.g. POST, DO_NOT_POST, ESCALATE).
     verdicts: list[str] | None = None
+    # Subagents the model may hand work to: [{name, description, instructions, tools}]
+    specialists: list[dict] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

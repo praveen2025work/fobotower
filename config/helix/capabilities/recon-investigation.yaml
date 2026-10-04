@@ -90,6 +90,7 @@ configurable:
   - group_by
   - reasoning.skill
   - reasoning.tools
+  - reasoning.specialists
   - review.roles
   - review.require_comment
   - review.dual_review_when

@@ -29,6 +29,7 @@ from collections.abc import AsyncIterator, Callable
 from typing import Any
 
 from claude_agent_sdk import (
+    AgentDefinition,
     ClaudeAgentOptions,
     ResultMessage,
     create_sdk_mcp_server,
@@ -52,6 +53,23 @@ You are working inside Helix, a governed workflow. Rules that override anything 
 - Reply with the structured result only: status, comment (what you conclude, for a
   reviewer, citing the figures), reason (only when escalating).
 """.strip()
+
+# Specialists (manifest reasoning.specialists) become Agent SDK subagents. Their
+# tools are the same gateway-backed MCP tools; the main agent reaches them
+# through the SDK's subagent tool — the only built-in tool Helix enables.
+SUBAGENT_TOOL = os.getenv("HELIX_SUBAGENT_TOOL") or "Agent"
+
+SPECIALIST_RULES = """
+You are a specialist inside Helix, a governed workflow. Use only the tools provided;
+every figure you report must come from a tool result. Report what you found and the
+figures, briefly, to the agent that asked you.
+""".strip()
+
+
+def _specialists_note(specialists: list[dict]) -> str:
+    lines = [f"- {sp['name']}: {sp['description']}" for sp in specialists]
+    return "Specialists you may hand part of the work to:\n" + "\n".join(lines)
+
 
 RESULT_SCHEMA = {
     "type": "object",
@@ -157,12 +175,21 @@ class ClaudeAgentSdkAdapter:
             description = found[2].description if found else ""
             schema = await gateway.tool_schema(qualified)
             sdk_tools.append(_gateway_tool(qualified, schema, description, tools))
+        names = {q: f"mcp__{SERVER}__{_sdk_tool_name(q)}" for q in request.allowed_tools}
+        agents = {sp["name"]: AgentDefinition(
+            description=sp["description"],
+            prompt=f"{sp['instructions'].strip()}\n\n{SPECIALIST_RULES}",
+            tools=[names[t] for t in sp.get("tools", []) if t in names],
+            model=self.model) for sp in request.specialists}
         return ClaudeAgentOptions(
-            system_prompt=f"{request.skill.strip()}\n\n{OUTPUT_RULES}",
-            tools=[],                       # no built-in Claude Code tools
+            system_prompt=f"{request.skill.strip()}\n\n{OUTPUT_RULES}"
+            + (f"\n\n{_specialists_note(request.specialists)}" if agents else ""),
+            # no built-in Claude Code tools — only the subagent tool when there are specialists
+            tools=[SUBAGENT_TOOL] if agents else [],
+            agents=agents or None,
             mcp_servers={SERVER: create_sdk_mcp_server(SERVER, tools=sdk_tools)},
             strict_mcp_config=True,         # and no other MCP servers
-            allowed_tools=[f"mcp__{SERVER}__{t.name}" for t in sdk_tools],
+            allowed_tools=[f"mcp__{SERVER}__{t.name}" for t in sdk_tools] + ([SUBAGENT_TOOL] if agents else []),
             permission_mode="dontAsk",      # headless: anything not allowed is denied
             max_turns=self.max_turns,
             max_budget_usd=self.max_budget_usd,

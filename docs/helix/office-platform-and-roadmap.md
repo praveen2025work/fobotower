@@ -144,6 +144,38 @@ reuse map), **web** = a current technique, **new** = neither.
 - **Structured outputs everywhere.** Already used for the model's verdicts. Extend them to
   authoring and to chat answers, so every answer can be validated.
 
+## 4a. Done since this was written (same day)
+
+The platform gaps found in review, and FOBO's behaviour, are now in Helix:
+
+- **Case runs**: off the request path, with recovery after a restart. Failed or escalated cases
+  can be re-run as new attempts.
+- **Review**: required comments, optional maker-checker, dual review over a threshold, bulk
+  decide, and "investigate again" with a note.
+- **Write-backs**: idempotency keys and retry of a part-failed publish. Reports are kept in the
+  shared database.
+- **Security**: a trusted-proxy secret, an entitlement revocation webhook, a 60s cache, and case
+  visibility filtered in SQL with paging.
+- **Knowledge graph**: entities, priors by shared entities, bitemporal reference lineage and the
+  `resolve` step.
+- **Retention** with legal hold, and **config-sync** for config changes through four-eyes.
+- **Ask about a case** (grounded, audited, protected) and **run history** from checkpoints.
+- **FOBO's playbook** as configuration: `enrich`, `classify` (C1–C6), categories, the verdict
+  table, the R2 guard, P1 confirmation and escalation teams. See
+  [`fobo-on-helix.md`](fobo-on-helix.md).
+- **Office readiness**: `scripts/helix_office_smoke.py` and
+  `config/helix/connectors.office.example.yaml`.
+
+Still open from the lists above:
+- eval sets and shadow runs;
+- scheduled and event-triggered cases;
+- evidence upload into a case;
+- notifications;
+- cost budgets and a kill switch;
+- an evidence-pack PDF;
+- parallel group reasoning and subagents;
+- the developer tools: skill editor, version diff, workflow graph, templates, promotion.
+
 ## 5. Suggested order
 
 1. **Users first:**

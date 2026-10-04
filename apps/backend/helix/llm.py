@@ -137,11 +137,14 @@ class StubLlm:
             if not set((await tool_schema(tool)).get("required", [])) <= set(args):
                 continue
             result = await tools(tool, args)
-            evidence.append((tool, len(result.get("rows", []))))
+            evidence.append((tool, result.get("rows", []) or []))
         total = sum(_num(i.get("amount")) for i in request.group["items"])
-        seen = ", ".join(f"{n} rows from {t}" for t, n in evidence) or "no tool evidence"
+        seen = ", ".join(f"{len(rows)} rows from {t}" for t, rows in evidence) or "no tool evidence"
         prior = request.group["priors"][0]["comment"] if request.group["priors"] else None
         comment = f"{request.group['label']}: net {_fmt(total)} across {len(request.group['items'])} item(s); reviewed {seen}."
+        largest = [h for h in (_highlight(t, rows) for t, rows in evidence) if h]
+        if largest:
+            comment += " Largest: " + "; ".join(largest) + "."
         if prior:
             comment += f" Similar to a prior approved explanation: \"{prior}\""
         if request.reviewer_note:
@@ -163,6 +166,22 @@ class StubLlm:
         if evidence:
             answer += " I also looked at " + "; ".join(evidence) + "."
         return AskResult(answer=answer, model="stub")
+
+
+def _highlight(tool: str, rows: list[dict]) -> str | None:
+    """The biggest row a tool returned, in words: what it is and its amount —
+    so a stub comment reads like an explanation and still cites only tool figures."""
+    def amount(r: dict) -> tuple[str, float] | None:
+        for k, v in r.items():
+            if isinstance(v, (int, float)) and not isinstance(v, bool) and k not in ("quantity", "version"):
+                return k, float(v)
+        return None
+    scored = [(r, a) for r in rows if isinstance(r, dict) and (a := amount(r))]
+    if not scored:
+        return None
+    row, (field, value) = max(scored, key=lambda ra: abs(ra[1][1]))
+    words = [str(v) for k, v in row.items() if isinstance(v, str) and k not in ("book", "entity", "period")][:2]
+    return f"{' · '.join(words) or tool} ({field} {_fmt(value)}, {tool})"
 
 
 def _num(v) -> float:

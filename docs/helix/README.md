@@ -11,6 +11,9 @@ aria-ai (EAIP) has been pivoted into Helix: its UI shell, its governance
 now — see [`aria-ai-assessment.md`](aria-ai-assessment.md) for what was
 taken and why.
 
+FOBO's behaviour on Helix — its playbook as configuration of the CATS vs MOTIF rec group:
+[`fobo-on-helix.md`](fobo-on-helix.md).
+
 What Helix inherits from the office agent platform (MCP, plugins, RAG), what
 is still missing, and the order to add it:
 [`office-platform-and-roadmap.md`](office-platform-and-roadmap.md).
@@ -40,6 +43,11 @@ cd apps/backend && .venv/bin/alembic upgrade head
 cd apps/web && npm install && npm run dev                          # http://localhost:5180
 ```
 
+After pulling a change to `config/helix/` into an existing database: `python -m helix.config_sync`
+drafts the changed capabilities and groups for their owners to approve (Authoring, or the
+group's page). Case runs happen in the background (`HELIX_RUN_MODE=background`, the default);
+a restarted server finishes the runs it left.
+
 Optional, to see traces: `pip install arize-phoenix && phoenix serve` (port 6006), then start the API with
 `PHOENIX_COLLECTOR_ENDPOINT=http://localhost:6006` and `pip install -e ".[phoenix]"`.
 
@@ -60,11 +68,14 @@ approve each proposal. As **bob**, the lane is in your Inbox as *Release* → re
 write-back → it is published. As **carol**, Authoring → paste a BRD → draft → submit; as
 **bob**, approve the draft → a new capability is live. As **frank**, Capabilities →
 *Reconciliation investigation* → Groups shows the two rec groups; open a CATS vs MOTIF rec run for
-PRIME-MB-01 / 2026-08-03; change the group's auto-adjust limit and have **gina** approve it.
+PRIME-MB-01 / 2026-08-03 — each break shows FOBO's six cause checks, its category, side, verdict
+and owning team; a POST is flagged "requires controller confirmation" while the materiality
+threshold is unset; set the threshold in the group's YAML and have **gina** approve it. In any case,
+*Ask about this case* answers from the case's data, and *Run history* shows each step.
 **Operations** is the run-the-bank view.
 
-Tests: `cd apps/backend && .venv/bin/python -m pytest -q tests/helix` (90) ·
-`cd apps/web && npm test` (51, including aria-ai's own tests for the components reused from it) ·
+Tests: `cd apps/backend && .venv/bin/python -m pytest -q tests/helix` (135; the whole backend
+including FOBO: 610) · `cd apps/web && npm test` (60, including aria-ai's own tests for the components reused from it) ·
 `npm run typecheck`.
 
 ## 2. How it is built
@@ -196,15 +207,26 @@ Authoring (§4) uses the same adapter choice, with no tools and structured outpu
 
 `GET {HELIX_ENTITLEMENT_URL}/users/{user}/entitlements?app=helix` →
 `{"roles": [...], "data_scopes": {"entity": ["UK01"]}}`; a different shape → an adapter
-(`HELIX_ENTITLEMENT_ADAPTER`). Cached `HELIX_ENTITLEMENT_TTL_SECONDS` (300); errors fail closed.
-The user switcher disappears when `HELIX_ENTITLEMENT_URL` is set.
+(`HELIX_ENTITLEMENT_ADAPTER`). Cached `HELIX_ENTITLEMENT_TTL_SECONDS` (60); errors fail closed.
+With `HELIX_ENTITLEMENT_WEBHOOK_SECRET` set, the entitlements service can call
+`POST /api/entitlements/invalidate` (`{"user_id": …}` or `{}` for everyone, secret in
+`X-Helix-Webhook-Secret`) so a revocation applies at once. The user switcher disappears when
+`HELIX_ENTITLEMENT_URL` is set.
+
+Identity comes from `HELIX_IDENTITY_HEADER`, set by the SSO proxy. Set
+`HELIX_TRUSTED_PROXY_SECRET` too, and have the proxy add it to every request
+(`X-Helix-Proxy-Secret`, or `HELIX_PROXY_SECRET_HEADER`): requests without it are refused, so the
+identity header cannot be set by anyone who merely reaches the server. `/health` stays open.
 
 ### 3.4 Connectors
 
 Per connector in `config/helix/connectors.yaml`: `transport: http`, `url`, `headers_env`
 (header → env var with its value), and the tool allow-list. For each tool: `scope` (the argument
 carrying the data scope) and `access: read | write`. Write tools are never offered to the model and
-run only in `publish`, after release. Results may be MCP structured content or JSON text; steps read
+run only in `publish`, after release; `idempotency_arg` names the argument that carries Helix's
+idempotency key (case:group), so a retried write is the same write. A full office version is in
+`config/helix/connectors.office.example.yaml` — office RAG and data-explorer servers are onboarded
+the same way. Results may be MCP structured content or JSON text; steps read
 a list of records under `rows`.
 
 ### 3.5 Data protection
@@ -215,6 +237,18 @@ pass to tools — the gateway restores real values for the connector — and rev
 Set `HELIX_PSEUDONYM_KEY` (a secret) in the office. `trace_payloads: masked` hides auto-instrumented
 payloads; Helix's own spans carry the model's view only.
 
+### 3.6 Running it
+
+| | |
+|---|---|
+| Case runs | off the request path (`helix/runner.py`); one run per case across instances (advisory lock); startup finishes runs left `running`; a pause is crossed only by its input (decisions, release) |
+| Re-runs | a failed or escalated case → *Run again* → attempt 2 on today's configuration; earlier attempts kept |
+| Write-backs | idempotency key per write; a part-failed publish → *Retry write-back* sends only what did not land |
+| Reports | PDF reports in the shared database (`HELIX_REPORTS_STORE=db`), served to anyone who can see the case |
+| Retention | `retention.days` per capability; `python -m helix.retention [--dry-run]` (schedule it daily); owners put a case on legal hold with a reason |
+| Config changes | `python -m helix.config_sync` → drafts → owners approve (four-eyes) |
+| Smoke test | `scripts/helix_office_smoke.py --user <id> [--case <cap> --group <g> --key k=v …]` — database, entitlements, every connector, LLM, Phoenix, and one real case |
+
 ## 4. Onboarding a capability
 
 In the console: **Authoring** → paste the BRD → *Draft capability*. The model drafts a manifest
@@ -222,12 +256,14 @@ from the onboarded tools; the validator lists anything to fix; edit the YAML; *S
 another owner approves it under *Drafts awaiting approval*. Or write the YAML directly in
 `config/helix/capabilities/` (seeds version 1 on a fresh database).
 
-The two built-in capabilities — **P&L variance commentary** (with write-back) and **Cash — bank vs
-ledger** — contain no code.
+The built-in capabilities — **P&L variance commentary** (with write-back), **Reconciliation
+investigation** (rec groups: cash bank-vs-ledger, and CATS vs MOTIF running FOBO's playbook) and
+**Report validation** (Excel vs ledger, PDF report) — contain no code.
 
 ## 5. Next
 
-Similarity priors over pgvector (aria-ai's precedent memory) · evals from approved decisions,
-scored in Phoenix · parallel reasoning across groups (LangGraph `Send`) · scheduled and
-event-opened cases · capability builder as a form · moving FOBO onto the platform and retiring the
-old consoles. See the design spec §14.
+In the office: run the smoke test with the Agent SDK, Phoenix, entitlements and real connectors.
+Then, from [`office-platform-and-roadmap.md`](office-platform-and-roadmap.md): eval sets and
+shadow runs in Phoenix · scheduled and event-opened cases · evidence upload into a case ·
+notifications · parallel reasoning across groups · FOBO's validation tests (FO-1…BO-6) as
+structured checks · moving FOBO's users onto the platform.

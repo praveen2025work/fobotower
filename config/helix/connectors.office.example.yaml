@@ -1,0 +1,82 @@
+# Office connectors — an example of config/helix/connectors.yaml with every
+# stub replaced by a real MCP server. Same ids, same tool allow-list, same
+# data-scope rules; only transport, url and auth change. Capabilities do not
+# change at all.
+#
+# Copy the entries you need into connectors.yaml (or point HELIX_CONFIG_DIR at
+# a folder holding your office version). Header values are read from the
+# environment variable named on the right, never written here.
+#
+# Office platform services (RAG, data explorer, plugins' MCP servers) are
+# onboarded the same way — add an entry, list the tools Helix may use — so
+# every call goes through the gateway: allow-list, scope check, audit, trace.
+#
+# Then check the wiring: scripts/helix_office_smoke.py --user <id>
+
+connectors:
+  gl:
+    name: General ledger
+    transport: http
+    url: https://gl-mcp.internal.example/mcp
+    headers_env: { Authorization: GL_MCP_AUTHORIZATION }
+    classification: internal
+    tools:
+      balances:      { description: "Actual and budget per account and cost centre", scope: { arg: entity, key: entity } }
+      journal_lines: { description: Largest journal lines for an account,           scope: { arg: entity, key: entity } }
+
+  cats:
+    name: CATS — front-office positions
+    transport: http
+    url: https://cats-mcp.internal.example/mcp
+    headers_env: { Authorization: CATS_MCP_AUTHORIZATION }
+    classification: confidential
+    tools:
+      positions: { description: "End-of-day FO positions and MTM per book and COB", scope: { arg: book, key: book } }
+
+  motif:
+    name: MOTIF — back-office positions and events
+    transport: http
+    url: https://motif-mcp.internal.example/mcp
+    headers_env: { Authorization: MOTIF_MCP_AUTHORIZATION }
+    classification: confidential
+    tools:
+      positions:       { description: "End-of-day BO positions and MTM per book and COB", scope: { arg: book, key: book } }
+      booking_events:  { description: "Booking and amendment events behind a book's breaks", scope: { arg: book, key: book } }
+      break_snapshots: { description: "Dated FO/BO snapshots per instrument", scope: { arg: book, key: book } }
+
+  reporting:
+    name: Management reporting pack
+    transport: http
+    url: https://reporting-mcp.internal.example/mcp
+    headers_env: { Authorization: REPORTING_MCP_AUTHORIZATION }
+    classification: internal
+    tools:
+      publish_commentary:
+        description: Publish approved variance commentary to the reporting pack
+        access: write                       # publish step only, after a second person releases it
+        idempotency_arg: idempotency_key    # the system must treat a repeat as the same write
+        scope: { arg: entity, key: entity }
+
+  # The documents service runs next to the team share it reads:
+  #   python -m helix.mcp_services.documents --port 9201
+  documents:
+    name: Documents — PDF and Excel in, PDF reports out
+    transport: http
+    url: https://helix-documents.internal.example/mcp
+    headers_env: { Authorization: DOCUMENTS_MCP_AUTHORIZATION }
+    classification: internal
+    tools:
+      list_documents:    { description: "PDF and Excel documents for an entity", scope: { arg: entity, key: entity } }
+      read_pdf:          { description: "Text of a PDF, page by page", scope: { arg: entity, key: entity } }
+      read_workbook:     { description: "Rows of one sheet of a workbook", scope: { arg: entity, key: entity } }
+      render_pdf_report: { description: "Write a PDF report", access: write, idempotency_arg: idempotency_key, scope: { arg: entity, key: entity } }
+
+  # An office RAG / data-explorer server, onboarded like any other.
+  policy_rag:
+    name: Accounting policy search (office RAG)
+    transport: http
+    url: https://agent-platform.internal.example/rag/accounting-policy/mcp
+    headers_env: { Authorization: AGENT_PLATFORM_AUTHORIZATION }
+    classification: internal
+    tools:
+      search: { description: Search accounting policy and procedure documents }

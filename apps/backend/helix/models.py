@@ -293,7 +293,40 @@ class RetentionEvent(HelixBase):
     )
 
 
+class Notification(HelixBase):
+    """Something a person should know about a case — waiting on them, done,
+    failed. Addressed to roles and/or people; shown only to those who may see
+    the case."""
+
+    __tablename__ = "helix_notification"
+    __table_args__ = (Index("idx_helix_notification_at", "created_at"),)
+
+    notification_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    case_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    capability_id: Mapped[str] = mapped_column(String(64))
+    kind: Mapped[str] = mapped_column(String(32))
+    title: Mapped[str] = mapped_column(String(256))
+    body: Mapped[str] = mapped_column(Text, default="")
+    audience_roles: Mapped[list] = mapped_column(JSONB, default=list)
+    audience_users: Mapped[list] = mapped_column(JSONB, default=list)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class NotificationRead(HelixBase):
+    __tablename__ = "helix_notification_read"
+    notification_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("helix_notification.notification_id", ondelete="CASCADE"), primary_key=True
+    )
+    user_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    read_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
 HELIX_TABLES = [  # child tables first, for truncation in tests
+    "helix_notification_read", "helix_notification",
     "helix_case_message", "helix_document", "helix_retention_event",
     "helix_publish_approval", "helix_decision", "helix_proposal_group", "helix_case_item", "helix_tool_call",
     "helix_case", "helix_group_version", "helix_capability_version", "helix_kg_edge", "helix_kg_node",

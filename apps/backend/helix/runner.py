@@ -129,13 +129,25 @@ async def run_case(case_id: str, kind: str = "open", update: dict | None = None)
             except Exception as e:
                 log.exception("case %s: run failed", case_id)
                 await fail(case_id, e)
-                return "failed"
+                status = "failed"
+        if status == "failed":
+            await _announce(case_id)
+            return status
         if trace_id and kind == "open":
             async with get_session() as s:
                 row = await s.get(Case, case_id)
                 row.trace_id = row.trace_id or trace_id
                 await s.commit()
-        return status
+    await _announce(case_id)
+    return status
+
+
+async def _announce(case_id: str) -> None:
+    from helix import notify
+    try:
+        await notify.case_changed(case_id)
+    except Exception:          # telling people must never break a run
+        log.exception("case %s: notification failed", case_id)
 
 
 async def submit(case_id: str, kind: str = "open", update: dict | None = None) -> None:
@@ -159,6 +171,7 @@ async def run_job(case_id: str, job, label: str) -> None:
             except Exception as e:
                 log.exception("case %s: %s failed", case_id, label)
                 await fail(case_id, e)
+    await _announce(case_id)
 
 
 async def submit_job(case_id: str, job, label: str) -> None:

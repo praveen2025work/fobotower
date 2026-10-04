@@ -13,6 +13,8 @@ The plug points for the office environment are here, all optional:
   HELIX_ENTITLEMENT_WEBHOOK_SECRET  enables POST /api/entitlements/invalidate
   HELIX_ENTITLEMENT_TTL_SECONDS     how long entitlements are cached (60)
   HELIX_RUN_MODE           background (default) | inline — where case runs happen
+  HELIX_NOTIFY_WEBHOOK_URL every notification is also POSTed here (Teams / Power Automate)
+  HELIX_CONSOLE_URL        the console's address, for links in notifications
   HELIX_DOCUMENTS_DIR      documents the documents service reads (per scope)
   HELIX_REPORTS_STORE      db (default) | fs — where PDF reports are kept
   HELIX_REPORTS_DIR        the folder, when HELIX_REPORTS_STORE=fs
@@ -42,6 +44,8 @@ class HelixSettings:
     proxy_secret_header: str
     entitlement_webhook_secret: str | None
     run_mode: str
+    console_url: str
+    notify_webhook_url: str | None
     documents_dir: Path
     reports_dir: Path
     reports_store: str
@@ -73,6 +77,11 @@ def settings() -> HelixSettings:
         entitlement_webhook_secret=env("HELIX_ENTITLEMENT_WEBHOOK_SECRET") or None,
         # background: case runs leave the request path; inline: they finish first.
         run_mode=env("HELIX_RUN_MODE") or "background",
+        # Links in notifications point here.
+        console_url=(env("HELIX_CONSOLE_URL") or "http://localhost:5180").rstrip("/"),
+        # Each notification is also POSTed here as JSON ({"text": …, "title": …, "link": …}):
+        # a Teams incoming webhook, or a Power Automate flow that emails or posts it.
+        notify_webhook_url=env("HELIX_NOTIFY_WEBHOOK_URL") or None,
         # The documents service: what it reads, and where its reports go.
         documents_dir=Path(env("HELIX_DOCUMENTS_DIR") or REPO_ROOT / "apps" / "backend" / "seed_data" / "helix_documents"),
         reports_dir=Path(env("HELIX_REPORTS_DIR") or REPO_ROOT / "var" / "helix" / "reports"),

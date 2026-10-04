@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
-from helix import authoring, capabilities, cases, chat, knowledge, retention, runner, views
+from helix import authoring, capabilities, cases, chat, knowledge, notify, retention, runner, views
 from helix import groups as team_groups
 from helix.config import settings
 from helix.entitlement import Caller, EntitlementError, StubEntitlement, entitlements
@@ -414,6 +414,20 @@ async def authoring_submit(body: SubmitIn, c: Caller = Depends(caller)) -> dict:
 @app.get("/api/authoring/drafts")
 async def authoring_drafts(c: Caller = Depends(caller)) -> list[dict]:
     return await capabilities.drafts_for(c)
+
+
+@app.get("/api/notifications")
+async def notifications(c: Caller = Depends(caller)) -> dict:
+    return await notify.for_caller(c)
+
+
+class ReadIn(BaseModel):
+    ids: list[str] | None = None    # None: all
+
+
+@app.post("/api/notifications/read")
+async def notifications_read(body: ReadIn, c: Caller = Depends(caller)) -> dict:
+    return {"marked": await notify.mark_read(c, body.ids)}
 
 
 class InvalidateIn(BaseModel):

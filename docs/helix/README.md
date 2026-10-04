@@ -14,6 +14,8 @@ taken and why.
 FOBO's behaviour on Helix — its playbook as configuration of the CATS vs MOTIF rec groups:
 [`fobo-on-helix.md`](fobo-on-helix.md).
 
+**Executive demo video (3 min) and presenter notes:** [`demo/`](demo/README.md).
+
 **User guide and developer guide (with screenshots):** [`guide/`](guide/README.md).
 
 Worked examples — FOBO Prime vs Rates (real runs) and other accounting capabilities

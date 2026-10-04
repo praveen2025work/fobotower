@@ -1,0 +1,62 @@
+[
+ {
+  "id": "s01",
+  "text": "This is Helix. One platform where accounting teams run reconciliations, reviews and commentary, with A I doing the legwork, and people making every decision.",
+  "dur": 11.26
+ },
+ {
+  "id": "s02",
+  "text": "Today, every break is investigated by hand. Pull positions from two systems, find the cause, write it up, and get it signed off. FOBO's own basis is about twelve minutes per break. And each team builds its own tooling to do it.",
+  "dur": 17.62
+ },
+ {
+  "id": "s03",
+  "text": "With Helix, the work is done before the controller arrives. At six thirty, Helix opened yesterday's run for every Prime book, matched CATS to MOTIF, and the results are waiting in the inbox.",
+  "dur": 14.07
+ },
+ {
+  "id": "s04",
+  "text": "Each break is classified by FOBO's own playbook. Six cause checks, fourteen validation tests, and a verdict table. This J G B break arrived after the cut-off. It is a back office redemption break, so the playbook says post. But it is flagged for controller confirmation, because the materiality threshold is not yet confirmed.",
+  "dur": 25.07
+ },
+ {
+  "id": "s05",
+  "text": "A front office cause never posts. That rule is enforced in code, not left to the model. And every figure is traced to the system call it came from. If a number cannot be traced, the case is escalated to a person.",
+  "dur": 15.97
+ },
+ {
+  "id": "s06",
+  "text": "Controllers can ask questions in plain English. Answers use only this case's data, and every lookup is audited.",
+  "dur": 8.72
+ },
+ {
+  "id": "s07",
+  "text": "Breaks are grouped into patterns, so one decision covers many breaks. Sign-off takes seconds. And a complete evidence pack is ready for audit.",
+  "dur": 10.74
+ },
+ {
+  "id": "s08",
+  "text": "The Rates team runs the same engine and the same playbook, with its own books, thresholds, schedule and reviewers. A new team is a configuration file, not a new project.",
+  "dur": 12.16
+ },
+ {
+  "id": "s09",
+  "text": "New kinds of work, such as accruals, balance sheet substantiation or intercompany, are drafted from a requirement or a template, checked by the platform, and go live only when a second owner approves them.",
+  "dur": 13.43
+ },
+ {
+  "id": "s10",
+  "text": "For technology, there is one platform to run. Every data access is checked against entitlements and audited. Sensitive fields are masked before the model sees them. Costs are capped, and any capability can be switched off in one click.",
+  "dur": 17.37
+ },
+ {
+  "id": "s11",
+  "text": "So the value is simple. Analysts move from investigating to reviewing. One decision covers a pattern, not a single break. Every team gets the same controls. And new use cases arrive as configuration, not as new builds.",
+  "dur": 17.1
+ },
+ {
+  "id": "s12",
+  "text": "We propose a pilot on FOBO Prime and Rates, measuring hours saved against the twelve minute basis. Then we onboard month-end accruals and balance sheet substantiation. Thank you.",
+  "dur": 13.55
+ }
+]

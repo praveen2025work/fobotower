@@ -46,16 +46,22 @@ Users (top-right switcher, development only):
 | `alice` | Finance preparer, UK01 only |
 | `bob` | Finance reviewer + capability owner, all entities — releases write-backs |
 | `carol` | Finance capability owner — authors and changes capabilities, cannot sign off |
-| `dan`, `erin` | Cash operations — the bank-vs-ledger reconciliation |
+| `dan`, `erin` | Cash operations — the cash rec group (erin also owns the recon capability) |
+| `frank` | FOBO controller, all books — owner of the CATS vs MOTIF rec group |
+| `gina` | FOBO controller, PRIME-MB-01 only — second owner of CATS vs MOTIF |
 | `viewer` | No roles — sees nothing |
 
 A full pass: as **alice**, Capabilities → *P&L variance commentary* → open lane UK01 / 2026-09 →
 approve each proposal. As **bob**, the lane is in your Inbox as *Release* → release the
 write-back → it is published. As **carol**, Authoring → paste a BRD → draft → submit; as
-**bob**, approve the draft → a new capability is live.
+**bob**, approve the draft → a new capability is live. As **frank**, Capabilities →
+*Reconciliation investigation* → Groups shows the two rec groups; open a CATS vs MOTIF rec run for
+PRIME-MB-01 / 2026-08-03; change the group's auto-adjust limit and have **gina** approve it.
+**Operations** is the run-the-bank view.
 
-Tests: `cd apps/backend && .venv/bin/python -m pytest -q tests/helix` (73) ·
-`cd apps/web && npm test` (10) · `npm run typecheck`.
+Tests: `cd apps/backend && .venv/bin/python -m pytest -q tests/helix` (83) ·
+`cd apps/web && npm test` (48, including aria-ai's own tests for the components reused from it) ·
+`npm run typecheck`.
 
 ## 2. How it is built
 
@@ -99,6 +105,33 @@ open (entitlement, data scope) ─▶ LangGraph run pinned to the manifest versi
   ── pause ── a second person releases the write-back (four-eyes)
   publish — write tool via the gateway, only now
 ```
+
+## 2a. Team groups — one capability, configured by each team
+
+A capability is the shared use case; a **team group** is one team's way of running it — FOBO's rec
+groups, generalised. The capability's owners list what may vary (`configurable` in the manifest);
+each group's owners set those values in `config/helix/groups/<capability>/<group>.yaml` (version 1)
+and then through the console (draft → another group owner approves). A value set at a configurable
+path replaces the default there; workflow, gates, write-back and ownership always stay with the
+capability.
+
+`recon.investigation` has two rec groups on the same engine:
+
+| | CATS vs MOTIF (FOBO) | Cash — bank vs ledger |
+|---|---|---|
+| Case | book × COB | entity × date |
+| Sources | `cats.positions` vs `motif.positions` | `bank.statement` vs `ledger.postings` |
+| Rules / limits | auto-adjust ≤ 250 USD | write-off ≤ 100 GBP |
+| Model tools | `motif.booking_events` | `ledger.counterparty_history` |
+| Reviewers | `FOBO_CONTROLLER` | `CASH_OPS` |
+
+A case of a grouped capability runs under one group and keeps the exact merged manifest it ran on,
+so a later change to the group never alters a past run. Each group's people see only their cases.
+
+## 2b. aria-ai reuse
+
+[`aria-ai-reuse-map.md`](aria-ai-reuse-map.md) maps every aria-ai page and component to users,
+developers and run-the-bank, with what is reused, adapted, planned or replaced, and the waves.
 
 ## 3. Office integration
 

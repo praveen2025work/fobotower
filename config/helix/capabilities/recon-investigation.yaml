@@ -78,6 +78,11 @@ configurable:
   - case.key
   - case.subject
   - case.scopes
+  - case.opens_on
+  - case.schedule
+  - case.schedule_keys
+  - case.events
+  - case.opens_as
   - items
   - match
   - policy.*

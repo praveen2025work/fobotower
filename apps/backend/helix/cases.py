@@ -96,6 +96,17 @@ async def visible_cases(caller: Caller, *, capability_id: str | None = None,
     return out
 
 
+async def _resolve_unchecked(capability_id: str, team_group: str | None) -> tuple[int, int | None, Manifest]:
+    """The manifest a new run would use, before any caller check."""
+    from helix import groups as team_groups
+
+    version, m = await capabilities.active(capability_id)
+    if team_group:
+        group_version, _, m = await team_groups.active_group(capability_id, team_group)
+        return version, group_version, m
+    return version, None, m
+
+
 async def _resolve(capability_id: str, team_group: str | None,
                    caller: Caller) -> tuple[int, int | None, Manifest]:
     """The manifest a new run uses: the active capability version, merged with

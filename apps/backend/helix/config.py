@@ -13,6 +13,9 @@ The plug points for the office environment are here, all optional:
   HELIX_ENTITLEMENT_WEBHOOK_SECRET  enables POST /api/entitlements/invalidate
   HELIX_ENTITLEMENT_TTL_SECONDS     how long entitlements are cached (60)
   HELIX_RUN_MODE           background (default) | inline — where case runs happen
+  HELIX_SCHEDULER          on | off — the schedule loop (on when runs are in the background)
+  HELIX_SCHEDULE_TZ        the time zone schedules are read in (UTC)
+  HELIX_EVENT_SECRET       enables POST /api/events (other systems open cases)
   HELIX_NOTIFY_WEBHOOK_URL every notification is also POSTed here (Teams / Power Automate)
   HELIX_CONSOLE_URL        the console's address, for links in notifications
   HELIX_DOCUMENTS_DIR      documents the documents service reads (per scope)
@@ -45,6 +48,8 @@ class HelixSettings:
     entitlement_webhook_secret: str | None
     run_mode: str
     console_url: str
+    scheduler: bool
+    event_secret: str | None
     notify_webhook_url: str | None
     documents_dir: Path
     reports_dir: Path
@@ -77,6 +82,10 @@ def settings() -> HelixSettings:
         entitlement_webhook_secret=env("HELIX_ENTITLEMENT_WEBHOOK_SECRET") or None,
         # background: case runs leave the request path; inline: they finish first.
         run_mode=env("HELIX_RUN_MODE") or "background",
+        # The schedule loop runs in the API (on by default when runs are in the background).
+        scheduler=(env("HELIX_SCHEDULER") or ("on" if (env("HELIX_RUN_MODE") or "background") == "background" else "off")) == "on",
+        # Other systems open cases with POST /api/events, sending this secret.
+        event_secret=env("HELIX_EVENT_SECRET") or None,
         # Links in notifications point here.
         console_url=(env("HELIX_CONSOLE_URL") or "http://localhost:5180").rstrip("/"),
         # Each notification is also POSTed here as JSON ({"text": …, "title": …, "link": …}):

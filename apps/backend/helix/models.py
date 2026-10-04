@@ -325,7 +325,16 @@ class NotificationRead(HelixBase):
     )
 
 
+class SchedulerTick(HelixBase):
+    """A minute the scheduler has run — so only one API instance runs it."""
+
+    __tablename__ = "helix_scheduler_tick"
+    minute: Mapped[str] = mapped_column(String(16), primary_key=True)
+    at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 HELIX_TABLES = [  # child tables first, for truncation in tests
+    "helix_scheduler_tick",
     "helix_notification_read", "helix_notification",
     "helix_case_message", "helix_document", "helix_retention_event",
     "helix_publish_approval", "helix_decision", "helix_proposal_group", "helix_case_item", "helix_tool_call",

@@ -31,7 +31,14 @@ class CaseSpec(Strict):
     # case-key field -> entitlement data scope it is checked against
     scopes: dict[str, str] = Field(default_factory=dict)
     opens_on: Literal["manual", "api", "schedule", "event"] = "manual"
-    schedule: str | None = None       # cron, when opens_on = schedule
+    schedule: str | None = None       # cron (min hour day month weekday), when opens_on = schedule
+    # The keys a scheduled run opens, as templates over the run's date:
+    # {today} {yesterday} {prev_business_day} {this_month} {prev_month}
+    schedule_keys: list[dict[str, str]] = Field(default_factory=list)
+    events: bool = False              # may other systems open cases (POST /api/events)?
+    # The service user scheduled and event-opened cases run as — an account in
+    # the entitlements system with the roles and data scopes they need.
+    opens_as: str | None = None
 
 
 class ToolCallSpec(Strict):
@@ -378,6 +385,23 @@ def problems(m: Manifest) -> list[str]:
             except rules.ExpressionError as e:
                 out.append(f"{name}: {e}")
 
+    if m.case.opens_on == "schedule":
+        from helix.scheduler import CronError, parse_cron
+        if not m.case.schedule:
+            out.append("case.schedule: a scheduled capability needs a cron schedule")
+        else:
+            try:
+                parse_cron(m.case.schedule)
+            except CronError as e:
+                out.append(f"case.schedule: {e}")
+        if not m.case.schedule_keys:
+            out.append("case.schedule_keys: say which cases a scheduled run opens")
+    for k in m.case.schedule_keys:
+        missing = [f for f in m.case.key if f not in k]
+        if missing:
+            out.append(f"case.schedule_keys: {k} misses {', '.join(missing)}")
+    if (m.case.opens_on == "schedule" or m.case.events) and not m.case.opens_as:
+        out.append("case.opens_as: scheduled or event-opened cases need a service user to run as")
     for field in m.case.scopes:
         if field not in m.case.key:
             out.append(f"case.scopes: `{field}` is not in case.key")

@@ -29,6 +29,19 @@ set:
     key: [book, cob]
     subject: "{book} · COB {cob}"
     scopes: { book: book }
+    # Each business morning, open yesterday's COB for every Prime book; MOTIF's
+    # end-of-day feed can also open one as soon as it lands (POST /api/events).
+    opens_on: schedule
+    schedule: "30 6 * * 1-5"
+    schedule_keys:
+      - { book: PRIME-MB-01, cob: "{prev_business_day}" }
+      - { book: PRIME-MB-02, cob: "{prev_business_day}" }
+      - { book: PRIME-MB-03, cob: "{prev_business_day}" }
+      - { book: PRIME-MB-04, cob: "{prev_business_day}" }
+      - { book: PRIME-MB-05, cob: "{prev_business_day}" }
+      - { book: PRIME-MB-06, cob: "{prev_business_day}" }
+    events: true
+    opens_as: helix-scheduler
   items:
     id_field: instrument
     amount_field: difference

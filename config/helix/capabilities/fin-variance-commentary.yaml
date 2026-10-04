@@ -19,7 +19,13 @@ case:
   key: [entity, period]
   subject: "{entity} · {period}"
   scopes: { entity: entity }
-  opens_on: manual
+  # Month-end: at 07:00 on the 2nd, open last month's lane for each entity.
+  opens_on: schedule
+  schedule: "0 7 2 * *"
+  schedule_keys:
+    - { entity: UK01, period: "{prev_month}" }
+    - { entity: US01, period: "{prev_month}" }
+  opens_as: helix-scheduler
 
 items:
   load:

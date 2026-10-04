@@ -5,6 +5,7 @@ SSO proxy in the office; the console's user switcher in development); roles
 and data scopes come from the entitlement service, never from the request.
 """
 
+import asyncio
 import hmac
 from contextlib import asynccontextmanager
 from functools import wraps
@@ -14,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
-from helix import authoring, capabilities, cases, chat, knowledge, notify, retention, runner, views
+from helix import authoring, capabilities, cases, chat, knowledge, notify, retention, runner, scheduler, views
 from helix import groups as team_groups
 from helix.config import settings
 from helix.entitlement import Caller, EntitlementError, StubEntitlement, entitlements
@@ -32,7 +33,10 @@ async def lifespan(_app: FastAPI):
     await team_groups.seed()
     await knowledge.seed_reference()
     await runner.recover()          # finish runs a stopped server left behind
+    loop = asyncio.create_task(scheduler.run_forever()) if settings().scheduler else None
     yield
+    if loop:
+        loop.cancel()
     await runner.drain()
 
 
@@ -428,6 +432,45 @@ class ReadIn(BaseModel):
 @app.post("/api/notifications/read")
 async def notifications_read(body: ReadIn, c: Caller = Depends(caller)) -> dict:
     return {"marked": await notify.mark_read(c, body.ids)}
+
+
+class EventIn(BaseModel):
+    capability_id: str
+    team_group: str | None = None
+    case_key: dict
+    event: str = Field(default="", max_length=500)     # what happened, for the record
+
+
+@app.post("/api/events", status_code=201)
+@_errors
+async def event(body: EventIn, request: Request) -> dict:
+    """Another system opens a case ("the file for UK01 2026-09 arrived"). The
+    capability (or group) must allow events; the case runs as its `opens_as`
+    service user. Disabled unless HELIX_EVENT_SECRET is set."""
+    secret = settings().event_secret
+    if not secret:
+        raise HTTPException(404, "not enabled")
+    if not hmac.compare_digest(request.headers.get("X-Helix-Event-Secret", "").encode(), secret.encode()):
+        raise HTTPException(401, "bad event secret")
+    _, _, m = await cases._resolve_unchecked(body.capability_id, body.team_group)
+    if not m.case.events or not m.case.opens_as:
+        raise PermissionError(f"{body.capability_id} does not take events")
+    as_user = await entitlements().get(m.case.opens_as)
+    case_id = await cases.open_case(body.capability_id, body.case_key, as_user, body.team_group)
+    return {"case_id": case_id, "opened_as": m.case.opens_as, "event": body.event}
+
+
+@app.get("/api/schedules")
+async def schedules(c: Caller = Depends(caller)) -> list[dict]:
+    """Schedules in force for capabilities the caller can see."""
+    from helix import groups as team_groups
+
+    out = []
+    for s in await scheduler.scheduled():
+        _, base = await capabilities.active(s["capability_id"])
+        if await team_groups.visible(c, s["capability_id"], base):
+            out.append(s)
+    return out
 
 
 class InvalidateIn(BaseModel):

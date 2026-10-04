@@ -5,12 +5,13 @@ SSO proxy in the office; the console's user switcher in development); roles
 and data scopes come from the entitlement service, never from the request.
 """
 
+import hmac
 from contextlib import asynccontextmanager
 from functools import wraps
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
 from helix import authoring, capabilities, cases, runner, views
@@ -39,6 +40,20 @@ app.add_middleware(
     CORSMiddleware, allow_origins=[settings().console_origin], allow_credentials=True,
     allow_methods=["*"], allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def trusted_proxy(request: Request, call_next):
+    """With HELIX_TRUSTED_PROXY_SECRET set, only requests that came through the
+    SSO proxy (which adds the secret) reach the API: the identity header can
+    then not be set by anyone who can merely reach the server."""
+    secret = settings().trusted_proxy_secret
+    if secret and request.url.path.startswith("/api/"):
+        sent = request.headers.get(settings().proxy_secret_header, "")
+        if not hmac.compare_digest(sent.encode(), secret.encode()):
+            return JSONResponse({"detail": "request did not come through the trusted proxy"},
+                                status_code=401)
+    return await call_next(request)
 
 
 async def caller(request: Request) -> Caller:
@@ -214,9 +229,10 @@ async def approve_version(capability_id: str, version: int, c: Caller = Depends(
 
 @app.get("/api/capabilities/{capability_id}/cases")
 @_errors
-async def list_cases(capability_id: str, team_group: str | None = None,
-                     c: Caller = Depends(caller)) -> list[dict]:
-    return await cases.list_cases(capability_id, c, team_group)
+async def list_cases(capability_id: str, team_group: str | None = None, limit: int = 200,
+                     offset: int = 0, c: Caller = Depends(caller)) -> list[dict]:
+    return await cases.list_cases(capability_id, c, team_group,
+                                  limit=max(1, min(limit, 1000)), offset=max(0, offset))
 
 
 class OpenIn(BaseModel):
@@ -357,6 +373,25 @@ async def authoring_submit(body: SubmitIn, c: Caller = Depends(caller)) -> dict:
 @app.get("/api/authoring/drafts")
 async def authoring_drafts(c: Caller = Depends(caller)) -> list[dict]:
     return await capabilities.drafts_for(c)
+
+
+class InvalidateIn(BaseModel):
+    user_id: str | None = None      # None: everyone
+
+
+@app.post("/api/entitlements/invalidate")
+async def invalidate_entitlements(body: InvalidateIn, request: Request) -> dict:
+    """Called by the entitlements service when someone's access changes, so the
+    change applies now rather than when the cache expires. Disabled unless
+    HELIX_ENTITLEMENT_WEBHOOK_SECRET is set; the caller sends it as
+    X-Helix-Webhook-Secret."""
+    secret = settings().entitlement_webhook_secret
+    if not secret:
+        raise HTTPException(404, "not enabled")
+    sent = request.headers.get("X-Helix-Webhook-Secret", "")
+    if not hmac.compare_digest(sent.encode(), secret.encode()):
+        raise HTTPException(401, "bad webhook secret")
+    return {"invalidated": entitlements().invalidate(body.user_id)}
 
 
 @app.get("/api/platform")

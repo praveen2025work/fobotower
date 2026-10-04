@@ -11,7 +11,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import select
 
 from helix import capabilities
-from helix.cases import may_see_case
+from helix.cases import visible_cases
 from helix.db import get_session
 from helix.entitlement import Caller
 from helix.manifest import Manifest
@@ -25,18 +25,8 @@ from helix.models import (
 )
 
 
-async def _visible_cases(caller: Caller) -> list[tuple[Case, Manifest]]:
-    async with get_session() as s:
-        versions = {(v.capability_id, v.version): Manifest.model_validate(v.manifest)
-                    for v in (await s.execute(select(CapabilityVersion))).scalars()}
-        rows = (await s.execute(select(Case).order_by(Case.opened_at.desc()))).scalars().all()
-    out = []
-    for c in rows:
-        m = Manifest.model_validate(c.manifest) if c.manifest else versions.get(
-            (c.capability_id, c.manifest_version))
-        if m and may_see_case(caller, m, c.case_key):
-            out.append((c, m))
-    return out
+async def _visible_cases(caller: Caller, **filters) -> list[tuple[Case, Manifest]]:
+    return await visible_cases(caller, **filters)
 
 
 async def _groups_by_case(case_ids: list[str]) -> dict[str, list[ProposalGroup]]:
@@ -86,7 +76,7 @@ def _my_action(c: Case, m: Manifest, caller: Caller, deciders: set[str]) -> str 
 
 async def inbox(caller: Caller) -> list[dict]:
     """Every case waiting on this caller, across capabilities, oldest first."""
-    visible = await _visible_cases(caller)
+    visible = await _visible_cases(caller, statuses=("awaiting_review", "awaiting_publish"))
     ids = [c.case_id for c, _ in visible]
     groups, decisions = await _groups_by_case(ids), await _decisions_by_case(ids)
     out = []
@@ -146,8 +136,9 @@ async def overview(caller: Caller) -> dict:
 
 async def audit(caller: Caller, *, capability_id: str | None = None, limit: int = 200) -> list[dict]:
     """Newest-first events a caller may see: connector calls, sign-offs, releases."""
-    visible = {c.case_id: (c, m) for c, m in await _visible_cases(caller)
-               if capability_id in (None, c.capability_id)}
+    # the newest cases' events; older ones are a capability filter away
+    visible = {c.case_id: (c, m) for c, m in await _visible_cases(
+        caller, capability_id=capability_id, limit=2000)}
     ids = list(visible) or [""]
     async with get_session() as s:
         calls = (await s.execute(select(ToolCall).where(ToolCall.case_id.in_(ids))

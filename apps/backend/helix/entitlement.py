@@ -117,6 +117,15 @@ class CachedEntitlement:
         self._cache[user_id] = (time.monotonic(), caller)
         return caller
 
+    def invalidate(self, user_id: str | None = None) -> int:
+        """Forget one user's cached entitlements (or everyone's); the next
+        request asks the source again. Returns how many were dropped."""
+        if user_id is None:
+            n = len(self._cache)
+            self._cache.clear()
+            return n
+        return 1 if self._cache.pop(user_id, None) else 0
+
 
 _source: EntitlementSource | None = None
 

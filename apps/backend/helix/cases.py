@@ -14,7 +14,8 @@ import hashlib
 import json
 import uuid
 
-from sqlalchemy import func, select
+from sqlalchemy import String, and_, cast, func, not_, or_, select
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.exc import IntegrityError
 
 from helix import capabilities, rules, runner
@@ -49,6 +50,50 @@ def _check_key(m: Manifest, case_key: dict, caller: Caller) -> dict:
 def may_see_case(caller: Caller, m: Manifest, case_key: dict) -> bool:
     return capabilities.can_see(caller, m) and all(
         caller.may_see(scope, case_key.get(field)) for field, scope in m.case.scopes.items())
+
+
+def scope_clause(caller: Caller):
+    """SQL for "within the caller's data scope", from the case's scope values:
+    every scope the case belongs to is one the caller holds, with its value
+    in the caller's list (or the caller holds "*")."""
+    dims = sorted(caller.data_scopes)
+    case_scope = func.coalesce(Case.scope, cast({}, JSONB))
+    clauses = [case_scope.op("-")(cast(dims, ARRAY(String))) == cast({}, JSONB)]
+    for dim, allowed in sorted(caller.data_scopes.items()):
+        if "*" not in allowed:
+            clauses.append(or_(not_(case_scope.has_key(dim)),
+                               case_scope[dim].astext.in_(sorted(allowed))))
+    return and_(*clauses)
+
+
+async def visible_cases(caller: Caller, *, capability_id: str | None = None,
+                        team_group: str | None = None, statuses: tuple[str, ...] | None = None,
+                        limit: int | None = None, offset: int = 0) -> list[tuple[Case, Manifest]]:
+    """Cases the caller may see, newest first. Capability and data scope are
+    filtered in the database; the exact per-case check (`may_see_case`, on the
+    manifest each case ran on) still runs on what comes back."""
+    from helix import groups as team_groups
+
+    caps = [m.id for _, m in await capabilities.all_active()
+            if capability_id in (None, m.id) and await team_groups.visible(caller, m.id, m)]
+    if not caps:
+        return []
+    query = select(Case).where(Case.capability_id.in_(caps), scope_clause(caller))
+    if team_group:
+        query = query.where(Case.team_group == team_group)
+    if statuses:
+        query = query.where(Case.status.in_(statuses))
+    query = query.order_by(Case.opened_at.desc(), Case.case_id).offset(offset)
+    if limit:
+        query = query.limit(limit)
+    async with get_session() as s:
+        rows = (await s.execute(query)).scalars().all()
+    out = []
+    for c in rows:
+        m = await _pinned(c)
+        if may_see_case(caller, m, c.case_key):
+            out.append((c, m))
+    return out
 
 
 async def _resolve(capability_id: str, team_group: str | None,
@@ -444,22 +489,15 @@ def _case_summary(c: Case) -> dict:
             "attempt": c.attempt or 1, "rerun_of": c.rerun_of, "legal_hold": bool(c.legal_hold)}
 
 
-async def list_cases(capability_id: str, caller: Caller, team_group: str | None = None) -> list[dict]:
+async def list_cases(capability_id: str, caller: Caller, team_group: str | None = None,
+                     limit: int = 200, offset: int = 0) -> list[dict]:
     from helix import groups as team_groups
 
     _, m = await capabilities.active(capability_id)
     if not await team_groups.visible(caller, capability_id, m):
         raise PermissionError(f"{caller.user_id} has no role for {capability_id}")
-    query = select(Case).where(Case.capability_id == capability_id)
-    if team_group:
-        query = query.where(Case.team_group == team_group)
-    async with get_session() as s:
-        rows = (await s.execute(query.order_by(Case.opened_at.desc()))).scalars().all()
-    out = []
-    for c in rows:
-        if may_see_case(caller, await _pinned(c), c.case_key):
-            out.append(_case_summary(c))
-    return out
+    return [_case_summary(c) for c, _ in await visible_cases(
+        caller, capability_id=capability_id, team_group=team_group, limit=limit, offset=offset)]
 
 
 def _documents(case_id: str, calls: list[ToolCall]) -> list[dict]:

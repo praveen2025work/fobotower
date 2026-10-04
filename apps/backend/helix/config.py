@@ -8,6 +8,10 @@ The plug points for the office environment are here, all optional:
                            Helix registers Phoenix itself
   HELIX_ENTITLEMENT_URL    the central entitlements service; unset = dev stub
   HELIX_IDENTITY_HEADER    the header carrying the signed-in user (SSO proxy)
+  HELIX_TRUSTED_PROXY_SECRET  a secret the SSO proxy adds to every request;
+                           set it and requests without it are refused
+  HELIX_ENTITLEMENT_WEBHOOK_SECRET  enables POST /api/entitlements/invalidate
+  HELIX_ENTITLEMENT_TTL_SECONDS     how long entitlements are cached (60)
   HELIX_RUN_MODE           background (default) | inline — where case runs happen
   HELIX_DOCUMENTS_DIR      documents the documents service reads (per scope)
   HELIX_REPORTS_STORE      db (default) | fs — where PDF reports are kept
@@ -34,6 +38,9 @@ class HelixSettings:
     entitlement_ttl_seconds: int
     console_origin: str
     identity_header: str
+    trusted_proxy_secret: str | None
+    proxy_secret_header: str
+    entitlement_webhook_secret: str | None
     run_mode: str
     documents_dir: Path
     reports_dir: Path
@@ -54,10 +61,16 @@ def settings() -> HelixSettings:
         phoenix_endpoint=env("PHOENIX_COLLECTOR_ENDPOINT") or None,
         phoenix_project=env("PHOENIX_PROJECT_NAME") or "helix",
         entitlement_url=env("HELIX_ENTITLEMENT_URL") or None,
-        entitlement_ttl_seconds=int(env("HELIX_ENTITLEMENT_TTL_SECONDS") or 300),
+        entitlement_ttl_seconds=int(env("HELIX_ENTITLEMENT_TTL_SECONDS") or 60),
         console_origin=env("HELIX_CONSOLE_ORIGIN") or "http://localhost:3100",
         # Who is calling. In the office, the SSO proxy's header (e.g. X-Remote-User).
         identity_header=env("HELIX_IDENTITY_HEADER") or "X-Helix-User",
+        # Set in the office: the SSO proxy adds this secret to every request it
+        # forwards, so the identity header is trusted only from the proxy.
+        trusted_proxy_secret=env("HELIX_TRUSTED_PROXY_SECRET") or None,
+        proxy_secret_header=env("HELIX_PROXY_SECRET_HEADER") or "X-Helix-Proxy-Secret",
+        # The entitlements service calls /api/entitlements/invalidate with it.
+        entitlement_webhook_secret=env("HELIX_ENTITLEMENT_WEBHOOK_SECRET") or None,
         # background: case runs leave the request path; inline: they finish first.
         run_mode=env("HELIX_RUN_MODE") or "background",
         # The documents service: what it reads, and where its reports go.

@@ -330,6 +330,21 @@ class NotificationRead(HelixBase):
     )
 
 
+class Switch(HelixBase):
+    """An off switch: a capability, one team's group, or a connector, stopped
+    until switched back on. Every change is kept (who, when, why)."""
+
+    __tablename__ = "helix_switch"
+    kind: Mapped[str] = mapped_column(String(16), primary_key=True)       # capability | group | connector
+    target: Mapped[str] = mapped_column(String(160), primary_key=True)    # id; group: "<capability>/<group>"
+    off: Mapped[bool] = mapped_column(Boolean, default=False)
+    reason: Mapped[str] = mapped_column(Text, default="")
+    set_by: Mapped[str] = mapped_column(String(64))
+    set_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(),
+                                             onupdate=func.now())
+    history: Mapped[list] = mapped_column(JSONB, default=list)
+
+
 class SchedulerTick(HelixBase):
     """A minute the scheduler has run — so only one API instance runs it."""
 
@@ -339,7 +354,7 @@ class SchedulerTick(HelixBase):
 
 
 HELIX_TABLES = [  # child tables first, for truncation in tests
-    "helix_scheduler_tick",
+    "helix_switch", "helix_scheduler_tick",
     "helix_notification_read", "helix_notification",
     "helix_case_message", "helix_document", "helix_retention_event",
     "helix_publish_approval", "helix_decision", "helix_proposal_group", "helix_case_item", "helix_tool_call",

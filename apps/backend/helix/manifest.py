@@ -206,6 +206,13 @@ class ResolveSpec(Strict):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
 
+class LimitsSpec(Strict):
+    """Model spend the capability may not exceed. Over a limit, groups that
+    would go to the model are escalated to a person instead."""
+    max_cost_usd_per_case: float | None = Field(default=None, gt=0)
+    max_cost_usd_per_day: float | None = Field(default=None, gt=0)
+
+
 class RetentionSpec(Strict):
     """How long the capability's finished cases are kept (legal hold aside)."""
     days: int = Field(ge=1)
@@ -277,6 +284,7 @@ class Manifest(Strict):
     resolve: list[ResolveSpec] = Field(default_factory=list)
     retention: RetentionSpec | None = None
     metrics: MetricsSpec = Field(default_factory=MetricsSpec)
+    limits: LimitsSpec = Field(default_factory=LimitsSpec)
     # What a group (a team's configuration of this capability, e.g. one rec group)
     # may set: dotted paths; "x.*" = anything under x. Owners stay the capability's.
     configurable: list[str] = Field(default_factory=list)
@@ -412,9 +420,9 @@ def problems(m: Manifest) -> list[str]:
         head = path.split(".")[0]
         if head not in top:
             out.append(f"configurable: `{path}` is not a manifest field")
-        if head in ("id", "owners", "configurable", "steps", "pause_before", "publish", "retention"):
+        if head in ("id", "owners", "configurable", "steps", "pause_before", "publish", "retention", "limits"):
             out.append(f"configurable: `{path}` cannot be set by a group "
-                       "(identity, ownership, workflow gates, write-back and retention stay with the capability)")
+                       "(identity, ownership, workflow gates, write-back, retention and spend limits stay with the capability)")
     if m.reasoning.reasoner == "llm" and not m.reasoning.skill.strip():
         out.append("reasoning.skill: an llm reasoner needs instructions")
     return out

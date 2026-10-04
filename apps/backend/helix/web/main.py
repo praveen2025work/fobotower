@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
-from helix import authoring, capabilities, cases, chat, evidence, knowledge, notify, retention, runner, scheduler, views
+from helix import authoring, capabilities, cases, chat, controls, evidence, knowledge, notify, retention, runner, scheduler, views
 from helix import groups as team_groups
 from helix.config import settings
 from helix.entitlement import Caller, EntitlementError, StubEntitlement, entitlements
@@ -496,6 +496,28 @@ async def schedules(c: Caller = Depends(caller)) -> list[dict]:
         if await team_groups.visible(c, s["capability_id"], base):
             out.append(s)
     return out
+
+
+@app.get("/api/switches")
+async def switches(c: Caller = Depends(caller)) -> list[dict]:
+    return [{**sw, "can_switch": await controls.can_switch(c, sw["kind"], sw["target"])}
+            for sw in await controls.all_switches()]
+
+
+class SwitchIn(BaseModel):
+    kind: str
+    target: str = Field(min_length=1, max_length=160)
+    off: bool
+    reason: str = Field(default="", max_length=1000)
+
+
+@app.post("/api/switches")
+@_errors
+async def set_switch(body: SwitchIn, c: Caller = Depends(caller)) -> dict:
+    try:
+        return await controls.set_switch(c, body.kind, body.target, body.off, body.reason)
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from e
 
 
 class InvalidateIn(BaseModel):

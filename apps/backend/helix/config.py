@@ -16,6 +16,7 @@ The plug points for the office environment are here, all optional:
   HELIX_SCHEDULER          on | off — the schedule loop (on when runs are in the background)
   HELIX_SCHEDULE_TZ        the time zone schedules are read in (UTC)
   HELIX_EVENT_SECRET       enables POST /api/events (other systems open cases)
+  HELIX_ADMIN_ROLE         platform support role: switches connectors off/on (HELIX_PLATFORM_ADMIN)
   HELIX_NOTIFY_WEBHOOK_URL every notification is also POSTed here (Teams / Power Automate)
   HELIX_CONSOLE_URL        the console's address, for links in notifications
   HELIX_DOCUMENTS_DIR      documents the documents service reads (per scope)
@@ -50,6 +51,7 @@ class HelixSettings:
     console_url: str
     scheduler: bool
     event_secret: str | None
+    admin_role: str
     notify_webhook_url: str | None
     documents_dir: Path
     reports_dir: Path
@@ -86,6 +88,8 @@ def settings() -> HelixSettings:
         scheduler=(env("HELIX_SCHEDULER") or ("on" if (env("HELIX_RUN_MODE") or "background") == "background" else "off")) == "on",
         # Other systems open cases with POST /api/events, sending this secret.
         event_secret=env("HELIX_EVENT_SECRET") or None,
+        # Platform support: may switch connectors (and anything else) off and on.
+        admin_role=env("HELIX_ADMIN_ROLE") or "HELIX_PLATFORM_ADMIN",
         # Links in notifications point here.
         console_url=(env("HELIX_CONSOLE_URL") or "http://localhost:5180").rstrip("/"),
         # Each notification is also POSTed here as JSON ({"text": …, "title": …, "link": …}):

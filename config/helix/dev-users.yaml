@@ -31,6 +31,10 @@ users:
     name: Gina (FOBO controller, PRIME-MB-01; CATS vs MOTIF owner)
     roles: [FOBO_CONTROLLER, HELIX_FOBO_RECON_OWNER]
     data_scopes: { book: [PRIME-MB-01] }
+  pat:
+    name: Pat (Helix platform support — switches, connectors; sees no case data)
+    roles: [HELIX_PLATFORM_ADMIN]
+    data_scopes: {}
   helix-scheduler:
     name: Helix scheduler (service account — opens scheduled and event cases, never decides)
     roles: [FIN_PREPARER, CASH_OPS, FOBO_CONTROLLER]

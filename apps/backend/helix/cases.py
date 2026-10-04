@@ -152,6 +152,7 @@ async def open_case(capability_id: str, case_key: dict, caller: Caller,
     returns its latest attempt. A capability with groups runs every case under
     one group — its team's configuration — on the merged manifest."""
     version, group_version, m = await _resolve(capability_id, team_group, caller)
+    await _not_switched_off(capability_id, team_group)
     key = _check_key(m, case_key, caller)
     root = case_id_for(capability_id, {**key, "__group": team_group} if team_group else key)
     async with get_session() as s:
@@ -165,6 +166,14 @@ async def open_case(capability_id: str, case_key: dict, caller: Caller,
             return root
     await runner.submit(root, "open")
     return root
+
+
+async def _not_switched_off(capability_id: str, team_group: str | None) -> None:
+    from helix import controls
+    try:
+        await controls.check_open(capability_id, team_group)
+    except controls.SwitchedOff as e:
+        raise CaseError(str(e)) from e
 
 
 RERUNNABLE = ("failed", "escalated")
@@ -184,6 +193,7 @@ async def rerun_case(case_id: str, caller: Caller) -> str:
         if case.status not in RERUNNABLE:
             raise CaseError(f"case is {case.status}; only a failed or escalated case can be re-run")
     version, group_version, m = await _resolve(case.capability_id, case.team_group, caller)
+    await _not_switched_off(case.capability_id, case.team_group)
     key = _check_key(m, case.case_key, caller)
     new_id = f"{root}.r{latest.attempt + 1}"
     async with get_session() as s:

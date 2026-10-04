@@ -17,7 +17,7 @@ import uuid
 
 from sqlalchemy import select
 
-from helix import gateway, runner, steps
+from helix import controls, gateway, runner, steps
 from helix.cases import CaseError, case_detail, may_see_case
 from helix.db import get_session
 from helix.entitlement import Caller
@@ -28,6 +28,18 @@ from helix.observability import span
 from helix.workflow import build_graph, checkpointer
 
 MAX_QUESTION = 4000
+
+
+class _RecordOnly:
+    """Over the spend limit: answer from the case's record, no model."""
+    name = "none"
+
+    def __init__(self, why: str):
+        self.why = why
+
+    async def ask(self, request, tools):
+        from helix.llm import AskResult, _from_case
+        return AskResult(answer=f"{_from_case(request)} (No model: {self.why}.)")
 
 
 async def _case(case_id: str, caller: Caller) -> tuple[Case, object]:
@@ -93,6 +105,8 @@ async def ask(case_id: str, question: str, caller: Caller) -> dict:
         history=[{"role": h.role, "text": guard.scrub(h.text, known)} for h in history[:-1]],
         allowed_tools=list(m.reasoning.tools))
     adapter = llm()
+    if over := await controls.over_budget(m, case_id):
+        adapter = _RecordOnly(over)
     with span("case.ask", root=True, case_id=case_id, capability_id=case.capability_id,
               user=caller.user_id) as sp:
         before = len(ctx.calls)

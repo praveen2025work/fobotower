@@ -29,6 +29,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from helix import plugins
 from helix.config import settings
+from helix import controls
 from helix.db import get_session
 from helix.entitlement import Caller
 from helix.governance import Protector
@@ -193,6 +194,9 @@ async def call(ctx: CallContext, qualified_tool: str, arguments: dict,
                                               or not ctx.write_approved_by):
             denied = (f"{qualified_tool} writes to a bank system: only the publish step may "
                       "call it, after a second person approves")
+        elif why := (await controls.off_reason("connector", connector_id)
+                     or await controls.off_reason("capability", ctx.capability_id)):
+            denied = why
         elif found[2].scope is not None:
             rule = found[2].scope
             value = arguments.get(rule.arg)

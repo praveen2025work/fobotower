@@ -13,7 +13,7 @@ from typing import Any, TypedDict
 
 from sqlalchemy import select
 
-from helix import gateway, knowledge, rules
+from helix import controls, gateway, knowledge, rules
 from helix.db import get_session
 from helix.entitlement import Caller
 from helix.governance import Protector, fields_for
@@ -359,6 +359,10 @@ async def reason_group(state: CaseState, g: dict, note: str | None = None,
         if finding is None and m.reasoning.reasoner == "none":
             finding = {"status": ESCALATED, "decided_by": "none", "comment": "",
                        "reason": "NO_REASONER"}
+            if play:
+                finding.update(_play_fields(play))
+        if finding is None and (over := await controls.over_budget(m, state["case_id"])):
+            finding = {"status": ESCALATED, "decided_by": "none", "comment": "", "reason": over}
             if play:
                 finding.update(_play_fields(play))
         if finding is None:

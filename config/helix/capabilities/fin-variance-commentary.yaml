@@ -65,6 +65,11 @@ reasoning:
 
 # Decisions link to the accounts and cost centres they concern, so priors also
 # come from related accounts; finished cases are kept seven years.
+# Model spend: over a limit, groups go to a person instead of the model.
+limits:
+  max_cost_usd_per_case: 5
+  max_cost_usd_per_day: 50
+
 knowledge:
   entities: [account, cost_centre]
 retention:

@@ -101,6 +101,33 @@ class CheckSpec(Strict):
     side: str = "UNKNOWN"              # which side it implicates; UNKNOWN = not proven
 
 
+class ValidationTest(Strict):
+    """A validation test from the playbook (e.g. FOBO's FO-1…FO-8, BO-1…BO-6),
+    run on every item by `classify`: pass, fail, or not run — never guessed."""
+    id: str
+    side: str                          # FO | BO
+    validates: str                     # the component, e.g. Position, Price
+    check: str                         # what is checked, in words
+    fails_when: str                    # expression over the item: true = the test fails
+    on_fail: str = ""                  # what to do when it fails
+    needs: list[str] = Field(default_factory=list)      # item fields that must be present
+    evidence: list[str] = Field(default_factory=list)   # the evidence those fields come from
+    policy: list[str] = Field(default_factory=list)     # thresholds it needs; unset = not run (P1)
+    requires_on_fail: list[str] = Field(default_factory=list)  # tests that must have run if this fails
+    blocks_post: bool = False          # a failure holds the adjustment
+
+
+class TestFinding(Strict):
+    """What a test's evidence shows (e.g. FO-6 findings A/B/C). A finding that
+    indicates a category explains an item no cause check explained."""
+    id: str
+    test: str
+    when: str                          # expression over the item
+    description: str
+    indicates: str | None = None       # a category, or None (e.g. "proceed to BO validation")
+    side: str = "UNKNOWN"
+
+
 class CategorySpec(Strict):
     name: str
     # deterministic: the verdict table settles it; judgement: the model
@@ -122,6 +149,9 @@ class PlaybookSpec(Strict):
     """Rules owned by the business: checks, categories, the verdict table and
     the guards over it. The FOBO CATS vs MOTIF playbook is one."""
     checks: list[CheckSpec] = Field(default_factory=list)
+    tests: list[ValidationTest] = Field(default_factory=list)
+    findings: list[TestFinding] = Field(default_factory=list)
+    blocked_verdict: str = "ESCALATE"  # what a POST becomes when a blocking test failed
     categories: dict[str, CategorySpec]
     default_category: str              # when no check is positive (a novel break)
     sides: list[str] = Field(default_factory=lambda: ["FO", "BO"])   # proven sides
@@ -137,6 +167,8 @@ class PlaybookSpec(Strict):
     def verdict_names(self) -> list[str]:
         names = {v for sides in self.verdicts.values() for v in sides.values()}
         names |= {g.instead for g in self.guards} | set(self.escalate_verdicts)
+        if self.tests:
+            names.add(self.blocked_verdict)
         return sorted(names)
 
 
@@ -149,6 +181,13 @@ class KnowledgeSpec(Strict):
     reference: str | None = None
     # The case-key field holding the business date reference data is read as of.
     as_of: str | None = None
+    # Only decisions this recent are used as priors (FOBO: 180 days). None = all.
+    priors_lookback_days: int | None = Field(default=None, ge=1)
+
+
+class MetricsSpec(Strict):
+    """Declared assumptions behind the efficiency figures — shown with them."""
+    manual_minutes_per_item: float = Field(default=12, gt=0)   # one manual decision
 
 
 class ResolveSpec(Strict):
@@ -230,6 +269,7 @@ class Manifest(Strict):
     knowledge: KnowledgeSpec = Field(default_factory=KnowledgeSpec)
     resolve: list[ResolveSpec] = Field(default_factory=list)
     retention: RetentionSpec | None = None
+    metrics: MetricsSpec = Field(default_factory=MetricsSpec)
     # What a group (a team's configuration of this capability, e.g. one rec group)
     # may set: dotted paths; "x.*" = anything under x. Owners stay the capability's.
     configurable: list[str] = Field(default_factory=list)
@@ -261,7 +301,9 @@ def _expressions(m: Manifest) -> list[tuple[str, str | None]]:
             *[(f"rules[{r.id}].when", r.when) for r in m.rules],
             ("review.dual_review_when", m.review.dual_review_when),
             *[(f"playbook.checks[{c.id}].when", c.when) for c in (m.playbook.checks if m.playbook else [])],
-            *[(f"playbook.guards[{g.verdict}].when", g.when) for g in (m.playbook.guards if m.playbook else [])]]
+            *[(f"playbook.guards[{g.verdict}].when", g.when) for g in (m.playbook.guards if m.playbook else [])],
+            *[(f"playbook.tests[{t.id}].fails_when", t.fails_when) for t in (m.playbook.tests if m.playbook else [])],
+            *[(f"playbook.findings[{f.id}].when", f.when) for f in (m.playbook.findings if m.playbook else [])]]
 
 
 def problems(m: Manifest) -> list[str]:
@@ -309,6 +351,15 @@ def problems(m: Manifest) -> list[str]:
             out += [f"playbook.verdicts.{cat}: unknown side `{sd}`" for sd in sides if sd not in pb.sides]
         out += [f"playbook.verdict_policy: `{p}` is not a policy" for p in pb.verdict_policy
                 if p not in m.policy]
+        ids = {t.id for t in pb.tests}
+        for t in pb.tests:
+            out += [f"playbook test {t.id}: `{p}` is not a policy" for p in t.policy if p not in m.policy]
+            out += [f"playbook test {t.id}: requires unknown test `{r}`" for r in t.requires_on_fail if r not in ids]
+        for f in pb.findings:
+            if f.test not in ids:
+                out.append(f"playbook finding {f.id}: unknown test `{f.test}`")
+            if f.indicates and f.indicates not in pb.categories:
+                out.append(f"playbook finding {f.id}: unknown category `{f.indicates}`")
     if m.knowledge.as_of and m.knowledge.as_of not in m.case.key:
         out.append(f"knowledge.as_of: `{m.knowledge.as_of}` is not in case.key")
     if "compare" in m.steps and m.compare is None:

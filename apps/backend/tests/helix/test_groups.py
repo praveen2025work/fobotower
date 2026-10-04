@@ -97,8 +97,9 @@ def test_group_settings_replace_at_the_configurable_path():
     m, found = effective(base, cfg)
     assert found == []
     assert m.case.scopes == {"book": "book"}                    # replaced, not merged with entity
-    assert set(m.policy) == {"write_off_limit", "materiality_threshold",
-                             "posting_policy_reference"}           # policy.* merges one at a time
+    assert set(m.policy) == {"write_off_limit", "materiality_threshold", "posting_policy_reference",
+                             "mtm_market_movement_tolerance",
+                             "calculation_reasonable_tolerance"}    # policy.* merges one at a time
     allowed, refused = set_paths({"policy": {"x": {"value": 1}}, "owners": {"people": ["me"]}},
                                  base.configurable)
     assert allowed == ["policy.x"] and refused == ["owners.people"]

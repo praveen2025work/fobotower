@@ -49,6 +49,7 @@ set:
     entities: [instrument, book]
     reference: fobo-reference
     as_of: cob
+    priors_lookback_days: 180         # FOBO: prior resolutions from the last 180 days
   resolve:
     - { node: "book:{book}", path: [belongs_to], as: owner_desk }
     - { node: "book:{book}", path: [belongs_to, escalates_to], as: owner_team }
@@ -56,6 +57,8 @@ set:
   policy:
     materiality_threshold: { value: null, unit: GBP }
     posting_policy_reference: { value: null }
+    mtm_market_movement_tolerance: { value: null, unit: GBP }      # FO-4
+    calculation_reasonable_tolerance: { value: null, unit: GBP }   # FO-6
   playbook:
     checks:
       - { id: C1, when: "fo_booking_ts > bo_cutoff_ts", category: C, side: BO,
@@ -70,6 +73,54 @@ set:
           reason: "Pending desk confirmation since the 11:00 run" }
       - { id: C6, when: "len(symdiff(fo_adjustments, bo_adjustments)) > 0", category: D, side: BO,
           reason: "Two entries with identical settlement reference" }
+    # Validation tests (skill §5–§6): every test runs on every break; a test
+    # whose evidence is missing or whose threshold is unset is "not run" (P1),
+    # never passed by default. A blocking failure holds a POST.
+    tests:
+      - { id: FO-1, side: FO, validates: Position, check: "Prior day close position = current day open position",
+          fails_when: "fo_prev_close_position != fo_open_position", needs: [fo_prev_close_position, fo_open_position],
+          evidence: [Position file], on_fail: "Hold adjustment; escalate position issue", blocks_post: true }
+      - { id: FO-2, side: FO, validates: Price, check: "Yesterday close price = today open price",
+          fails_when: "fo_prev_close_price != fo_open_price", needs: [fo_prev_close_price, fo_open_price],
+          evidence: [Pricing file], on_fail: "Hold adjustment; raise market-data DQ", blocks_post: true }
+      - { id: FO-3, side: FO, validates: Pull Factor, check: "Yesterday pull factor = today opening pull factor",
+          fails_when: "fo_prev_pull_factor != fo_open_pull_factor", needs: [fo_prev_pull_factor, fo_open_pull_factor],
+          on_fail: "Go to FO-6 before concluding", requires_on_fail: [FO-6] }
+      - { id: FO-4, side: FO, validates: MTM, check: "Does Position x Price Movement explain MTM?",
+          fails_when: "abs(mtm_unexplained) > policy.mtm_market_movement_tolerance", needs: [mtm_unexplained],
+          policy: [mtm_market_movement_tolerance], on_fail: "Isolate which of the three; escalate", blocks_post: true }
+      - { id: FO-5, side: FO, validates: Trading PnL, check: "Do trade economics explain Trading PnL?",
+          fails_when: "not trade_pnl_explained", needs: [trade_pnl_explained], on_fail: "Move to Step 4 trade layer" }
+      - { id: FO-6, side: FO, validates: Redemption Events, check: "Redemption occurred? Factor changed? PnL expected? CATS calculated it?",
+          fails_when: "(redemption_event or factor_changed) and not cats_calculated or (factor_changed and not redemption_event)",
+          needs: [redemption_event, factor_changed, cats_calculated],
+          evidence: [Corporate action file, Pull factor history], on_fail: "See findings A/B/C" }
+      - { id: FO-7, side: FO, validates: Price, check: "Price = 0 — valid corporate action or data quality issue?",
+          fails_when: "fo_price == 0", needs: [fo_price], evidence: [Corporate action file, Trade file, Bond metadata],
+          on_fail: "Obtain trade file, corporate action file, bond metadata before concluding", blocks_post: true }
+      - { id: FO-8, side: FO, validates: Price, check: "Holiday close = next business day open, for position, price and pull factor",
+          fails_when: "not holiday_carry_ok", needs: [holiday_carry_ok], on_fail: "Recurring root cause of PnL distortion — check explicitly" }
+      - { id: BO-1, side: BO, validates: Position, check: "Position balance; position quantity; settlement activity",
+          fails_when: "not bo_position_balanced", needs: [bo_position_balanced] }
+      - { id: BO-2, side: BO, validates: Price, check: "Market price; accounting price; pricing source",
+          fails_when: "not bo_price_source_ok", needs: [bo_price_source_ok] }
+      - { id: BO-3, side: BO, validates: Pull Factor, check: "Factor used; redemption treatment; calculation logic",
+          fails_when: "not bo_factor_ok", needs: [bo_factor_ok] }
+      - { id: BO-4, side: BO, validates: Settlement, check: "Trade settled? Settlement date? Quantity settled? Cash settled?",
+          fails_when: "not bo_settled", needs: [bo_settled] }
+      - { id: BO-5, side: BO, validates: Cash Movement, check: "Redemption cash; coupon cash; settlement cash",
+          fails_when: "not bo_cash_ok", needs: [bo_cash_ok] }
+      - { id: BO-6, side: BO, validates: Journal Generation, check: "MOTIF entry generated? Journal posted? Journal rejected?",
+          fails_when: "not bo_journal_posted", needs: [bo_journal_posted], evidence: [Journal status] }
+    # FO-6 findings (skill §6): what the redemption analysis shows.
+    findings:
+      - { id: A, test: FO-6, when: "redemption_event and pnl_expected and not cats_calculated",
+          indicates: C, side: FO, description: "Pull factor event missing; expected PnL exists, FO shows zero" }
+      - { id: B, test: FO-6, when: "factor_changed and not redemption_event",
+          indicates: B, side: FO, description: "Pull factor applied too early; artificial PnL generated" }
+      - { id: C, test: FO-6, when: "redemption_event and cats_calculated",
+          description: "Redemption correctly reflected; proceed to BO validation" }
+    blocked_verdict: ESCALATE
     categories:
       A: { name: Price break,            determinism: deterministic, escalate_to: Market data }
       B: { name: Pull factor break,      determinism: deterministic, escalate_to: CATS support }

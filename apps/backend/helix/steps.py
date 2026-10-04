@@ -191,15 +191,78 @@ async def classify(state: CaseState) -> dict:
                             "reason": rules.render(c.reason, env) if positive else ""})
         cause = next((pb.checks[i] for i, r in enumerate(results) if r["positive"]), None)
         category = cause.category if cause else pb.default_category
+        side = cause.side if cause else "UNKNOWN"
+        reason = next((r["reason"] for r in results if r["positive"]), "No cause check explains it")
+        tests = _run_tests(pb, env, policy)
+        finding = _test_finding(pb, env, tests)
+        if cause is None and finding and finding.indicates:
+            # a test's evidence explains what no cause check did (e.g. FO-6 finding A)
+            category, side = finding.indicates, finding.side
+            reason = f"{finding.test} finding {finding.id}: {finding.description}"
         cat = pb.categories[category]
         items.append({**it, "checks": results, "cause": cause.id if cause else None,
-                      "category": category, "category_name": cat.name,
-                      "side": cause.side if cause else "UNKNOWN",
+                      "category": category, "category_name": cat.name, "side": side,
                       "determinism": cat.determinism, "escalate_to": cat.escalate_to,
-                      "cause_reason": next((r["reason"] for r in results if r["positive"]),
-                                           "No cause check explains it")})
+                      "cause_reason": reason, "tests": tests,
+                      "test_finding": ({"id": finding.id, "test": finding.test,
+                                        "description": finding.description} if finding else None),
+                      "blocked_by": _blocks(pb, tests)})
     await _save_items(state["case_id"], items)
     return {"items": items}
+
+
+def _run_tests(pb, env: dict, policy: dict) -> list[dict]:
+    """Every validation test on one item: fail, pass, or not run (and why).
+    A test whose evidence is missing, or whose threshold is unset (P1), is not
+    run — it never passes by default."""
+    out = []
+    for t in pb.tests:
+        row = {"id": t.id, "side": t.side, "validates": t.validates, "check": t.check,
+               "on_fail": t.on_fail, "evidence": t.evidence}
+        missing = [f for f in t.needs if env.get(f) is None]
+        unset = [p for p in t.policy if policy.get(p) is None]
+        if missing:
+            row.update(status="not_run", why=f"evidence missing: {', '.join(t.evidence) or ', '.join(missing)}")
+        elif unset:
+            row.update(status="not_run", why=f"policy unset: {', '.join(unset)}")
+        else:
+            try:
+                failed = bool(rules.evaluate(t.fails_when, env))
+            except Exception as e:
+                row.update(status="not_run", why=f"cannot evaluate: {e}")
+            else:
+                row["status"] = "fail" if failed else "pass"
+        out.append(row)
+    return out
+
+
+def _test_finding(pb, env: dict, tests: list[dict]):
+    ran = {t["id"] for t in tests if t["status"] != "not_run"}
+    for f in pb.findings:
+        if f.test in ran:
+            try:
+                if rules.evaluate(f.when, env):
+                    return f
+            except Exception:
+                continue
+    return None
+
+
+def _blocks(pb, tests: list[dict]) -> list[str]:
+    """Why an adjustment must be held: a blocking test failed, or a failed test
+    needs another test that could not run."""
+    by_id = {t["id"]: t for t in tests}
+    out = []
+    for spec in pb.tests:
+        t = by_id[spec.id]
+        if t["status"] != "fail":
+            continue
+        if spec.blocks_post:
+            out.append(f"{spec.id} failed: {spec.on_fail or spec.check}")
+        for req in spec.requires_on_fail:
+            if by_id.get(req, {}).get("status") == "not_run":
+                out.append(f"{spec.id} failed and needs {req}, which could not run ({by_id[req].get('why')})")
+    return out
 
 
 async def resolve(state: CaseState) -> dict:
@@ -258,6 +321,7 @@ async def group(state: CaseState) -> dict:
                 if m.items.amount_field else None
             priors = await knowledge.similar_decisions(
                 state["capability_id"], group_key, exclude_case=state["case_id"],
+                lookback_days=m.knowledge.priors_lookback_days,
                 entities=knowledge.entity_values(m.knowledge.entities, group_key, members))
             g = {"group_id": group_id, "label": label, "group_key": group_key,
                  "item_ids": [it["item_id"] for it in members], "count": len(members),
@@ -356,7 +420,8 @@ def _playbook_view(m: Manifest, members: list[dict], policy: dict) -> dict:
             "deterministic": bool(cat and cat.determinism == "deterministic" and side in pb.sides
                                   and pb.verdicts.get(category, {}).get(side)),
             "reasons": "; ".join(sorted({it.get("cause_reason", "") for it in members} - {""})),
-            "unset_policy": unset}
+            "unset_policy": unset,
+            "blocked_by": sorted({b for it in members for b in it.get("blocked_by") or []})}
 
 
 def _play_fields(play: dict) -> dict:
@@ -374,7 +439,12 @@ def _guarded(m: Manifest, verdict: str | None, env: dict) -> tuple[str | None, s
 def _with_verdict(m: Manifest, play: dict, finding: dict, verdict: str | None, env: dict) -> dict:
     pb = m.playbook
     verdict, guard_reason = _guarded(m, verdict, {**env, **_play_fields(play)})
+    if verdict in pb.confirm_verdicts and play.get("blocked_by"):
+        verdict = pb.blocked_verdict
+        guard_reason = "Held: " + "; ".join(play["blocked_by"])
     out = {**finding, **_play_fields(play), "verdict": verdict}
+    if play.get("blocked_by"):
+        out["blocked_by"] = play["blocked_by"]
     if guard_reason:
         out["guard"] = guard_reason
     if verdict in pb.escalate_verdicts:

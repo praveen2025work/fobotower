@@ -107,6 +107,8 @@ async def overview(caller: Caller) -> dict:
                              "statuses": Counter(), "escalated_groups": 0}
     mine = Counter()
     llm_cost, llm_groups = 0.0, 0
+    month = datetime.now(timezone.utc) - timedelta(days=30)
+    saved = {"items": 0, "groups": 0, "minutes": 0.0, "settled": 0}
     for c, m in visible:
         cap = per_cap.setdefault(m.id, {"id": m.id, "name": m.name, "case_label": m.case.label,
                                         "statuses": Counter(), "escalated_groups": 0})
@@ -118,6 +120,14 @@ async def overview(caller: Caller) -> dict:
             if usage.get("cost_usd") is not None:
                 llm_cost += usage["cost_usd"]
                 llm_groups += 1
+        if c.opened_at >= month and gs:
+            # FOBO's efficiency claim: items that would each have been a decision,
+            # against the groups they collapsed into, at a declared manual cost.
+            n_items = sum(len(g.item_ids) for g in gs)
+            saved["items"] += n_items
+            saved["groups"] += len(gs)
+            saved["minutes"] += (n_items - len(gs)) * m.metrics.manual_minutes_per_item
+            saved["settled"] += sum(1 for g in gs if (g.finding or {}).get("decided_by") in ("rule", "playbook"))
         action = _my_action(c, m, caller, {d.decided_by for d in decisions.get(c.case_id, [])})
         if action:
             mine[action] += 1
@@ -130,6 +140,12 @@ async def overview(caller: Caller) -> dict:
         "refused_calls_24h": sum(1 for t in calls if not t.allowed),
         "model_calls_24h": sum(1 for t in calls if t.requested_by in ("llm", "chat")),
         "llm_cost_usd": round(llm_cost, 4), "llm_groups": llm_groups,
+        "hours_saved_30d": {
+            "value": round(saved["minutes"] / 60, 1),
+            "basis": (f"{saved['items']} items grouped into {saved['groups']} decisions "
+                      f"({saved['items'] - saved['groups']} avoided) at each capability's declared "
+                      f"manual minutes per item; {saved['settled']} groups settled by rule or playbook"),
+        },
         "capabilities": [{**v, "statuses": dict(v["statuses"])} for v in per_cap.values()],
     }
 

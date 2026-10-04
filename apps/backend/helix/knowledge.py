@@ -17,7 +17,7 @@ so a read "as of" a date sees what was true then. Two kinds of knowledge:
 """
 
 import json
-from datetime import date, datetime, time, timezone
+from datetime import date, datetime, time, timedelta, timezone
 
 import yaml
 from sqlalchemy import and_, delete, select
@@ -84,7 +84,8 @@ async def record_decision(namespace: str, group_key: dict, *, case_id: str, grou
 
 async def similar_decisions(namespace: str, group_key: dict, *, limit: int = 3,
                             as_of: datetime | None = None, exclude_case: str | None = None,
-                            entities: dict[str, set] | None = None) -> list[dict]:
+                            entities: dict[str, set] | None = None,
+                            lookback_days: int | None = None) -> list[dict]:
     """Approved decisions to learn from: about the same subject first (newest
     first), then about the same entities (most shared first). Each says why
     it was chosen (`match`)."""
@@ -113,8 +114,11 @@ async def similar_decisions(namespace: str, group_key: dict, *, limit: int = 3,
         else:
             others = []
 
+    since = at - timedelta(days=lookback_days) if lookback_days else None
+
     def usable(n: KgNode) -> bool:
-        return n.attrs.get("action") == "approve" and n.attrs.get("case_id") != exclude_case
+        return (n.attrs.get("action") == "approve" and n.attrs.get("case_id") != exclude_case
+                and (since is None or n.valid_from >= since))
 
     out = [{**n.attrs, "match": "same subject"} for n in same if usable(n)]
     seen = {n.node_id for n in same}

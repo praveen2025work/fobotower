@@ -202,8 +202,45 @@ def break_snapshots(book: str, cob: str) -> dict:
             "bo_version": 2,
             "fo_adjustments": [],
             "bo_adjustments": ["SETTLE-REF-88120", "SETTLE-REF-88120-DUP"] if cause == "C6" else [],
+            **_validation_fields(book, cob, ins, cause),
         })
     return {"rows": rows}
+
+
+def _validation_fields(book: str, cob: str, ins: str, cause: str | None) -> dict:
+    """What FOBO's validation tests read (FO-1…FO-8, BO-1…BO-6, FO-6 findings).
+    Mostly clean; a few deterministic failures and gaps in evidence."""
+    r = _rng("tests", book, cob, ins)
+    pos = r.randint(1, 500) * 1000
+    price = round(r.uniform(90, 110), 4)
+    factor = round(r.uniform(0.5, 1.0), 6)
+    roll = r.random()
+    out = {
+        "fo_prev_close_position": pos,
+        "fo_open_position": pos + (1000 if roll < 0.06 else 0),                 # FO-1
+        "fo_prev_close_price": price,
+        "fo_open_price": round(price + (0.25 if 0.06 <= roll < 0.10 else 0), 4),  # FO-2
+        "fo_prev_pull_factor": factor,
+        "fo_open_pull_factor": factor,
+        "mtm_unexplained": round(r.uniform(-50, 50), 2),
+        "trade_pnl_explained": roll >= 0.04,
+        "redemption_event": False, "factor_changed": False,
+        "pnl_expected": False, "cats_calculated": True,
+        "fo_price": price,
+        "holiday_carry_ok": True,
+        "bo_position_balanced": True, "bo_price_source_ok": True, "bo_factor_ok": True,
+        "bo_settled": cause != "C6", "bo_cash_ok": True,
+    }
+    if r.random() > 0.2:                     # journal status not always available
+        out["bo_journal_posted"] = cause != "C2"
+    if cause is None:                        # a break no cause check explains
+        kind = r.choice(["redemption_missed", "factor_early", "none"])
+        if kind == "redemption_missed":      # FO-6 finding A
+            out.update(redemption_event=True, pnl_expected=True, cats_calculated=False,
+                       fo_open_pull_factor=round(factor * 0.9, 6), factor_changed=True)
+        elif kind == "factor_early":         # FO-6 finding B
+            out.update(factor_changed=True, fo_open_pull_factor=round(factor * 0.95, 6))
+    return out
 
 
 def booking_events(book: str, cob: str, break_type: str | None = None,

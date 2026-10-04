@@ -14,6 +14,9 @@ taken and why.
 FOBO's behaviour on Helix — its playbook as configuration of the CATS vs MOTIF rec groups:
 [`fobo-on-helix.md`](fobo-on-helix.md).
 
+**Moving the office FOBO (on Agent One) onto Helix** — change guide, office Claude Code skill and
+parity script: [`migration/`](migration/README.md).
+
 **Executive demo video (3 min) and presenter notes:** [`demo/`](demo/README.md).
 
 **User guide and developer guide (with screenshots):** [`guide/`](guide/README.md).

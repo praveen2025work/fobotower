@@ -28,6 +28,20 @@ async def test_priors_come_from_the_same_subject_then_from_shared_entities():
         ("c2", "same subject"), ("c1", "shared cost_centre")]      # rejections never teach
 
 
+async def test_priors_older_than_the_lookback_are_left_out():
+    await knowledge.record_decision(NS, {"book": "B1"}, case_id="old", group_id="g", action="approve",
+                                    comment="Late booking", decided_by="frank")
+    await knowledge.record_decision(NS, {"book": "B1"}, case_id="new", group_id="g", action="approve",
+                                    comment="Late booking again", decided_by="frank")
+    async with get_session() as s:      # backdate the first decision 200 days
+        await s.execute(text("UPDATE helix_kg_node SET valid_from = valid_from - interval '200 days' "
+                             "WHERE namespace = :ns AND attrs->>'case_id' = 'old'"), {"ns": NS})
+        await s.commit()
+    within = await knowledge.similar_decisions(NS, {"book": "B1"}, lookback_days=180)
+    assert [p["case_id"] for p in within] == ["new"]          # FOBO: the last 180 days only
+    assert {p["case_id"] for p in await knowledge.similar_decisions(NS, {"book": "B1"})} == {"old", "new"}
+
+
 async def test_recording_the_same_decision_twice_is_a_no_op():
     for _ in range(2):
         await knowledge.record_decision(NS, {"account": "1"}, case_id="c9", group_id="g", action="approve",

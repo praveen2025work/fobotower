@@ -10,10 +10,10 @@ from functools import wraps
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
-from helix import authoring, capabilities, cases, views
+from helix import authoring, capabilities, cases, runner, views
 from helix import groups as team_groups
 from helix.config import settings
 from helix.entitlement import Caller, EntitlementError, StubEntitlement, entitlements
@@ -29,7 +29,9 @@ async def lifespan(_app: FastAPI):
     await setup_checkpointer()
     await capabilities.seed()
     await team_groups.seed()
+    await runner.recover()          # finish runs a stopped server left behind
     yield
+    await runner.drain()
 
 
 app = FastAPI(title="Helix API", version="0.1.0", lifespan=lifespan)
@@ -250,6 +252,41 @@ async def decide(case_id: str, body: DecisionIn, c: Caller = Depends(caller)) ->
     return {**result, "case": await cases.case_detail(case_id, c)}
 
 
+class BulkDecisionIn(BaseModel):
+    group_ids: list[str] = Field(min_length=1, max_length=1000)
+    action: str
+    comment: str | None = None
+    idempotency_key: str = Field(min_length=8, max_length=96)
+
+
+@app.post("/api/cases/{case_id}/decisions/bulk", status_code=201)
+@_errors
+async def decide_bulk(case_id: str, body: BulkDecisionIn, c: Caller = Depends(caller)) -> dict:
+    result = await cases.bulk_decide(case_id, body.group_ids, body.action, body.comment,
+                                     body.idempotency_key, c)
+    return {**result, "case": await cases.case_detail(case_id, c)}
+
+
+class ReinvestigateIn(BaseModel):
+    note: str = Field(min_length=1, max_length=4000)
+    idempotency_key: str = Field(min_length=8, max_length=128)
+
+
+@app.post("/api/cases/{case_id}/groups/{group_id}/reinvestigate", status_code=201)
+@_errors
+async def reinvestigate(case_id: str, group_id: str, body: ReinvestigateIn,
+                        c: Caller = Depends(caller)) -> dict:
+    result = await cases.reinvestigate(case_id, group_id, body.note, body.idempotency_key, c)
+    return {**result, "case": await cases.case_detail(case_id, c)}
+
+
+@app.post("/api/cases/{case_id}/rerun", status_code=201)
+@_errors
+async def rerun(case_id: str, c: Caller = Depends(caller)) -> dict:
+    new_id = await cases.rerun_case(case_id, c)
+    return await cases.case_detail(new_id, c)
+
+
 class PublishIn(BaseModel):
     idempotency_key: str = Field(min_length=8, max_length=128)
 
@@ -263,17 +300,24 @@ async def release_publish(case_id: str, body: PublishIn, c: Caller = Depends(cal
 
 @app.get("/api/cases/{case_id}/documents/{name}")
 @_errors
-async def case_document(case_id: str, name: str, c: Caller = Depends(caller)) -> FileResponse:
+async def case_document(case_id: str, name: str, c: Caller = Depends(caller)) -> Response:
     """A report this case published (e.g. its PDF), for people who can see the case."""
-    from helix.mcp_services.documents import DocumentError, report_path
+    from helix.mcp_services.documents import DocumentError, load_report
 
     scope, name = await cases.published_document(case_id, name, c)
     try:
-        path = report_path(scope, name)
+        content, content_type = await load_report(scope, name)
     except DocumentError as e:
         raise LookupError(str(e)) from e
-    return FileResponse(path, media_type="application/pdf" if name.lower().endswith(".pdf") else None,
-                        filename=name)
+    return Response(content, media_type=content_type,
+                    headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+
+@app.post("/api/cases/{case_id}/publish/retry", status_code=201)
+@_errors
+async def retry_publish(case_id: str, c: Caller = Depends(caller)) -> dict:
+    result = await cases.retry_publish(case_id, c)
+    return {**result, "case": await cases.case_detail(case_id, c)}
 
 
 class BrdIn(BaseModel):

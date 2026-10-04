@@ -30,6 +30,9 @@ class ReasonRequest:
     group: dict                # {group_id, label, group_key, items: [...], priors: [...]}
     allowed_tools: list[str]   # "connector.tool" names the model may call
     output: str                # verdict | commentary | classification
+    # A reviewer sent the group back: what they asked, and what was proposed before.
+    reviewer_note: str | None = None
+    previous_finding: dict | None = None
 
 
 @dataclass(frozen=True)
@@ -82,6 +85,8 @@ class StubLlm:
         comment = f"{request.group['label']}: net {_fmt(total)} across {len(request.group['items'])} item(s); reviewed {seen}."
         if prior:
             comment += f" Similar to a prior approved explanation: \"{prior}\""
+        if request.reviewer_note:
+            comment += f" Re-checked as the reviewer asked: \"{request.reviewer_note}\"."
         return ReasonResult(status="proposed", comment=comment, model="stub")
 
 

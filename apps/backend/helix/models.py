@@ -12,6 +12,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    LargeBinary,
     String,
     Text,
     func,
@@ -79,7 +80,10 @@ class Case(HelixBase):
     """One unit of a capability's work, e.g. one entity's month-end."""
 
     __tablename__ = "helix_case"
-    __table_args__ = (Index("idx_helix_case_cap", "capability_id", "opened_at"),)
+    __table_args__ = (
+        Index("idx_helix_case_cap", "capability_id", "opened_at"),
+        Index("idx_helix_case_scope", "scope", postgresql_using="gin"),
+    )
 
     case_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     capability_id: Mapped[str] = mapped_column(String(64))
@@ -92,7 +96,7 @@ class Case(HelixBase):
     manifest: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     case_key: Mapped[dict] = mapped_column(JSONB)
     subject: Mapped[str] = mapped_column(String(256))
-    # running | awaiting_review | completed | escalated | failed
+    # running | awaiting_review | awaiting_publish | completed | escalated | failed
     status: Mapped[str] = mapped_column(String(24))
     outcome: Mapped[str | None] = mapped_column(String(24), nullable=True)
     draft: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
@@ -103,6 +107,20 @@ class Case(HelixBase):
     )
     # Joins this row to its trace in Phoenix. Null when tracing is off.
     trace_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # Who the run acts as (entitlements at open), so a restarted server can
+    # finish a run it did not start.
+    run_as: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # Re-runs: attempt 2, 3… of the same key. Attempt 1's id is the root.
+    root_case_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    attempt: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    rerun_of: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    # Data-scope values (scope -> value) the case belongs to, for filtering in SQL.
+    scope: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    legal_hold: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    legal_hold_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=True
+    )
 
 
 class CaseItem(HelixBase):
@@ -153,6 +171,9 @@ class ToolCall(HelixBase):
     row_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Write-backs: the key that makes a repeated write a no-op, and lets a
+    # retry skip the writes that already landed.
+    idempotency_key: Mapped[str | None] = mapped_column(String(256), nullable=True, index=True)
     called_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -221,7 +242,59 @@ class KgEdge(HelixBase):
     valid_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class Document(HelixBase):
+    """A document Helix wrote (e.g. a PDF report), kept in the shared database
+    so every API instance can serve it."""
+
+    __tablename__ = "helix_document"
+    scope: Mapped[str] = mapped_column(String(128), primary_key=True)
+    name: Mapped[str] = mapped_column(String(256), primary_key=True)
+    content: Mapped[bytes] = mapped_column(LargeBinary)
+    content_type: Mapped[str] = mapped_column(String(64))
+    sha256: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class CaseMessage(HelixBase):
+    """Ask-about-a-case: one question or answer. Answers keep what they cited."""
+
+    __tablename__ = "helix_case_message"
+    __table_args__ = (Index("idx_helix_case_message_case", "case_id", "created_at"),)
+
+    message_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    case_id: Mapped[str] = mapped_column(
+        String(128), ForeignKey("helix_case.case_id", ondelete="CASCADE")
+    )
+    role: Mapped[str] = mapped_column(String(16))          # user | assistant
+    author: Mapped[str] = mapped_column(String(64))
+    text: Mapped[str] = mapped_column(Text)
+    # assistant only: tool calls, ungrounded figures, model
+    meta: Mapped[dict] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class RetentionEvent(HelixBase):
+    """A case removed under its capability's retention policy — the record that it was."""
+
+    __tablename__ = "helix_retention_event"
+    event_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    case_id: Mapped[str] = mapped_column(String(128))
+    capability_id: Mapped[str] = mapped_column(String(64))
+    subject: Mapped[str] = mapped_column(String(256))
+    opened_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    retention_days: Mapped[int] = mapped_column(Integer)
+    purged_by: Mapped[str] = mapped_column(String(64))
+    purged_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
 HELIX_TABLES = [  # child tables first, for truncation in tests
+    "helix_case_message", "helix_document", "helix_retention_event",
     "helix_publish_approval", "helix_decision", "helix_proposal_group", "helix_case_item", "helix_tool_call",
     "helix_case", "helix_group_version", "helix_capability_version", "helix_kg_edge", "helix_kg_node",
 ]

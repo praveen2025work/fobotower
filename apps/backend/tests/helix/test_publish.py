@@ -98,3 +98,37 @@ def test_write_back_rules_are_validated():
     reasoning = {**base["reasoning"], "tools": ["gl.journal_lines", "reporting.publish_commentary"]}
     assert ("tool `reporting.publish_commentary` writes to a bank system; only `publish` may use it"
             in _variance(reasoning=reasoning))
+
+
+async def test_a_failed_write_back_is_retried_without_repeating_the_writes_that_landed(api):
+    finance.PUBLISHED.clear()
+    case = await _reviewed_case(api)
+    failing = case["groups"][0]["group_key"]["account"]
+    finance.FAIL_ACCOUNTS.add(failing)
+    try:
+        done = (await _release(api, case["case_id"], "bob")).json()["case"]
+    finally:
+        finance.FAIL_ACCOUNTS.discard(failing)
+    assert (done["status"], done["outcome"]) == ("failed", "publish_failed")
+    assert failing in done["error"] and done["can_retry_publish"] is True
+    landed = {p["account"] for p in finance.PUBLISHED}
+    assert failing not in landed and len(landed) == len(case["groups"]) - 1
+
+    assert (await api.post(f"/api/cases/{case['case_id']}/publish/retry",
+                           headers=api.as_user("alice"))).status_code == 403   # a reviewer
+    res = await api.post(f"/api/cases/{case['case_id']}/publish/retry", headers=api.as_user("bob"))
+    assert res.status_code == 201, res.text
+    after = res.json()
+    assert (after["case"]["status"], after["case"]["outcome"]) == ("completed", "published")
+    assert len(after["skipped"]) == len(case["groups"]) - 1
+    # every account published exactly once
+    assert sorted(p["account"] for p in finance.PUBLISHED) == sorted(
+        g["group_key"]["account"] for g in case["groups"])
+    keys = [p["idempotency_key"] for p in finance.PUBLISHED]
+    assert len(set(keys)) == len(keys) and all(k.startswith(case["case_id"] + ":") for k in keys)
+
+
+async def test_retry_is_only_for_a_failed_write_back(api):
+    case = await _reviewed_case(api)
+    res = await api.post(f"/api/cases/{case['case_id']}/publish/retry", headers=api.as_user("bob"))
+    assert res.status_code == 409

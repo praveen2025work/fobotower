@@ -115,6 +115,16 @@ class PublishSpec(Strict):
 class ReviewSpec(Strict):
     roles: list[str]                   # who may decide
     approve_by: Literal["group"] = "group"
+    # When a decision must carry the reviewer's own words.
+    require_comment: list[Literal["reject", "escalated"]] = Field(
+        default_factory=lambda: ["reject", "escalated"])
+    # Maker-checker: may whoever opened the case also sign it off?
+    opener_may_decide: bool = True
+    # Expression over a group (total, count, its key fields, policy): when it
+    # holds, the group needs approvals from two different people.
+    dual_review_when: str | None = None
+    # How often a reviewer may send one group back to be investigated again.
+    max_reinvestigations: int = Field(default=2, ge=0, le=10)
 
 
 class Manifest(Strict):
@@ -158,6 +168,13 @@ class Manifest(Strict):
         return set(self.review.roles) | ({self.owners.role} if self.owners.role else set())
 
 
+def _expressions(m: Manifest) -> list[tuple[str, str | None]]:
+    """Every expression in a manifest, named for the error message."""
+    return [("items.in_scope", m.items.in_scope),
+            *[(f"rules[{r.id}].when", r.when) for r in m.rules],
+            ("review.dual_review_when", m.review.dual_review_when)]
+
+
 def problems(m: Manifest) -> list[str]:
     """Everything wrong with a manifest, in plain words. Empty means valid."""
     from helix.gateway import registry
@@ -193,8 +210,7 @@ def problems(m: Manifest) -> list[str]:
     for tool in sorted(m.tools_used() - onboarded):
         out.append(f"tool `{tool}` is not an onboarded connector tool")
 
-    for name, src in [("items.in_scope", m.items.in_scope),
-                      *[(f"rules[{r.id}].when", r.when) for r in m.rules]]:
+    for name, src in _expressions(m):
         if src:
             try:
                 rules.compile_expr(src)

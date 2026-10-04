@@ -189,59 +189,69 @@ async def group(state: CaseState) -> dict:
     return {"groups": groups}
 
 
-async def reason(state: CaseState) -> dict:
+async def reason_group(state: CaseState, g: dict, note: str | None = None,
+                       previous: dict | None = None) -> dict:
+    """One group's finding: the first matching rule, else the model (or an
+    escalation when there is none). A reviewer's note forces the model."""
     m = _manifest(state)
     policy = m.policy_values()
     items = {it["item_id"]: it for it in state["items"]}
+    env = {**g["group_key"], "total": g["total"], "count": g["count"],
+           "label": g["label"], "policy": policy}
+    with span("reason.group", case_id=state["case_id"], group_id=g["group_id"],
+              reinvestigation=bool(note)) as sp:
+        finding = None
+        for rule in ([] if note else m.rules):
+            if rules.evaluate(rule.when, env):
+                finding = {"status": rule.then.status, "decided_by": "rule", "rule": rule.id,
+                           "comment": rules.render(rule.then.comment, env),
+                           "reason": rule.then.reason}
+                break
+        if finding is None and m.reasoning.reasoner == "none":
+            finding = {"status": ESCALATED, "decided_by": "none", "comment": "",
+                       "reason": "NO_REASONER"}
+        if finding is None:
+            # The model sees protected data only (governance.yaml): masked fields
+            # never, pseudonymized ones as per-case tokens it can still pass to
+            # tools. Its answer is re-identified before validation and review.
+            guard = Protector.for_tools(m.tools_used(), state["case_id"])
+            ctx = _ctx(state, "reason", set(m.reasoning.tools))
+            ctx.protector = guard
+            group_view = {**g, "items": [
+                {**items[i], "amount": items[i].get(m.items.amount_field)}
+                for i in g["item_ids"]]}
+            request = ReasonRequest(
+                capability_id=state["capability_id"], case_id=state["case_id"],
+                case_key=guard.protect(state["case_key"]), skill=m.reasoning.skill,
+                group={**guard.protect(group_view),
+                       "label": guard.protect_text(g["label"], g["group_key"]),
+                       "priors": [{**p, "comment": guard.protect_text(
+                           p.get("comment", ""), g["group_key"])} for p in g["priors"]]},
+                allowed_tools=list(m.reasoning.tools), output=m.reasoning.output,
+                reviewer_note=guard.protect_text(note, g["group_key"]) if note else None,
+                previous_finding=guard.protect(previous) if previous else None)
+            adapter = llm()
+            try:
+                res = await adapter.reason(request, gateway.invoker(ctx))
+                finding = {"status": res.status, "decided_by": f"llm:{adapter.name}",
+                           "comment": guard.reveal(res.comment),
+                           "reason": guard.reveal(res.reason) if res.reason else None,
+                           "model": res.model, "usage": res.usage}
+            except (gateway.ToolDenied, gateway.ToolFailed) as e:
+                finding = {"status": ESCALATED, "decided_by": f"llm:{adapter.name}",
+                           "comment": "", "reason": f"TOOL_ERROR: {e}"}
+            except Exception as e:  # the model must never fail the run silently
+                finding = {"status": ESCALATED, "decided_by": f"llm:{adapter.name}",
+                           "comment": "", "reason": f"REASONER_ERROR: {type(e).__name__}: {e}"}
+        sp.set_attribute("helix.decided_by", finding["decided_by"])
+        sp.set_attribute("helix.status", finding["status"])
+    return finding
+
+
+async def reason(state: CaseState) -> dict:
     findings: dict[str, dict] = {}
     for g in state["groups"]:
-        env = {**g["group_key"], "total": g["total"], "count": g["count"],
-               "label": g["label"], "policy": policy}
-        with span("reason.group", case_id=state["case_id"], group_id=g["group_id"]) as sp:
-            finding = None
-            for rule in m.rules:
-                if rules.evaluate(rule.when, env):
-                    finding = {"status": rule.then.status, "decided_by": "rule", "rule": rule.id,
-                               "comment": rules.render(rule.then.comment, env),
-                               "reason": rule.then.reason}
-                    break
-            if finding is None and m.reasoning.reasoner == "none":
-                finding = {"status": ESCALATED, "decided_by": "none", "comment": "",
-                           "reason": "NO_REASONER"}
-            if finding is None:
-                # The model sees protected data only (governance.yaml): masked fields
-                # never, pseudonymized ones as per-case tokens it can still pass to
-                # tools. Its answer is re-identified before validation and review.
-                guard = Protector.for_tools(m.tools_used(), state["case_id"])
-                ctx = _ctx(state, "reason", set(m.reasoning.tools))
-                ctx.protector = guard
-                group_view = {**g, "items": [
-                    {**items[i], "amount": items[i].get(m.items.amount_field)}
-                    for i in g["item_ids"]]}
-                request = ReasonRequest(
-                    capability_id=state["capability_id"], case_id=state["case_id"],
-                    case_key=guard.protect(state["case_key"]), skill=m.reasoning.skill,
-                    group={**guard.protect(group_view),
-                           "label": guard.protect_text(g["label"], g["group_key"]),
-                           "priors": [{**p, "comment": guard.protect_text(
-                               p.get("comment", ""), g["group_key"])} for p in g["priors"]]},
-                    allowed_tools=list(m.reasoning.tools), output=m.reasoning.output)
-                adapter = llm()
-                try:
-                    res = await adapter.reason(request, gateway.invoker(ctx))
-                    finding = {"status": res.status, "decided_by": f"llm:{adapter.name}",
-                               "comment": guard.reveal(res.comment),
-                               "reason": guard.reveal(res.reason) if res.reason else None,
-                               "model": res.model, "usage": res.usage}
-                except (gateway.ToolDenied, gateway.ToolFailed) as e:
-                    finding = {"status": ESCALATED, "decided_by": f"llm:{adapter.name}",
-                               "comment": "", "reason": f"TOOL_ERROR: {e}"}
-                except Exception as e:  # the model must never fail the run silently
-                    finding = {"status": ESCALATED, "decided_by": f"llm:{adapter.name}",
-                               "comment": "", "reason": f"REASONER_ERROR: {type(e).__name__}: {e}"}
-            sp.set_attribute("helix.decided_by", finding["decided_by"])
-            sp.set_attribute("helix.status", finding["status"])
-        findings[g["group_id"]] = finding
+        findings[g["group_id"]] = finding = await reason_group(state, g)
         await _save_group_finding(state["case_id"], g["group_id"], finding)
     return {"findings": findings}
 
@@ -285,8 +295,9 @@ def _numbers_in(value: Any, out: set[float]) -> None:
             _numbers_in(v, out)
 
 
-async def validate(state: CaseState) -> dict:
-    """Gate: every figure in a proposed finding must trace to data the run read."""
+async def grounded_figures(state: CaseState) -> set[float]:
+    """Every figure the run has read: the case key, its items and groups, and
+    every allowed tool result recorded for the case."""
     grounded: set[float] = set()
     _numbers_in([state["case_key"], state["items"], state["groups"]], grounded)
     async with get_session() as s:
@@ -294,16 +305,24 @@ async def validate(state: CaseState) -> dict:
             ToolCall.case_id == state["case_id"], ToolCall.allowed.is_(True),
             ToolCall.result.is_not(None)))).scalars().all()
     _numbers_in(list(results), grounded)
+    return grounded
+
+
+def ungrounded(text: str, grounded: set[float]) -> list[float]:
+    cited = {round(float(n.replace(",", "")), 2) for n in _NUMBER.findall(text or "")}
+    return sorted(n for n in cited if n not in grounded)
+
+
+async def validate(state: CaseState) -> dict:
+    """Gate: every figure in a proposed finding must trace to data the run read."""
+    grounded = await grounded_figures(state)
 
     findings = dict(state.get("findings", {}))
     errors = []
     for group_id, f in findings.items():
         if f["status"] != "proposed":
             continue
-        cited: set[float] = set()
-        for n in _NUMBER.findall(f["comment"]):
-            cited.add(round(float(n.replace(",", "")), 2))
-        missing = sorted(n for n in cited if n not in grounded)
+        missing = ungrounded(f["comment"], grounded)
         if missing:
             f = {**f, "status": ESCALATED,
                  "reason": f"UNGROUNDED_FIGURE: {', '.join(f'{n:,.2f}' for n in missing)}"}
@@ -373,18 +392,16 @@ def _approved(state: CaseState, m: Manifest) -> list[tuple[dict, dict, str]]:
             if d["action"] == "approve" and d["group_id"] in groups]
 
 
-async def publish(state: CaseState) -> dict:
-    """Write the approved results back through the capability's write tool —
-    one call per approved group, or one for the whole case (a report).
-    Runs only after a second person released it (publish_approval)."""
+def publish_calls(state: CaseState) -> list[tuple[str, dict]]:
+    """(idempotency key, arguments) for every write the case's publish makes:
+    one per approved group, or one for the whole case."""
     m = _manifest(state)
     approval = state.get("publish_approval") or {}
-    ctx = _ctx(state, "publish", {m.publish.tool})
-    ctx.requested_by, ctx.write_approved_by = "publish", approval.get("approved_by")
     approved = _approved(state, m)
     common = {"$case_id": state["case_id"], "$subject": _subject(m, state["case_key"])}
-    calls: list[tuple[str | None, dict]] = []
     if m.publish.per == "case":
+        if not approved:
+            return []
         items = {it["item_id"]: it for it in state.get("items", [])}
         columns = m.items.display or []
         sections = [{"heading": g["label"], "body": comment, "decided_by": d["decided_by"],
@@ -395,26 +412,49 @@ async def publish(state: CaseState) -> dict:
                     for g, d, _ in approved]
         sign_off.append({"step": "release", "by": approval.get("approved_by"),
                          "at": approval.get("approved_at", "")})
-        if approved:
-            calls.append((None, _publish_args(m.publish.args, state, {
-                **common, "$approved": sections, "$sign_off": sign_off})))
-    else:
-        for g, _, comment in approved:
-            calls.append((g["group_id"], _publish_args(m.publish.args, state, {
-                **common, "$group": g["group_key"], "$comment": comment})))
+        return [(f"{state['case_id']}:case", _publish_args(m.publish.args, state, {
+            **common, "$approved": sections, "$sign_off": sign_off}))]
+    return [(f"{state['case_id']}:{g['group_id']}", _publish_args(m.publish.args, state, {
+                **common, "$group": g["group_key"], "$comment": comment}))
+            for g, _, comment in approved]
+
+
+async def write_back(state: CaseState, released_by: str | None,
+                     done: frozenset[str] = frozenset()) -> tuple[list[dict], list[str]]:
+    """Make the publish writes, skipping those already made (`done` keys).
+    Every write carries its idempotency key, so a repeat is the same write."""
+    m = _manifest(state)
+    ctx = _ctx(state, "publish", {m.publish.tool})
+    ctx.requested_by, ctx.write_approved_by = "publish", released_by
     published, failed = [], []
-    for group_id, args in calls:
+    for key, args in publish_calls(state):
+        if key in done:
+            continue
         try:
-            receipt = await gateway.call(ctx, m.publish.tool, args)
-            published.append({"group_id": group_id, "receipt": receipt})
+            receipt = await gateway.call(ctx, m.publish.tool, args, idempotency_key=key)
+            published.append({"key": key, "receipt": receipt})
         except (gateway.ToolDenied, gateway.ToolFailed) as e:
-            failed.append(f"{group_id or 'case'}: {e}")
+            failed.append(f"{key.split(':', 1)[1]}: {e}")
+    return published, failed
+
+
+async def set_publish_outcome(case_id: str, failed: list[str]) -> str:
     outcome = "published" if not failed else "publish_failed"
     async with get_session() as s:
-        case = await s.get(Case, state["case_id"])
+        case = await s.get(Case, case_id)
         case.status, case.outcome = ("completed", outcome) if not failed else ("failed", outcome)
         case.error = "; ".join(failed) or None
         await s.commit()
+    return outcome
+
+
+async def publish(state: CaseState) -> dict:
+    """Write the approved results back through the capability's write tool —
+    one call per approved group, or one for the whole case (a report).
+    Runs only after a second person released it (publish_approval)."""
+    approval = state.get("publish_approval") or {}
+    published, failed = await write_back(state, approval.get("approved_by"))
+    outcome = await set_publish_outcome(state["case_id"], failed)
     return {"outcome": outcome, "published": published}
 
 

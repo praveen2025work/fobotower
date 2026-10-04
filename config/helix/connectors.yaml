@@ -71,6 +71,7 @@ connectors:
       publish_commentary:
         description: Publish approved variance commentary to the reporting pack
         access: write          # never offered to the model; publish step only, after release
+        idempotency_arg: idempotency_key   # a repeated write returns the first receipt
         scope: { arg: entity, key: entity }
 
   cats:
@@ -117,4 +118,5 @@ connectors:
       render_pdf_report:
         description: Write a PDF report (sections, tables, sign-off) to the entity's reports
         access: write          # publish step only, after a second person releases the case
+        idempotency_arg: idempotency_key
         scope: { arg: entity, key: entity }

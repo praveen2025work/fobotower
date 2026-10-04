@@ -93,6 +93,8 @@ def _prompt(request: ReasonRequest) -> str:
                   if k in request.group},
         "items": request.group.get("items", []),
         "approved_explanations_for_similar_groups": request.group.get("priors", []),
+        **({"reviewer_note": request.reviewer_note,
+            "previous_finding": request.previous_finding} if request.reviewer_note else {}),
         "output": request.output,
     }, default=str, indent=1)
 

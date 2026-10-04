@@ -8,10 +8,10 @@ audit row and the trace. `render_pdf_report` is a write tool, so only a
 capability's `publish` step can call it, after a second person releases the
 case; the model never can.
 
-Files live under one folder per data-scope value (an entity, a book):
-
-    <HELIX_DOCUMENTS_DIR>/<scope>/<name>            documents to read
-    <HELIX_REPORTS_DIR>/<scope>/<name>.pdf          reports Helix wrote
+Documents to read live under one folder per data-scope value (an entity, a
+book): <HELIX_DOCUMENTS_DIR>/<scope>/<name>. Reports Helix writes are kept in
+the shared database (helix_document) so every API instance can serve them,
+or with HELIX_REPORTS_STORE=fs under <HELIX_REPORTS_DIR>/<scope>/.
 
 In the office, point both at the team share or swap the folder for the
 document store's API; the tools and their arguments stay the same.
@@ -136,10 +136,12 @@ def read_workbook(entity: str, name: str, sheet: str | None = None, header_row: 
         wb.close()
 
 
-def render_pdf_report(entity: str, name: str, title: str, subtitle: str = "",
-                      sections: list[dict] | None = None, sign_off: list[dict] | None = None) -> dict:
+async def render_pdf_report(entity: str, name: str, title: str, subtitle: str = "",
+                            sections: list[dict] | None = None, sign_off: list[dict] | None = None,
+                            idempotency_key: str | None = None) -> dict:
     """Write a PDF report: a title, sections (heading, body, optional table of
-    columns and rows) and a sign-off block. Returns where it was written."""
+    columns and rows) and a sign-off block. The same name replaces the report,
+    so a repeated write is the same write."""
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4, landscape
     from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
@@ -206,11 +208,10 @@ def render_pdf_report(entity: str, name: str, title: str, subtitle: str = "",
                             leftMargin=15 * mm, rightMargin=15 * mm, topMargin=15 * mm, bottomMargin=15 * mm)
     doc.build(story, onFirstPage=footer, onLaterPages=footer)
     data = buf.getvalue()
-    folder = _outbox(entity)
-    folder.mkdir(parents=True, exist_ok=True)
-    (folder / file_name).write_bytes(data)
+    digest = hashlib.sha256(data).hexdigest()
+    await save_report(entity, file_name, data, "application/pdf", digest)
     return {"document": file_name, "scope": entity, "pages": doc.page, "bytes": len(data),
-            "sha256": hashlib.sha256(data).hexdigest(), "published": True}
+            "sha256": digest, "published": True}
 
 
 def build_documents() -> MCPServer:
@@ -221,12 +222,38 @@ def build_documents() -> MCPServer:
     return server
 
 
-def report_path(scope: str, name: str) -> Path:
-    """Where a written report lives (for the console's download link)."""
-    path = _outbox(scope) / _safe(name, "report name")
-    if not path.is_file():
+# ---------- the report store ----------
+
+async def save_report(scope: str, name: str, data: bytes, content_type: str, digest: str) -> None:
+    if settings().reports_store == "fs":
+        folder = _outbox(scope)
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / _safe(name, "report name")).write_bytes(data)
+        return
+    from helix.db import get_session
+    from helix.models import Document
+
+    async with get_session() as s:
+        await s.merge(Document(scope=_safe(scope, "scope"), name=_safe(name, "report name"),
+                               content=data, content_type=content_type, sha256=digest))
+        await s.commit()
+
+
+async def load_report(scope: str, name: str) -> tuple[bytes, str]:
+    """(content, content type) of a written report (the console's download)."""
+    if settings().reports_store == "fs":
+        path = _outbox(scope) / _safe(name, "report name")
+        if not path.is_file():
+            raise DocumentError(f"no report {name!r} for {scope}")
+        return path.read_bytes(), "application/pdf" if name.lower().endswith(".pdf") else "application/octet-stream"
+    from helix.db import get_session
+    from helix.models import Document
+
+    async with get_session() as s:
+        row = await s.get(Document, (scope, name))
+    if row is None:
         raise DocumentError(f"no report {name!r} for {scope}")
-    return path
+    return row.content, row.content_type
 
 
 def main() -> None:

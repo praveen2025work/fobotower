@@ -51,6 +51,9 @@ class ToolSpec(Strict):
     # write tools change a bank system: never offered to the model, callable
     # only by the `publish` step after a second person approved it
     access: Literal["read", "write"] = "read"
+    # write tools: the argument that carries Helix's idempotency key, so the
+    # system can treat a repeated write as the same write
+    idempotency_arg: str | None = None
 
 
 class ConnectorSpec(Strict):
@@ -149,7 +152,8 @@ async def _record(**row) -> None:
         await s.commit()
 
 
-async def call(ctx: CallContext, qualified_tool: str, arguments: dict) -> dict:
+async def call(ctx: CallContext, qualified_tool: str, arguments: dict,
+               idempotency_key: str | None = None) -> dict:
     """Call a connector tool for a step or the model.
 
     The model works with protected data: its arguments may carry pseudonym
@@ -169,6 +173,7 @@ async def call(ctx: CallContext, qualified_tool: str, arguments: dict) -> dict:
         call_id=call_id, case_id=ctx.case_id, capability_id=ctx.capability_id,
         connector_id=connector_id, tool=qualified_tool, requested_by=ctx.requested_by,
         caller=ctx.caller.user_id, arguments=guard.protect(arguments, pseudonymize=False),
+        idempotency_key=idempotency_key,
     )
     with span("mcp.call", kind=TOOL, input=guard.protect(arguments), tool=qualified_tool,
               connector_id=connector_id,
@@ -196,7 +201,9 @@ async def call(ctx: CallContext, qualified_tool: str, arguments: dict) -> dict:
             await _record(**base, allowed=False, denied_reason=denied)
             raise ToolDenied(denied)
 
-        connector_id, tool, _ = found
+        connector_id, tool, tool_spec = found
+        if idempotency_key and tool_spec.idempotency_arg:
+            arguments = {**arguments, tool_spec.idempotency_arg: idempotency_key}
         spec = registry().connectors[connector_id]
         started = time.monotonic()
         error, result = None, None

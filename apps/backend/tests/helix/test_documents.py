@@ -2,6 +2,7 @@
 validation capability built on it: Excel vs the ledger, four-eyes, a PDF."""
 
 import dataclasses
+import io
 
 import pytest
 from pypdf import PdfReader
@@ -17,11 +18,12 @@ REPORT = "report.validation"
 KEY = {"entity": "UK01", "period": "2026-09", "report": "mgmt-report-2026-09.xlsx"}
 
 
-@pytest.fixture(autouse=True)
-def reports_dir(tmp_path, monkeypatch):
-    patched = dataclasses.replace(settings(), reports_dir=tmp_path)
+@pytest.fixture(autouse=True, params=["db", "fs"])
+def reports_store(request, tmp_path, monkeypatch):
+    """Every test runs against both report stores."""
+    patched = dataclasses.replace(settings(), reports_dir=tmp_path, reports_store=request.param)
     monkeypatch.setattr(documents, "settings", lambda: patched)
-    return tmp_path
+    return request.param
 
 
 def _ctx(user="alice", scopes=("UK01",), requested_by="match", tools=None):
@@ -87,10 +89,11 @@ async def test_report_lines_are_matched_to_the_ledger(api):
     assert rounding["finding"]["rule"] == "rounding"
 
 
-async def test_released_validation_publishes_one_pdf_report(api, reports_dir):
+async def test_released_validation_publishes_one_pdf_report(api):
     _, reviewed = await _validated(api)
     assert reviewed["status"] == "awaiting_publish" and reviewed["documents"] == []
-    assert not list(reports_dir.rglob("*.pdf"))                       # nothing before release
+    with pytest.raises(documents.DocumentError):                      # nothing before release
+        await documents.load_report("UK01", f"{reviewed['case_id']}.pdf")
 
     res = await api.post(f"/api/cases/{reviewed['case_id']}/publish", headers=api.as_user("bob"),
                          json={"idempotency_key": "release-report-1"})
@@ -100,7 +103,9 @@ async def test_released_validation_publishes_one_pdf_report(api, reports_dir):
     [doc] = done["documents"]
     assert doc["name"] == f"{done['case_id']}.pdf" and doc["pages"] >= 1
 
-    text = "\n".join(p.extract_text() for p in PdfReader(reports_dir / "UK01" / doc["name"]).pages)
+    content, content_type = await documents.load_report("UK01", doc["name"])
+    assert content_type == "application/pdf"
+    text = "\n".join(p.extract_text() for p in PdfReader(io.BytesIO(content)).pages)
     assert "Report validation" in text and "mgmt-report-2026-09.xlsx" in text
     assert "account 6300" in text and "account 6900" in text
     assert "release" in text and "bob" in text and "alice" in text   # the sign-off block

@@ -205,11 +205,24 @@ def build_motif() -> MCPServer:
 PUBLISHED: list[dict] = []   # what the stub reporting system received, for tests and demos
 
 
-def publish_commentary(entity: str, period: str, account: str, commentary: str) -> dict:
-    """Publish approved variance commentary for one account to the reporting pack."""
+# Test hook: accounts whose publish fails, as if the reporting system were down.
+FAIL_ACCOUNTS: set[str] = set()
+
+
+def publish_commentary(entity: str, period: str, account: str, commentary: str,
+                       idempotency_key: str | None = None) -> dict:
+    """Publish approved variance commentary for one account to the reporting pack.
+    A repeat with the same idempotency key returns the first receipt."""
+    if account in FAIL_ACCOUNTS:
+        raise RuntimeError(f"reporting pack unavailable for {account}")
+    if idempotency_key:
+        for p in PUBLISHED:
+            if p.get("idempotency_key") == idempotency_key:
+                return {"receipt": p["receipt"], "published": True, "replayed": True}
     receipt = f"RPT-{zlib.crc32(f'{entity}|{period}|{account}'.encode()) % 10**6:06d}"
     PUBLISHED.append({"entity": entity, "period": period, "account": account,
-                      "commentary": commentary, "receipt": receipt})
+                      "commentary": commentary, "receipt": receipt,
+                      "idempotency_key": idempotency_key})
     return {"receipt": receipt, "published": True}
 
 

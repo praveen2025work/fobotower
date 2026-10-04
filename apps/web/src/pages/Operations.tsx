@@ -1,0 +1,66 @@
+// Run-the-bank: aria-ai's Mission Control, on Helix. The components are
+// aria-ai's (components/mission-control); the data is Helix's /api/operations,
+// scoped to what the signed-in user may see.
+
+import { Link } from "react-router-dom";
+
+import { useInbox } from "../api/helix";
+import { useOperations } from "../api/missionControlApi";
+import FleetTable from "../components/mission-control/FleetTable";
+import HealthBanner from "../components/mission-control/HealthBanner";
+import IncidentStrip from "../components/mission-control/IncidentStrip";
+import LiveTail from "../components/mission-control/LiveTail";
+import McpServersPanel from "../components/mission-control/McpServersPanel";
+import ScanningStrip from "../components/mission-control/ScanningStrip";
+import StatusBadge from "../components/StatusBadge";
+import { ErrorState } from "../components/ui";
+
+export default function Operations(): JSX.Element {
+  const ops = useOperations();
+  const inbox = useInbox();
+
+  return (
+    <div className="-m-4 flex min-h-[calc(100vh-3.5rem)] flex-col lg:-m-6">
+      <HealthBanner health={ops.data?.health} />
+      <ScanningStrip data={ops.data?.kpi} isLoading={ops.isLoading} />
+      {ops.error && <div className="p-4"><ErrorState error={ops.error} /></div>}
+
+      <div className="grid flex-1 grid-cols-12 gap-4 p-4">
+        <div className="col-span-12 lg:col-span-6">
+          <FleetTable agents={ops.data?.fleet} isLoading={ops.isLoading} isError={ops.isError} onRetry={() => ops.refetch()} />
+        </div>
+        <div className="col-span-12 lg:col-span-3">
+          <section className="flex h-full flex-col rounded-xl border border-surface-200 bg-white">
+            <header className="flex items-center justify-between border-b border-surface-100 px-4 py-3">
+              <h2 className="text-sm font-semibold text-surface-900">Waiting on people</h2>
+              <span className="text-xs text-surface-500">{inbox.data?.length ?? 0}</span>
+            </header>
+            <ul className="flex-1 divide-y divide-surface-100 overflow-y-auto">
+              {(inbox.data ?? []).map((r) => (
+                <li key={r.case_id} className="px-4 py-2.5">
+                  <Link to={`/cases/${encodeURIComponent(r.case_id)}`} className="text-sm font-medium text-primary-700 hover:underline">
+                    {r.subject}
+                  </Link>
+                  <div className="mt-0.5 flex items-center gap-2 text-[11px] text-surface-500">
+                    <StatusBadge status={r.action} /> {r.capability_name}
+                  </div>
+                </li>
+              ))}
+              {inbox.data?.length === 0 && <li className="px-4 py-6 text-center text-xs text-surface-400">Nothing waiting on you.</li>}
+            </ul>
+          </section>
+        </div>
+        <div className="col-span-12 flex flex-col gap-3 lg:col-span-3">
+          <div className="min-h-64 flex-1">
+            <LiveTail feed={ops.data?.tail ?? []} subscribe={false} />
+          </div>
+          <div className="h-60">
+            <McpServersPanel connectors={ops.data?.connectors} isLoading={ops.isLoading} />
+          </div>
+        </div>
+      </div>
+
+      <IncidentStrip incidents={ops.data?.incidents} isLoading={ops.isLoading} />
+    </div>
+  );
+}

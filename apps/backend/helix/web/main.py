@@ -88,6 +88,12 @@ async def overview(c: Caller = Depends(caller)) -> dict:
     return await views.overview(c)
 
 
+@app.get("/api/operations")
+async def operations(c: Caller = Depends(caller)) -> dict:
+    """Run-the-bank view: platform health, connector probes, KPIs, fleet, incidents, tail."""
+    return await views.operations(c)
+
+
 @app.get("/api/inbox")
 async def inbox(c: Caller = Depends(caller)) -> list[dict]:
     return await views.inbox(c)

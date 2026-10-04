@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Cable,
+  Gauge,
   Inbox,
   LayoutDashboard,
   Layers,
@@ -64,6 +65,7 @@ function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
     {
       title: "Platform",
       items: [
+        { to: "/operations", icon: Gauge, label: "Operations" },
         { to: "/authoring", icon: Wand2, label: "Authoring" },
         { to: "/audit", icon: ScrollText, label: "Audit" },
         { to: "/connectors", icon: Cable, label: "Connectors" },

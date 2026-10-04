@@ -11,6 +11,7 @@ import CaseWorkspace from "./pages/CaseWorkspace";
 import Connectors from "./pages/Connectors";
 import GroupDetail from "./pages/GroupDetail";
 import InboxPage from "./pages/Inbox";
+import Operations from "./pages/Operations";
 import Overview from "./pages/Overview";
 
 function App(): JSX.Element {
@@ -32,6 +33,7 @@ function App(): JSX.Element {
         <Route path="/capabilities/:id/groups/:group" element={<GroupDetail />} />
         <Route path="/cases/:caseId" element={<CaseWorkspace />} />
         <Route path="/authoring" element={<Authoring />} />
+        <Route path="/operations" element={<Operations />} />
         <Route path="/audit" element={<Audit />} />
         <Route path="/connectors" element={<Connectors />} />
       </Route>

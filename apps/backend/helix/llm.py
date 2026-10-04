@@ -33,6 +33,8 @@ class ReasonRequest:
     # A reviewer sent the group back: what they asked, and what was proposed before.
     reviewer_note: str | None = None
     previous_finding: dict | None = None
+    # A playbook's verdicts the model may propose (e.g. POST, DO_NOT_POST, ESCALATE).
+    verdicts: list[str] | None = None
 
 
 @dataclass(frozen=True)
@@ -42,6 +44,7 @@ class ReasonResult:
     reason: str | None = None              # why escalated
     model: str | None = None
     usage: dict = field(default_factory=dict)  # tokens, cost — for tracing
+    verdict: str | None = None             # when the request offered verdicts
 
 
 class ToolInvoker(Protocol):

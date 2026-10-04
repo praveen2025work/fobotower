@@ -56,9 +56,10 @@ async def test_a_case_keeps_the_exact_manifest_it_ran_on(api):
     fobo = (await _open(api, "frank", FOBO, FOBO_KEY)).json()
     detail = (await api.get(f"/api/capabilities/{RECON}/groups/{FOBO}", headers=api.as_user("frank"))).json()
     changed = {**detail["config"], "set": {**detail["config"]["set"],
-                                           "policy": {"auto_adjust_limit": {"value": 999, "unit": "USD"}}}}
+                                           "policy": {**detail["config"]["set"]["policy"],
+                                                      "materiality_threshold": {"value": 250000, "unit": "GBP"}}}}
     draft = await api.post(f"/api/capabilities/{RECON}/groups", headers=api.as_user("frank"),
-                           json={"config": changed, "note": "raise limit"})
+                           json={"config": changed, "note": "Product Control confirmed materiality"})
     assert draft.status_code == 201, draft.text
     v = draft.json()["version"]
     assert (await api.post(f"/api/capabilities/{RECON}/groups/{FOBO}/versions/{v}/approve",
@@ -67,7 +68,7 @@ async def test_a_case_keeps_the_exact_manifest_it_ran_on(api):
                         headers=api.as_user("gina"))
     assert ok.status_code == 200, ok.text
     after = (await api.get(f"/api/capabilities/{RECON}/groups/{FOBO}", headers=api.as_user("frank"))).json()
-    assert after["version"] == v and after["manifest"]["policy"]["auto_adjust_limit"]["value"] == 999
+    assert after["version"] == v and after["manifest"]["policy"]["materiality_threshold"]["value"] == 250000
     again = (await api.get(f"/api/cases/{fobo['case_id']}", headers=api.as_user("frank"))).json()
     assert again["team_group_version"] == 1                                  # the old run is unchanged
 
@@ -96,7 +97,8 @@ def test_group_settings_replace_at_the_configurable_path():
     m, found = effective(base, cfg)
     assert found == []
     assert m.case.scopes == {"book": "book"}                    # replaced, not merged with entity
-    assert set(m.policy) == {"write_off_limit", "auto_adjust_limit"}   # policy.* merges one at a time
+    assert set(m.policy) == {"write_off_limit", "materiality_threshold",
+                             "posting_policy_reference"}           # policy.* merges one at a time
     allowed, refused = set_paths({"policy": {"x": {"value": 1}}, "owners": {"people": ["me"]}},
                                  base.configurable)
     assert allowed == ["policy.x"] and refused == ["owners.people"]

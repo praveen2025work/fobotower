@@ -7,6 +7,7 @@ audit read real records, not the checkpoint.
 """
 
 import hashlib
+from collections import Counter
 import re
 from typing import Any, TypedDict
 
@@ -142,10 +143,71 @@ async def match(state: CaseState) -> dict:
     return {"items": items}
 
 
+async def enrich(state: CaseState) -> dict:
+    """Join more facts onto the items, one read per case per source (e.g. the
+    break snapshots cause checks need). An item with no row is marked."""
+    m = _manifest(state)
+    if not m.enrich:
+        return {}                     # not configured: nothing to do
+    items = [dict(it) for it in state["items"]]
+    ctx = _ctx(state, "enrich")
+    for spec in m.enrich:
+        try:
+            rows = (await gateway.call(ctx, spec.tool, _args(spec, state["case_key"]))).get("rows", [])
+        except (gateway.ToolDenied, gateway.ToolFailed) as e:
+            return _escalate("ENRICH_FAILED", str(e))
+        index = {tuple(str(r.get(k)) for k in spec.keys): r for r in rows}
+        for it in items:
+            row = index.get(tuple(str(it.get(k)) for k in spec.keys))
+            if row is None:
+                it["enrich_missing"] = [*it.get("enrich_missing", []), spec.tool]
+                continue
+            for k, v in row.items():
+                if k not in spec.keys:
+                    it[f"{spec.prefix}{k}"] = v
+    await _save_items(state["case_id"], items)
+    return {"items": items}
+
+
+async def classify(state: CaseState) -> dict:
+    """Run the playbook's cause checks on every item. All checks run and all
+    results are kept; the first positive (in playbook order) is the cause, and
+    sets the item's category, side and escalation team."""
+    m = _manifest(state)
+    if m.playbook is None:
+        return {}                     # not configured: nothing to do
+    pb = m.playbook
+    policy = m.policy_values()
+    items = []
+    for it in state["items"]:
+        env = {**it, "policy": policy}
+        results = []
+        for c in pb.checks:
+            try:
+                positive = bool(rules.evaluate(c.when, env))
+            except Exception:   # a missing field is "not shown", never a crash
+                positive = False
+            results.append({"id": c.id, "positive": positive,
+                            "reason": rules.render(c.reason, env) if positive else ""})
+        cause = next((pb.checks[i] for i, r in enumerate(results) if r["positive"]), None)
+        category = cause.category if cause else pb.default_category
+        cat = pb.categories[category]
+        items.append({**it, "checks": results, "cause": cause.id if cause else None,
+                      "category": category, "category_name": cat.name,
+                      "side": cause.side if cause else "UNKNOWN",
+                      "determinism": cat.determinism, "escalate_to": cat.escalate_to,
+                      "cause_reason": next((r["reason"] for r in results if r["positive"]),
+                                           "No cause check explains it")})
+    await _save_items(state["case_id"], items)
+    return {"items": items}
+
+
 async def resolve(state: CaseState) -> dict:
     """Reference lookups per item from the knowledge graph, as of the case's
     business date: e.g. a book's desk, or the team a desk escalates to."""
     m = _manifest(state)
+    if not m.resolve:
+        return {}                     # not configured: nothing to do
     as_of = state["case_key"].get(m.knowledge.as_of) if m.knowledge.as_of else None
     items = [dict(it) for it in state["items"]]
     for spec in m.resolve:
@@ -217,10 +279,14 @@ async def reason_group(state: CaseState, g: dict, note: str | None = None,
     items = {it["item_id"]: it for it in state["items"]}
     env = {**g["group_key"], "total": g["total"], "count": g["count"],
            "label": g["label"], "policy": policy}
+    members = [items[i] for i in g["item_ids"] if i in items]
+    play = _playbook_view(m, members, policy) if m.playbook else None
     with span("reason.group", case_id=state["case_id"], group_id=g["group_id"],
               reinvestigation=bool(note)) as sp:
         finding = None
-        for rule in ([] if note else m.rules):
+        if play and play["deterministic"] and not note:
+            finding = _playbook_finding(m, g, play, env)
+        for rule in ([] if note or finding else m.rules):
             if rules.evaluate(rule.when, env):
                 finding = {"status": rule.then.status, "decided_by": "rule", "rule": rule.id,
                            "comment": rules.render(rule.then.comment, env),
@@ -229,6 +295,8 @@ async def reason_group(state: CaseState, g: dict, note: str | None = None,
         if finding is None and m.reasoning.reasoner == "none":
             finding = {"status": ESCALATED, "decided_by": "none", "comment": "",
                        "reason": "NO_REASONER"}
+            if play:
+                finding.update(_play_fields(play))
         if finding is None:
             # The model sees protected data only (governance.yaml): masked fields
             # never, pseudonymized ones as per-case tokens it can still pass to
@@ -248,7 +316,8 @@ async def reason_group(state: CaseState, g: dict, note: str | None = None,
                            p.get("comment", ""), g["group_key"])} for p in g["priors"]]},
                 allowed_tools=list(m.reasoning.tools), output=m.reasoning.output,
                 reviewer_note=guard.protect_text(note, g["group_key"]) if note else None,
-                previous_finding=guard.protect(previous) if previous else None)
+                previous_finding=guard.protect(previous) if previous else None,
+                verdicts=m.playbook.verdict_names() if m.playbook else None)
             adapter = llm()
             try:
                 res = await adapter.reason(request, gateway.invoker(ctx))
@@ -256,6 +325,8 @@ async def reason_group(state: CaseState, g: dict, note: str | None = None,
                            "comment": guard.reveal(res.comment),
                            "reason": guard.reveal(res.reason) if res.reason else None,
                            "model": res.model, "usage": res.usage}
+                if play:
+                    finding = _judged(m, play, finding, res.verdict, env)
             except (gateway.ToolDenied, gateway.ToolFailed) as e:
                 finding = {"status": ESCALATED, "decided_by": f"llm:{adapter.name}",
                            "comment": "", "reason": f"TOOL_ERROR: {e}"}
@@ -265,6 +336,73 @@ async def reason_group(state: CaseState, g: dict, note: str | None = None,
         sp.set_attribute("helix.decided_by", finding["decided_by"])
         sp.set_attribute("helix.status", finding["status"])
     return finding
+
+
+def _playbook_view(m: Manifest, members: list[dict], policy: dict) -> dict:
+    """What the playbook says about a group: its category and side when all its
+    items agree, and whether the verdict table can settle it."""
+    pb = m.playbook
+    cats = {it.get("category") for it in members}
+    sides = {it.get("side") for it in members}
+    category = cats.pop() if len(cats) == 1 else None
+    side = sides.pop() if len(sides) == 1 else None
+    cat = pb.categories.get(category) if category else None
+    unset = [p for p in pb.verdict_policy if policy.get(p) is None]
+    return {"category": category, "side": side,
+            "category_name": cat.name if cat else "Mixed causes",
+            "escalate_to": cat.escalate_to if cat else None,
+            "determinism": cat.determinism if cat else "judgement",
+            "deterministic": bool(cat and cat.determinism == "deterministic" and side in pb.sides
+                                  and pb.verdicts.get(category, {}).get(side)),
+            "reasons": "; ".join(sorted({it.get("cause_reason", "") for it in members} - {""})),
+            "unset_policy": unset}
+
+
+def _play_fields(play: dict) -> dict:
+    return {k: play[k] for k in ("category", "category_name", "side", "escalate_to", "determinism")}
+
+
+def _guarded(m: Manifest, verdict: str | None, env: dict) -> tuple[str | None, str | None]:
+    """Apply the playbook's guards: code, not the table or the model, has the last word."""
+    for g in m.playbook.guards:
+        if verdict == g.verdict and rules.evaluate(g.when, env):
+            return g.instead, g.reason
+    return verdict, None
+
+
+def _with_verdict(m: Manifest, play: dict, finding: dict, verdict: str | None, env: dict) -> dict:
+    pb = m.playbook
+    verdict, guard_reason = _guarded(m, verdict, {**env, **_play_fields(play)})
+    out = {**finding, **_play_fields(play), "verdict": verdict}
+    if guard_reason:
+        out["guard"] = guard_reason
+    if verdict in pb.escalate_verdicts:
+        out["status"] = ESCALATED
+        out["reason"] = out.get("reason") or guard_reason or (
+            f"Escalate to {play['escalate_to']}" if play["escalate_to"] else "ESCALATE")
+    if verdict in pb.confirm_verdicts and play["unset_policy"]:
+        out["requires_confirmation"] = (
+            f"{verdict} depends on unset policy: {', '.join(play['unset_policy'])}")
+    return out
+
+
+def _playbook_finding(m: Manifest, g: dict, play: dict, env: dict) -> dict:
+    verdict = m.playbook.verdicts[play["category"]][play["side"]]
+    comment = rules.render(m.playbook.comment, {**env, **play})
+    return _with_verdict(m, play, {"status": "proposed", "decided_by": "playbook",
+                                   "comment": comment, "reason": None}, verdict, env)
+
+
+def _judged(m: Manifest, play: dict, finding: dict, model_verdict: str | None, env: dict) -> dict:
+    """A judgement call: the model investigated; its verdict (or the table's
+    default for a proven side) still passes the guards, and a person decides."""
+    table = m.playbook.verdicts.get(play["category"] or "", {})
+    default = table.get(play["side"] or "")
+    if default is None and len(set(table.values())) == 1:
+        default = next(iter(table.values()))      # the same whichever side (e.g. ESCALATE)
+    out = _with_verdict(m, play, finding, model_verdict or default, env)
+    out["sme_review"] = True
+    return out
 
 
 async def reason(state: CaseState) -> dict:
@@ -281,9 +419,12 @@ async def draft(state: CaseState) -> dict:
     proposed = sum(1 for f in findings.values() if f["status"] == "proposed")
     escalated = sum(1 for f in findings.values() if f["status"] == ESCALATED)
     in_scope = sum(g["count"] for g in state["groups"])
+    verdicts = Counter(f.get("verdict") for f in findings.values() if f.get("verdict"))
     d = {
         "headline": f"{in_scope} of {len(state['items'])} {m.case.item_label.lower()}(s) in scope, "
-                    f"in {len(state['groups'])} group(s): {proposed} proposed, {escalated} escalated.",
+                    f"in {len(state['groups'])} group(s): {proposed} proposed, {escalated} escalated."
+                    + (" Verdicts: " + ", ".join(f"{n} {v}" for v, n in sorted(verdicts.items())) + "."
+                       if verdicts else ""),
         "groups": [{"group_id": g["group_id"], "label": g["label"],
                     "comment": findings.get(g["group_id"], {}).get("comment", "")}
                    for g in state["groups"]],

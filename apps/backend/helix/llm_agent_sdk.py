@@ -67,6 +67,15 @@ RESULT_SCHEMA = {
 QueryFn = Callable[..., AsyncIterator[Any]]
 
 
+def _schema(request: ReasonRequest) -> dict:
+    """The result schema; with a playbook, the model also proposes a verdict
+    from the playbook's list (guards in code still apply after)."""
+    if not request.verdicts:
+        return RESULT_SCHEMA
+    return {**RESULT_SCHEMA, "properties": {
+        **RESULT_SCHEMA["properties"], "verdict": {"type": "string", "enum": list(request.verdicts)}}}
+
+
 def _sdk_tool_name(qualified: str) -> str:
     """'gl.journal_lines' -> 'gl_journal_lines'. MCP tool names cannot contain dots,
     and `__` is the separator in `mcp__<server>__<tool>`, so it is avoided too."""
@@ -159,7 +168,7 @@ class ClaudeAgentSdkAdapter:
             max_budget_usd=self.max_budget_usd,
             model=self.model,
             effort=self.effort,
-            output_format={"type": "json_schema", "schema": RESULT_SCHEMA},
+            output_format={"type": "json_schema", "schema": _schema(request)},
         )
 
     async def _run(self, prompt: str, options: ClaudeAgentOptions) -> ResultMessage | None:
@@ -190,7 +199,8 @@ class ClaudeAgentSdkAdapter:
                 if v is not None:
                     sp.set_attribute(f"helix.llm.{k}", v)
             return ReasonResult(status=out["status"], comment=out.get("comment", ""),
-                                reason=out.get("reason") or None, model=self.model, usage=usage)
+                                reason=out.get("reason") or None, model=self.model, usage=usage,
+                                verdict=out.get("verdict") or None)
 
 
 def describe(adapter: ClaudeAgentSdkAdapter) -> dict:

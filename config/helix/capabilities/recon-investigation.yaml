@@ -42,7 +42,9 @@ match:
 policy:
   write_off_limit: { value: 100, unit: GBP }
 
-steps: [match, group, reason, draft, validate, review, record]
+# enrich, resolve and classify do nothing for a group that does not configure
+# them (cash); the FOBO group uses all three to run its playbook.
+steps: [match, enrich, resolve, classify, group, reason, draft, validate, review, record]
 group_by: [counterparty]
 
 rules:
@@ -88,3 +90,5 @@ configurable:
   - review.dual_review_when
   - knowledge
   - resolve
+  - enrich
+  - playbook

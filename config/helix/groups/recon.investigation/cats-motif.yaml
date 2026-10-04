@@ -1,9 +1,23 @@
 # The FOBO rec group: CATS (front office) vs MOTIF (back office) positions per
-# book and COB. Same capability, same engine — its own sources, keys,
-# tolerance, rules, instructions and reviewers.
+# book and COB, run on the shared reconciliation engine with FOBO's own
+# playbook — the same rules as the FOBO app's
+# config/playbook/fobo-cats-vs-motif.yaml, expressed as Helix configuration:
+#
+#   enrich    the dated FO/BO snapshot per instrument (motif.break_snapshots)
+#   resolve   each book's desk and escalation team, as of the COB, from the
+#             fobo-reference knowledge graph (config/helix/knowledge/)
+#   classify  the six cause checks C1–C6 on every break — all run, negatives
+#             kept — giving each break a category (A–H) and a side (FO/BO/UNKNOWN)
+#   group     breaks collapse into patterns by category and side
+#   reason    deterministic categories with a proven side are settled by the
+#             verdict table; judgement categories, and any break whose side is
+#             not proven (R2: never assume FO is right), go to the model and to
+#             an SME. Guards in code: an FO-side cause never POSTs (R2).
+#             A POST while a policy threshold is unset is flagged "requires
+#             controller confirmation" (P1).
 group: cats-motif
 name: CATS vs MOTIF (FOBO)
-description: Front-office CATS positions matched to back-office MOTIF per book and COB; breaks explained from booking events.
+description: Front-office CATS positions matched to back-office MOTIF per book and COB; breaks classified by FOBO's playbook, settled by its verdict table, judgement calls investigated from booking events.
 owners:
   people: [frank]
   role: HELIX_FOBO_RECON_OWNER
@@ -18,7 +32,7 @@ set:
   items:
     id_field: instrument
     amount_field: difference
-    display: [instrument, desk, break_type, cats_amount, motif_amount, difference]
+    display: [instrument, desk, category, side, cause_reason, cats_amount, motif_amount, difference, owner_desk, escalate_to]
   match:
     left: { tool: cats.positions, args: { book: $case.book, cob: $case.cob } }
     right: { tool: motif.positions, args: { book: $case.book, cob: $case.cob } }
@@ -27,23 +41,77 @@ set:
     tolerance: 0.5
     left_label: cats
     right_label: motif
+  enrich:
+    - tool: motif.break_snapshots
+      args: { book: $case.book, cob: $case.cob }
+      keys: [instrument]
+  knowledge:
+    entities: [instrument, book]
+    reference: fobo-reference
+    as_of: cob
+  resolve:
+    - { node: "book:{book}", path: [belongs_to], as: owner_desk }
+    - { node: "book:{book}", path: [belongs_to, escalates_to], as: owner_team }
+  # Rule P1: a threshold Product Control has not confirmed stays null.
   policy:
-    auto_adjust_limit: { value: 250, unit: USD }
-  group_by: [break_type]
-  rules:
-    - id: rounding
-      when: abs(total) <= policy.auto_adjust_limit
-      then:
-        status: proposed
-        comment: "MTM differences netting to {total} across {count} instrument(s) are within the auto-adjust limit; propose adjustment."
+    materiality_threshold: { value: null, unit: GBP }
+    posting_policy_reference: { value: null }
+  playbook:
+    checks:
+      - { id: C1, when: "fo_booking_ts > bo_cutoff_ts", category: C, side: BO,
+          reason: "Nostro statement received after 23:30 cutoff" }
+      - { id: C2, when: "not mapping_present", category: F, side: BO,
+          reason: "Reference does not resolve in static data" }
+      - { id: C3, when: "fo_dataset_id != bo_dataset_id", category: A, side: UNKNOWN,
+          reason: "FO and BO priced from different curve datasets" }
+      - { id: C4, when: "len(symdiff(fo_components, bo_components)) > 0", category: E, side: UNKNOWN,
+          reason: "Fee or funding component present on one side only" }
+      - { id: C5, when: "fo_version != bo_version", category: E, side: FO,
+          reason: "Pending desk confirmation since the 11:00 run" }
+      - { id: C6, when: "len(symdiff(fo_adjustments, bo_adjustments)) > 0", category: D, side: BO,
+          reason: "Two entries with identical settlement reference" }
+    categories:
+      A: { name: Price break,            determinism: deterministic, escalate_to: Market data }
+      B: { name: Pull factor break,      determinism: deterministic, escalate_to: CATS support }
+      C: { name: Redemption break,       determinism: deterministic, escalate_to: CATS support }
+      D: { name: Settlement break,       determinism: deterministic, escalate_to: Operations }
+      E: { name: Trade booking break,    determinism: deterministic, escalate_to: Desk }
+      F: { name: Data quality break,     determinism: deterministic, escalate_to: Technology }
+      G: { name: Corporate action break, determinism: judgement,     escalate_to: Product Control }
+      H: { name: Novel break,            determinism: judgement,     escalate_to: Product Control }
+    default_category: H
+    sides: [FO, BO]
+    verdicts:
+      A: { FO: DO_NOT_POST, BO: POST }
+      B: { FO: DO_NOT_POST, BO: POST }
+      C: { FO: DO_NOT_POST, BO: POST }
+      D: { FO: DO_NOT_POST, BO: POST }
+      E: { FO: DO_NOT_POST, BO: POST }
+      F: { FO: DO_NOT_POST, BO: DO_NOT_POST }
+      G: { FO: ESCALATE,    BO: ESCALATE }
+      H: { FO: ESCALATE,    BO: ESCALATE }
+    guards:
+      - verdict: POST
+        when: "side == 'FO'"
+        instead: ESCALATE
+        reason: "R2: a cause originating in FO never posts — it would mask the upstream failure"
+    escalate_verdicts: [ESCALATE]
+    confirm_verdicts: [POST]
+    verdict_policy: [materiality_threshold, posting_policy_reference]
+    comment: "{category_name} ({side}): {reasons}. Verdict per playbook; owner {escalate_to}."
+  group_by: [category, side]
+  rules: []
   reasoning:
     skill: |
       You are a FOBO controller's assistant reconciling CATS (front office) to
-      MOTIF (back office). For each type of break, use the booking events to
-      find why the systems differ — late booking, price amendment, FX fixing,
-      cancel/rebook — and propose the adjustment or the team to chase. Cite
-      only figures from the tools or the breaks; escalate if events do not
-      explain the difference.
+      MOTIF (back office). The playbook has already classified each break; the
+      ones you see are judgement calls (corporate actions, novel breaks) or
+      breaks whose side is not proven. Use the booking events to find why the
+      systems differ — late booking, price amendment, FX fixing, cancel/rebook
+      — and propose a verdict: POST (adjust MOTIF), DO_NOT_POST (fix upstream)
+      or ESCALATE. Never assume FO is correct. Cite only figures from the
+      tools or the breaks; escalate if the events do not explain the difference.
     tools: [motif.booking_events]
   review:
     roles: [FOBO_CONTROLLER]
+    require_comment: [reject, escalated]

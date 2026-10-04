@@ -26,6 +26,9 @@ _FUNCS = {
     "float": float, "str": str,
     "startswith": lambda s, p: str(s).startswith(str(p)),
     "contains": lambda s, p: str(p) in str(s),
+    # values present on one side only, e.g. components or adjustments
+    "symdiff": lambda a, b: sorted(set(a or []) ^ set(b or [])),
+    "is_null": lambda v: v is None,
 }
 
 

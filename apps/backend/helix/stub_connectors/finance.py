@@ -177,9 +177,40 @@ def motif_positions(book: str, cob: str) -> dict:
     return {"rows": rows}
 
 
-def booking_events(book: str, cob: str, break_type: str) -> dict:
-    """Back-office booking and amendment events for a book's breaks of one type."""
-    r = _rng("events", book, cob, break_type)
+# The cause each instrument's break has, as FOBO's six cause checks would find
+# it (C1–C6), or None for a break no check explains. Deterministic per book/COB.
+CAUSES = ["C1", "C2", "C3", "C4", "C5", "C6", None]
+
+
+def break_snapshots(book: str, cob: str) -> dict:
+    """Dated FO/BO snapshots per instrument — what FOBO's cause checks read:
+    booking time vs ledger cut-off, static mapping, curve datasets, components,
+    trade versions and adjustments on each side."""
+    rows = []
+    for ins in INSTRUMENTS:
+        cause = _rng("cause", book, cob, ins).choice(CAUSES)
+        rows.append({
+            "instrument": ins,
+            "fo_booking_ts": f"{cob}T23:41:00Z" if cause == "C1" else f"{cob}T17:05:00Z",
+            "bo_cutoff_ts": f"{cob}T23:30:00Z",
+            "mapping_present": cause != "C2",
+            "fo_dataset_id": "CURVE-EOD-0300" if cause == "C3" else "CURVE-EOD-0200",
+            "bo_dataset_id": "CURVE-EOD-0200",
+            "fo_components": ["principal", "fee"] if cause == "C4" else ["principal"],
+            "bo_components": ["principal"],
+            "fo_version": 3 if cause == "C5" else 2,
+            "bo_version": 2,
+            "fo_adjustments": [],
+            "bo_adjustments": ["SETTLE-REF-88120", "SETTLE-REF-88120-DUP"] if cause == "C6" else [],
+        })
+    return {"rows": rows}
+
+
+def booking_events(book: str, cob: str, break_type: str | None = None,
+                   instrument: str | None = None) -> dict:
+    """Back-office booking and amendment events behind a book's breaks
+    (optionally of one type, or for one instrument)."""
+    r = _rng("events", book, cob, break_type or instrument or "all")
     kinds = ["late booking", "price amendment", "FX fixing", "cancel/rebook", "settlement fail"]
     return {"rows": [{"event": r.choice(kinds), "instrument": r.choice(INSTRUMENTS),
                       "amount": round(r.uniform(-50_000, 50_000), 2),
@@ -197,6 +228,7 @@ def build_motif() -> MCPServer:
     server = MCPServer(name="motif", instructions="MOTIF back-office positions and events (stub).")
     server.add_tool(motif_positions, name="positions", description=motif_positions.__doc__)
     server.add_tool(booking_events, name="booking_events", description=booking_events.__doc__)
+    server.add_tool(break_snapshots, name="break_snapshots", description=break_snapshots.__doc__)
     return server
 
 

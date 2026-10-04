@@ -96,6 +96,9 @@ connectors:
       booking_events:
         description: Booking and amendment events behind a book's breaks
         scope: { arg: book, key: book }
+      break_snapshots:
+        description: Dated FO/BO snapshots per instrument (booking time, mapping, curves, components, versions, adjustments)
+        scope: { arg: book, key: book }
 
   # A Helix-provided service, not a stub: reads PDF and Excel files and writes
   # PDF reports (helix/mcp_services/documents.py). Files are kept per entity;

@@ -84,6 +84,62 @@ class Rule(Strict):
     then: RuleThen
 
 
+class EnrichSpec(ToolCallSpec):
+    """One read the `enrich` step makes per case; its rows are joined onto the
+    items by `keys` (e.g. a break snapshot per instrument)."""
+    keys: list[str]
+    prefix: str = ""                   # put before every joined field name
+
+
+class CheckSpec(Strict):
+    """A deterministic cause check, run on every item by `classify`.
+    All checks run; negatives are kept, so a reviewer sees what was ruled out."""
+    id: str
+    when: str                          # expression over the item: true = the cause is present
+    reason: str                        # controller-facing wording (template)
+    category: str                      # the category this cause indicates
+    side: str = "UNKNOWN"              # which side it implicates; UNKNOWN = not proven
+
+
+class CategorySpec(Strict):
+    name: str
+    # deterministic: the verdict table settles it; judgement: the model
+    # investigates and a person (SME) decides
+    determinism: Literal["deterministic", "judgement"]
+    escalate_to: str | None = None     # the team that owns this kind of break
+
+
+class GuardSpec(Strict):
+    """A verdict the code refuses whatever the table or the model says,
+    e.g. never POST a cause that originates on the front-office side."""
+    verdict: str
+    when: str                          # expression over the group (side, category, …)
+    instead: str
+    reason: str
+
+
+class PlaybookSpec(Strict):
+    """Rules owned by the business: checks, categories, the verdict table and
+    the guards over it. The FOBO CATS vs MOTIF playbook is one."""
+    checks: list[CheckSpec] = Field(default_factory=list)
+    categories: dict[str, CategorySpec]
+    default_category: str              # when no check is positive (a novel break)
+    sides: list[str] = Field(default_factory=lambda: ["FO", "BO"])   # proven sides
+    verdicts: dict[str, dict[str, str]] = Field(default_factory=dict)  # category -> side -> verdict
+    guards: list[GuardSpec] = Field(default_factory=list)
+    escalate_verdicts: list[str] = Field(default_factory=lambda: ["ESCALATE"])
+    # Verdicts that need a policy threshold: while any of `verdict_policy` is
+    # unset (null), such a verdict is flagged "requires controller confirmation".
+    confirm_verdicts: list[str] = Field(default_factory=lambda: ["POST"])
+    verdict_policy: list[str] = Field(default_factory=list)
+    comment: str = "{category_name}: {reasons}"   # template for a playbook finding
+
+    def verdict_names(self) -> list[str]:
+        names = {v for sides in self.verdicts.values() for v in sides.values()}
+        names |= {g.instead for g in self.guards} | set(self.escalate_verdicts)
+        return sorted(names)
+
+
 class KnowledgeSpec(Strict):
     """What the capability learns from and looks up in the knowledge graph."""
     # Fields whose values link a decision to the things it concerns
@@ -169,6 +225,8 @@ class Manifest(Strict):
     reasoning: ReasoningSpec = Field(default_factory=ReasoningSpec)
     review: ReviewSpec
     publish: PublishSpec | None = None
+    enrich: list[EnrichSpec] = Field(default_factory=list)
+    playbook: PlaybookSpec | None = None
     knowledge: KnowledgeSpec = Field(default_factory=KnowledgeSpec)
     resolve: list[ResolveSpec] = Field(default_factory=list)
     retention: RetentionSpec | None = None
@@ -185,6 +243,7 @@ class Manifest(Strict):
             used.add(self.items.load.tool)
         if self.match:
             used |= {self.match.left.tool, self.match.right.tool}
+        used |= {e.tool for e in self.enrich}
         if self.publish:
             used.add(self.publish.tool)
         return used
@@ -200,7 +259,9 @@ def _expressions(m: Manifest) -> list[tuple[str, str | None]]:
     """Every expression in a manifest, named for the error message."""
     return [("items.in_scope", m.items.in_scope),
             *[(f"rules[{r.id}].when", r.when) for r in m.rules],
-            ("review.dual_review_when", m.review.dual_review_when)]
+            ("review.dual_review_when", m.review.dual_review_when),
+            *[(f"playbook.checks[{c.id}].when", c.when) for c in (m.playbook.checks if m.playbook else [])],
+            *[(f"playbook.guards[{g.verdict}].when", g.when) for g in (m.playbook.guards if m.playbook else [])]]
 
 
 def problems(m: Manifest) -> list[str]:
@@ -226,11 +287,28 @@ def problems(m: Manifest) -> list[str]:
     reads = set(m.reasoning.tools) | ({m.items.load.tool} if m.items.load else set())
     if m.match:
         reads |= {m.match.left.tool, m.match.right.tool}
+    reads |= {e.tool for e in m.enrich}
     for t in sorted(reads):
         if (found := reg.tool(t)) and found[2].access == "write":
             out.append(f"tool `{t}` writes to a bank system; only `publish` may use it")
-    if "resolve" in m.steps and not (m.resolve and m.knowledge.reference):
-        out.append("step `resolve` needs `resolve` lookups and `knowledge.reference`")
+    if m.resolve and not m.knowledge.reference:
+        out.append("`resolve` lookups need `knowledge.reference` (the namespace to read)")
+    for section, step in (("enrich", "enrich"), ("resolve", "resolve"), ("playbook", "classify")):
+        if getattr(m, section) and step not in m.steps:
+            out.append(f"`{section}` is set but the workflow has no `{step}` step")
+    if m.playbook:
+        pb = m.playbook
+        if pb.default_category not in pb.categories:
+            out.append(f"playbook.default_category `{pb.default_category}` is not a category")
+        for c in pb.checks:
+            if c.category not in pb.categories:
+                out.append(f"playbook check {c.id}: unknown category `{c.category}`")
+        for cat, sides in pb.verdicts.items():
+            if cat not in pb.categories:
+                out.append(f"playbook.verdicts: unknown category `{cat}`")
+            out += [f"playbook.verdicts.{cat}: unknown side `{sd}`" for sd in sides if sd not in pb.sides]
+        out += [f"playbook.verdict_policy: `{p}` is not a policy" for p in pb.verdict_policy
+                if p not in m.policy]
     if m.knowledge.as_of and m.knowledge.as_of not in m.case.key:
         out.append(f"knowledge.as_of: `{m.knowledge.as_of}` is not in case.key")
     if "compare" in m.steps and m.compare is None:

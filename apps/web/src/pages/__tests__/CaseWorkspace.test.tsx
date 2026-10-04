@@ -49,6 +49,15 @@ const detail = (extra: Partial<CaseDetail> = {}): CaseDetail => ({
   ],
   can_decide: true,
   documents: [],
+  attempt: 1,
+  rerun_of: null,
+  legal_hold: false,
+  legal_hold_reason: null,
+  attempts: [],
+  can_rerun: false,
+  can_retry_publish: false,
+  can_hold: false,
+  review: { require_comment: ["reject", "escalated"], opener_may_decide: true, dual_review_when: null, max_reinvestigations: 2 },
   publish: { tool: "reporting.publish_commentary", approver_roles: ["FIN_REVIEWER"], can_release: false },
   ...extra,
 });
@@ -124,6 +133,130 @@ describe("CaseWorkspace", () => {
     await userEvent.click(await screen.findByRole("button", { name: /rv\.c1\.pdf/ }));
     expect(calls.map((c) => c.path)).toContain("/cases/fin.c1/documents/rv.c1.pdf");
     expect(URL.createObjectURL).toHaveBeenCalled();
+  });
+
+  it("approving an escalated group needs the reviewer's own words; rejecting always does", async () => {
+    mockApi({ "GET /cases/fin.c1": detail() });
+    open();
+    await userEvent.click(await screen.findByRole("button", { name: /account 7200/ }));
+    expect(screen.getByLabelText(/required: this group was escalated/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Approve" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Reject" })).toBeDisabled();
+    await userEvent.type(screen.getByLabelText(/Your explanation/), "Accrual reversal");
+    expect(screen.getByRole("button", { name: "Approve" })).toBeEnabled();
+  });
+
+  it("approves every proposed group at once and says which need a person", async () => {
+    const calls = mockApi({
+      "GET /cases/fin.c1": detail({ groups: [group("6100"), group("6200"), detail().groups[1]] }),
+      "POST /cases/fin.c1/decisions/bulk": { case: detail(), decided: [{ group_id: "6100" }, { group_id: "6200" }], refused: [] },
+    });
+    open();
+    await userEvent.click(await screen.findByRole("button", { name: /Approve all 2 proposed/ }));
+    await waitFor(() => expect(calls.some((c) => c.path === "/cases/fin.c1/decisions/bulk")).toBe(true));
+    const body = calls.find((c) => c.path === "/cases/fin.c1/decisions/bulk")!.body as { group_ids: string[] };
+    expect(body.group_ids).toEqual(["6100", "6200"]);           // never the escalated 7200
+  });
+
+  it("sends a group back to the model with the reviewer's note", async () => {
+    const calls = mockApi({
+      "GET /cases/fin.c1": detail(),
+      "POST /cases/fin.c1/groups/6100/reinvestigate": { case: detail(), replayed: false, status: "awaiting_review" },
+    });
+    open();
+    await userEvent.type(await screen.findByLabelText(/Ask the model to look again/), "Check the October reversal");
+    await userEvent.click(screen.getByRole("button", { name: /Investigate again/ }));
+    await waitFor(() => expect(calls.some((c) => c.path.endsWith("/reinvestigate"))).toBe(true));
+    expect(calls.find((c) => c.path.endsWith("/reinvestigate"))!.body).toMatchObject({ note: "Check the October reversal" });
+  });
+
+  it("shows a running case and a failed one with its way forward", async () => {
+    mockApi({ "GET /cases/fin.c1": detail({ status: "running", groups: [] }) });
+    open();
+    expect(await screen.findByRole("status")).toHaveTextContent(/Running — this page updates by itself/);
+  });
+
+  it("re-runs a failed case as a new attempt", async () => {
+    const calls = mockApi({
+      "GET /cases/fin.c1": detail({ status: "failed", error: "RuntimeError: GL connector timed out", can_rerun: true, groups: [] }),
+      "POST /cases/fin.c1/rerun": detail({ case_id: "fin.c1.r2", attempt: 2 }),
+    });
+    open();
+    expect(await screen.findByText(/The run failed: RuntimeError: GL connector timed out/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /Run again/ }));
+    await waitFor(() => expect(calls.some((c) => c.path === "/cases/fin.c1/rerun")).toBe(true));
+  });
+
+  it("offers a retry when a write-back failed part-way", async () => {
+    const calls = mockApi({
+      "GET /cases/fin.c1": detail({ status: "failed", outcome: "publish_failed", can_retry_publish: true, can_decide: false }),
+      "POST /cases/fin.c1/publish/retry": { case: detail({ status: "completed", outcome: "published", can_decide: false }) },
+    });
+    open();
+    await userEvent.click(await screen.findByRole("button", { name: /Retry write-back/ }));
+    expect(await screen.findByText("Published.")).toBeInTheDocument();
+    expect(calls.some((c) => c.path === "/cases/fin.c1/publish/retry")).toBe(true);
+  });
+
+  it("shows what a playbook concluded: category, side, verdict, owner, checks and confirmation", async () => {
+    const fobo = detail({
+      columns: ["instrument", "difference"],
+      items: [{ item_id: "JGB 10Y", in_scope: true, instrument: "JGB 10Y", difference: 85.5,
+                checks: [{ id: "C1", positive: true, reason: "Nostro statement received after 23:30 cutoff" }, { id: "C2", positive: false, reason: "" }] }],
+      groups: [{
+        group_id: "C-BO", label: "category C, side BO", group_key: { category: "C", side: "BO" }, item_ids: ["JGB 10Y"], priors: [], decision: null,
+        finding: { status: "proposed", decided_by: "playbook", comment: "Redemption break (BO): Nostro statement received after 23:30 cutoff.",
+                   verdict: "POST", category: "C", category_name: "Redemption break", side: "BO", escalate_to: "CATS support",
+                   requires_confirmation: "POST depends on unset policy: materiality_threshold" },
+      }],
+    });
+    mockApi({ "GET /cases/fin.c1": fobo });
+    open();
+    const play = await screen.findByLabelText("Playbook");
+    expect(within(play).getByText("C · Redemption break")).toBeInTheDocument();
+    expect(within(play).getByText("POST")).toBeInTheDocument();
+    expect(within(play).getByText("CATS support")).toBeInTheDocument();
+    expect(within(play).getByText(/Requires controller confirmation/)).toBeInTheDocument();
+    expect(screen.getByTitle("C1: Nostro statement received after 23:30 cutoff")).toBeInTheDocument();
+    expect(screen.getByTitle("C2: ruled out")).toBeInTheDocument();
+  });
+
+  it("answers a question about the case and flags untraceable figures", async () => {
+    const calls = mockApi({
+      "GET /cases/fin.c1": detail(),
+      "GET /cases/fin.c1/messages": [],
+      "POST /cases/fin.c1/ask": {
+        answer: { role: "assistant", author: "llm:stub", text: "Account 6100 is 1,234.00 off.", meta: { unverified_figures: [1234] } },
+        messages: [
+          { role: "user", author: "alice", text: "Why 6100?", meta: {} },
+          { role: "assistant", author: "llm:stub", text: "Account 6100 is 1,234.00 off.", meta: { unverified_figures: [1234] } },
+        ],
+      },
+    });
+    open();
+    await userEvent.click(await screen.findByRole("tab", { name: "Ask about this case" }));
+    await userEvent.type(screen.getByLabelText("Your question"), "Why 6100?");
+    await userEvent.click(screen.getByRole("button", { name: /Ask/ }));
+    expect(await screen.findByText("Account 6100 is 1,234.00 off.")).toBeInTheDocument();
+    expect(screen.getByText(/Not traceable to this case's data: 1,234/)).toBeInTheDocument();
+    expect(calls.find((c) => c.method === "POST")!.body).toEqual({ question: "Why 6100?" });
+  });
+
+  it("shows the run step by step", async () => {
+    mockApi({
+      "GET /cases/fin.c1": detail(),
+      "GET /cases/fin.c1/history": [
+        { checkpoint_id: "a", at: "2026-10-03T10:00:00Z", source: "input", event: "start", step: "start", next: ["load"], items: 0, groups: 0, findings: 0 },
+        { checkpoint_id: "b", at: "2026-10-03T10:00:00Z", ended_at: "2026-10-03T10:00:01.5Z", source: "loop", event: "step", step: "load", next: ["load"], items: 0, groups: 0, findings: 0 },
+        { checkpoint_id: "c", at: "2026-10-03T10:00:02Z", source: "loop", event: "waiting", step: "review", next: ["review"], items: 14, groups: 2, findings: 2 },
+      ],
+    });
+    open();
+    await userEvent.click(await screen.findByRole("tab", { name: "Run history" }));
+    const list = await screen.findByRole("list", { name: "Run history" });
+    expect(within(list).getByText("load")).toBeInTheDocument();
+    expect(within(list).getByText("1.5 s")).toBeInTheDocument();
+    expect(within(list).getByText("waiting before review")).toBeInTheDocument();
   });
 
   it("shows the server's refusal", async () => {

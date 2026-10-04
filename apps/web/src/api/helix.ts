@@ -123,6 +123,16 @@ export interface CaseSummary {
   opened_at: string;
   trace_id: string | null;
   error: string | null;
+  attempt: number;
+  rerun_of: string | null;
+  legal_hold: boolean;
+}
+
+/** One check a playbook ran on an item (e.g. FOBO's C1–C6); negatives are kept. */
+export interface CheckResult {
+  id: string;
+  positive: boolean;
+  reason: string;
 }
 
 export interface Finding {
@@ -133,6 +143,20 @@ export interface Finding {
   rule?: string;
   model?: string | null;
   usage?: { cost_usd?: number | null; turns?: number | null; input_tokens?: number | null; output_tokens?: number | null };
+  // playbook capabilities (e.g. FOBO): what the playbook says about the group
+  verdict?: string | null;
+  category?: string | null;
+  category_name?: string | null;
+  side?: string | null;
+  escalate_to?: string | null;
+  determinism?: string | null;
+  requires_confirmation?: string;
+  guard?: string;
+  sme_review?: boolean;
+  // a reviewer sent it back to the model
+  reinvestigations?: number;
+  reviewer_note?: string;
+  previous?: { status: string; comment: string; reason: string | null; decided_by: string };
 }
 
 export interface Group {
@@ -140,7 +164,7 @@ export interface Group {
   label: string;
   group_key: Record<string, string>;
   item_ids: string[];
-  priors: { comment: string; case_id: string; decided_by: string; at: string }[];
+  priors: { comment: string; case_id: string; decided_by: string; at: string; match?: string }[];
   finding: Finding | null;
   decision: { action: "approve" | "reject"; comment: string | null; decided_by: string; decided_at: string } | null;
 }
@@ -171,8 +195,36 @@ export interface CaseDetail extends CaseSummary {
   decisions: { group_id: string; action: string; comment: string | null; decided_by: string; decided_at: string }[];
   tool_calls: ToolCall[];
   documents: PublishedDocument[];
+  attempts: { case_id: string; attempt: number; status: CaseStatus; outcome: string | null; opened_by: string; opened_at: string }[];
   can_decide: boolean;
+  can_rerun: boolean;
+  can_retry_publish: boolean;
+  can_hold: boolean;
+  legal_hold_reason: string | null;
+  review: { require_comment: ("reject" | "escalated")[]; opener_may_decide: boolean; dual_review_when: string | null; max_reinvestigations: number };
   publish: { tool: string; approver_roles: string[]; can_release: boolean } | null;
+}
+
+export interface CaseMessage {
+  message_id?: string;
+  role: "user" | "assistant";
+  author: string;
+  text: string;
+  meta: { model?: string | null; tool_calls?: string[]; unverified_figures?: number[] };
+  created_at?: string;
+}
+
+export interface HistoryEntry {
+  checkpoint_id: string;
+  at: string;
+  ended_at?: string;
+  source: string;
+  event: "start" | "step" | "people" | "waiting" | "end";
+  step: string;
+  next: string[];
+  items: number;
+  groups: number;
+  findings: number;
 }
 
 /** A report the case's publish step wrote (e.g. a PDF), served by the API. */
@@ -273,8 +325,17 @@ export const useGroup = (id: string, group: string) =>
     queryKey: ["group", id, group],
     queryFn: () => api.get<TeamGroupDetail>(`/capabilities/${enc(id)}/groups/${enc(group)}`),
   });
+/** A case; while its run is in progress the view polls until it pauses or ends. */
 export const useCase = (caseId: string) =>
-  useQuery({ queryKey: ["case", caseId], queryFn: () => api.get<CaseDetail>(`/cases/${enc(caseId)}`) });
+  useQuery({
+    queryKey: ["case", caseId],
+    queryFn: () => api.get<CaseDetail>(`/cases/${enc(caseId)}`),
+    refetchInterval: (q) => (q.state.data?.status === "running" ? 1500 : false),
+  });
+export const useMessages = (caseId: string) =>
+  useQuery({ queryKey: ["messages", caseId], queryFn: () => api.get<CaseMessage[]>(`/cases/${enc(caseId)}/messages`) });
+export const useHistory = (caseId: string, enabled = true) =>
+  useQuery({ queryKey: ["history", caseId], queryFn: () => api.get<HistoryEntry[]>(`/cases/${enc(caseId)}/history`), enabled });
 export const useAudit = (capabilityId?: string) =>
   useQuery({
     queryKey: ["audit", capabilityId ?? "all"],
@@ -324,6 +385,64 @@ export function useRelease(caseId: string) {
     mutationFn: () =>
       api.post<{ case: CaseDetail }>(`/cases/${enc(caseId)}/publish`, { idempotency_key: newIdempotencyKey() }),
     onSuccess: (res) => refresh(res.case),
+  });
+}
+
+export function useBulkDecide(caseId: string) {
+  const refresh = useRefreshCases();
+  return useMutation({
+    mutationFn: (v: { groupIds: string[]; action: "approve" | "reject"; comment: string }) =>
+      api.post<{ case: CaseDetail; decided: { group_id: string }[]; refused: { group_id: string; reason: string }[] }>(
+        `/cases/${enc(caseId)}/decisions/bulk`,
+        { group_ids: v.groupIds, action: v.action, comment: v.comment || null, idempotency_key: newIdempotencyKey() },
+      ),
+    onSuccess: (res) => refresh(res.case),
+  });
+}
+
+export function useReinvestigate(caseId: string) {
+  const refresh = useRefreshCases();
+  return useMutation({
+    mutationFn: (v: { groupId: string; note: string }) =>
+      api.post<{ case: CaseDetail }>(`/cases/${enc(caseId)}/groups/${enc(v.groupId)}/reinvestigate`, {
+        note: v.note,
+        idempotency_key: newIdempotencyKey(),
+      }),
+    onSuccess: (res) => refresh(res.case),
+  });
+}
+
+export function useRerun(caseId: string) {
+  const refresh = useRefreshCases();
+  return useMutation({
+    mutationFn: () => api.post<CaseDetail>(`/cases/${enc(caseId)}/rerun`, {}),
+    onSuccess: (detail) => refresh(detail),
+  });
+}
+
+export function useRetryPublish(caseId: string) {
+  const refresh = useRefreshCases();
+  return useMutation({
+    mutationFn: () => api.post<{ case: CaseDetail }>(`/cases/${enc(caseId)}/publish/retry`, {}),
+    onSuccess: (res) => refresh(res.case),
+  });
+}
+
+export function useLegalHold(caseId: string) {
+  const refresh = useRefreshCases();
+  return useMutation({
+    mutationFn: (v: { hold: boolean; reason?: string }) =>
+      api.post<CaseDetail>(`/cases/${enc(caseId)}/legal-hold`, { hold: v.hold, reason: v.reason ?? null }),
+    onSuccess: (detail) => refresh(detail),
+  });
+}
+
+export function useAsk(caseId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (question: string) =>
+      api.post<{ answer: CaseMessage; messages: CaseMessage[] }>(`/cases/${enc(caseId)}/ask`, { question }),
+    onSuccess: (res) => qc.setQueryData(["messages", caseId], res.messages),
   });
 }
 

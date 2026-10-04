@@ -120,11 +120,13 @@ async def seed() -> list[str]:
         _, base = await capabilities.active(capability_id)
         for path in sorted(folder.glob("*.yaml")):
             cfg = GroupConfig.model_validate(yaml.safe_load(path.read_text()))
-            _, found = effective(base, cfg)
-            if found:
-                raise GroupError(f"{capability_id}/{cfg.group}: invalid group", found)
             async with get_session() as s:
                 if await s.get(GroupVersion, (capability_id, cfg.group, 1)) is None:
+                    # Only a new group is seeded (and checked) from its file; a
+                    # live group changes through drafts (helix.config_sync).
+                    _, found = effective(base, cfg)
+                    if found:
+                        raise GroupError(f"{capability_id}/{cfg.group}: invalid group", found)
                     s.add(GroupVersion(capability_id=capability_id, group_id=cfg.group, version=1,
                                        config=cfg.model_dump(), status="active",
                                        note="seeded from config", drafted_by=SEED_USER,

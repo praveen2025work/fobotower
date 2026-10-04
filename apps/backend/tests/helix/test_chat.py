@@ -87,3 +87,11 @@ async def test_history_of_a_fobo_case_includes_the_playbook_steps(api):
     hist = (await api.get(f"/api/cases/{case['case_id']}/history", headers=api.as_user("frank"))).json()
     assert [h["step"] for h in hist if h["event"] == "step"][:5] == [
         "match", "enrich", "resolve", "classify", "group"]
+
+
+def test_the_stub_matches_whole_words_only():
+    req = llm.AskRequest(capability_id="x", case_id="c", case_key={}, skill="", history=[], allowed_tools=[],
+                         question="Why is category H escalated?", context={"groups": [
+                             {"label": "category H, side UNKNOWN", "group_key": {"category": "H"}, "items": []},
+                             {"label": "category D, side BO", "group_key": {"category": "D"}, "items": []}]})
+    assert [g["group_key"]["category"] for g in llm._mentioned(req)] == ["H"]

@@ -132,7 +132,8 @@ async def history(case_id: str, caller: Caller) -> list[dict]:
         meta = snap.metadata or {}
         nxt = list(snap.next)
         following = snaps[i + 1] if i + 1 < len(snaps) else None
-        values = snap.values or {}
+        # what the run held once this step was done (or now, for a pause)
+        values = (following.values if following is not None else snap.values) or {}
         entry = {"checkpoint_id": snap.config["configurable"].get("checkpoint_id"),
                  "at": snap.created_at, "source": meta.get("source"), "next": nxt,
                  "items": len(values.get("items", []) or []),

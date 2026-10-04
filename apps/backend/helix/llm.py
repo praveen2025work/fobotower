@@ -14,6 +14,7 @@ writes a helix_tool_call row — so whatever the model cites can be validated.
 Guards and validation run after, in code; the model's answer is a proposal.
 """
 
+import re
 from dataclasses import dataclass, field
 from typing import Literal, Protocol
 
@@ -94,8 +95,11 @@ def _mentioned(request: "AskRequest") -> list[dict]:
     q = request.question.lower()
     out = []
     for g in request.context.get("groups", []):
-        words = [g["label"], *map(str, g["group_key"].values()), *map(str, g.get("items", []))]
-        if any(w and str(w).lower() in q for w in words):
+        f = g.get("finding") or {}
+        words = [g["label"], f.get("category_name"), *map(str, g["group_key"].values()),
+                 *map(str, g.get("items", []))]
+        # whole words only: "H" (a category) must not match the h in "why"
+        if any(w and re.search(rf"(?<!\w){re.escape(str(w).lower())}(?!\w)", q) for w in words):
             out.append(g)
     return out
 

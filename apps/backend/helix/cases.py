@@ -573,6 +573,8 @@ async def case_detail(case_id: str, caller: Caller) -> dict:
         "can_decide": (caller.has_any_role(m.review.roles) and case.status == "awaiting_review"
                        and (m.review.opener_may_decide or caller.user_id != case.opened_by)),
         "can_rerun": case.status in RERUNNABLE and capabilities.can_see(caller, m),
+        "can_hold": capabilities.is_owner(caller, m),
+        "legal_hold_reason": case.legal_hold_reason,
         "can_retry_publish": (case.outcome == "publish_failed" and m.publish is not None
                               and caller.has_any_role(m.publish.approver_roles)
                               and caller.user_id not in {d.decided_by for d in decisions}),

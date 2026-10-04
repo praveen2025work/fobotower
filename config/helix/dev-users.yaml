@@ -20,9 +20,17 @@ users:
     roles: [CASH_OPS, HELIX_CASH_RECON_OWNER]
     data_scopes: { entity: [UK01, US01] }
   erin:
-    name: Erin (Cash operations owner)
-    roles: [CASH_OPS, HELIX_CASH_RECON_OWNER]
+    name: Erin (Cash operations; owner of the recon capability)
+    roles: [CASH_OPS, HELIX_CASH_RECON_OWNER, HELIX_RECON_OWNER]
     data_scopes: { entity: ["*"] }
+  frank:
+    name: Frank (FOBO controller, all books; CATS vs MOTIF owner)
+    roles: [FOBO_CONTROLLER, HELIX_FOBO_RECON_OWNER]
+    data_scopes: { book: ["*"] }
+  gina:
+    name: Gina (FOBO controller, PRIME-MB-01; CATS vs MOTIF owner)
+    roles: [FOBO_CONTROLLER, HELIX_FOBO_RECON_OWNER]
+    data_scopes: { book: [PRIME-MB-01] }
   viewer:
     name: Viewer (no Helix roles)
     roles: []

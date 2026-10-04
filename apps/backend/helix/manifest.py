@@ -122,6 +122,9 @@ class Manifest(Strict):
     reasoning: ReasoningSpec = Field(default_factory=ReasoningSpec)
     review: ReviewSpec
     publish: PublishSpec | None = None
+    # What a group (a team's configuration of this capability, e.g. one rec group)
+    # may set: dotted paths; "x.*" = anything under x. Owners stay the capability's.
+    configurable: list[str] = Field(default_factory=list)
 
     def policy_values(self) -> dict[str, Any]:
         return {k: v.value for k, v in self.policy.items()}
@@ -186,6 +189,14 @@ def problems(m: Manifest) -> list[str]:
             out.append(f"case.scopes: `{field}` is not in case.key")
     if not m.owners.people and not m.owners.role:
         out.append("owners: name at least one person or a role")
+    top = set(Manifest.model_fields)
+    for path in m.configurable:
+        head = path.split(".")[0]
+        if head not in top:
+            out.append(f"configurable: `{path}` is not a manifest field")
+        if head in ("id", "owners", "configurable", "steps", "pause_before", "publish"):
+            out.append(f"configurable: `{path}` cannot be set by a group "
+                       "(identity, ownership, workflow gates and write-back stay with the capability)")
     if m.reasoning.reasoner == "llm" and not m.reasoning.skill.strip():
         out.append("reasoning.skill: an llm reasoner needs instructions")
     return out

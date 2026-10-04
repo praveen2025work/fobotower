@@ -1,0 +1,12 @@
+# Cash operations' rec group: bank statement vs ledger cash postings.
+# It keeps the capability's defaults and sets only its own write-off limit.
+group: cash-bank-ledger
+name: Cash — bank vs ledger
+description: Daily bank statement lines matched to ledger cash postings, per entity.
+owners:
+  people: [dan]
+  role: HELIX_CASH_RECON_OWNER
+  four_eyes: true
+set:
+  policy:
+    write_off_limit: { value: 100, unit: GBP }

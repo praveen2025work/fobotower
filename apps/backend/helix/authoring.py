@@ -97,7 +97,7 @@ class TemplateAuthor:
         title = next((ln.strip("# ").strip() for ln in request.brd.splitlines() if ln.strip()), "New capability")
         folder = settings().config_dir / "capabilities"
         recon = "bank" in text and ("ledger" in text or "reconcil" in text)
-        base = yaml.safe_load((folder / ("cash-recon.yaml" if recon else "fin-variance-commentary.yaml")).read_text())
+        base = yaml.safe_load((folder / ("recon-investigation.yaml" if recon else "fin-variance-commentary.yaml")).read_text())
         base["id"] = f"draft.{_slug(title)}"
         base["name"] = title[:80]
         lines = [ln for ln in request.brd.splitlines() if ln.strip()]

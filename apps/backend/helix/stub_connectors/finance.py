@@ -143,6 +143,63 @@ def build_ledger() -> MCPServer:
     return server
 
 
+# ---------- CATS (front office) vs MOTIF (back office) positions ----------
+
+INSTRUMENTS = ["UST 2Y", "UST 10Y", "BUND 10Y", "GILT 5Y", "JGB 10Y", "EURUSD FWD",
+               "GBPUSD FWD", "IRS 5Y USD", "IRS 10Y EUR", "CDX IG", "ITRAXX MAIN", "SOFR FUT"]
+DESKS = {"UST": "Rates", "BUND": "Rates", "GILT": "Rates", "JGB": "Rates", "IRS": "Rates",
+         "EURUSD": "FX", "GBPUSD": "FX", "CDX": "Credit", "ITRAXX": "Credit", "SOFR": "Rates"}
+
+
+def _fo_positions(book: str, cob: str) -> list[dict]:
+    r = _rng("cats", book, cob)
+    return [{"book": book, "instrument": ins, "desk": DESKS[ins.split()[0]],
+             "quantity": r.randint(1, 500) * 1000,
+             "mtm": round(r.uniform(-900_000, 900_000), 2)} for ins in INSTRUMENTS]
+
+
+def cats_positions(book: str, cob: str) -> dict:
+    """Front-office (CATS) end-of-day positions and MTM for one book and COB date."""
+    return {"rows": _fo_positions(book, cob)}
+
+
+def motif_positions(book: str, cob: str) -> dict:
+    """Back-office (MOTIF) positions and MTM for one book and COB date."""
+    r = _rng("motif-diff", book, cob)
+    rows = []
+    for row in _fo_positions(book, cob):
+        roll = r.random()
+        if roll < 0.10:
+            continue                                         # not booked in MOTIF yet
+        if roll < 0.22:
+            row = {**row, "mtm": round(row["mtm"] + r.choice([-120.0, 85.5, -15_000.0, 42_000.0]), 2)}
+        rows.append(row)
+    return {"rows": rows}
+
+
+def booking_events(book: str, cob: str, break_type: str) -> dict:
+    """Back-office booking and amendment events for a book's breaks of one type."""
+    r = _rng("events", book, cob, break_type)
+    kinds = ["late booking", "price amendment", "FX fixing", "cancel/rebook", "settlement fail"]
+    return {"rows": [{"event": r.choice(kinds), "instrument": r.choice(INSTRUMENTS),
+                      "amount": round(r.uniform(-50_000, 50_000), 2),
+                      "booked_at": f"{cob}T{r.randint(16, 23):02d}:{r.randint(0, 59):02d}"}
+                     for _ in range(3)]}
+
+
+def build_cats() -> MCPServer:
+    server = MCPServer(name="cats", instructions="CATS front-office positions (stub).")
+    server.add_tool(cats_positions, name="positions", description=cats_positions.__doc__)
+    return server
+
+
+def build_motif() -> MCPServer:
+    server = MCPServer(name="motif", instructions="MOTIF back-office positions and events (stub).")
+    server.add_tool(motif_positions, name="positions", description=motif_positions.__doc__)
+    server.add_tool(booking_events, name="booking_events", description=booking_events.__doc__)
+    return server
+
+
 # ---------- reporting (write) ----------
 
 PUBLISHED: list[dict] = []   # what the stub reporting system received, for tests and demos
@@ -164,7 +221,7 @@ def build_reporting() -> MCPServer:
 
 
 BUILDERS = {"gl": build_gl, "budget": build_budget, "bank": build_bank, "ledger": build_ledger,
-            "reporting": build_reporting}
+            "reporting": build_reporting, "cats": build_cats, "motif": build_motif}
 
 
 def main() -> None:

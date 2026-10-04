@@ -1,0 +1,81 @@
+# One reconciliation capability; each rec group configures its own run of it.
+#
+# The capability owns the shape of the work — match two sides, explain the
+# breaks (rules first, then the model), validate every figure, a person signs
+# off — and declares what a rec group may change (`configurable`). Each rec
+# group (config/helix/groups/recon.investigation/) sets its sources, keys,
+# tolerances, rules, instructions and reviewers. FOBO's CATS vs MOTIF is one
+# such group; cash bank-vs-ledger is another. The engine is reused as is.
+#
+# The values below are the defaults a group starts from (the cash setup).
+
+id: recon.investigation
+name: Reconciliation investigation
+description: Match two systems, explain every break, sign off. Each rec group configures its own sources, keys, tolerances, rules and reviewers.
+
+owners:
+  people: [erin]
+  role: HELIX_RECON_OWNER
+  four_eyes: true
+
+case:
+  label: Rec run
+  item_label: Break
+  key: [entity, date]
+  subject: "{entity} · {date}"
+  scopes: { entity: entity }
+
+items:
+  id_field: ref
+  amount_field: difference
+  display: [ref, counterparty, break_type, bank_amount, ledger_amount, difference]
+
+match:
+  left: { tool: bank.statement, args: { entity: $case.entity, date: $case.date } }
+  right: { tool: ledger.postings, args: { entity: $case.entity, date: $case.date } }
+  keys: [ref]
+  amount_field: amount
+  tolerance: 0.01
+  left_label: bank
+  right_label: ledger
+
+policy:
+  write_off_limit: { value: 100, unit: GBP }
+
+steps: [match, group, reason, draft, validate, review, record]
+group_by: [counterparty]
+
+rules:
+  - id: small-single-break
+    when: count == 1 and abs(total) <= policy.write_off_limit
+    then:
+      status: proposed
+      comment: "One difference of {total} with {counterparty}, within the write-off limit; propose write-off."
+
+reasoning:
+  reasoner: llm
+  output: verdict
+  tools: [ledger.counterparty_history]
+  skill: |
+    You investigate reconciliation breaks between two systems. Use the tools to
+    find the likely cause of each group of breaks and the next action. Cite only
+    figures from the tools or the breaks.
+
+review:
+  roles: [CASH_OPS]
+
+# What a rec group may set. Ownership, the workflow and its gates stay here.
+configurable:
+  - case.label
+  - case.item_label
+  - case.key
+  - case.subject
+  - case.scopes
+  - items
+  - match
+  - policy.*
+  - rules
+  - group_by
+  - reasoning.skill
+  - reasoning.tools
+  - review.roles

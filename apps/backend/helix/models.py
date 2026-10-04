@@ -49,6 +49,32 @@ class CapabilityVersion(HelixBase):
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class GroupVersion(HelixBase):
+    """A team's configuration of a capability (e.g. one rec group), versioned.
+    The group's owners draft and approve it (four-eyes)."""
+
+    __tablename__ = "helix_group_version"
+    __table_args__ = (
+        Index(
+            "uq_helix_group_one_active", "capability_id", "group_id", unique=True,
+            postgresql_where=text("status = 'active'"),
+        ),
+    )
+
+    capability_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    group_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    version: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)
+    config: Mapped[dict] = mapped_column(JSONB)
+    status: Mapped[str] = mapped_column(String(16))      # draft | active | superseded
+    note: Mapped[str] = mapped_column(Text, default="")
+    drafted_by: Mapped[str] = mapped_column(String(64))
+    drafted_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    decided_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class Case(HelixBase):
     """One unit of a capability's work, e.g. one entity's month-end."""
 
@@ -59,6 +85,11 @@ class Case(HelixBase):
     capability_id: Mapped[str] = mapped_column(String(64))
     # The run is pinned to the manifest version active when it opened.
     manifest_version: Mapped[int] = mapped_column(Integer)
+    # The group (team configuration) it runs under, and the exact manifest it ran
+    # on — capability merged with that group version — kept for audit and replay.
+    team_group: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    team_group_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    manifest: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     case_key: Mapped[dict] = mapped_column(JSONB)
     subject: Mapped[str] = mapped_column(String(256))
     # running | awaiting_review | completed | escalated | failed
@@ -192,5 +223,5 @@ class KgEdge(HelixBase):
 
 HELIX_TABLES = [  # child tables first, for truncation in tests
     "helix_publish_approval", "helix_decision", "helix_proposal_group", "helix_case_item", "helix_tool_call",
-    "helix_case", "helix_capability_version", "helix_kg_edge", "helix_kg_node",
+    "helix_case", "helix_group_version", "helix_capability_version", "helix_kg_edge", "helix_kg_node",
 ]

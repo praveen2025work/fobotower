@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from helix import authoring, capabilities, cases, views
+from helix import groups as team_groups
 from helix.config import settings
 from helix.entitlement import Caller, EntitlementError, StubEntitlement, entitlements
 from helix.gateway import registry
@@ -26,6 +27,7 @@ async def lifespan(_app: FastAPI):
     setup_tracing()
     await setup_checkpointer()
     await capabilities.seed()
+    await team_groups.seed()
     yield
 
 
@@ -56,7 +58,7 @@ def _errors(fn):
             raise HTTPException(403, str(e)) from e
         except LookupError as e:
             raise HTTPException(404, f"not found: {e}") from e
-        except capabilities.CapabilityError as e:
+        except (capabilities.CapabilityError, team_groups.GroupError) as e:
             raise HTTPException(422, {"message": str(e), "problems": e.problems}) from e
         except cases.CaseError as e:
             raise HTTPException(409, str(e)) from e
@@ -99,22 +101,88 @@ async def audit(capability_id: str | None = None, limit: int = 200,
 
 @app.get("/api/capabilities")
 async def list_capabilities(c: Caller = Depends(caller)) -> list[dict]:
-    return [{"id": m.id, "name": m.name, "description": m.description, "version": v,
-             "case_label": m.case.label, "item_label": m.case.item_label,
-             "case_key": m.case.key, "steps": m.steps,
-             "is_owner": capabilities.is_owner(c, m),
-             "can_decide": c.has_any_role(m.review.roles)}
-            for v, m in await capabilities.all_active() if capabilities.can_see(c, m)]
+    out = []
+    for v, m in await capabilities.all_active():
+        if not await team_groups.visible(c, m.id, m):
+            continue
+        groups = await team_groups.active_groups(m.id)
+        out.append({
+            "id": m.id, "name": m.name, "description": m.description, "version": v,
+            "case_label": m.case.label, "item_label": m.case.item_label,
+            "case_key": m.case.key, "steps": m.steps,
+            "is_owner": capabilities.is_owner(c, m),
+            "can_decide": c.has_any_role(m.review.roles)
+            or any(c.has_any_role(gm.review.roles) for _, _, gm in groups),
+            "configurable": m.configurable,
+            "groups": [{"group": cfg.group, "name": cfg.name} for _, cfg, _ in groups],
+        })
+    return out
 
 
 @app.get("/api/capabilities/{capability_id}")
 @_errors
 async def get_capability(capability_id: str, c: Caller = Depends(caller)) -> dict:
     version, m = await capabilities.active(capability_id)
-    if not capabilities.can_see(c, m):
+    if not await team_groups.visible(c, capability_id, m):
         raise LookupError(capability_id)
     return {"version": version, "manifest": m.model_dump(by_alias=True),
             "versions": await capabilities.versions(capability_id)}
+
+
+def _group_view(c: Caller, base, version: int, cfg, m) -> dict:
+    """A team group as the console shows it: who owns it, what it sets, who works its cases."""
+    return {
+        "capability_id": base.id, "group": cfg.group, "name": cfg.name,
+        "description": cfg.description, "version": version, "owners": cfg.owners.model_dump(),
+        "sets": team_groups.set_paths(cfg.set, base.configurable)[0],
+        "case_label": m.case.label, "item_label": m.case.item_label, "case_key": m.case.key,
+        "review_roles": m.review.roles,
+        "is_owner": team_groups.is_group_owner(c, cfg),
+        "can_open": capabilities.can_see(c, m),
+        "can_decide": c.has_any_role(m.review.roles),
+    }
+
+
+@app.get("/api/capabilities/{capability_id}/groups")
+@_errors
+async def list_groups(capability_id: str, c: Caller = Depends(caller)) -> list[dict]:
+    _, base = await capabilities.active(capability_id)
+    if not await team_groups.visible(c, capability_id, base):
+        raise LookupError(capability_id)
+    return [_group_view(c, base, v, cfg, m)
+            for v, cfg, m in await team_groups.active_groups(capability_id)]
+
+
+@app.get("/api/capabilities/{capability_id}/groups/{group}")
+@_errors
+async def get_group(capability_id: str, group: str, c: Caller = Depends(caller)) -> dict:
+    _, base = await capabilities.active(capability_id)
+    if not await team_groups.visible(c, capability_id, base):
+        raise LookupError(capability_id)
+    v, cfg, m = await team_groups.active_group(capability_id, group)
+    return {**_group_view(c, base, v, cfg, m), "config": cfg.model_dump(),
+            "manifest": m.model_dump(by_alias=True), "configurable": base.configurable,
+            "versions": await team_groups.versions(capability_id, group)}
+
+
+class GroupDraftIn(BaseModel):
+    config: dict
+    note: str = ""
+
+
+@app.post("/api/capabilities/{capability_id}/groups", status_code=201)
+@_errors
+async def draft_group(capability_id: str, body: GroupDraftIn, c: Caller = Depends(caller)) -> dict:
+    """A new version of a group, or a new group. Live after another group owner approves."""
+    return await team_groups.draft(capability_id, body.config, body.note, c)
+
+
+@app.post("/api/capabilities/{capability_id}/groups/{group}/versions/{version}/approve")
+@_errors
+async def approve_group(capability_id: str, group: str, version: int,
+                        c: Caller = Depends(caller)) -> dict:
+    await team_groups.approve(capability_id, group, version, c)
+    return {"group": group, "version": version, "status": "active"}
 
 
 class DraftIn(BaseModel):
@@ -137,18 +205,20 @@ async def approve_version(capability_id: str, version: int, c: Caller = Depends(
 
 @app.get("/api/capabilities/{capability_id}/cases")
 @_errors
-async def list_cases(capability_id: str, c: Caller = Depends(caller)) -> list[dict]:
-    return await cases.list_cases(capability_id, c)
+async def list_cases(capability_id: str, team_group: str | None = None,
+                     c: Caller = Depends(caller)) -> list[dict]:
+    return await cases.list_cases(capability_id, c, team_group)
 
 
 class OpenIn(BaseModel):
     case_key: dict
+    team_group: str | None = None   # required when the capability has groups
 
 
 @app.post("/api/capabilities/{capability_id}/cases", status_code=201)
 @_errors
 async def open_case(capability_id: str, body: OpenIn, c: Caller = Depends(caller)) -> dict:
-    case_id = await cases.open_case(capability_id, body.case_key, c)
+    case_id = await cases.open_case(capability_id, body.case_key, c, body.team_group)
     return await cases.case_detail(case_id, c)
 
 

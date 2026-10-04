@@ -62,16 +62,32 @@ async def _status_after_run(app, config, case_id: str) -> str:
         return case.status
 
 
-async def open_case(capability_id: str, case_key: dict, caller: Caller) -> str:
+async def open_case(capability_id: str, case_key: dict, caller: Caller,
+                    team_group: str | None = None) -> str:
+    """Open (and run) a case. A capability with groups runs every case under one
+    group — its team's configuration — on the merged manifest."""
+    from helix import groups as team_groups
+
     version, m = await capabilities.active(capability_id)
+    group_version = None
+    active = await team_groups.active_groups(capability_id)
+    if active:
+        if not team_group:
+            raise CaseError(f"choose a group: {', '.join(cfg.group for _, cfg, _ in active)}")
+        group_version, _, m = await team_groups.active_group(capability_id, team_group)
+    elif team_group:
+        raise CaseError(f"{capability_id} has no groups")
     if not capabilities.can_see(caller, m):
-        raise PermissionError(f"{caller.user_id} has no role for {capability_id}")
+        raise PermissionError(f"{caller.user_id} has no role for {capability_id}"
+                              + (f" / {team_group}" if team_group else ""))
     key = _check_key(m, case_key, caller)
-    case_id = case_id_for(capability_id, key)
+    case_id = case_id_for(capability_id, {**key, "__group": team_group} if team_group else key)
     async with get_session() as s:
         if await s.get(Case, case_id) is not None:
             return case_id
         s.add(Case(case_id=case_id, capability_id=capability_id, manifest_version=version,
+                   team_group=team_group, team_group_version=group_version,
+                   manifest=m.model_dump(by_alias=True),
                    case_key=key, subject=render(m.case.subject or " · ".join(
                        "{" + k + "}" for k in m.case.key), key),
                    status="running", opened_by=caller.user_id))
@@ -141,6 +157,10 @@ async def decide(case_id: str, group_id: str, action: str, comment: str | None,
 
 
 async def _pinned(case: Case) -> Manifest:
+    """The exact manifest the case ran on: its snapshot (capability + group),
+    or for older cases the capability version it opened with."""
+    if case.manifest:
+        return Manifest.model_validate(case.manifest)
     from helix.models import CapabilityVersion
     async with get_session() as s:
         row = await s.get(CapabilityVersion, (case.capability_id, case.manifest_version))
@@ -225,18 +245,27 @@ async def approve_publish(case_id: str, idempotency_key: str, caller: Caller) ->
 def _case_summary(c: Case) -> dict:
     return {"case_id": c.case_id, "capability_id": c.capability_id, "subject": c.subject,
             "case_key": c.case_key, "status": c.status, "outcome": c.outcome,
-            "manifest_version": c.manifest_version, "opened_by": c.opened_by,
+            "manifest_version": c.manifest_version, "team_group": c.team_group,
+            "team_group_version": c.team_group_version, "opened_by": c.opened_by,
             "opened_at": c.opened_at, "trace_id": c.trace_id, "error": c.error}
 
 
-async def list_cases(capability_id: str, caller: Caller) -> list[dict]:
+async def list_cases(capability_id: str, caller: Caller, team_group: str | None = None) -> list[dict]:
+    from helix import groups as team_groups
+
     _, m = await capabilities.active(capability_id)
-    if not capabilities.can_see(caller, m):
+    if not await team_groups.visible(caller, capability_id, m):
         raise PermissionError(f"{caller.user_id} has no role for {capability_id}")
+    query = select(Case).where(Case.capability_id == capability_id)
+    if team_group:
+        query = query.where(Case.team_group == team_group)
     async with get_session() as s:
-        rows = (await s.execute(select(Case).where(Case.capability_id == capability_id)
-                                .order_by(Case.opened_at.desc()))).scalars().all()
-    return [_case_summary(c) for c in rows if may_see_case(caller, m, c.case_key)]
+        rows = (await s.execute(query.order_by(Case.opened_at.desc()))).scalars().all()
+    out = []
+    for c in rows:
+        if may_see_case(caller, await _pinned(c), c.case_key):
+            out.append(_case_summary(c))
+    return out
 
 
 async def case_detail(case_id: str, caller: Caller) -> dict:

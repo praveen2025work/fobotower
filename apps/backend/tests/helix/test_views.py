@@ -1,11 +1,11 @@
 """The unified views never show more than the per-case reads would."""
 
-from tests.helix.conftest import RECON, VARIANCE
+from tests.helix.conftest import CASH, RECON, VARIANCE
 
 
-async def _open(api, user, capability, key):
-    res = await api.post(f"/api/capabilities/{capability}/cases", json={"case_key": key},
-                         headers=api.as_user(user))
+async def _open(api, user, capability, key, group=None):
+    res = await api.post(f"/api/capabilities/{capability}/cases",
+                         json={"case_key": key, "team_group": group}, headers=api.as_user(user))
     assert res.status_code == 201, res.text
     return res.json()
 
@@ -13,7 +13,7 @@ async def _open(api, user, capability, key):
 async def test_inbox_lists_what_waits_on_me_across_capabilities(api):
     uk = await _open(api, "bob", VARIANCE, {"entity": "UK01", "period": "2026-09"})
     us = await _open(api, "bob", VARIANCE, {"entity": "US01", "period": "2026-09"})
-    cash = await _open(api, "dan", RECON, {"entity": "UK01", "date": "2026-10-02"})
+    cash = await _open(api, "dan", RECON, {"entity": "UK01", "date": "2026-10-02"}, CASH)
 
     alice = (await api.get("/api/inbox", headers=api.as_user("alice"))).json()
     assert [r["case_id"] for r in alice] == [uk["case_id"]]          # UK01 only, finance only

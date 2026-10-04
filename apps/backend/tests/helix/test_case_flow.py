@@ -1,13 +1,13 @@
 """A capability end to end through the API: open, review, record, learn."""
 
-from tests.helix.conftest import RECON, VARIANCE
+from tests.helix.conftest import CASH, RECON, VARIANCE
 
 KEY = {"entity": "UK01", "period": "2026-09"}
 
 
-async def _open(api, user="alice", capability=VARIANCE, key=KEY):
+async def _open(api, user="alice", capability=VARIANCE, key=KEY, group=None):
     return await api.post(f"/api/capabilities/{capability}/cases",
-                          json={"case_key": key}, headers=api.as_user(user))
+                          json={"case_key": key, "team_group": group}, headers=api.as_user(user))
 
 
 async def _decide(api, case_id, group_id, user="alice", action="approve", key=None):
@@ -99,7 +99,8 @@ async def test_an_unknown_user_is_refused(api):
 
 
 async def test_a_second_capability_runs_on_the_same_platform(api):
-    res = await _open(api, user="dan", capability=RECON, key={"entity": "UK01", "date": "2026-10-02"})
+    res = await _open(api, user="dan", capability=RECON, key={"entity": "UK01", "date": "2026-10-02"},
+                      group=CASH)
     case = res.json()
     assert case["status"] == "awaiting_review", res.text
     assert case["labels"] == {"case": "Rec run", "item": "Break"}

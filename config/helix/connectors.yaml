@@ -72,3 +72,26 @@ connectors:
         description: Publish approved variance commentary to the reporting pack
         access: write          # never offered to the model; publish step only, after release
         scope: { arg: entity, key: entity }
+
+  cats:
+    name: CATS — front-office positions (stub)
+    transport: inproc
+    target: helix.stub_connectors.finance:build_cats
+    classification: confidential
+    tools:
+      positions:
+        description: End-of-day FO positions and MTM per book and COB
+        scope: { arg: book, key: book }
+
+  motif:
+    name: MOTIF — back-office positions and events (stub)
+    transport: inproc
+    target: helix.stub_connectors.finance:build_motif
+    classification: confidential
+    tools:
+      positions:
+        description: End-of-day BO positions and MTM per book and COB
+        scope: { arg: book, key: book }
+      booking_events:
+        description: Booking and amendment events behind a book's breaks
+        scope: { arg: book, key: book }

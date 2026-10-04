@@ -8,7 +8,7 @@ import pytest
 from helix import llm
 from helix.governance import MASK, Protector
 from helix.llm import ReasonResult, StubLlm
-from tests.helix.conftest import RECON
+from tests.helix.conftest import CASH, RECON
 
 KEY = {"entity": "UK01", "date": "2026-10-02"}
 NAMES = ["ACME BANK", "GLOBEX", "INITECH", "UMBRELLA", "STARK"]
@@ -65,7 +65,7 @@ class Capturing(StubLlm):
 async def test_the_model_never_sees_counterparty_names_or_accounts_but_tools_get_them(api):
     model = Capturing()
     llm._adapter = model
-    res = await api.post(f"/api/capabilities/{RECON}/cases", json={"case_key": KEY},
+    res = await api.post(f"/api/capabilities/{RECON}/cases", json={"case_key": KEY, "team_group": CASH},
                          headers=api.as_user("dan"))
     case = res.json()
     assert case["status"] == "awaiting_review", res.text
@@ -92,7 +92,7 @@ async def test_the_model_never_sees_counterparty_names_or_accounts_but_tools_get
 async def test_traces_carry_the_models_view_only(api, spans):
     spans.clear()
     llm._adapter = Capturing()
-    await api.post(f"/api/capabilities/{RECON}/cases", json={"case_key": KEY},
+    await api.post(f"/api/capabilities/{RECON}/cases", json={"case_key": KEY, "team_group": CASH},
                    headers=api.as_user("dan"))
     payloads = [v for s in spans.get_finished_spans() if s.name == "mcp.call"
                 for k, v in s.attributes.items() if k in ("input.value", "output.value")]

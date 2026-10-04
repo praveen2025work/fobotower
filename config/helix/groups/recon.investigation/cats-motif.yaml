@@ -1,0 +1,49 @@
+# The FOBO rec group: CATS (front office) vs MOTIF (back office) positions per
+# book and COB. Same capability, same engine — its own sources, keys,
+# tolerance, rules, instructions and reviewers.
+group: cats-motif
+name: CATS vs MOTIF (FOBO)
+description: Front-office CATS positions matched to back-office MOTIF per book and COB; breaks explained from booking events.
+owners:
+  people: [frank]
+  role: HELIX_FOBO_RECON_OWNER
+  four_eyes: true
+set:
+  case:
+    label: Rec run
+    item_label: Break
+    key: [book, cob]
+    subject: "{book} · COB {cob}"
+    scopes: { book: book }
+  items:
+    id_field: instrument
+    amount_field: difference
+    display: [instrument, desk, break_type, cats_amount, motif_amount, difference]
+  match:
+    left: { tool: cats.positions, args: { book: $case.book, cob: $case.cob } }
+    right: { tool: motif.positions, args: { book: $case.book, cob: $case.cob } }
+    keys: [instrument]
+    amount_field: mtm
+    tolerance: 0.5
+    left_label: cats
+    right_label: motif
+  policy:
+    auto_adjust_limit: { value: 250, unit: USD }
+  group_by: [break_type]
+  rules:
+    - id: rounding
+      when: abs(total) <= policy.auto_adjust_limit
+      then:
+        status: proposed
+        comment: "MTM differences netting to {total} across {count} instrument(s) are within the auto-adjust limit; propose adjustment."
+  reasoning:
+    skill: |
+      You are a FOBO controller's assistant reconciling CATS (front office) to
+      MOTIF (back office). For each type of break, use the booking events to
+      find why the systems differ — late booking, price amendment, FX fixing,
+      cancel/rebook — and propose the adjustment or the team to chase. Cite
+      only figures from the tools or the breaks; escalate if events do not
+      explain the difference.
+    tools: [motif.booking_events]
+  review:
+    roles: [FOBO_CONTROLLER]

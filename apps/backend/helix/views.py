@@ -32,7 +32,8 @@ async def _visible_cases(caller: Caller) -> list[tuple[Case, Manifest]]:
         rows = (await s.execute(select(Case).order_by(Case.opened_at.desc()))).scalars().all()
     out = []
     for c in rows:
-        m = versions.get((c.capability_id, c.manifest_version))
+        m = Manifest.model_validate(c.manifest) if c.manifest else versions.get(
+            (c.capability_id, c.manifest_version))
         if m and may_see_case(caller, m, c.case_key):
             out.append((c, m))
     return out
@@ -66,6 +67,7 @@ def _summary(c: Case, m: Manifest, groups: list[ProposalGroup], decided: set[str
     return {
         "case_id": c.case_id, "capability_id": c.capability_id, "capability_name": m.name,
         "case_label": m.case.label, "subject": c.subject, "status": c.status,
+        "team_group": c.team_group,
         "outcome": c.outcome, "opened_at": c.opened_at, "opened_by": c.opened_by,
         "groups": len(groups), "proposed": statuses.get("proposed", 0),
         "escalated": statuses.get("escalated", 0),
@@ -107,8 +109,10 @@ async def overview(caller: Caller) -> dict:
             ToolCall.called_at >= since, ToolCall.case_id.in_(ids or [""])))).scalars().all()
 
     per_cap: dict[str, dict] = {}
+    from helix import groups as team_groups
+
     for _, m in await capabilities.all_active():
-        if capabilities.can_see(caller, m):
+        if await team_groups.visible(caller, m.id, m):
             per_cap[m.id] = {"id": m.id, "name": m.name, "case_label": m.case.label,
                              "statuses": Counter(), "escalated_groups": 0}
     mine = Counter()

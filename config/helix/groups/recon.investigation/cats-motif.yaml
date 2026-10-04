@@ -42,9 +42,13 @@ set:
       - { book: PRIME-MB-06, cob: "{prev_business_day}" }
     events: true
     opens_as: helix-scheduler
+    # Signed off by 11:00 on the business day after the COB; reviewers are
+    # reminded two hours before, owners told if it is missed.
+    due: { from: cob, business_days: 1, at: "11:00", warn_hours: 2 }
   items:
     id_field: instrument
     amount_field: difference
+    amount_unit: GBP
     display: [instrument, desk, category, side, cause_reason, cats_amount, motif_amount, difference, owner_desk, escalate_to]
   match:
     left: { tool: cats.positions, args: { book: $case.book, cob: $case.cob } }
@@ -163,7 +167,10 @@ set:
     confirm_verdicts: [POST]
     verdict_policy: [materiality_threshold, posting_policy_reference]
     comment: "{category_name} ({side}): {reasons}. Verdict per playbook; owner {escalate_to}."
+    side_names: { FO: front office, BO: back office, UNKNOWN: side not proven }
   group_by: [category, side]
+  # Groups named in business words: "Redemption break · back office".
+  group_label: "{category_name} · {side_name}"
   rules: []
   reasoning:
     skill: |
@@ -185,6 +192,24 @@ set:
           events (type, instrument, amount, time) that explain each break, or say
           that none do. Do not conclude a verdict.
         tools: [motif.booking_events]
+  # The same instrument breaking again on the same book, COB after COB.
+  insights:
+    recurring: { same: [book], lookback_cases: 10, min_runs: 2 }
+  # A fix upstream (DO_NOT_POST) or an escalation becomes a ticket for the
+  # owning team once the controller has decided — one per group, never twice.
+  escalation:
+    tool: ticketing.create_ticket
+    when: "action == 'approve' and (verdict == 'DO_NOT_POST' or status == 'escalated')"
+    args:
+      team: "{escalate_to}"
+      title: "{subject}: {label}"
+      description: "{comment}"
+      priority: P3
   review:
+    # "Approve all" leaves verdicts needing confirmation and judgement calls
+    # for one-by-one review; confirming takes a tick and the controller's words.
+    bulk_exclude: [confirmation, judgement]
+    confirm: tick_and_comment
+    allow_delegation: true
     roles: [FOBO_CONTROLLER]
     require_comment: [reject, escalated]

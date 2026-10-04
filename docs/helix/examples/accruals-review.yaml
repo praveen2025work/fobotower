@@ -6,7 +6,7 @@
 # Authoring → paste → submit → another owner approves.
 id: fin.accruals-review
 name: Accruals review
-description: Month-end review of material accrual movements against plan, explained from journals; release reversals after sign-off.
+description: Month-end review of material accrual movements against plan, explained from journals; signed off by a preparer, with a second reviewer for large movements.
 owners: { people: [carol], role: HELIX_FIN_VARCOMM_OWNER, four_eyes: true }
 case:
   label: Accruals

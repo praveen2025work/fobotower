@@ -1,7 +1,7 @@
 // The case workspace — aria-ai's 3-pane Run layout for a Helix case:
 // proposals | the selected proposal (or Ask, or the run's history) | case context.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import clsx from "clsx";
 import {
@@ -9,6 +9,11 @@ import {
   ArrowLeft,
   BookOpen,
   Bot,
+  FileSpreadsheet,
+  Repeat,
+  Scale,
+  Ticket,
+  UserCheck,
   Check,
   CheckCheck,
   ExternalLink,
@@ -38,12 +43,14 @@ import {
   type CaseDetail,
   type CheckResult,
   type Group,
+  type ReviewFlag,
   type ToolCall,
 } from "../api/helix";
 import CaseChat from "../components/case/CaseChat";
 import EvidencePanel from "../components/case/EvidencePanel";
 import CaseHistory from "../components/case/CaseHistory";
 import StatusBadge from "../components/StatusBadge";
+import { DueBadge } from "../components/Urgency";
 import { Empty, ErrorState, Loading, WorkflowStepper, currentStep, formatTime, formatValue } from "../components/ui";
 
 // Set in the office to link a case to its Phoenix trace, e.g.
@@ -73,6 +80,7 @@ export default function CaseWorkspace(): JSX.Element {
   const detail = useCase(caseId);
   const [selected, setSelected] = useState<string | null>(null);
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("proposal");
+  const openedAt = useRef(Date.now());
 
   if (detail.isLoading) return <Loading what="case" />;
   if (detail.error) return <ErrorState error={detail.error} />;
@@ -105,8 +113,16 @@ export default function CaseWorkspace(): JSX.Element {
               <Lock size={11} /> legal hold
             </span>
           )}
+          <DueBadge dueAt={c.due_at} state={c.due_state ?? null} />
+          <button
+            onClick={() => void download(`/cases/${encodeURIComponent(c.case_id)}/export.xlsx`, `${c.case_id}.xlsx`)}
+            className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-surface-300 px-2.5 py-1 text-xs font-medium text-surface-700 hover:bg-surface-50"
+          >
+            <FileSpreadsheet size={13} /> Download Excel
+          </button>
         </div>
         {c.draft && <p className="mt-1 text-sm text-surface-500">{c.draft.headline}</p>}
+        <NextAction c={c} />
       </div>
 
       <CaseBanner c={c} />
@@ -117,7 +133,7 @@ export default function CaseWorkspace(): JSX.Element {
             <h2 className="text-sm font-semibold text-surface-800">Proposals</h2>
             <span className="text-xs text-surface-500">{decided}/{c.groups.length} decided</span>
           </div>
-          {c.can_decide && <BulkApprove c={c} />}
+          {c.can_decide && <BulkApprove c={c} openedAt={openedAt.current} />}
           {c.groups.length === 0 && <Empty>{c.status === "running" ? "Working on it…" : "Nothing in scope."}</Empty>}
           <ul className="max-h-[60vh] overflow-y-auto p-2 lg:max-h-none">
             {c.groups.map((g) => (
@@ -133,10 +149,11 @@ export default function CaseWorkspace(): JSX.Element {
                     group?.group_id === g.group_id ? "border-accent-400 bg-accent-50/60" : "border-transparent hover:bg-surface-50",
                   )}
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="truncate text-sm font-medium text-surface-800">{g.finding?.category_name ? `${g.finding.category_name} · ${g.finding.side}` : g.label}</span>
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="line-clamp-2 text-sm font-medium leading-snug text-surface-800" title={g.label}>{g.label}</span>
                     <StatusBadge status={g.decision ? decidedLabel(g.decision.action) : g.finding?.status ?? "pending"} />
                   </div>
+                  {!g.decision && <FlagChips flags={g.flags ?? []} />}
                   <div className="mt-1 flex items-center justify-between gap-2">
                     <span className="text-[11px] text-surface-500">
                       {g.item_ids.length} {c.labels.item.toLowerCase()}(s)
@@ -144,6 +161,9 @@ export default function CaseWorkspace(): JSX.Element {
                     </span>
                     {g.finding && <DecidedBy by={g.finding.decided_by} />}
                   </div>
+                  {g.ticket?.reference && (
+                    <span className="mt-1 inline-flex items-center gap-1 text-[11px] text-primary-700"><Ticket size={11} /> {g.ticket.reference}</span>
+                  )}
                 </button>
               </li>
             ))}
@@ -216,23 +236,89 @@ function CaseBanner({ c }: { c: CaseDetail }) {
   );
 }
 
-/** One click for every undecided group the run proposed; escalations need their own words. */
-function BulkApprove({ c }: { c: CaseDetail }) {
+/** One click for the undecided proposals that need nothing more than a click.
+ *  Groups the capability marks for one-by-one review (review.bulk_exclude —
+ *  e.g. a verdict needing confirmation, a judgement call) are left out. */
+function BulkApprove({ c, openedAt }: { c: CaseDetail; openedAt: number }) {
   const bulk = useBulkDecide(c.case_id);
-  const ready = c.groups.filter((g) => !g.decision && g.finding?.status === "proposed");
-  if (ready.length < 2) return null;
+  const open = c.groups.filter((g) => !g.decision && g.finding?.status === "proposed");
+  const ready = open.filter((g) => !(g.bulk_blockers ?? []).length);
+  const held = open.length - ready.length;
+  if (ready.length < 2 && held === 0) return null;
   const refused = bulk.data?.refused ?? [];
   return (
     <div className="border-b border-surface-100 px-3 py-2">
-      <button
-        disabled={bulk.isPending}
-        onClick={() => bulk.mutate({ groupIds: ready.map((g) => g.group_id), action: "approve", comment: "" })}
-        className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-accent-200 px-3 py-1.5 text-xs font-medium text-accent-700 hover:bg-accent-50 disabled:opacity-50"
-      >
-        <CheckCheck size={13} /> Approve all {ready.length} proposed
-      </button>
-      {refused.length > 0 && <p className="mt-1 text-[11px] text-orange-700">{refused.length} need your own decision.</p>}
+      {ready.length >= 2 && (
+        <button
+          disabled={bulk.isPending}
+          onClick={() =>
+            bulk.mutate({
+              groupIds: ready.map((g) => g.group_id),
+              action: "approve",
+              comment: "",
+              reviewSeconds: Math.round((Date.now() - openedAt) / 1000),
+            })
+          }
+          className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-accent-200 px-3 py-1.5 text-xs font-medium text-accent-700 hover:bg-accent-50 disabled:opacity-50"
+        >
+          <CheckCheck size={13} /> Approve {ready.length} straightforward
+        </button>
+      )}
+      {held > 0 && (
+        <p className="mt-1 text-[11px] text-surface-600">
+          {held} {held === 1 ? "needs" : "need"} one-by-one review (confirmation or judgement).
+        </p>
+      )}
+      {refused.length > 0 && <p className="mt-1 text-[11px] text-orange-700">{refused.length} need your own decision: {refused[0].reason}</p>}
       {bulk.error && <div className="mt-1"><ErrorState error={bulk.error} /></div>}
+    </div>
+  );
+}
+
+const FLAG_UI: Record<ReviewFlag, { label: string; cls: string } | null> = {
+  confirmation: { label: "Needs confirmation", cls: "bg-yellow-100 text-yellow-800" },
+  judgement: { label: "Needs your judgement", cls: "bg-purple-100 text-purple-800" },
+  escalated: null, // the status badge already says so
+  model: null,
+};
+
+function FlagChips({ flags }: { flags: ReviewFlag[] }) {
+  const shown = flags.map((f) => FLAG_UI[f]).filter(Boolean) as { label: string; cls: string }[];
+  if (!shown.length) return null;
+  return (
+    <div className="mt-1 flex flex-wrap gap-1">
+      {shown.map((f) => (
+        <span key={f.label} className={clsx("rounded px-1.5 py-0.5 text-[10px] font-semibold", f.cls)}>{f.label}</span>
+      ))}
+    </div>
+  );
+}
+
+/** One line on what is left for the reviewer: groups to decide, and what needs more than a click. */
+function NextAction({ c }: { c: CaseDetail }) {
+  if (c.status !== "awaiting_review") return null;
+  const open = c.groups.filter((g) => !g.decision);
+  if (!open.length) return null;
+  const count = (f: ReviewFlag) => open.filter((g) => (g.flags ?? []).includes(f)).length;
+  const parts = [`${open.length} ${open.length === 1 ? "group" : "groups"} to decide`];
+  if (count("confirmation")) parts.push(`${count("confirmation")} ${count("confirmation") === 1 ? "needs" : "need"} your confirmation`);
+  if (count("judgement")) parts.push(`${count("judgement")} judgement ${count("judgement") === 1 ? "call" : "calls"}`);
+  if (count("escalated")) parts.push(`${count("escalated")} escalated`);
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+      <span className="inline-flex items-center gap-1.5 rounded-lg bg-primary-50 px-2.5 py-1 font-medium text-primary-800">
+        <Scale size={13} /> Next: {parts.join(" · ")}
+      </span>
+      {c.acting_for && (
+        <span className="inline-flex items-center gap-1.5 rounded-lg bg-accent-50 px-2.5 py-1 text-xs font-medium text-accent-800">
+          <UserCheck size={13} /> Covering for {c.acting_for}: your decisions are recorded on their behalf
+        </span>
+      )}
+      {c.exposure != null && (
+        <span className="text-xs text-surface-500">
+          At stake: {formatValue(c.exposure)}{c.unit ? ` ${c.unit}` : ""}
+        </span>
+      )}
     </div>
   );
 }
@@ -290,7 +376,7 @@ function PlaybookPanel({ group }: { group: Group }) {
   return (
     <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 rounded-lg border border-surface-200 p-3 text-xs sm:grid-cols-4" aria-label="Playbook">
       <div><span className="text-surface-500">Category</span><p className="font-medium text-surface-800">{f.category} · {f.category_name}</p></div>
-      <div><span className="text-surface-500">Side</span><p className="font-medium text-surface-800">{f.side}</p></div>
+      <div><span className="text-surface-500">Side</span><p className="font-medium text-surface-800">{f.side_name ?? f.side}</p></div>
       <div><span className="text-surface-500">Verdict</span><p className="font-semibold text-surface-900">{f.verdict?.replace(/_/g, " ") ?? "—"}</p></div>
       <div><span className="text-surface-500">Owner</span><p className="font-medium text-surface-800">{f.escalate_to ?? "—"}</p></div>
       {f.requires_confirmation && (
@@ -303,7 +389,11 @@ function PlaybookPanel({ group }: { group: Group }) {
           <ShieldAlert size={12} className="mt-0.5 shrink-0" /> {f.guard}
         </p>
       )}
-      {f.sme_review && <p className="col-span-full text-surface-600">Judgement call: investigated by the model, decided by a subject-matter expert.</p>}
+      {f.sme_review && (
+        <p className="col-span-full mt-1 flex items-start gap-1.5 rounded-md bg-purple-50 px-2 py-1 font-medium text-purple-800">
+          <Scale size={12} className="mt-0.5 shrink-0" /> Needs your judgement: the model investigated this one; check its reasoning before you decide.
+        </p>
+      )}
     </div>
   );
 }
@@ -313,11 +403,20 @@ function ProposalPanel({ c, group }: { c: CaseDetail; group: Group }) {
   const reinvestigate = useReinvestigate(c.case_id);
   const [comment, setComment] = useState("");
   const [note, setNote] = useState("");
+  const [confirmed, setConfirmed] = useState(false);
+  const shownAt = useRef(Date.now());
+  useEffect(() => {
+    shownAt.current = Date.now();
+  }, [group.group_id]);
   const f = group.finding;
+  const confirmMode = c.review?.confirm ?? "tick_and_comment";
+  const needsConfirm = (group.flags ?? []).includes("confirmation") && confirmMode !== "none";
+  const recurring = c.recurring ?? {};
   const items = useMemo(() => c.items.filter((i) => group.item_ids.includes(i.item_id)), [c.items, group.item_ids]);
   const evidence = useMemo(() => evidenceFor(c.tool_calls, group), [c.tool_calls, group]);
   const rules = c.review?.require_comment ?? ["reject", "escalated"];
-  const needsWordsToApprove = f?.status === "escalated" && rules.includes("escalated");
+  const needsWordsToApprove =
+    (f?.status === "escalated" && rules.includes("escalated")) || (needsConfirm && confirmMode === "tick_and_comment");
   const needsWordsToReject = rules.includes("reject");
   const hasChecks = items.some((i) => Array.isArray(i.checks));
   const hasTests = items.some((i) => Array.isArray(i.tests) && (i.tests as unknown[]).length > 0);
@@ -363,16 +462,49 @@ function ProposalPanel({ c, group }: { c: CaseDetail; group: Group }) {
       </div>
 
       {group.decision ? (
-        <p className="flex items-center gap-2 rounded-lg border border-surface-200 p-3 text-sm">
-          <StatusBadge status={decidedLabel(group.decision.action)} />
-          by <span className="font-medium">{group.decision.decided_by}</span> {formatTime(group.decision.decided_at)}
-          {group.decision.comment && <span className="text-surface-600">— {group.decision.comment}</span>}
-        </p>
+        <div className="rounded-lg border border-surface-200 p-3 text-sm">
+          <p className="flex flex-wrap items-center gap-2">
+            <StatusBadge status={decidedLabel(group.decision.action)} />
+            by <span className="font-medium">{group.decision.decided_by}</span>
+            {group.decision.on_behalf_of && <span className="text-surface-600">for {group.decision.on_behalf_of} (covering)</span>}
+            {formatTime(group.decision.decided_at)}
+            {group.decision.confirmed && <span className="rounded bg-yellow-100 px-1.5 py-0.5 text-[10px] font-semibold text-yellow-800">confirmed</span>}
+          </p>
+          {group.decision.comment && <p className="mt-1 text-surface-600">{group.decision.comment}</p>}
+          {group.ticket && (
+            <p className={clsx("mt-2 flex items-center gap-1.5 text-xs", group.ticket.status === "raised" ? "text-primary-700" : "text-red-700")}>
+              <Ticket size={12} />
+              {group.ticket.status === "raised" ? (
+                <>
+                  Ticket{" "}
+                  {group.ticket.url ? (
+                    <a href={group.ticket.url} target="_blank" rel="noreferrer" className="font-medium underline">{group.ticket.reference}</a>
+                  ) : (
+                    <span className="font-medium">{group.ticket.reference}</span>
+                  )}{" "}
+                  raised for {f?.escalate_to ?? "the owning team"}
+                </>
+              ) : (
+                <>Ticket not raised: {group.ticket.error}</>
+              )}
+            </p>
+          )}
+        </div>
       ) : c.can_decide ? (
         <div className="rounded-lg border border-surface-200 p-3">
+          {needsConfirm && (
+            <label className="mb-2 flex items-start gap-2 rounded-md bg-yellow-50 px-2 py-1.5 text-xs text-yellow-900">
+              <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-0.5" />
+              <span>
+                I confirm this verdict although {f?.requires_confirmation?.replace(/^.*depends on unset policy:\s*/, "the policy ") ?? "a policy"} is not yet set.
+              </span>
+            </label>
+          )}
           <label className="block text-xs font-medium text-surface-600">
             {needsWordsToApprove
-              ? "Your explanation (required: this group was escalated)"
+              ? needsConfirm && f?.status !== "escalated"
+                ? "Your explanation (required to confirm this verdict)"
+                : "Your explanation (required: this group was escalated)"
               : "Your explanation (optional — replaces the proposal's when approved; required to reject)"}
             <textarea
               value={comment}
@@ -383,15 +515,30 @@ function ProposalPanel({ c, group }: { c: CaseDetail; group: Group }) {
           </label>
           <div className="mt-2 flex flex-wrap gap-2">
             <button
-              disabled={decide.isPending || (needsWordsToApprove && !comment.trim())}
-              onClick={() => decide.mutate({ groupId: group.group_id, action: "approve", comment })}
+              disabled={decide.isPending || (needsWordsToApprove && !comment.trim()) || (needsConfirm && !confirmed)}
+              onClick={() =>
+                decide.mutate({
+                  groupId: group.group_id,
+                  action: "approve",
+                  comment,
+                  confirmed: needsConfirm ? confirmed : false,
+                  reviewSeconds: Math.round((Date.now() - shownAt.current) / 1000),
+                })
+              }
               className="inline-flex items-center gap-1.5 rounded-lg bg-brand-accent px-3 py-1.5 text-sm font-medium text-brand-accent-fg hover:bg-brand-accent-strong disabled:opacity-50"
             >
               <Check size={14} /> Approve
             </button>
             <button
               disabled={decide.isPending || (needsWordsToReject && !comment.trim())}
-              onClick={() => decide.mutate({ groupId: group.group_id, action: "reject", comment })}
+              onClick={() =>
+                decide.mutate({
+                  groupId: group.group_id,
+                  action: "reject",
+                  comment,
+                  reviewSeconds: Math.round((Date.now() - shownAt.current) / 1000),
+                })
+              }
               className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
             >
               <X size={14} /> Reject
@@ -431,7 +578,11 @@ function ProposalPanel({ c, group }: { c: CaseDetail; group: Group }) {
           <table className="w-full text-left text-xs">
             <thead className="bg-surface-50 text-surface-500">
               <tr>
-                {c.columns.map((col) => <th key={col} scope="col" className="whitespace-nowrap px-3 py-2 font-medium">{col.replace(/_/g, " ")}</th>)}
+                {c.columns.map((col) => (
+                  <th key={col} scope="col" className={clsx("whitespace-nowrap px-3 py-2 font-medium", typeof items[0]?.[col] === "number" && "text-right")}>
+                    {col.replace(/_/g, " ")}
+                  </th>
+                ))}
                 {hasChecks && <th scope="col" className="px-3 py-2 font-medium">checks</th>}
                 {hasTests && <th scope="col" className="px-3 py-2 font-medium">tests</th>}
               </tr>
@@ -439,7 +590,30 @@ function ProposalPanel({ c, group }: { c: CaseDetail; group: Group }) {
             <tbody className="divide-y divide-surface-100">
               {items.map((it) => (
                 <tr key={it.item_id}>
-                  {c.columns.map((col) => <td key={col} className="whitespace-nowrap px-3 py-1.5 tabular-nums">{formatValue(it[col])}</td>)}
+                  {c.columns.map((col, i) => {
+                    const v = it[col];
+                    const numeric = typeof v === "number";
+                    const long = typeof v === "string" && v.length > 28;
+                    return (
+                      <td
+                        key={col}
+                        className={clsx(
+                          "px-3 py-1.5 tabular-nums",
+                          numeric ? "whitespace-nowrap text-right" : long ? "min-w-[14rem] max-w-[22rem] whitespace-normal" : "whitespace-nowrap",
+                        )}
+                      >
+                        {formatValue(v)}
+                        {i === 0 && recurring[it.item_id] && (
+                          <span
+                            title={`Also in: ${recurring[it.item_id].earlier.map((e) => e.subject).join(", ")}`}
+                            className="ml-1.5 inline-flex items-center gap-0.5 rounded bg-orange-100 px-1 text-[10px] font-semibold text-orange-700"
+                          >
+                            <Repeat size={9} /> {recurring[it.item_id].runs} runs
+                          </span>
+                        )}
+                      </td>
+                    );
+                  })}
                   {hasChecks && <td className="px-3 py-1.5"><ChecksCell checks={(it.checks as CheckResult[]) ?? []} /></td>}
                   {hasTests && <td className="px-3 py-1.5"><TestsCell tests={(it.tests as TestResult[]) ?? []} /></td>}
                 </tr>
@@ -450,7 +624,7 @@ function ProposalPanel({ c, group }: { c: CaseDetail; group: Group }) {
       </div>
 
       <div>
-        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-surface-500">Evidence ({evidence.length} connector calls)</h3>
+        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-surface-500">Data used ({evidence.length} system calls)</h3>
         <ul className="space-y-1 text-xs">
           {evidence.map((t) => (
             <li key={t.call_id} className="flex flex-wrap items-center gap-x-3 gap-y-0.5 rounded-md border border-surface-100 px-2 py-1.5">
@@ -630,7 +804,7 @@ function ContextPanel({ c }: { c: CaseDetail }) {
       <LegalHold c={c} />
 
       <div>
-        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-surface-500">Evidence</h2>
+        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-surface-500">Data used</h2>
         <dl className="space-y-1">
           {Object.entries(byWho).map(([who, n]) => (
             <div key={who} className="flex justify-between"><dt className="text-surface-500">calls by {who}</dt><dd>{n}</dd></div>

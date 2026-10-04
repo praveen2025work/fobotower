@@ -4,7 +4,8 @@
 
 import { Link } from "react-router-dom";
 
-import { useInbox } from "../api/helix";
+import { currentUser } from "../api/client";
+import { useInbox, useMe } from "../api/helix";
 import { useOperations } from "../api/missionControlApi";
 import FleetTable from "../components/mission-control/FleetTable";
 import HealthBanner from "../components/mission-control/HealthBanner";
@@ -19,6 +20,10 @@ import { ErrorState } from "../components/ui";
 export default function Operations(): JSX.Element {
   const ops = useOperations();
   const inbox = useInbox();
+  const me = useMe(currentUser());
+  // Platform support holds no data scope: say why case panels are empty.
+  const support = !!me.data?.is_admin && Object.keys(me.data?.data_scopes ?? {}).length === 0;
+  const hidden = "Case data is hidden from platform support. Health, connectors and switches are below.";
 
   return (
     <div className="-m-4 flex min-h-[calc(100vh-3.5rem)] flex-col lg:-m-6">
@@ -28,7 +33,7 @@ export default function Operations(): JSX.Element {
 
       <div className="grid flex-1 grid-cols-12 gap-4 p-4">
         <div className="col-span-12 lg:col-span-6">
-          <FleetTable agents={ops.data?.fleet} isLoading={ops.isLoading} isError={ops.isError} onRetry={() => ops.refetch()} />
+          <FleetTable agents={ops.data?.fleet} isLoading={ops.isLoading} isError={ops.isError} onRetry={() => ops.refetch()} emptyMessage={support ? hidden : undefined} />
         </div>
         <div className="col-span-12 lg:col-span-3">
           <section className="flex h-full flex-col rounded-xl border border-surface-200 bg-card">
@@ -47,7 +52,11 @@ export default function Operations(): JSX.Element {
                   </div>
                 </li>
               ))}
-              {inbox.data?.length === 0 && <li className="px-4 py-6 text-center text-xs text-surface-400">Nothing waiting on you.</li>}
+              {inbox.data?.length === 0 && (
+                <li className="px-4 py-6 text-center text-xs text-surface-400">
+                  {support ? "Reviews go to the business teams; platform support has none." : "Nothing waiting on you."}
+                </li>
+              )}
             </ul>
           </section>
         </div>
@@ -63,7 +72,7 @@ export default function Operations(): JSX.Element {
 
       <div className="grid grid-cols-12 gap-4 px-4 pb-4">
         <div className="col-span-12 lg:col-span-7"><SwitchesPanel /></div>
-        <div className="col-span-12 lg:col-span-5"><SchedulesPanel /></div>
+        <div className="col-span-12 lg:col-span-5"><SchedulesPanel emptyMessage={support ? "Schedules belong to the business teams' capabilities; none are visible to platform support." : undefined} /></div>
       </div>
 
       <IncidentStrip incidents={ops.data?.incidents} isLoading={ops.isLoading} />

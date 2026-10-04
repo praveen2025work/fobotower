@@ -74,6 +74,17 @@ connectors:
         idempotency_arg: idempotency_key   # a repeated write returns the first receipt
         scope: { arg: entity, key: entity }
 
+  ticketing:
+    name: Team ticket queues (stub)
+    transport: inproc
+    target: helix.stub_connectors.finance:build_ticketing
+    classification: internal
+    tools:
+      create_ticket:
+        description: Raise a ticket in a team's queue (ServiceNow / Jira)
+        access: write          # raised by the record step after review, never by the model
+        idempotency_arg: idempotency_key   # one ticket per case and group, however often retried
+
   cats:
     name: CATS — front-office positions (stub)
     transport: inproc

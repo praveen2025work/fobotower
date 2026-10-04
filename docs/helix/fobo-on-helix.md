@@ -55,6 +55,9 @@ Status: **Same** = the same rule, now as Helix configuration ·
 | Validation tests FO-1…FO-8, BO-1…BO-6 with evidence | `playbook.tests`: every test on every break — pass, fail, or not run (evidence missing, or threshold unset under P1); blocking failures (FO-1/2/4/7) hold a POST; FO-3 failing needs FO-6 | **Same** |
 | FO-6 findings A/B/C | `playbook.findings`: a finding that indicates a category explains a break no cause check did | **Same** |
 | A rec opens when its run lands (11:00 run, COB) | scheduled cases (`30 6 * * 1-5`, yesterday's COB per book) and events from MOTIF's feed (`POST /api/events`) | **Same** |
+| Controller confirms a POST made under an unset threshold | `review.confirm: tick_and_comment`; "Approve all" leaves such verdicts out (`review.bulk_exclude`) | **Same** (stricter: enforced by the server) |
+| Rec deadline (11:00 run) | `case.due: {from: cob, business_days: 1, at: "11:00"}` — due-soon and missed reminders | **Same** |
+| Fix upstream goes to the owning team | `escalation` raises a ticket for `escalate_to` after the controller decides | **Different** (FOBO named the owner; Helix also raises the ticket) |
 | `rank` step (order candidate causes) | the first positive check in playbook order is the cause | **Different** |
 
 ## Changing FOBO's rules on Helix

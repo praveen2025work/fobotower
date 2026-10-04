@@ -80,3 +80,13 @@ connectors:
     classification: internal
     tools:
       search: { description: Search accounting policy and procedure documents }
+
+  # The team ticket queues escalations are raised in (manifest `escalation`).
+  ticketing:
+    name: ServiceNow — team queues
+    transport: http
+    url: https://servicenow-mcp.internal.example/mcp
+    headers_env: { Authorization: SERVICENOW_MCP_AUTHORIZATION }
+    classification: internal
+    tools:
+      create_ticket: { description: "Raise a ticket in a team's queue", access: write, idempotency_arg: idempotency_key }

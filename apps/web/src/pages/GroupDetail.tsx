@@ -10,6 +10,8 @@ import { parse, stringify } from "yaml";
 import { currentUser } from "../api/client";
 import { useApproveGroup, useDraftGroup, useGroup, type GroupConfig } from "../api/helix";
 import FlowDiagram from "../components/capability/FlowDiagram";
+import RecurringPanel from "../components/capability/RecurringPanel";
+import SettingsForm, { setPath, type Changes } from "../components/capability/SettingsForm";
 import InstructionsEditor from "../components/capability/InstructionsEditor";
 import VersionsPanel from "../components/capability/VersionsPanel";
 import StatusBadge from "../components/StatusBadge";
@@ -52,6 +54,16 @@ export default function GroupDetail(): JSX.Element {
         </Card>
       </div>
 
+      {!!(g.manifest as unknown as { insights?: { recurring?: unknown } }).insights?.recurring && (
+        <div className="mb-4"><RecurringPanel capabilityId={id} teamGroup={group} /></div>
+      )}
+
+      {g.is_owner && (
+        <div className="mb-4">
+          <GroupSettings capabilityId={id} config={g.config} manifest={g.manifest as unknown as Record<string, unknown>} configurable={g.configurable} />
+        </div>
+      )}
+
       <h2 className="mb-2 text-sm font-semibold text-surface-800">Configuration its cases run on</h2>
       <ManifestDefinition manifest={g.manifest} />
 
@@ -75,6 +87,31 @@ export default function GroupDetail(): JSX.Element {
         </Card>
       </div>
     </div>
+  );
+}
+
+/** The settings form for a group: changes land in the group's `set`, as a draft. */
+function GroupSettings({ capabilityId, config, manifest, configurable }: {
+  capabilityId: string;
+  config: GroupConfig;
+  manifest: Record<string, unknown>;
+  configurable: string[];
+}) {
+  const draft = useDraftGroup(capabilityId);
+  const submit = (changes: Changes, note: string) => {
+    let set = config.set as Record<string, unknown>;
+    for (const [path, value] of Object.entries(changes)) set = setPath(set, path, value);
+    draft.mutate({ config: { ...config, set }, note: note || `settings: ${Object.keys(changes).join(", ")}` });
+  };
+  return (
+    <SettingsForm
+      manifest={manifest}
+      configurable={configurable}
+      onSubmit={submit}
+      pending={draft.isPending}
+      error={draft.error}
+      done={draft.data ? `Version ${draft.data.version} drafted. Another owner approves it under Versions.` : null}
+    />
   );
 }
 

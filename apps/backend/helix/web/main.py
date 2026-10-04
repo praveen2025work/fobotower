@@ -6,6 +6,7 @@ and data scopes come from the entitlement service, never from the request.
 """
 
 import asyncio
+from datetime import datetime
 import hmac
 from contextlib import asynccontextmanager
 from functools import wraps
@@ -15,7 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
-from helix import authoring, capabilities, cases, chat, controls, devtools, evals, evidence, knowledge, notify, retention, runner, scheduler, views
+from helix import authoring, capabilities, cases, chat, controls, devtools, evals, evidence, knowledge, notify, retention, review, runner, scheduler, views
 from helix import groups as team_groups
 from helix.config import settings
 from helix.entitlement import Caller, EntitlementError, StubEntitlement, entitlements
@@ -85,6 +86,8 @@ def _errors(fn):
             raise HTTPException(422, {"message": str(e), "problems": e.problems}) from e
         except cases.CaseError as e:
             raise HTTPException(409, str(e)) from e
+        except review.ReviewError as e:
+            raise HTTPException(422, str(e)) from e
     return wrapped
 
 
@@ -95,7 +98,37 @@ async def health() -> dict:
 
 @app.get("/api/me")
 async def me(c: Caller = Depends(caller)) -> dict:
-    return {**c.as_dict(), "llm": llm().name}
+    return {**c.as_dict(), "llm": llm().name, "is_admin": settings().admin_role in c.roles,
+            "covering_for": [a.user_id for a in await review.covering_for(c)]}
+
+
+@app.get("/api/me/delegations")
+@_errors
+async def my_delegations(c: Caller = Depends(caller)) -> dict:
+    return await review.mine(c)
+
+
+class DelegationIn(BaseModel):
+    to_user: str = Field(min_length=1, max_length=64)
+    until: datetime
+    starts_at: datetime | None = None
+    reason: str | None = Field(default=None, max_length=500)
+
+
+@app.post("/api/me/delegations", status_code=201)
+@_errors
+async def delegate(body: DelegationIn, c: Caller = Depends(caller)) -> dict:
+    """While I am away, this colleague decides on my behalf — only on cases
+    whose capability allows it (review.allow_delegation), within my scope."""
+    await entitlements().get(body.to_user)            # a real user
+    return await review.delegate(c, body.to_user, body.until, body.reason, body.starts_at)
+
+
+@app.delete("/api/me/delegations/{delegation_id}", status_code=204)
+@_errors
+async def end_delegation(delegation_id: str, c: Caller = Depends(caller)) -> Response:
+    await review.revoke(c, delegation_id)
+    return Response(status_code=204)
 
 
 @app.get("/api/dev/users")
@@ -263,13 +296,18 @@ class DecisionIn(BaseModel):
     action: str
     comment: str | None = None
     idempotency_key: str = Field(min_length=8, max_length=128)
+    # The reviewer explicitly confirms a verdict flagged "requires confirmation".
+    confirmed: bool = False
+    # Time the reviewer spent on the group before deciding (the console measures it).
+    review_seconds: int | None = Field(default=None, ge=0)
 
 
 @app.post("/api/cases/{case_id}/decisions", status_code=201)
 @_errors
 async def decide(case_id: str, body: DecisionIn, c: Caller = Depends(caller)) -> dict:
     result = await cases.decide(case_id, body.group_id, body.action, body.comment,
-                                body.idempotency_key, c)
+                                body.idempotency_key, c, confirmed=body.confirmed,
+                                review_seconds=body.review_seconds)
     return {**result, "case": await cases.case_detail(case_id, c)}
 
 
@@ -278,13 +316,14 @@ class BulkDecisionIn(BaseModel):
     action: str
     comment: str | None = None
     idempotency_key: str = Field(min_length=8, max_length=96)
+    review_seconds: int | None = Field(default=None, ge=0)
 
 
 @app.post("/api/cases/{case_id}/decisions/bulk", status_code=201)
 @_errors
 async def decide_bulk(case_id: str, body: BulkDecisionIn, c: Caller = Depends(caller)) -> dict:
     result = await cases.bulk_decide(case_id, body.group_ids, body.action, body.comment,
-                                     body.idempotency_key, c)
+                                     body.idempotency_key, c, review_seconds=body.review_seconds)
     return {**result, "case": await cases.case_detail(case_id, c)}
 
 
@@ -324,6 +363,26 @@ async def evidence_pack(case_id: str, c: Caller = Depends(caller)) -> Response:
     content, name = await evidence.pack(case_id, c)
     return Response(content, media_type="application/pdf",
                     headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+
+@app.get("/api/cases/{case_id}/export.xlsx")
+@_errors
+async def export_case(case_id: str, c: Caller = Depends(caller)) -> Response:
+    """The case as a workbook: items, groups and decisions, the case's facts."""
+    from helix import export
+
+    content, name = await export.workbook(case_id, c)
+    return Response(content, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+
+@app.get("/api/capabilities/{capability_id}/recurring")
+@_errors
+async def recurring(capability_id: str, team_group: str | None = None, c: Caller = Depends(caller)) -> list[dict]:
+    """Items that keep coming back across the caller's cases (insights.recurring)."""
+    from helix import insights
+
+    return await insights.recurring_overview(capability_id, c, team_group)
 
 
 class AskIn(BaseModel):

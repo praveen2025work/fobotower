@@ -121,6 +121,12 @@ class Case(HelixBase):
     shadow_of: Mapped[str | None] = mapped_column(String(128), nullable=True)
     eval_run_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     legal_hold_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # When the case is due (manifest case.due), and which reminder went out
+    # (soon | missed) so each is sent once.
+    due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    due_notified: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    # When the run first paused for people: the start of measured review time.
+    review_ready_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     updated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=True
     )
@@ -195,6 +201,13 @@ class Decision(HelixBase):
     comment: Mapped[str | None] = mapped_column(Text, nullable=True)
     decided_by: Mapped[str] = mapped_column(String(64))
     idempotency_key: Mapped[str] = mapped_column(String(128), unique=True)
+    # The reviewer explicitly confirmed a verdict flagged "requires confirmation".
+    confirmed: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    # Decided under delegation: the absent reviewer this decision was made for.
+    on_behalf_of: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # Seconds the reviewer spent on the group before deciding, as the console
+    # measured it (time on screen) — the measured side of "time saved".
+    review_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
     decided_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -376,9 +389,43 @@ class SchedulerTick(HelixBase):
 
 
 HELIX_TABLES = [  # child tables first, for truncation in tests
+    "helix_ticket", "helix_delegation",
     "helix_eval_run", "helix_switch", "helix_scheduler_tick",
     "helix_notification_read", "helix_notification",
     "helix_case_message", "helix_document", "helix_retention_event",
     "helix_publish_approval", "helix_decision", "helix_proposal_group", "helix_case_item", "helix_tool_call",
     "helix_case", "helix_group_version", "helix_capability_version", "helix_kg_edge", "helix_kg_node",
 ]
+
+
+class Ticket(HelixBase):
+    """A ticket raised for the team that owns a problem (manifest `escalation`)."""
+
+    __tablename__ = "helix_ticket"
+    case_id: Mapped[str] = mapped_column(
+        String(128), ForeignKey("helix_case.case_id", ondelete="CASCADE"), primary_key=True
+    )
+    group_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    tool: Mapped[str] = mapped_column(String(128))
+    reference: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(16))        # raised | failed
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    raised_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class Delegation(HelixBase):
+    """A reviewer away: a colleague decides on their behalf until `until`."""
+
+    __tablename__ = "helix_delegation"
+    delegation_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    from_user: Mapped[str] = mapped_column(String(64), index=True)
+    to_user: Mapped[str] = mapped_column(String(64), index=True)
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    until: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # The absent reviewer as entitlements saw them when they delegated: the
+    # roles and data scopes the colleague acts within.
+    from_entitlement: Mapped[dict] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

@@ -23,6 +23,14 @@ class Owners(Strict):
     four_eyes: bool = True    # the drafter of a change cannot approve it
 
 
+class DueSpec(Strict):
+    from_: str = Field(default="opened", alias="from")   # "opened" or a case-key date field (e.g. cob)
+    business_days: int = Field(default=0, ge=0, le=60)
+    hours: float = Field(default=0, ge=0, le=24 * 30)
+    at: str | None = Field(default=None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$")  # time of day, HH:MM (schedule time zone)
+    warn_hours: float = Field(default=2, ge=0, le=72)    # "due soon" this long before
+
+
 class CaseSpec(Strict):
     label: str = "Case"               # what the UI calls one unit of work
     item_label: str = "Item"
@@ -39,6 +47,10 @@ class CaseSpec(Strict):
     # The service user scheduled and event-opened cases run as — an account in
     # the entitlements system with the roles and data scopes they need.
     opens_as: str | None = None
+    # When a case is due: from the moment it opened (or a date in its key),
+    # plus business days and hours, optionally at a time of day. Inboxes count
+    # down to it; owners and reviewers are told when it is near and when missed.
+    due: DueSpec | None = None
 
 
 class ToolCallSpec(Strict):
@@ -51,6 +63,7 @@ class ItemsSpec(Strict):
     load: ToolCallSpec | None = None   # used by the `load` step
     id_field: str
     amount_field: str | None = None
+    amount_unit: str | None = None     # e.g. GBP: how amounts and exposure are labelled
     display: list[str] = Field(default_factory=list)  # columns in the generic UI
     in_scope: str | None = None        # expression over one item's fields + policy
 
@@ -170,6 +183,8 @@ class PlaybookSpec(Strict):
     confirm_verdicts: list[str] = Field(default_factory=lambda: ["POST"])
     verdict_policy: list[str] = Field(default_factory=list)
     comment: str = "{category_name}: {reasons}"   # template for a playbook finding
+    # Business words for each side, used in labels ("side_name"), e.g. FO: front office.
+    side_names: dict[str, str] = Field(default_factory=dict)
 
     def verdict_names(self) -> list[str]:
         names = {v for sides in self.verdicts.values() for v in sides.values()}
@@ -270,6 +285,51 @@ class ReviewSpec(Strict):
     dual_review_when: str | None = None
     # How often a reviewer may send one group back to be investigated again.
     max_reinvestigations: int = Field(default=2, ge=0, le=10)
+    # Groups "Approve all" leaves for one-by-one review:
+    #   confirmation  a verdict flagged "requires controller confirmation"
+    #   judgement     a judgement call (the model investigated; an SME decides)
+    #   escalated     escalated by a rule, the playbook or the model
+    #   model         any group the model proposed
+    bulk_exclude: list[Literal["confirmation", "judgement", "escalated", "model"]] = Field(
+        default_factory=lambda: ["confirmation", "judgement"])
+    # Approving a group flagged "requires controller confirmation" needs:
+    # tick (an explicit confirmation), tick_and_comment (and the reviewer's words), none.
+    confirm: Literal["none", "tick", "tick_and_comment"] = "tick_and_comment"
+    # May a reviewer hand their reviews to a colleague while away? The colleague
+    # decides on their behalf, within the absent reviewer's data scope; both are recorded.
+    allow_delegation: bool = False
+
+
+class RecurringSpec(Strict):
+    """Items that keep coming back: the same item id in earlier cases of the
+    same capability (and group) whose `same` key fields match this case's."""
+    same: list[str] = Field(default_factory=list)    # e.g. [book]: the same book, earlier COBs
+    lookback_cases: int = Field(default=10, ge=1, le=100)
+    min_runs: int = Field(default=2, ge=2, le=100)   # seen in at least this many runs, this one included
+
+
+class InsightsSpec(Strict):
+    recurring: RecurringSpec | None = None
+
+
+class EscalationSpec(Strict):
+    """Raise a ticket for the team that owns a problem — after review, through
+    a write tool on a ticketing connector (ServiceNow, Jira…). One call per
+    group that matches `when`, idempotent per case and group."""
+    tool: str                          # a connector tool with access: write
+    # Expression over the group and its outcome: its key fields, total, count,
+    # verdict, status (proposed|escalated), action (approve|reject), category,
+    # side, escalate_to, policy.
+    when: str
+    # Argument values: literals, "$case.<field>", "$case_id", "$subject",
+    # "$group.<field>", "$label", "$comment", "$verdict", "$escalate_to",
+    # "$total", "$decided_by".
+    args: dict[str, Any] = Field(default_factory=dict)
+
+
+class ExportSpec(Strict):
+    """The case's Excel download: item columns (default: items.display)."""
+    columns: list[str] = Field(default_factory=list)
 
 
 class Manifest(Strict):
@@ -285,6 +345,10 @@ class Manifest(Strict):
     steps: list[str]
     pause_before: list[str] = Field(default_factory=lambda: ["review"])
     group_by: list[str] = Field(default_factory=list)
+    # How a group is named, a template over its key fields and, with a
+    # playbook, category_name and side_name — e.g. "{category_name} · {side_name}".
+    # Default: "field value, field value".
+    group_label: str | None = None
     rules: list[Rule] = Field(default_factory=list)
     reasoning: ReasoningSpec = Field(default_factory=ReasoningSpec)
     review: ReviewSpec
@@ -296,6 +360,9 @@ class Manifest(Strict):
     retention: RetentionSpec | None = None
     metrics: MetricsSpec = Field(default_factory=MetricsSpec)
     limits: LimitsSpec = Field(default_factory=LimitsSpec)
+    insights: InsightsSpec = Field(default_factory=InsightsSpec)
+    escalation: EscalationSpec | None = None
+    export: ExportSpec = Field(default_factory=ExportSpec)
     # What a group (a team's configuration of this capability, e.g. one rec group)
     # may set: dotted paths; "x.*" = anything under x. Owners stay the capability's.
     configurable: list[str] = Field(default_factory=list)
@@ -312,10 +379,16 @@ class Manifest(Strict):
         used |= {e.tool for e in self.enrich}
         if self.publish:
             used.add(self.publish.tool)
+        if self.escalation:
+            used.add(self.escalation.tool)
         return used
 
+    def write_tools(self) -> set[str]:
+        return ({self.publish.tool} if self.publish else set()) | (
+            {self.escalation.tool} if self.escalation else set())
+
     def read_tools(self) -> set[str]:
-        return self.tools_used() - ({self.publish.tool} if self.publish else set())
+        return self.tools_used() - self.write_tools()
 
     def visible_to_roles(self) -> set[str]:
         return set(self.review.roles) | ({self.owners.role} if self.owners.role else set())
@@ -326,6 +399,7 @@ def _expressions(m: Manifest) -> list[tuple[str, str | None]]:
     return [("items.in_scope", m.items.in_scope),
             *[(f"rules[{r.id}].when", r.when) for r in m.rules],
             ("review.dual_review_when", m.review.dual_review_when),
+            ("escalation.when", m.escalation.when if m.escalation else None),
             *[(f"playbook.checks[{c.id}].when", c.when) for c in (m.playbook.checks if m.playbook else [])],
             *[(f"playbook.guards[{g.verdict}].when", g.when) for g in (m.playbook.guards if m.playbook else [])],
             *[(f"playbook.tests[{t.id}].fails_when", t.fails_when) for t in (m.playbook.tests if m.playbook else [])],
@@ -352,6 +426,15 @@ def problems(m: Manifest) -> list[str]:
         out.append(f"publish.tool `{m.publish.tool}` is not a write tool")
     if m.publish:
         out += m.publish.arg_problems()
+    if m.escalation and (found := reg.tool(m.escalation.tool)) and found[2].access != "write":
+        out.append(f"escalation.tool `{m.escalation.tool}` is not a write tool")
+    if m.escalation and "record" not in m.steps:
+        out.append("`escalation` raises tickets in the `record` step, which the workflow lacks")
+    if m.case.due and m.case.due.from_ != "opened" and m.case.due.from_ not in m.case.key:
+        out.append(f"case.due.from `{m.case.due.from_}` is not a case-key field (or `opened`)")
+    if m.insights.recurring:
+        out += [f"insights.recurring.same: `{f}` is not a case-key field"
+                for f in m.insights.recurring.same if f not in m.case.key]
     reads = set(m.reasoning.tools) | ({m.items.load.tool} if m.items.load else set())
     if m.match:
         reads |= {m.match.left.tool, m.match.right.tool}

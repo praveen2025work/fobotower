@@ -181,7 +181,7 @@ function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
             <button onClick={() => setMobileOpen(true)} className="rounded-lg p-2 hover:bg-surface-100 lg:hidden" aria-label="Open menu">
               <Menu size={18} className="text-surface-500" />
             </button>
-            {platform.data && (
+            {platform.data && me.data?.is_admin && (
               <span className="hidden text-xs text-surface-500 sm:inline">
                 LLM <span className="font-medium text-surface-700">{platform.data.llm}</span> · Entitlement{" "}
                 <span className="font-medium text-surface-700">{platform.data.entitlement}</span>

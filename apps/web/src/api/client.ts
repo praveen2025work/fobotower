@@ -45,6 +45,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
+  if (res.status === 204) return undefined as T;
   if (res.ok) return (await res.json()) as T;
   let message = `${method} ${path} failed (${res.status})`;
   let problems: string[] = [];
@@ -90,6 +91,7 @@ export async function download(path: string, filename: string): Promise<void> {
 export const api = {
   get: <T,>(path: string) => request<T>("GET", path),
   post: <T,>(path: string, body: unknown) => request<T>("POST", path, body),
+  del: (path: string) => request<void>("DELETE", path),
 };
 
 export function newIdempotencyKey(): string {

@@ -83,17 +83,25 @@ configurable:
   - case.schedule_keys
   - case.events
   - case.opens_as
+  - case.due
   - items
   - match
   - policy.*
   - rules
   - group_by
+  - group_label
   - reasoning.skill
   - reasoning.tools
   - reasoning.specialists
   - review.roles
   - review.require_comment
   - review.dual_review_when
+  - review.bulk_exclude
+  - review.confirm
+  - review.allow_delegation
+  - insights
+  - export
+  - escalation
   - knowledge
   - resolve
   - enrich

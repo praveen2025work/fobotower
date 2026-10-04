@@ -85,7 +85,7 @@ export function SwitchesPanel() {
   );
 }
 
-export function SchedulesPanel() {
+export function SchedulesPanel({ emptyMessage = "No schedules you can see." }: { emptyMessage?: string } = {}) {
   const schedules = useSchedules();
   return (
     <section className="rounded-xl border border-surface-200 bg-card" aria-label="Schedules">
@@ -105,7 +105,7 @@ export function SchedulesPanel() {
             <p className="mt-0.5 text-surface-500">{s.keys.length} case(s) each run, as {s.opens_as}</p>
           </li>
         ))}
-        {schedules.data?.length === 0 && <li className="px-4 py-3 text-xs text-surface-400">No schedules you can see.</li>}
+        {schedules.data?.length === 0 && <li className="px-4 py-3 text-xs text-surface-400">{emptyMessage}</li>}
       </ul>
     </section>
   );

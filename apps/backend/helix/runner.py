@@ -20,7 +20,7 @@ import logging
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 
 from helix.config import settings
 from helix.db import engine, get_session
@@ -73,6 +73,8 @@ async def _status_after_run(app, case_id: str) -> str:
         case = await s.get(Case, case_id)
         if "review" in snapshot.next:
             case.status = "awaiting_review"
+            if case.review_ready_at is None:           # the start of measured review time
+                case.review_ready_at = func.now()
         elif "publish" in snapshot.next:
             case.status = "awaiting_publish"
         elif snapshot.next:

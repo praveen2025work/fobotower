@@ -4,6 +4,8 @@ import Sparkline from "./Sparkline";
 import type { FleetAgent } from "../../api/missionControlApi";
 
 interface FleetTableProps {
+  /** What to say when there is nothing to list (e.g. why support sees no cases). */
+  emptyMessage?: string;
   agents: FleetAgent[] | undefined;
   isLoading: boolean;
   isError?: boolean;
@@ -68,7 +70,7 @@ function SkeletonRow() {
  * Left column of the Mission Control grid — 6/12 cols, single source of
  * truth for "what are my agents doing right now". Click row → agent detail.
  */
-function FleetTable({ agents, isLoading, isError, onRetry }: FleetTableProps) {
+function FleetTable({ agents, isLoading, isError, onRetry, emptyMessage }: FleetTableProps) {
   const navigate = useNavigate();
 
   return (
@@ -152,7 +154,7 @@ function FleetTable({ agents, isLoading, isError, onRetry }: FleetTableProps) {
               {!isLoading && agents && agents.length === 0 && (
                 <tr>
                   <td colSpan={5} className="p-6 text-center text-sm text-surface-500">
-                    No cases in your scope yet.
+                    {emptyMessage ?? "No cases in your scope yet."}
                   </td>
                 </tr>
               )}

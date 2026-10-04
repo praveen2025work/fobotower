@@ -5,8 +5,12 @@ import { Play } from "lucide-react";
 
 import { Users } from "lucide-react";
 
-import { useCapability, useCases, useGroups, useOpenCase, type Manifest, type TeamGroup } from "../api/helix";
+import { stringify } from "yaml";
+
+import { useCapabilities, useCapability, useCases, useGroups, useOpenCase, useSubmitDraft, type Manifest, type TeamGroup } from "../api/helix";
 import EvalsPanel from "../components/capability/EvalsPanel";
+import RecurringPanel from "../components/capability/RecurringPanel";
+import SettingsForm, { setPath, type Changes } from "../components/capability/SettingsForm";
 import FlowDiagram from "../components/capability/FlowDiagram";
 import InstructionsEditor from "../components/capability/InstructionsEditor";
 import VersionsPanel from "../components/capability/VersionsPanel";
@@ -18,6 +22,7 @@ type Tab = "groups" | "cases" | "flow" | "definition" | "instructions" | "evals"
 export default function CapabilityDetail(): JSX.Element {
   const { id = "" } = useParams();
   const cap = useCapability(id);
+  const caps = useCapabilities();
   const groups = useGroups(id);
   const hasGroups = (groups.data?.length ?? 0) > 0;
   const [chosen, setTab] = useState<Tab | null>(null);
@@ -27,6 +32,8 @@ export default function CapabilityDetail(): JSX.Element {
   if (cap.error) return <ErrorState error={cap.error} />;
   if (!cap.data) return <Empty>Not found.</Empty>;
   const m = cap.data.manifest;
+  const isOwner = !!caps.data?.find((x) => x.id === id)?.is_owner;
+  const hasRecurring = !!(m as unknown as { insights?: { recurring?: unknown } }).insights?.recurring;
 
   return (
     <div>
@@ -52,6 +59,9 @@ export default function CapabilityDetail(): JSX.Element {
       </div>
       {tab === "groups" && <GroupsTab id={id} groups={groups.data ?? []} configurable={m.configurable} />}
       {tab === "cases" && <CasesTab id={id} manifest={m} groups={groups.data ?? []} />}
+      {tab === "cases" && (hasRecurring || (groups.data ?? []).length > 0) && (
+        <div className="mt-4"><RecurringPanel capabilityId={id} /></div>
+      )}
       {tab === "definition" && (
         <>
           {hasGroups && (
@@ -76,9 +86,12 @@ export default function CapabilityDetail(): JSX.Element {
         </Card>
       )}
       {tab === "versions" && (
-        <Card title="Versions" aside={<span className="text-xs text-surface-500">An owner drafts; a different owner approves.</span>}>
-          <VersionsPanel capabilityId={id} versions={cap.data.versions} />
-        </Card>
+        <div className="space-y-4">
+          {isOwner && <CapabilitySettings manifest={m} />}
+          <Card title="Versions" aside={<span className="text-xs text-surface-500">An owner drafts; a different owner approves.</span>}>
+            <VersionsPanel capabilityId={id} versions={cap.data.versions} />
+          </Card>
+        </div>
       )}
     </div>
   );
@@ -271,5 +284,24 @@ export function ManifestDefinition({ manifest: m }: { manifest: Manifest }) {
         </dl>
       </Card>
     </div>
+  );
+}
+
+/** A capability's own owners change its everyday settings as a form; it becomes a draft version. */
+function CapabilitySettings({ manifest }: { manifest: Manifest }) {
+  const submit = useSubmitDraft();
+  return (
+    <SettingsForm
+      manifest={manifest as unknown as Record<string, unknown>}
+      configurable={null}
+      onSubmit={(changes: Changes, note: string) => {
+        let next = manifest as unknown as Record<string, unknown>;
+        for (const [path, value] of Object.entries(changes)) next = setPath(next, path, value);
+        submit.mutate({ yaml: stringify(next), note: note || `settings: ${Object.keys(changes).join(", ")}` });
+      }}
+      pending={submit.isPending}
+      error={submit.error}
+      done={submit.data ? `Version ${submit.data.version} drafted. Another owner approves it below or in Authoring.` : null}
+    />
   );
 }

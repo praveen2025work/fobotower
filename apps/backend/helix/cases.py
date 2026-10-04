@@ -18,7 +18,7 @@ from sqlalchemy import String, and_, cast, func, not_, or_, select
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.exc import IntegrityError
 
-from helix import capabilities, rules, runner
+from helix import capabilities, deadlines, escalation, review, rules, runner
 from helix.db import get_session
 from helix.entitlement import Caller
 from helix.manifest import Manifest
@@ -138,7 +138,8 @@ def _new_case(case_id: str, root: str, attempt: int, capability_id: str, version
                 manifest=m.model_dump(by_alias=True), case_key=key,
                 subject=render(m.case.subject or " · ".join("{" + k + "}" for k in m.case.key), key),
                 scope={scope: key[field] for field, scope in m.case.scopes.items()},
-                status="running", opened_by=caller.user_id, run_as=caller.as_dict())
+                status="running", opened_by=caller.user_id, run_as=caller.as_dict(),
+                due_at=deadlines.due_at(m, key, datetime.now(timezone.utc)))
 
 
 async def _latest_attempt(s, root: str) -> Case | None:
@@ -253,11 +254,15 @@ def _settle(m: Manifest, g: ProposalGroup, decisions: list[Decision],
                        key=lambda d: d.decided_at)
     needed = 2 if (m.review.dual_review_when and rules.evaluate(
         m.review.dual_review_when, _group_env(m, g, items))) else 1
-    if len(approvals) < needed:
+    # Different people, counted both ways: whoever clicked, and whom they acted for.
+    people = min(len({d.decided_by for d in approvals}),
+                 len({d.on_behalf_of or d.decided_by for d in approvals}))
+    if people < needed:
         return None
     comment = next((d.comment for d in reversed(approvals) if d.comment), None)
     return {"group_id": g.group_id, "action": "approve", "comment": comment,
-            "decided_by": ", ".join(d.decided_by for d in approvals),
+            "decided_by": ", ".join(d.decided_by + (f" for {d.on_behalf_of}" if d.on_behalf_of else "")
+                                    for d in approvals),
             "decided_at": approvals[-1].decided_at.isoformat()}
 
 
@@ -267,7 +272,8 @@ async def _case_items(s, case_id: str) -> dict[str, dict]:
 
 
 async def decide(case_id: str, group_id: str, action: str, comment: str | None,
-                 idempotency_key: str, caller: Caller) -> dict:
+                 idempotency_key: str, caller: Caller, confirmed: bool = False,
+                 review_seconds: int | None = None) -> dict:
     if action not in ("approve", "reject"):
         raise CaseError("action must be approve or reject")
     comment = (comment or "").strip() or None
@@ -280,9 +286,10 @@ async def decide(case_id: str, group_id: str, action: str, comment: str | None,
         if existing is not None:
             return {"decision_id": existing.decision_id, "replayed": True, "status": case.status}
         m = await _pinned(case)
-        if not may_see_case(caller, m, case.case_key) or not caller.has_any_role(m.review.roles):
+        allowed, on_behalf_of = await review.acting_as(caller, m, case.case_key, may_see_case)
+        if not allowed:
             raise PermissionError(f"{caller.user_id} may not decide on this case")
-        if not m.review.opener_may_decide and caller.user_id == case.opened_by:
+        if not m.review.opener_may_decide and case.opened_by in (caller.user_id, on_behalf_of):
             raise PermissionError("maker-checker: whoever opened the case cannot sign it off")
         if case.status != "awaiting_review":
             raise CaseError(f"case is {case.status}, not awaiting review")
@@ -295,9 +302,15 @@ async def decide(case_id: str, group_id: str, action: str, comment: str | None,
         if comment is None and action == "approve" and escalated \
                 and "escalated" in m.review.require_comment:
             raise CaseError("this group was escalated: approving it needs your explanation")
+        if why := review.confirmation_problem(m, group.finding, action, confirmed, comment):
+            raise CaseError(why)
         decision = Decision(decision_id=uuid.uuid4().hex, case_id=case_id, group_id=group_id,
                             action=action, comment=comment, decided_by=caller.user_id,
-                            idempotency_key=idempotency_key)
+                            idempotency_key=idempotency_key,
+                            confirmed=bool(confirmed and action == "approve"),
+                            on_behalf_of=on_behalf_of,
+                            review_seconds=(max(0, min(int(review_seconds), 8 * 3600))
+                                            if review_seconds is not None else None))
         s.add(decision)
         await s.commit()
 
@@ -308,13 +321,28 @@ async def decide(case_id: str, group_id: str, action: str, comment: str | None,
 
 
 async def bulk_decide(case_id: str, group_ids: list[str], action: str, comment: str | None,
-                      idempotency_key: str, caller: Caller) -> dict:
+                      idempotency_key: str, caller: Caller, review_seconds: int | None = None) -> dict:
     """The same decision on many groups. Each is checked on its own: an escalated
-    group without a comment is refused while the others go through."""
+    group without a comment is refused while the others go through. Approving
+    in bulk leaves the groups the capability marks for one-by-one review
+    (review.bulk_exclude: e.g. a verdict needing confirmation, a judgement call)."""
     done, refused = [], []
+    async with get_session() as s:
+        case = await s.get(Case, case_id)
+        if case is None:
+            raise LookupError(case_id)
+        m = await _pinned(case)
+        findings = {g.group_id: g.finding for g in (await s.execute(select(ProposalGroup).where(
+            ProposalGroup.case_id == case_id))).scalars()}
     for gid in dict.fromkeys(group_ids):
+        if action == "approve" and (why := review.bulk_blockers(m, findings.get(gid))):
+            refused.append({"group_id": gid, "reason": "needs one-by-one review: " + ", ".join(
+                _FLAG_WORDS[f] for f in why)})
+            continue
         try:
-            r = await decide(case_id, gid, action, comment, f"{idempotency_key}:{gid}", caller)
+            share = round(review_seconds / max(1, len(group_ids))) if review_seconds is not None else None
+            r = await decide(case_id, gid, action, comment, f"{idempotency_key}:{gid}", caller,
+                             review_seconds=share)
             done.append({"group_id": gid, **r})
         except (CaseError, PermissionError) as e:
             refused.append({"group_id": gid, "reason": str(e)})
@@ -324,6 +352,9 @@ async def bulk_decide(case_id: str, group_ids: list[str], action: str, comment: 
 
 
 _pinned = runner.pinned
+
+_FLAG_WORDS = {"confirmation": "the verdict needs your confirmation",
+               "judgement": "a judgement call", "escalated": "escalated", "model": "proposed by the model"}
 
 
 async def reinvestigate(case_id: str, group_id: str, note: str, idempotency_key: str,
@@ -342,7 +373,7 @@ async def reinvestigate(case_id: str, group_id: str, note: str, idempotency_key:
         if case is None:
             raise LookupError(case_id)
         m = await _pinned(case)
-        if not may_see_case(caller, m, case.case_key) or not caller.has_any_role(m.review.roles):
+        if not (await review.acting_as(caller, m, case.case_key, may_see_case))[0]:
             raise PermissionError(f"{caller.user_id} may not review this case")
         group = await s.get(ProposalGroup, (case_id, group_id))
         if group is None:
@@ -508,7 +539,8 @@ def _case_summary(c: Case) -> dict:
             "manifest_version": c.manifest_version, "team_group": c.team_group,
             "team_group_version": c.team_group_version, "opened_by": c.opened_by,
             "opened_at": c.opened_at, "trace_id": c.trace_id, "error": c.error,
-            "attempt": c.attempt or 1, "rerun_of": c.rerun_of, "legal_hold": bool(c.legal_hold)}
+            "attempt": c.attempt or 1, "rerun_of": c.rerun_of, "legal_hold": bool(c.legal_hold),
+            "due_at": c.due_at, "review_ready_at": c.review_ready_at}
 
 
 async def list_cases(capability_id: str, caller: Caller, team_group: str | None = None,
@@ -556,7 +588,8 @@ async def case_detail(case_id: str, caller: Caller) -> dict:
         if case is None:
             raise LookupError(case_id)
         m = await _pinned(case)
-        if not may_see_case(caller, m, case.case_key):
+        may_decide, on_behalf_of = await review.acting_as(caller, m, case.case_key, may_see_case)
+        if not may_see_case(caller, m, case.case_key) and not may_decide:
             # Same answer as a missing case: a caller cannot tell the difference.
             raise LookupError(case_id)
         items = (await s.execute(select(CaseItem).where(CaseItem.case_id == case_id)
@@ -569,26 +602,41 @@ async def case_detail(case_id: str, caller: Caller) -> dict:
                                  .order_by(ToolCall.called_at))).scalars().all()
     latest = _latest(decisions)
     in_group = {i for g in groups for i in g.item_ids}
+    tickets = await escalation.for_case(case_id)
+    from helix import insights
+    recurring = await insights.recurring_for_case(case, m, sorted(in_group))
+    now = datetime.now(timezone.utc)
     return {
         **_case_summary(case),
+        "due_state": deadlines.state(case.due_at, case.status, now,
+                                     m.case.due.warn_hours if m.case.due else 2),
+        "exposure": (case.draft or {}).get("exposure"), "unit": m.items.amount_unit,
+        "id_field": m.items.id_field, "amount_field": m.items.amount_field,
+        "recurring": recurring,
         "attempts": await attempts(case),
         "draft": case.draft,
         "labels": {"case": m.case.label, "item": m.case.item_label},
         "steps": m.steps, "pause_before": m.pause_before,
         "columns": m.items.display or sorted({k for it in items for k in it.payload}),
-        "items": [{"item_id": it.item_id, "in_scope": it.item_id in in_group, **it.payload}
-                  for it in items],
+        "items": [{"item_id": it.item_id, "in_scope": it.item_id in in_group,
+                   **it.payload} for it in items],
         "groups": [{
             "group_id": g.group_id, "label": g.label, "group_key": g.group_key,
             "item_ids": g.item_ids, "priors": g.priors, "finding": g.finding,
+            "flags": review.flags(g.finding),
+            "ticket": tickets.get(g.group_id),
+            "bulk_blockers": review.bulk_blockers(m, g.finding),
             "decision": ({"action": latest[g.group_id].action,
                           "comment": latest[g.group_id].comment,
                           "decided_by": latest[g.group_id].decided_by,
+                          "on_behalf_of": latest[g.group_id].on_behalf_of,
+                          "confirmed": latest[g.group_id].confirmed,
                           "decided_at": latest[g.group_id].decided_at}
                          if g.group_id in latest else None),
         } for g in groups],
         "decisions": [{"group_id": d.group_id, "action": d.action, "comment": d.comment,
-                       "decided_by": d.decided_by, "decided_at": d.decided_at}
+                       "decided_by": d.decided_by, "on_behalf_of": d.on_behalf_of,
+                       "confirmed": d.confirmed, "decided_at": d.decided_at}
                       for d in decisions],
         "tool_calls": [{"call_id": c.call_id, "tool": c.tool, "connector_id": c.connector_id,
                         "requested_by": c.requested_by, "caller": c.caller,
@@ -598,8 +646,10 @@ async def case_detail(case_id: str, caller: Caller) -> dict:
                         "result": c.result} for c in calls],
         "documents": _documents(case_id, calls),
         "evidence": await _evidence(case_id),
-        "can_decide": (caller.has_any_role(m.review.roles) and case.status == "awaiting_review"
-                       and (m.review.opener_may_decide or caller.user_id != case.opened_by)),
+        "can_decide": (may_decide and case.status == "awaiting_review"
+                       and (m.review.opener_may_decide
+                            or case.opened_by not in (caller.user_id, on_behalf_of))),
+        "acting_for": on_behalf_of,
         "can_rerun": case.status in RERUNNABLE and capabilities.can_see(caller, m),
         "can_hold": capabilities.is_owner(caller, m),
         "legal_hold_reason": case.legal_hold_reason,
@@ -609,7 +659,9 @@ async def case_detail(case_id: str, caller: Caller) -> dict:
         "review": {"require_comment": m.review.require_comment,
                    "opener_may_decide": m.review.opener_may_decide,
                    "dual_review_when": m.review.dual_review_when,
-                   "max_reinvestigations": m.review.max_reinvestigations},
+                   "max_reinvestigations": m.review.max_reinvestigations,
+                   "bulk_exclude": m.review.bulk_exclude, "confirm": m.review.confirm,
+                   "allow_delegation": m.review.allow_delegation},
         "publish": ({"tool": m.publish.tool, "approver_roles": m.publish.approver_roles,
                      "can_release": (case.status == "awaiting_publish"
                                      and caller.has_any_role(m.publish.approver_roles)

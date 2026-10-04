@@ -18,6 +18,10 @@ export interface Me {
   roles: string[];
   data_scopes: Record<string, string[]>;
   llm: string;
+  /** Platform support: sees platform details (LLM, entitlement source). */
+  is_admin?: boolean;
+  /** Colleagues this user is covering reviews for right now. */
+  covering_for?: string[];
 }
 
 export interface DevUser {
@@ -126,7 +130,13 @@ export interface CaseSummary {
   attempt: number;
   rerun_of: string | null;
   legal_hold: boolean;
+  due_at?: string | null;
+  review_ready_at?: string | null;
 }
+
+/** Why a group needs more than a click (helix/review.py). */
+export type ReviewFlag = "confirmation" | "judgement" | "escalated" | "model";
+export type DueState = "on_time" | "due_soon" | "overdue" | null;
 
 /** One check a playbook ran on an item (e.g. FOBO's C1–C6); negatives are kept. */
 export interface CheckResult {
@@ -148,6 +158,8 @@ export interface Finding {
   category?: string | null;
   category_name?: string | null;
   side?: string | null;
+  /** The side in business words (playbook.side_names). */
+  side_name?: string | null;
   escalate_to?: string | null;
   determinism?: string | null;
   requires_confirmation?: string;
@@ -166,7 +178,19 @@ export interface Group {
   item_ids: string[];
   priors: { comment: string; case_id: string; decided_by: string; at: string; match?: string }[];
   finding: Finding | null;
-  decision: { action: "approve" | "reject"; comment: string | null; decided_by: string; decided_at: string } | null;
+  decision: {
+    action: "approve" | "reject";
+    comment: string | null;
+    decided_by: string;
+    decided_at: string;
+    on_behalf_of?: string | null;
+    confirmed?: boolean;
+  } | null;
+  flags?: ReviewFlag[];
+  /** Flags that keep this group out of "Approve all" (review.bulk_exclude). */
+  bulk_blockers?: ReviewFlag[];
+  /** The ticket raised for the owning team (manifest `escalation`). */
+  ticket?: { reference: string | null; url: string | null; status: "raised" | "failed"; error: string | null; raised_at: string } | null;
 }
 
 export interface ToolCall {
@@ -198,11 +222,28 @@ export interface CaseDetail extends CaseSummary {
   evidence?: Evidence[];
   attempts: { case_id: string; attempt: number; status: CaseStatus; outcome: string | null; opened_by: string; opened_at: string }[];
   can_decide: boolean;
+  /** Deciding on behalf of this absent colleague (delegation). */
+  acting_for?: string | null;
+  due_state?: DueState;
+  exposure?: number | null;
+  unit?: string | null;
+  id_field?: string;
+  amount_field?: string | null;
+  /** item_id -> how often it has come back (insights.recurring). */
+  recurring?: Record<string, { runs: number; earlier: { case_id: string; subject: string; opened_at: string }[] }>;
   can_rerun: boolean;
   can_retry_publish: boolean;
   can_hold: boolean;
   legal_hold_reason: string | null;
-  review: { require_comment: ("reject" | "escalated")[]; opener_may_decide: boolean; dual_review_when: string | null; max_reinvestigations: number };
+  review: {
+    require_comment: ("reject" | "escalated")[];
+    opener_may_decide: boolean;
+    dual_review_when: string | null;
+    max_reinvestigations: number;
+    bulk_exclude?: ReviewFlag[];
+    confirm?: "none" | "tick" | "tick_and_comment";
+    allow_delegation?: boolean;
+  };
   publish: { tool: string; approver_roles: string[]; can_release: boolean } | null;
 }
 
@@ -254,6 +295,14 @@ export interface InboxRow {
   escalated: number;
   decided: number;
   action: "review" | "release";
+  age_hours?: number;
+  due_at?: string | null;
+  due_state?: DueState;
+  exposure?: number | null;
+  unit?: string | null;
+  needs_confirmation?: number;
+  judgement_calls?: number;
+  acting_for?: string | null;
 }
 
 export interface Overview {
@@ -267,6 +316,7 @@ export interface Overview {
   llm_cost_usd: number;
   llm_groups: number;
   hours_saved_30d?: { value: number; basis: string };
+  measured_review?: { decisions: number; median_seconds: number | null; hours_saved: number | null; basis: string };
   capabilities: { id: string; name: string; case_label: string; statuses: Record<string, number>; escalated_groups: number }[];
 }
 
@@ -370,11 +420,19 @@ export function useOpenCase(capabilityId: string) {
 export function useDecide(caseId: string) {
   const refresh = useRefreshCases();
   return useMutation({
-    mutationFn: (v: { groupId: string; action: "approve" | "reject"; comment: string }) =>
+    mutationFn: (v: {
+      groupId: string;
+      action: "approve" | "reject";
+      comment: string;
+      confirmed?: boolean;
+      reviewSeconds?: number;
+    }) =>
       api.post<{ case: CaseDetail }>(`/cases/${enc(caseId)}/decisions`, {
         group_id: v.groupId,
         action: v.action,
         comment: v.comment || null,
+        confirmed: v.confirmed ?? false,
+        review_seconds: v.reviewSeconds ?? null,
         idempotency_key: newIdempotencyKey(),
       }),
     onSuccess: (res) => refresh(res.case),
@@ -393,10 +451,16 @@ export function useRelease(caseId: string) {
 export function useBulkDecide(caseId: string) {
   const refresh = useRefreshCases();
   return useMutation({
-    mutationFn: (v: { groupIds: string[]; action: "approve" | "reject"; comment: string }) =>
+    mutationFn: (v: { groupIds: string[]; action: "approve" | "reject"; comment: string; reviewSeconds?: number }) =>
       api.post<{ case: CaseDetail; decided: { group_id: string }[]; refused: { group_id: string; reason: string }[] }>(
         `/cases/${enc(caseId)}/decisions/bulk`,
-        { group_ids: v.groupIds, action: v.action, comment: v.comment || null, idempotency_key: newIdempotencyKey() },
+        {
+          group_ids: v.groupIds,
+          action: v.action,
+          comment: v.comment || null,
+          review_seconds: v.reviewSeconds ?? null,
+          idempotency_key: newIdempotencyKey(),
+        },
       ),
     onSuccess: (res) => refresh(res.case),
   });
@@ -713,5 +777,61 @@ export function useImportBundle() {
   return useMutation({
     mutationFn: (bundle: unknown) => api.post<{ capability_id: string; version: number; note: string }>("/promotion/import", { bundle }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["drafts"] }),
+  });
+}
+
+// ---------- recurring items, delegation ----------
+
+export interface RecurringRow {
+  item_id: string;
+  team_group: string | null;
+  same: Record<string, string>;
+  runs: number;
+  latest_case_id: string;
+  latest_subject: string;
+}
+
+export const useRecurring = (id: string, teamGroup?: string, enabled = true) =>
+  useQuery({
+    queryKey: ["recurring", id, teamGroup ?? "all"],
+    queryFn: () =>
+      api.get<RecurringRow[]>(`/capabilities/${enc(id)}/recurring${teamGroup ? `?team_group=${enc(teamGroup)}` : ""}`),
+    enabled,
+  });
+
+export interface DelegationRow {
+  delegation_id: string;
+  from_user: string;
+  to_user: string;
+  starts_at: string;
+  until: string;
+  reason: string | null;
+  active: boolean;
+}
+
+export const useDelegations = () =>
+  useQuery({
+    queryKey: ["delegations"],
+    queryFn: () => api.get<{ away: DelegationRow[]; covering: DelegationRow[] }>("/me/delegations"),
+  });
+
+export function useDelegate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { toUser: string; until: string; reason: string }) =>
+      api.post<DelegationRow>("/me/delegations", { to_user: v.toUser, until: v.until, reason: v.reason || null }),
+    onSuccess: () => {
+      for (const key of ["delegations", "inbox", "me"]) qc.invalidateQueries({ queryKey: [key] });
+    },
+  });
+}
+
+export function useEndDelegation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.del(`/me/delegations/${enc(id)}`),
+    onSuccess: () => {
+      for (const key of ["delegations", "inbox", "me"]) qc.invalidateQueries({ queryKey: [key] });
+    },
   });
 }

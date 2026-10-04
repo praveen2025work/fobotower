@@ -72,7 +72,7 @@ describe("CaseWorkspace", () => {
     open();
     expect(await screen.findByText("Account 6100 explained.")).toBeInTheDocument();
     expect(screen.getByText(/claude-opus-5-5 · 3 turns · \$0.0123/)).toBeInTheDocument();
-    const evidence = screen.getByText(/Evidence \(2 connector calls\)/).parentElement!;
+    const evidence = screen.getByText(/Data used \(2 system calls\)/).parentElement!;
     expect(within(evidence).getByText("gl.balances")).toBeInTheDocument();          // case-wide load
     expect(within(evidence).queryByText(/refused/)).not.toBeInTheDocument();        // 7200's refusal is not 6100's
   });
@@ -100,7 +100,7 @@ describe("CaseWorkspace", () => {
     expect(await within(item).findByText("approved")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "account 7200" })).toBeInTheDocument();
     await userEvent.click(item);
-    expect(screen.getByText(/— Payroll accrual/)).toBeInTheDocument();
+    expect(screen.getByText("Payroll accrual", { selector: "p" })).toBeInTheDocument();
   });
 
   it("offers release only to someone allowed to release, and says who it waits for", async () => {
@@ -152,10 +152,34 @@ describe("CaseWorkspace", () => {
       "POST /cases/fin.c1/decisions/bulk": { case: detail(), decided: [{ group_id: "6100" }, { group_id: "6200" }], refused: [] },
     });
     open();
-    await userEvent.click(await screen.findByRole("button", { name: /Approve all 2 proposed/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /Approve 2 straightforward/ }));
     await waitFor(() => expect(calls.some((c) => c.path === "/cases/fin.c1/decisions/bulk")).toBe(true));
     const body = calls.find((c) => c.path === "/cases/fin.c1/decisions/bulk")!.body as { group_ids: string[] };
     expect(body.group_ids).toEqual(["6100", "6200"]);           // never the escalated 7200
+  });
+
+  it("leaves a verdict needing confirmation out of bulk approval and asks for a tick and words", async () => {
+    const flagged = group("6300", {
+      flags: ["confirmation"],
+      bulk_blockers: ["confirmation"],
+      finding: { ...group("6300").finding!, verdict: "POST", requires_confirmation: "POST depends on unset policy: materiality_threshold" },
+    });
+    const calls = mockApi({
+      "GET /cases/fin.c1": detail({ groups: [flagged, group("6100"), group("6200")] }),
+      "POST /cases/fin.c1/decisions": { case: detail() },
+    });
+    open();
+    expect(await screen.findByRole("button", { name: /Approve 2 straightforward/ })).toBeInTheDocument();
+    expect(screen.getByText(/1 needs one-by-one review/)).toBeInTheDocument();
+    expect(screen.getAllByText("Needs confirmation").length).toBeGreaterThan(0);
+    const approve = screen.getByRole("button", { name: "Approve" });
+    expect(approve).toBeDisabled();
+    await userEvent.click(screen.getByRole("checkbox"));
+    expect(approve).toBeDisabled();                               // words are required too
+    await userEvent.type(screen.getByLabelText(/Your explanation/), "Materiality agreed with PC");
+    await userEvent.click(approve);
+    await waitFor(() => expect(calls.some((c) => c.method === "POST")).toBe(true));
+    expect(calls.find((c) => c.method === "POST")!.body).toMatchObject({ group_id: "6300", confirmed: true });
   });
 
   it("sends a group back to the model with the reviewer's note", async () => {

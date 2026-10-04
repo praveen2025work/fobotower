@@ -303,6 +303,23 @@ def _group_id(values: tuple, fields: list[str], protected: set[str]) -> str:
     return "-".join(values) or "all"
 
 
+def group_label(m: Manifest, group_key: dict) -> str:
+    """A group's name: the manifest's `group_label` template over its key and,
+    with a playbook, category_name and side_name; else "field value, …"."""
+    if not m.group_label:
+        return ", ".join(f"{k} {v}" for k, v in group_key.items()) or "All items"
+    env = dict(group_key)
+    if m.playbook:
+        cat = m.playbook.categories.get(str(group_key.get("category")))
+        side = str(group_key.get("side", ""))
+        env.setdefault("category_name", cat.name if cat else group_key.get("category", ""))
+        env.setdefault("side_name", m.playbook.side_names.get(side, side))
+    try:
+        return rules.render(m.group_label, env).strip() or "All items"
+    except Exception:
+        return ", ".join(f"{k} {v}" for k, v in group_key.items()) or "All items"
+
+
 async def group(state: CaseState) -> dict:
     m = _manifest(state)
     policy = m.policy_values()
@@ -318,7 +335,7 @@ async def group(state: CaseState) -> dict:
         for values, members in sorted(buckets.items()):
             group_key = dict(zip(m.group_by, values))
             group_id = _group_id(values, m.group_by, protected)
-            label = ", ".join(f"{k} {v}" for k, v in group_key.items()) or "All items"
+            label = group_label(m, group_key)
             total = round(sum(_num(it.get(m.items.amount_field)) for it in members), 2) \
                 if m.items.amount_field else None
             priors = await knowledge.similar_decisions(
@@ -421,6 +438,7 @@ def _playbook_view(m: Manifest, members: list[dict], policy: dict) -> dict:
     cat = pb.categories.get(category) if category else None
     unset = [p for p in pb.verdict_policy if policy.get(p) is None]
     return {"category": category, "side": side,
+            "side_name": pb.side_names.get(side or "", side) if side else "Mixed sides",
             "category_name": cat.name if cat else "Mixed causes",
             "escalate_to": cat.escalate_to if cat else None,
             "determinism": cat.determinism if cat else "judgement",
@@ -432,7 +450,8 @@ def _playbook_view(m: Manifest, members: list[dict], policy: dict) -> dict:
 
 
 def _play_fields(play: dict) -> dict:
-    return {k: play[k] for k in ("category", "category_name", "side", "escalate_to", "determinism")}
+    return {k: play[k] for k in ("category", "category_name", "side", "side_name", "escalate_to", "determinism")
+            if k in play}
 
 
 def _guarded(m: Manifest, verdict: str | None, env: dict) -> tuple[str | None, str | None]:
@@ -522,6 +541,12 @@ async def draft(state: CaseState) -> dict:
                     "comment": findings.get(g["group_id"], {}).get("comment", "")}
                    for g in state["groups"]],
     }
+    if m.items.amount_field:
+        # Money at stake: the absolute amounts of the items in scope, to rank work by.
+        in_ids = {i for g in state["groups"] for i in g["item_ids"]}
+        d["exposure"] = round(sum(abs(_num(it.get(m.items.amount_field)))
+                                  for it in state["items"] if it["item_id"] in in_ids), 2)
+        d["unit"] = m.items.amount_unit
     async with get_session() as s:
         (await s.get(Case, state["case_id"])).draft = d
         await s.commit()
@@ -608,6 +633,11 @@ async def record(state: CaseState) -> dict:
             entities=knowledge.entity_values(
                 m.knowledge.entities, g["group_key"],
                 [items[i] for i in g["item_ids"] if i in items]))
+    if m.escalation:
+        from helix import escalation
+        ctx = _ctx(state, "escalate", {m.escalation.tool})
+        ctx.escalation_tool = m.escalation.tool
+        await escalation.raise_tickets(m, state, ctx)
     if "publish" in _manifest(state).steps:
         return {"outcome": "recorded"}       # the run pauses before publish
     async with get_session() as s:

@@ -168,5 +168,8 @@ async def run_forever() -> None:
                 opened = await tick(at)
                 if opened:
                     log.info("scheduler opened %d case(s)", len(opened))
+                from helix import deadlines
+                for case_id, kind in await deadlines.check(at):
+                    log.info("deadline reminder %s for %s", kind, case_id)
         except Exception:
             log.exception("scheduler tick failed")

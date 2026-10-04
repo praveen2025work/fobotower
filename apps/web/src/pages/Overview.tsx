@@ -1,9 +1,11 @@
 import { Link } from "react-router-dom";
-import { AlertTriangle, Ban, Bot, Clock, Inbox, Layers, Send } from "lucide-react";
+import { AlertTriangle, Ban, Bot, Clock, Inbox, Layers, Send, Timer } from "lucide-react";
 
-import { useInbox, useOverview } from "../api/helix";
+import { currentUser } from "../api/client";
+import { useInbox, useMe, useOverview } from "../api/helix";
 import StatCard from "../components/StatCard";
 import StatusBadge from "../components/StatusBadge";
+import { urgency } from "../components/Urgency";
 import { Card, Empty, ErrorState, Loading, PageHeader } from "../components/ui";
 import { InboxTable } from "./Inbox";
 
@@ -11,6 +13,11 @@ import { InboxTable } from "./Inbox";
 export default function Overview(): JSX.Element {
   const overview = useOverview();
   const inbox = useInbox();
+  const me = useMe(currentUser());
+  const admin = !!me.data?.is_admin;
+  const overdue = (inbox.data ?? []).filter((r) => r.due_state === "overdue").length;
+  const measured = overview.data?.measured_review;
+  const urgentFirst = [...(inbox.data ?? [])].sort((a, b) => urgency(a) - urgency(b));
 
   return (
     <div>
@@ -25,21 +32,33 @@ export default function Overview(): JSX.Element {
                 <StatCard icon={Clock} value={`${overview.data.hours_saved_30d.value} h`} label="Hours saved (30 days)" />
               </div>
             )}
+            {measured && measured.decisions > 0 && (
+              <div title={measured.basis}>
+                <StatCard icon={Timer} value={`${measured.hours_saved} h`} label="Hours saved (measured)" />
+              </div>
+            )}
             <StatCard icon={Inbox} value={overview.data.awaiting_my_review} label="Awaiting my review" />
+            <StatCard icon={Clock} value={overdue} label="Overdue" />
             <StatCard icon={Send} value={overview.data.awaiting_my_release} label="Awaiting my release" />
             <StatCard icon={AlertTriangle} value={overview.data.escalated_groups} label="Escalated to people" />
-            <StatCard icon={Bot} value={overview.data.model_calls_24h} label="Model tool calls (24h)" />
-            <StatCard icon={Ban} value={overview.data.refused_calls_24h} label="Refused calls (24h)" />
+            {admin && <StatCard icon={Bot} value={overview.data.model_calls_24h} label="Model tool calls (24h)" />}
+            {admin && <StatCard icon={Ban} value={overview.data.refused_calls_24h} label="Refused calls (24h)" />}
           </div>
 
           {overview.data.hours_saved_30d && (
-            <p className="-mt-3 mb-5 text-[11px] text-surface-500">Hours saved: {overview.data.hours_saved_30d.basis}.</p>
+            <p className="-mt-3 mb-1 text-[11px] text-surface-500">Hours saved (declared): {overview.data.hours_saved_30d.basis}.</p>
+          )}
+          {measured && (
+            <p className="mb-5 text-[11px] text-surface-500">
+              Measured: {measured.basis}
+              {measured.median_seconds != null && ` · median ${Math.round(measured.median_seconds)} s per decision`}.
+            </p>
           )}
           <div className="grid gap-4 xl:grid-cols-3">
             <Card title="My inbox" className="xl:col-span-2" aside={<Link to="/inbox" className="text-xs font-medium text-primary-600 hover:underline">Open inbox</Link>}>
               {inbox.isLoading && <Loading what="inbox" />}
               {inbox.error && <ErrorState error={inbox.error} />}
-              {inbox.data && (inbox.data.length === 0 ? <Empty>Nothing is waiting on you.</Empty> : <InboxTable rows={inbox.data.slice(0, 8)} />)}
+              {inbox.data && (inbox.data.length === 0 ? <Empty>Nothing is waiting on you.</Empty> : <InboxTable rows={urgentFirst.slice(0, 8)} />)}
             </Card>
 
             <Card title="Capabilities">

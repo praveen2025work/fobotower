@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
 
-from helix import capabilities
+from helix import capabilities, deadlines, review
 from helix.cases import visible_cases
 from helix.db import get_session
 from helix.entitlement import Caller
@@ -55,7 +55,17 @@ async def _decisions_by_case(case_ids: list[str]) -> dict[str, list[Decision]]:
 
 def _summary(c: Case, m: Manifest, groups: list[ProposalGroup], decided: set[str]) -> dict:
     statuses = Counter((g.finding or {}).get("status", "pending") for g in groups)
+    now = datetime.now(timezone.utc)
+    flagged = Counter(f for g in groups if g.group_id not in decided for f in review.flags(g.finding))
+    draft = c.draft or {}
     return {
+        "age_hours": round((now - c.opened_at).total_seconds() / 3600, 1),
+        "due_at": c.due_at,
+        "due_state": deadlines.state(c.due_at, c.status, now,
+                                     m.case.due.warn_hours if m.case.due else 2),
+        "exposure": draft.get("exposure"), "unit": draft.get("unit"),
+        "needs_confirmation": flagged.get("confirmation", 0),
+        "judgement_calls": flagged.get("judgement", 0),
         "case_id": c.case_id, "capability_id": c.capability_id, "capability_name": m.name,
         "case_label": m.case.label, "subject": c.subject, "status": c.status,
         "team_group": c.team_group,
@@ -76,17 +86,27 @@ def _my_action(c: Case, m: Manifest, caller: Caller, deciders: set[str]) -> str 
 
 
 async def inbox(caller: Caller) -> list[dict]:
-    """Every case waiting on this caller, across capabilities, oldest first."""
-    visible = await _visible_cases(caller, statuses=("awaiting_review", "awaiting_publish"))
-    ids = [c.case_id for c, _ in visible]
+    """Every case waiting on this caller, across capabilities, oldest first —
+    and, while they cover for an absent colleague, that colleague's reviews
+    on capabilities that allow delegation (marked with `acting_for`)."""
+    visible = [(c, m, None) for c, m in await _visible_cases(
+        caller, statuses=("awaiting_review", "awaiting_publish"))]
+    seen = {c.case_id for c, _, _ in visible}
+    for absent in await review.covering_for(caller):
+        for c, m in await _visible_cases(absent, statuses=("awaiting_review",)):
+            if c.case_id not in seen and m.review.allow_delegation and absent.has_any_role(m.review.roles):
+                visible.append((c, m, absent.user_id))
+                seen.add(c.case_id)
+    ids = [c.case_id for c, _, _ in visible]
     groups, decisions = await _groups_by_case(ids), await _decisions_by_case(ids)
     out = []
-    for c, m in visible:
+    for c, m, acting_for in visible:
         deciders = {d.decided_by for d in decisions.get(c.case_id, [])}
-        action = _my_action(c, m, caller, deciders)
+        action = "review" if acting_for else _my_action(c, m, caller, deciders)
         if action:
             decided = {d.group_id for d in decisions.get(c.case_id, [])}
-            out.append({**_summary(c, m, groups.get(c.case_id, []), decided), "action": action})
+            out.append({**_summary(c, m, groups.get(c.case_id, []), decided), "action": action,
+                        "acting_for": acting_for})
     return sorted(out, key=lambda r: r["opened_at"])
 
 
@@ -110,6 +130,7 @@ async def overview(caller: Caller) -> dict:
     llm_cost, llm_groups = 0.0, 0
     month = datetime.now(timezone.utc) - timedelta(days=30)
     saved = {"items": 0, "groups": 0, "minutes": 0.0, "settled": 0}
+    measured = {"decisions": 0, "seconds": [], "manual_minutes": 0.0}
     for c, m in visible:
         cap = per_cap.setdefault(m.id, {"id": m.id, "name": m.name, "case_label": m.case.label,
                                         "statuses": Counter(), "escalated_groups": 0})
@@ -129,6 +150,14 @@ async def overview(caller: Caller) -> dict:
             saved["groups"] += len(gs)
             saved["minutes"] += (n_items - len(gs)) * m.metrics.manual_minutes_per_item
             saved["settled"] += sum(1 for g in gs if (g.finding or {}).get("decided_by") in ("rule", "playbook"))
+            # Measured: what a person actually spent on each group (time on screen),
+            # against doing each of its items by hand at the declared minutes.
+            sizes = {g.group_id: len(g.item_ids) for g in gs}
+            for d in decisions.get(c.case_id, []):
+                if d.review_seconds is not None and d.group_id in sizes:
+                    measured["decisions"] += 1
+                    measured["seconds"].append(d.review_seconds)
+                    measured["manual_minutes"] += sizes[d.group_id] * m.metrics.manual_minutes_per_item
         action = _my_action(c, m, caller, {d.decided_by for d in decisions.get(c.case_id, [])})
         if action:
             mine[action] += 1
@@ -147,8 +176,21 @@ async def overview(caller: Caller) -> dict:
                       f"({saved['items'] - saved['groups']} avoided) at each capability's declared "
                       f"manual minutes per item; {saved['settled']} groups settled by rule or playbook"),
         },
+        "measured_review": _measured(measured),
         "capabilities": [{**v, "statuses": dict(v["statuses"])} for v in per_cap.values()],
     }
+
+
+def _measured(m: dict) -> dict:
+    secs = sorted(m["seconds"])
+    if not secs:
+        return {"decisions": 0, "median_seconds": None, "hours_saved": None,
+                "basis": "No measured decisions yet: the console records the time spent on each group."}
+    spent_min = sum(secs) / 60
+    return {"decisions": m["decisions"], "median_seconds": secs[len(secs) // 2],
+            "hours_saved": round(max(0.0, m["manual_minutes"] - spent_min) / 60, 1),
+            "basis": (f"{m['decisions']} decisions took {spent_min:,.0f} min on screen in total, against "
+                      f"{m['manual_minutes']:,.0f} min to work their items by hand at the declared minutes per item")}
 
 
 async def audit(caller: Caller, *, capability_id: str | None = None, limit: int = 200) -> list[dict]:

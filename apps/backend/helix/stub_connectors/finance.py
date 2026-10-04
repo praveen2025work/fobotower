@@ -302,7 +302,34 @@ def build_reporting() -> MCPServer:
     return server
 
 
-BUILDERS = {"gl": build_gl, "budget": build_budget, "bank": build_bank, "ledger": build_ledger,
+# ---------- ticketing (ServiceNow / Jira stand-in) ----------
+
+TICKETS: list[dict] = []
+
+
+def create_ticket(team: str, title: str, description: str = "", priority: str = "P3",
+                  idempotency_key: str | None = None) -> dict:
+    """Raise a ticket for a team's queue. A repeat with the same idempotency key
+    returns the first ticket."""
+    if idempotency_key:
+        for t in TICKETS:
+            if t.get("idempotency_key") == idempotency_key:
+                return {**{k: t[k] for k in ("reference", "url", "team")}, "replayed": True}
+    reference = f"INC{zlib.crc32((idempotency_key or title).encode()) % 10**7:07d}"
+    ticket = {"reference": reference, "url": f"https://tickets.example/{reference}", "team": team,
+              "title": title, "description": description, "priority": priority,
+              "idempotency_key": idempotency_key}
+    TICKETS.append(ticket)
+    return {k: ticket[k] for k in ("reference", "url", "team")}
+
+
+def build_ticketing() -> MCPServer:
+    server = MCPServer(name="ticketing", instructions="Team ticket queues (stub).")
+    server.add_tool(create_ticket, name="create_ticket", description=create_ticket.__doc__)
+    return server
+
+
+BUILDERS = {"ticketing": build_ticketing, "gl": build_gl, "budget": build_budget, "bank": build_bank, "ledger": build_ledger,
             "reporting": build_reporting, "cats": build_cats, "motif": build_motif}
 
 

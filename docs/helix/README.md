@@ -11,6 +11,10 @@ aria-ai (EAIP) has been pivoted into Helix: its UI shell, its governance
 now — see [`aria-ai-assessment.md`](aria-ai-assessment.md) for what was
 taken and why.
 
+What Helix inherits from the office agent platform (MCP, plugins, RAG), what
+is still missing, and the order to add it:
+[`office-platform-and-roadmap.md`](office-platform-and-roadmap.md).
+
 Design: [`../superpowers/specs/2026-10-03-helix-capability-platform-design.md`](../superpowers/specs/2026-10-03-helix-capability-platform-design.md) ·
 walkthrough: [`…-helix-how-a-use-case-works.md`](../superpowers/specs/2026-10-03-helix-how-a-use-case-works.md)
 
@@ -59,8 +63,8 @@ write-back → it is published. As **carol**, Authoring → paste a BRD → draf
 PRIME-MB-01 / 2026-08-03; change the group's auto-adjust limit and have **gina** approve it.
 **Operations** is the run-the-bank view.
 
-Tests: `cd apps/backend && .venv/bin/python -m pytest -q tests/helix` (83) ·
-`cd apps/web && npm test` (48, including aria-ai's own tests for the components reused from it) ·
+Tests: `cd apps/backend && .venv/bin/python -m pytest -q tests/helix` (90) ·
+`cd apps/web && npm test` (51, including aria-ai's own tests for the components reused from it) ·
 `npm run typecheck`.
 
 ## 2. How it is built
@@ -84,7 +88,8 @@ apps/backend/helix/
   knowledge.py      knowledge graph: approved decisions → next run's priors (bitemporal)
   observability.py  OpenTelemetry + OpenInference conventions; Phoenix registration
   views.py          overview / inbox / audit across capabilities, filtered per caller
-  stub_connectors/  GL, budget, bank, ledger, reporting (write) — real MCP servers
+  stub_connectors/  GL, budget, bank, ledger, reporting (write), CATS, MOTIF — real MCP servers
+  mcp_services/     documents: read PDF / Excel, write PDF reports (write) — a real service
 config/helix/
   connectors.yaml   onboarded connectors, tool allow-list, read/write, data scope   (Helix team)
   governance.yaml   mask / pseudonymize fields, trace payload policy               (Helix team)
@@ -133,6 +138,19 @@ so a later change to the group never alters a past run. Each group's people see 
 
 [`aria-ai-reuse-map.md`](aria-ai-reuse-map.md) maps every aria-ai page and component to users,
 developers and run-the-bank, with what is reused, adapted, planned or replaced, and the waves.
+
+## 2c. Documents — PDF and Excel in, PDF reports out
+
+`documents` is a connector Helix provides itself (`helix/mcp_services/documents.py`):
+`list_documents`, `read_pdf`, `read_workbook` (read) and `render_pdf_report` (write — the
+publish step only, after a second person releases the case). Files are kept per entity:
+`HELIX_DOCUMENTS_DIR/<entity>/` to read, `HELIX_REPORTS_DIR/<entity>/` for reports.
+
+**Report validation** uses it: the management report workbook is matched to the ledger,
+differences are explained and signed off, and on release one PDF validation report is written
+(`publish.per: case`) and offered in the case workspace. Try it as alice (UK01):
+entity `UK01`, period `2026-09`, report `mgmt-report-2026-09.xlsx`; release as bob.
+Sample documents: `python scripts/make_helix_documents.py`.
 
 ## 3. Office integration
 

@@ -60,7 +60,7 @@ export default function CaseWorkspace(): JSX.Element {
         {c.draft && <p className="mt-1 text-sm text-surface-500">{c.draft.headline}</p>}
       </div>
 
-      <div className="grid min-h-0 flex-1 gap-0 overflow-hidden rounded-xl border border-surface-200 bg-white lg:grid-cols-[18rem_1fr_19rem]">
+      <div className="grid min-h-0 flex-1 gap-0 overflow-hidden rounded-xl border border-surface-200 bg-card lg:grid-cols-[18rem_1fr_19rem]">
         {/* Left: proposals */}
         <aside className="border-b border-surface-200 lg:border-b-0 lg:border-r" aria-label="Proposals">
           <div className="flex items-center justify-between border-b border-surface-100 px-4 py-3">
@@ -164,7 +164,7 @@ function ProposalPanel({ c, group }: { c: CaseDetail; group: Group }) {
             <button
               disabled={decide.isPending}
               onClick={() => decide.mutate({ groupId: group.group_id, action: "approve", comment })}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-accent-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-accent-700 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-accent px-3 py-1.5 text-sm font-medium text-brand-accent-fg hover:bg-brand-accent-strong disabled:opacity-50"
             >
               <Check size={14} /> Approve
             </button>
@@ -266,7 +266,7 @@ function ContextPanel({ c }: { c: CaseDetail }) {
       </div>
 
       {c.publish && (
-        <div className="rounded-lg border border-surface-200 bg-white p-3">
+        <div className="rounded-lg border border-surface-200 bg-card p-3">
           <h2 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-surface-500"><Send size={12} /> Write-back</h2>
           <p className="mt-1 text-xs text-surface-600">
             Approved explanations go to <code>{c.publish.tool}</code> once someone with {c.publish.approver_roles.join(", ")} who did not
@@ -276,7 +276,7 @@ function ContextPanel({ c }: { c: CaseDetail }) {
             <button
               disabled={release.isPending}
               onClick={() => release.mutate()}
-              className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-primary-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-800 disabled:opacity-50"
+              className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-brand-fg hover:bg-brand-strong disabled:opacity-50"
             >
               <Send size={13} /> Release write-back
             </button>

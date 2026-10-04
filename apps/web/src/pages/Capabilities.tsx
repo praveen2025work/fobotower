@@ -18,7 +18,7 @@ export default function Capabilities(): JSX.Element {
           <Link
             key={c.id}
             to={`/capabilities/${encodeURIComponent(c.id)}`}
-            className="group rounded-xl border border-surface-200 bg-white p-5 transition-colors hover:border-primary-300"
+            className="group rounded-xl border border-surface-200 bg-card p-5 transition-colors hover:border-primary-300"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-2.5">

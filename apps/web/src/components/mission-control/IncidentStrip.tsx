@@ -32,7 +32,7 @@ function IncidentStrip({ incidents, isLoading }: IncidentStripProps) {
     return (
       <section
         aria-label="Recent incidents"
-        className="flex h-[72px] items-center gap-3 overflow-x-auto border-t border-surface-200 bg-white px-4"
+        className="flex h-[72px] items-center gap-3 overflow-x-auto border-t border-surface-200 bg-card px-4"
       >
         {Array.from({ length: 4 }).map((_, i) => (
           <div
@@ -50,7 +50,7 @@ function IncidentStrip({ incidents, isLoading }: IncidentStripProps) {
     return (
       <section
         aria-label="Recent incidents"
-        className="flex h-[72px] items-center gap-3 border-t border-surface-200 bg-white px-4"
+        className="flex h-[72px] items-center gap-3 border-t border-surface-200 bg-card px-4"
       >
         <span className="font-mono text-[11px] uppercase tracking-wider text-surface-500">
           No active incidents · last 24h
@@ -62,7 +62,7 @@ function IncidentStrip({ incidents, isLoading }: IncidentStripProps) {
   return (
     <section
       aria-label="Recent incidents"
-      className="flex h-[72px] items-stretch gap-3 overflow-x-auto border-t border-surface-200 bg-white px-4 py-3"
+      className="flex h-[72px] items-stretch gap-3 overflow-x-auto border-t border-surface-200 bg-card px-4 py-3"
     >
       {list.map((incident) => {
         const stripe = STATUS_STRIPE[incident.status.toLowerCase()] ?? "bg-surface-400";

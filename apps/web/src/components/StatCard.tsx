@@ -23,7 +23,7 @@ function StatCard({ icon: Icon, value, label, trend, trendValue, className }: St
   return (
     <div
       className={clsx(
-        "rounded-xl border border-surface-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md",
+        "rounded-xl border border-surface-200 bg-card p-5 shadow-sm transition-shadow hover:shadow-md",
         className,
       )}
     >

@@ -67,7 +67,8 @@ Tests: `cd apps/backend && .venv/bin/python -m pytest -q tests/helix` (83) ·
 
 ```
 apps/web/                         the console — aria-ai's UI shell (React, TS, Tailwind, TanStack Query)
-  Overview · Inbox · Capabilities · Case workspace (3-pane) · Authoring · Audit · Connectors
+  Overview · Inbox · Capabilities · Case workspace (3-pane) · Operations · Authoring · Audit · Connectors
+  theme/barclays.js  Barclays light (blue on white) and Barclays dark — CSS variables; sun/moon toggle
 apps/backend/helix/
   web/main.py       FastAPI :8300
   manifest.py       capability manifest schema + validator (steps, gates, tools, expressions)

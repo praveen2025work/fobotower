@@ -10,6 +10,13 @@
   body {
     @apply min-h-screen;
   }
+
+  /* Form fields follow the theme instead of the browser's default. */
+  input,
+  textarea,
+  select {
+    @apply bg-card text-surface-900 placeholder:text-surface-400;
+  }
 }
 
 @layer utilities {
@@ -89,7 +96,7 @@
 
   /* Gradient text */
   .gradient-text {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-white via-accent-200 to-accent-400;
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-card via-accent-200 to-accent-400;
   }
 
   /* Pulse glow */

@@ -30,7 +30,7 @@ export default function Operations(): JSX.Element {
           <FleetTable agents={ops.data?.fleet} isLoading={ops.isLoading} isError={ops.isError} onRetry={() => ops.refetch()} />
         </div>
         <div className="col-span-12 lg:col-span-3">
-          <section className="flex h-full flex-col rounded-xl border border-surface-200 bg-white">
+          <section className="flex h-full flex-col rounded-xl border border-surface-200 bg-card">
             <header className="flex items-center justify-between border-b border-surface-100 px-4 py-3">
               <h2 className="text-sm font-semibold text-surface-900">Waiting on people</h2>
               <span className="text-xs text-surface-500">{inbox.data?.length ?? 0}</span>

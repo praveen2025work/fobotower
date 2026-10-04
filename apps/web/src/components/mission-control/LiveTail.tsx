@@ -31,10 +31,10 @@ interface LiveTailProps {
 
 const LEVEL_CLASS: Record<string, string> = {
   info: "text-accent-300",
-  warn: "text-yellow-200",
-  warning: "text-yellow-200",
+  warn: "text-yellow-300",
+  warning: "text-yellow-300",
   error: "text-red-300",
-  debug: "text-surface-500",
+  debug: "text-code-muted",
 };
 
 function formatTime(iso: string): string {
@@ -112,11 +112,11 @@ function LiveTail({
   return (
     <section
       aria-label="Live log tail"
-      className="flex h-full flex-col overflow-hidden rounded-xl border border-surface-200 bg-surface-950"
+      className="flex h-full flex-col overflow-hidden rounded-xl border border-surface-200 bg-code-bg"
     >
-      <header className="flex items-center justify-between border-b border-surface-800 px-3 py-2">
+      <header className="flex items-center justify-between border-b border-code-line px-3 py-2">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-[11px] uppercase tracking-wider text-surface-400">
+          <span className="font-mono text-[11px] uppercase tracking-wider text-code-muted">
             Live tail
           </span>
           {connectionError && !feed && (
@@ -126,7 +126,7 @@ function LiveTail({
         <button
           type="button"
           onClick={() => setPaused((p) => !p)}
-          className="inline-flex items-center gap-1 rounded-md border border-surface-700 px-2 py-0.5 text-[11px] font-medium text-surface-200 hover:bg-surface-800"
+          className="inline-flex items-center gap-1 rounded-md border border-code-line px-2 py-0.5 text-[11px] font-medium text-code-fg hover:bg-code-line"
           aria-pressed={paused}
           data-testid="livetail-pause-toggle"
         >
@@ -140,7 +140,7 @@ function LiveTail({
         className="flex-1 overflow-y-auto p-2 font-mono text-[11px] leading-relaxed"
       >
         {lines.length === 0 ? (
-          <p className="text-surface-500">Waiting for activity…</p>
+          <p className="text-code-muted">Waiting for activity…</p>
         ) : (
           lines.map((line) => (
             <div
@@ -148,8 +148,8 @@ function LiveTail({
               data-testid="livetail-line"
               className="flex gap-2 whitespace-pre-wrap break-all"
             >
-              <span className="shrink-0 text-surface-500">{formatTime(line.ts)}</span>
-              <span className="shrink-0 text-surface-400">{line.source}</span>
+              <span className="shrink-0 text-code-muted">{formatTime(line.ts)}</span>
+              <span className="shrink-0 text-code-muted">{line.source}</span>
               <span
                 className={clsx(
                   "min-w-0",

@@ -1,7 +1,8 @@
-// The app shell — aria-ai's Layout (navy collapsible sidebar, top bar, error
+// The app shell — aria-ai's Layout (Barclays navy collapsible sidebar, top bar, error
 // boundary per page), wired to Helix: navigation for the unified case view,
 // the signed-in user from the Helix API, and the dev user switcher only when
-// Helix runs on fixture entitlements.
+// Helix runs on fixture entitlements. The sun / moon button switches between
+// the Barclays light and dark themes (src/theme.ts).
 
 import { useEffect, useRef, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
@@ -17,7 +18,9 @@ import {
   LayoutDashboard,
   Layers,
   Menu,
+  Moon,
   ScrollText,
+  Sun,
   User,
   Wand2,
   type LucideIcon,
@@ -25,6 +28,7 @@ import {
 
 import { currentUser, setCurrentUser } from "../api/client";
 import { useDevUsers, useInbox, useMe, usePlatform } from "../api/helix";
+import { useTheme } from "../theme";
 import ErrorBoundary from "./ErrorBoundary";
 
 interface NavItem {
@@ -44,6 +48,7 @@ function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
   const devUsers = useDevUsers();
   const inbox = useInbox();
   const platform = usePlatform();
+  const [theme, setTheme] = useTheme();
 
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
@@ -81,18 +86,18 @@ function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
 
       <aside
         className={clsx(
-          "fixed inset-y-0 left-0 z-30 flex flex-col bg-primary-800 text-white transition-all duration-300 lg:static lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-30 flex flex-col bg-nav-bg text-white transition-all duration-300 lg:static lg:translate-x-0",
           collapsed ? "lg:w-16" : "lg:w-60",
           mobileOpen ? "w-60 translate-x-0" : "-translate-x-full",
         )}
       >
-        <div className={clsx("flex h-14 items-center border-b border-primary-700/50", collapsed ? "justify-center px-2" : "px-4")}>
+        <div className={clsx("flex h-14 items-center border-b border-nav-line", collapsed ? "justify-center px-2" : "px-4")}>
           <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-500 font-bold text-white">H</div>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-nav-mark font-bold text-nav-bg">H</div>
             {!collapsed && (
               <div>
                 <h1 className="text-base font-bold leading-none tracking-tight">Helix</h1>
-                <p className="mt-0.5 text-[10px] leading-none text-primary-400">Capabilities, governed</p>
+                <p className="mt-0.5 text-[10px] leading-none text-nav-muted">Capabilities, governed</p>
               </div>
             )}
           </div>
@@ -102,9 +107,9 @@ function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
           {sections.map((section) => (
             <div key={section.title} className="mb-1">
               {!collapsed ? (
-                <p className="px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-primary-500">{section.title}</p>
+                <p className="px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-nav-muted">{section.title}</p>
               ) : (
-                <div className="mx-3 my-2 border-t border-primary-700/50" />
+                <div className="mx-3 my-2 border-t border-nav-line" />
               )}
               <div className="space-y-0.5 px-2">
                 {section.items.map(({ to, icon: Icon, label, badge }) => (
@@ -118,16 +123,16 @@ function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
                       clsx(
                         "relative flex items-center rounded-lg transition-colors",
                         collapsed ? "justify-center p-2.5" : "gap-2.5 px-3 py-2 text-sm font-medium",
-                        isActive ? "bg-accent-500/20 text-accent-300" : "text-primary-200 hover:bg-primary-700 hover:text-white",
+                        isActive ? "bg-nav-active text-nav-active-fg" : "text-nav-fg hover:bg-nav-hover hover:text-white",
                       )
                     }
                   >
                     <Icon size={collapsed ? 18 : 16} />
                     {!collapsed && <span>{label}</span>}
                     {!collapsed && badge ? (
-                      <span className="ml-auto rounded-full bg-accent-500 px-1.5 py-0.5 text-[9px] font-bold text-white">{badge}</span>
+                      <span className="ml-auto rounded-full bg-nav-mark px-1.5 py-0.5 text-[9px] font-bold text-nav-bg">{badge}</span>
                     ) : null}
-                    {collapsed && badge ? <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-accent-500" /> : null}
+                    {collapsed && badge ? <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-nav-mark" /> : null}
                   </NavLink>
                 ))}
               </div>
@@ -135,11 +140,11 @@ function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
           ))}
         </nav>
 
-        <div className="hidden border-t border-primary-700/50 lg:block">
+        <div className="hidden border-t border-nav-line lg:block">
           <button
             onClick={() => setCollapsed(!collapsed)}
             className={clsx(
-              "flex w-full items-center gap-2 py-3 text-xs text-primary-400 transition-colors hover:bg-primary-700 hover:text-white",
+              "flex w-full items-center gap-2 py-3 text-xs text-nav-muted transition-colors hover:bg-nav-hover hover:text-white",
               collapsed ? "justify-center px-2" : "px-4",
             )}
           >
@@ -149,7 +154,7 @@ function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
       </aside>
 
       <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex h-14 items-center justify-between border-b border-surface-200 bg-white px-4">
+        <header className="flex h-14 items-center justify-between border-b border-surface-200 bg-card px-4">
           <div className="flex items-center gap-3">
             <button onClick={() => setMobileOpen(true)} className="rounded-lg p-2 hover:bg-surface-100 lg:hidden" aria-label="Open menu">
               <Menu size={18} className="text-surface-500" />
@@ -169,6 +174,14 @@ function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
               <span className={clsx("h-2 w-2 rounded-full", platform.isError ? "bg-red-400" : platform.data ? "bg-green-400" : "bg-surface-400")} />
             </div>
             <div className="h-5 w-px bg-surface-200" />
+            <button
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className="rounded-lg p-2 text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-700"
+              aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+              title={theme === "dark" ? "Barclays light" : "Barclays dark"}
+            >
+              {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+            </button>
             <div className="relative" ref={menuRef}>
               <button
                 onClick={() => fixtures.length > 0 && setUserMenu(!userMenu)}
@@ -187,7 +200,7 @@ function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
                 {fixtures.length > 0 && <ChevronDown size={12} className="text-surface-400" />}
               </button>
               {userMenu && (
-                <div className="absolute right-0 top-full z-50 mt-1 w-72 rounded-lg border border-surface-200 bg-white py-1 shadow-lg">
+                <div className="absolute right-0 top-full z-50 mt-1 w-72 rounded-lg border border-surface-200 bg-card py-1 shadow-lg">
                   <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-surface-400">Switch user (development)</p>
                   {fixtures.map((u) => (
                     <button

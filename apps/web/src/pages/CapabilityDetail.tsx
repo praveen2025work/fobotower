@@ -30,17 +30,17 @@ export default function CapabilityDetail(): JSX.Element {
         title={m.name}
         subtitle={<span>{m.description} <span className="font-mono text-xs text-surface-400">· {m.id} v{cap.data.version}</span></span>}
       />
-      <div className="mb-4 rounded-xl border border-surface-200 bg-white p-4">
+      <div className="mb-4 rounded-xl border border-surface-200 bg-card p-4">
         <WorkflowStepper steps={m.steps} pauseBefore={m.pause_before} />
       </div>
-      <div className="mb-4 inline-flex rounded-lg border border-surface-200 bg-white p-1" role="tablist">
+      <div className="mb-4 inline-flex rounded-lg border border-surface-200 bg-card p-1" role="tablist">
         {((hasGroups ? ["groups"] : []).concat(["cases", "definition", "versions"]) as Tab[]).map((t) => (
           <button
             key={t}
             role="tab"
             aria-selected={tab === t}
             onClick={() => setTab(t)}
-            className={clsx("rounded-md px-3 py-1.5 text-sm font-medium capitalize", tab === t ? "bg-accent-500 text-white" : "text-surface-600 hover:bg-surface-50")}
+            className={clsx("rounded-md px-3 py-1.5 text-sm font-medium capitalize", tab === t ? "bg-brand-accent text-brand-accent-fg" : "text-surface-600 hover:bg-surface-50")}
           >
             {t === "cases" ? "Cases" : t}
           </button>
@@ -91,7 +91,7 @@ function GroupsTab({ id, groups, configurable }: { id: string; groups: TeamGroup
           <Link
             key={g.group}
             to={`/capabilities/${encodeURIComponent(id)}/groups/${encodeURIComponent(g.group)}`}
-            className="group rounded-xl border border-surface-200 bg-white p-5 transition-colors hover:border-primary-300"
+            className="group rounded-xl border border-surface-200 bg-card p-5 transition-colors hover:border-primary-300"
           >
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-2.5">
@@ -158,7 +158,7 @@ function CasesTab({ id, manifest, groups }: { id: string; manifest: Manifest; gr
                 <select
                   value={group}
                   onChange={(e) => setGroup(e.target.value)}
-                  className="mt-1 block w-full rounded-lg border border-surface-300 bg-white px-3 py-1.5 text-sm font-normal"
+                  className="mt-1 block w-full rounded-lg border border-surface-300 bg-card px-3 py-1.5 text-sm font-normal"
                 >
                   {openable.map((g) => <option key={g.group} value={g.group}>{g.name}</option>)}
                 </select>
@@ -178,7 +178,7 @@ function CasesTab({ id, manifest, groups }: { id: string; manifest: Manifest; gr
             <button
               type="submit"
               disabled={open.isPending}
-              className="inline-flex items-center gap-2 rounded-lg bg-primary-700 px-4 py-2 text-sm font-medium text-white hover:bg-primary-800 disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-brand-fg hover:bg-brand-strong disabled:opacity-50"
             >
               <Play size={14} /> {open.isPending ? "Running…" : "Open and run"}
             </button>
@@ -190,7 +190,7 @@ function CasesTab({ id, manifest, groups }: { id: string; manifest: Manifest; gr
         title="Cases"
         className="xl:col-span-2"
         aside={groups.length > 0 && (
-          <select aria-label="Filter by group" value={filter} onChange={(e) => setFilter(e.target.value)} className="rounded-lg border border-surface-300 bg-white px-2 py-1 text-xs">
+          <select aria-label="Filter by group" value={filter} onChange={(e) => setFilter(e.target.value)} className="rounded-lg border border-surface-300 bg-card px-2 py-1 text-xs">
             <option value="">All groups</option>
             {groups.map((g) => <option key={g.group} value={g.group}>{g.name}</option>)}
           </select>

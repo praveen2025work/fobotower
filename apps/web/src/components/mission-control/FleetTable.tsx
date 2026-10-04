@@ -74,7 +74,7 @@ function FleetTable({ agents, isLoading, isError, onRetry }: FleetTableProps) {
   return (
     <section
       aria-label="Capability fleet"
-      className="flex h-full flex-col overflow-hidden rounded-xl border border-surface-200 bg-white"
+      className="flex h-full flex-col overflow-hidden rounded-xl border border-surface-200 bg-card"
     >
       <header className="flex items-center justify-between border-b border-surface-200 px-4 py-3">
         <h2 className="text-sm font-semibold text-surface-900">Fleet</h2>

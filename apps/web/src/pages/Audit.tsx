@@ -35,11 +35,11 @@ export default function Audit(): JSX.Element {
         subtitle="The system of record. Model behaviour (prompts, timings, tokens) is in Phoenix, joined on the case."
         actions={
           <div className="flex gap-2">
-            <select aria-label="Capability" value={capability} onChange={(e) => setCapability(e.target.value)} className="rounded-lg border border-surface-300 bg-white px-2 py-1.5 text-sm">
+            <select aria-label="Capability" value={capability} onChange={(e) => setCapability(e.target.value)} className="rounded-lg border border-surface-300 bg-card px-2 py-1.5 text-sm">
               <option value="">All capabilities</option>
               {caps.data?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
-            <select aria-label="Event kind" value={kind} onChange={(e) => setKind(e.target.value)} className="rounded-lg border border-surface-300 bg-white px-2 py-1.5 text-sm">
+            <select aria-label="Event kind" value={kind} onChange={(e) => setKind(e.target.value)} className="rounded-lg border border-surface-300 bg-card px-2 py-1.5 text-sm">
               <option value="">All events</option>
               <option value="tool_call">Connector calls</option>
               <option value="refused">Refused calls</option>

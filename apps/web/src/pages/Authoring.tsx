@@ -46,7 +46,7 @@ export default function Authoring(): JSX.Element {
           <button
             onClick={onDraft}
             disabled={draft.isPending || !brd.trim()}
-            className="mt-3 inline-flex items-center gap-2 rounded-lg bg-accent-600 px-4 py-2 text-sm font-medium text-white hover:bg-accent-700 disabled:opacity-50"
+            className="mt-3 inline-flex items-center gap-2 rounded-lg bg-brand-accent px-4 py-2 text-sm font-medium text-brand-accent-fg hover:bg-brand-accent-strong disabled:opacity-50"
           >
             <Sparkles size={14} /> {draft.isPending ? "Drafting…" : "Draft capability"}
           </button>
@@ -82,7 +82,7 @@ export default function Authoring(): JSX.Element {
                   onChange={(e) => setYamlText(e.target.value)}
                   rows={16}
                   spellCheck={false}
-                  className="mt-1 block w-full rounded-lg border border-surface-300 bg-surface-900 px-3 py-2 font-mono text-xs text-surface-100 focus:outline-none"
+                  className="mt-1 block w-full rounded-lg border border-surface-300 bg-code-bg px-3 py-2 font-mono text-xs text-code-fg focus:outline-none"
                 />
               </label>
               <div className="flex flex-wrap items-end gap-2">
@@ -93,7 +93,7 @@ export default function Authoring(): JSX.Element {
                 <button
                   onClick={() => submit.mutate({ yaml: yamlText, note })}
                   disabled={submit.isPending || !yamlText.trim()}
-                  className="inline-flex items-center gap-2 rounded-lg bg-primary-700 px-4 py-2 text-sm font-medium text-white hover:bg-primary-800 disabled:opacity-50"
+                  className="inline-flex items-center gap-2 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-brand-fg hover:bg-brand-strong disabled:opacity-50"
                 >
                   <Upload size={14} /> Submit for approval
                 </button>
@@ -133,7 +133,7 @@ function PendingDrafts() {
                 <button
                   onClick={() => approve.mutate({ capabilityId: d.capability_id, version: d.version })}
                   disabled={approve.isPending}
-                  className="rounded-lg bg-accent-600 px-3 py-1 text-xs font-medium text-white hover:bg-accent-700 disabled:opacity-50"
+                  className="rounded-lg bg-brand-accent px-3 py-1 text-xs font-medium text-brand-accent-fg hover:bg-brand-accent-strong disabled:opacity-50"
                 >
                   Approve
                 </button>

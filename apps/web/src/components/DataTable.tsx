@@ -51,7 +51,7 @@ function DataTable<T extends Record<string, unknown>>({
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-surface-200 bg-white">
+    <div className="overflow-hidden rounded-xl border border-surface-200 bg-card">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>

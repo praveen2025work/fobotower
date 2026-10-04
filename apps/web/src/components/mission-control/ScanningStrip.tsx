@@ -38,7 +38,7 @@ function ScanningStrip({ data, isLoading }: ScanningStripProps) {
     return (
       <section
         aria-label="KPI summary"
-        className="flex h-16 items-stretch divide-x divide-surface-200 border-b border-surface-200 bg-white"
+        className="flex h-16 items-stretch divide-x divide-surface-200 border-b border-surface-200 bg-card"
       >
         <PlaceholderTile label="Cost · 24h" />
         <PlaceholderTile label="Runs · 24h" />
@@ -52,7 +52,7 @@ function ScanningStrip({ data, isLoading }: ScanningStripProps) {
   return (
     <section
       aria-label="KPI summary"
-      className="flex h-16 items-stretch divide-x divide-surface-200 border-b border-surface-200 bg-white"
+      className="flex h-16 items-stretch divide-x divide-surface-200 border-b border-surface-200 bg-card"
     >
       <KpiTile
         label="Cost · 24h"

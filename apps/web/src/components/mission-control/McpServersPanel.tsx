@@ -20,7 +20,7 @@ function dotClass(status: string | undefined): string {
 function McpServersPanel({ connectors, isLoading }: { connectors: ConnectorHealth[] | undefined; isLoading: boolean }): JSX.Element {
   const servers = connectors ?? [];
   return (
-    <section data-testid="mcp-servers-panel" className="flex h-full flex-col rounded-lg border border-surface-200 bg-white">
+    <section data-testid="mcp-servers-panel" className="flex h-full flex-col rounded-lg border border-surface-200 bg-card">
       <header className="flex items-center justify-between border-b border-surface-100 px-3 py-2">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-surface-700">MCP connectors</h3>
         <span className="font-mono text-[10px] text-surface-500">

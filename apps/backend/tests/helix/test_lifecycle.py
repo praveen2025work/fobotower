@@ -205,3 +205,18 @@ async def test_reinvestigation_is_limited_and_needs_a_note(api):
     assert replay.json()["replayed"] is True
     third = await api.post(url, headers=api.as_user("alice"), json={"note": "again", "idempotency_key": "reinv-3-key"})
     assert third.status_code == 409 and "the limit" in third.text
+
+
+async def test_a_case_with_nothing_in_scope_does_not_wait_for_a_review(api, monkeypatch):
+    from helix import capabilities
+    real = capabilities.active
+
+    async def active(capability_id):
+        version, m = await real(capability_id)
+        if capability_id == VARIANCE:     # nothing is material
+            m = m.model_copy(update={"items": m.items.model_copy(update={"in_scope": "abs(variance) > 1e12"})})
+        return version, m
+    monkeypatch.setattr(capabilities, "active", active)
+    case = await _open(api)
+    assert case["groups"] == [] and case["status"] != "awaiting_review"
+    assert case["status"] == "completed" and case["outcome"] == "published"   # nothing was written

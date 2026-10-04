@@ -125,6 +125,20 @@ async def run_case(case_id: str, kind: str = "open", update: dict | None = None)
                     if update:
                         await app.aupdate_state(config, update)
                     await app.ainvoke(None if started else initial_state(case, m), config)
+                    after = await app.aget_state(config)
+                    if after.next and after.next[0] == "review" and not (after.values or {}).get("groups"):
+                        # Nothing in scope: no one has anything to decide, so the
+                        # review pause is crossed with no decisions and the run records.
+                        await app.aupdate_state(config, {"decisions": []})
+                        await app.ainvoke(None, config)
+                    after = await app.aget_state(config)
+                    if after.next and after.next[0] == "publish" and not any(
+                            d.get("action") == "approve" for d in (after.values or {}).get("decisions", [])):
+                        # Nothing approved means nothing to write: no one is asked to
+                        # release an empty write-back; publish runs and writes nothing.
+                        await app.aupdate_state(config, {"publish_approval": {
+                            "approved_by": None, "approved_at": now_iso(), "nothing_to_write": True}})
+                        await app.ainvoke(None, config)
                     status = await _status_after_run(app, case_id)
             except Exception as e:
                 log.exception("case %s: run failed", case_id)

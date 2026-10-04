@@ -128,7 +128,7 @@ async def overview(caller: Caller) -> dict:
         "escalated_groups": sum(v["escalated_groups"] for v in per_cap.values()),
         "tool_calls_24h": len(calls),
         "refused_calls_24h": sum(1 for t in calls if not t.allowed),
-        "model_calls_24h": sum(1 for t in calls if t.requested_by == "llm"),
+        "model_calls_24h": sum(1 for t in calls if t.requested_by in ("llm", "chat")),
         "llm_cost_usd": round(llm_cost, 4), "llm_groups": llm_groups,
         "capabilities": [{**v, "statuses": dict(v["statuses"])} for v in per_cap.values()],
     }

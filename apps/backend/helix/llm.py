@@ -47,6 +47,26 @@ class ReasonResult:
     verdict: str | None = None             # when the request offered verdicts
 
 
+@dataclass(frozen=True)
+class AskRequest:
+    """A question about one case, answered from its data and tools."""
+    capability_id: str
+    case_id: str
+    case_key: dict
+    skill: str
+    question: str
+    context: dict              # {subject, status, headline, groups: [...], items: [...]}
+    history: list[dict]        # earlier turns: [{role, text}]
+    allowed_tools: list[str]
+
+
+@dataclass(frozen=True)
+class AskResult:
+    answer: str
+    model: str | None = None
+    usage: dict = field(default_factory=dict)
+
+
 class ToolInvoker(Protocol):
     async def __call__(self, tool: str, arguments: dict) -> dict: ...
 
@@ -56,12 +76,44 @@ class LlmAdapter(Protocol):
 
     async def reason(self, request: ReasonRequest, tools: ToolInvoker) -> ReasonResult: ...
 
+    async def ask(self, request: AskRequest, tools: ToolInvoker) -> AskResult: ...
+
 
 class NoLlm:
     name = "none"
 
     async def reason(self, request, tools):
         return ReasonResult(status="escalated", reason="NO_REASONER")
+
+    async def ask(self, request, tools):
+        return AskResult(answer=_from_case(request) + " (No model is configured; this is the case's own record.)")
+
+
+def _mentioned(request: "AskRequest") -> list[dict]:
+    """Groups the question names: by label, key value or one of its item ids."""
+    q = request.question.lower()
+    out = []
+    for g in request.context.get("groups", []):
+        words = [g["label"], *map(str, g["group_key"].values()), *map(str, g.get("items", []))]
+        if any(w and str(w).lower() in q for w in words):
+            out.append(g)
+    return out
+
+
+def _from_case(request: "AskRequest") -> str:
+    """An answer built only from the case's record — no model involved."""
+    ctx = request.context
+    groups = _mentioned(request) or ctx.get("groups", [])
+    lines = [ctx.get("headline") or f"{ctx.get('subject')}: {ctx.get('status')}."]
+    for g in groups[:10]:
+        f = g.get("finding") or {}
+        verdict = f" Verdict {f['verdict']}." if f.get("verdict") else ""
+        owner = f" Owner: {f['escalate_to']}." if f.get("escalate_to") else ""
+        decided = (f" Decided: {g['decision']['action']} by {g['decision']['decided_by']}."
+                   if g.get("decision") else " Not decided yet.")
+        lines.append(f"{g['label']}: {f.get('status', 'pending')}.{verdict}{owner} "
+                     f"{f.get('comment') or f.get('reason') or ''}".rstrip() + decided)
+    return " ".join(lines)
 
 
 class StubLlm:
@@ -91,6 +143,22 @@ class StubLlm:
         if request.reviewer_note:
             comment += f" Re-checked as the reviewer asked: \"{request.reviewer_note}\"."
         return ReasonResult(status="proposed", comment=comment, model="stub")
+
+
+    async def ask(self, request, tools):
+        from helix.gateway import tool_schema
+
+        evidence = []
+        for g in _mentioned(request)[:3]:
+            args = {**request.case_key, **g["group_key"]}
+            for tool in request.allowed_tools:
+                if set((await tool_schema(tool)).get("required", [])) <= set(args):
+                    result = await tools(tool, args)
+                    evidence.append(f"{len(result.get('rows', []))} rows from {tool} for {g['label']}")
+        answer = _from_case(request)
+        if evidence:
+            answer += " I also looked at " + "; ".join(evidence) + "."
+        return AskResult(answer=answer, model="stub")
 
 
 def _num(v) -> float:

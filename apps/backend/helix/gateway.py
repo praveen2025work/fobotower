@@ -152,6 +152,10 @@ async def _record(**row) -> None:
         await s.commit()
 
 
+# Calls the model makes: protected both ways, and never allowed to write.
+MODEL_CALLERS = ("llm", "chat")
+
+
 async def call(ctx: CallContext, qualified_tool: str, arguments: dict,
                idempotency_key: str | None = None) -> dict:
     """Call a connector tool for a step or the model.
@@ -166,7 +170,7 @@ async def call(ctx: CallContext, qualified_tool: str, arguments: dict,
     ctx.calls.append(call_id)
     connector_id = qualified_tool.partition(".")[0]
     guard = ctx.protector
-    for_model = ctx.requested_by == "llm"
+    for_model = ctx.requested_by in MODEL_CALLERS
     if for_model:
         arguments = guard.reveal(arguments)
     base = dict(
@@ -233,13 +237,15 @@ async def call(ctx: CallContext, qualified_tool: str, arguments: dict,
         return guard.protect(result) if for_model else result
 
 
-def invoker(ctx: CallContext):
-    """A ToolInvoker for the LLM adapter: same gateway, marked as the model's call."""
+def invoker(ctx: CallContext, requested_by: str = "llm"):
+    """A ToolInvoker for the LLM adapter: same gateway, marked as the model's call
+    ("llm" while reasoning, "chat" while answering a question)."""
+    assert requested_by in MODEL_CALLERS
     async def invoke(tool: str, arguments: dict) -> dict:
         model_ctx = CallContext(
             capability_id=ctx.capability_id, caller=ctx.caller,
             allowed_tools=ctx.allowed_tools, case_id=ctx.case_id,
-            requested_by="llm", calls=ctx.calls, protector=ctx.protector,
+            requested_by=requested_by, calls=ctx.calls, protector=ctx.protector,
         )
         return await call(model_ctx, tool, arguments)
     return invoke

@@ -203,6 +203,52 @@ class ClaudeAgentSdkAdapter:
                                 verdict=out.get("verdict") or None)
 
 
+ASK_RULES = """
+You are answering a reviewer's question about one case inside Helix, a governed
+workflow. Answer from the case data in the prompt and the tools provided only.
+Every figure you state must come from them; say plainly when the data does not
+answer the question. Be brief and specific. Reply with the structured result only.
+""".strip()
+
+ASK_SCHEMA = {
+    "type": "object",
+    "properties": {"answer": {"type": "string"}},
+    "required": ["answer"],
+    "additionalProperties": False,
+}
+
+
+async def _ask(self: "ClaudeAgentSdkAdapter", request, tools):
+    from helix.llm import AskResult
+
+    reg = gateway.registry()
+    sdk_tools = []
+    for qualified in request.allowed_tools:
+        found = reg.tool(qualified)
+        sdk_tools.append(_gateway_tool(qualified, await gateway.tool_schema(qualified),
+                                       found[2].description if found else "", tools))
+    options = ClaudeAgentOptions(
+        system_prompt=f"{request.skill.strip()}\n\n{ASK_RULES}",
+        tools=[], mcp_servers={SERVER: create_sdk_mcp_server(SERVER, tools=sdk_tools)},
+        strict_mcp_config=True, allowed_tools=[f"mcp__{SERVER}__{t.name}" for t in sdk_tools],
+        permission_mode="dontAsk", max_turns=self.max_turns, max_budget_usd=self.max_budget_usd,
+        model=self.model, effort=self.effort,
+        output_format={"type": "json_schema", "schema": ASK_SCHEMA})
+    prompt = json.dumps({"case": request.case_key, "question": request.question,
+                         "earlier_turns": request.history, "case_data": request.context},
+                        default=str, indent=1)
+    with span("llm.agent_sdk.ask", kind=AGENT, input=prompt, case_id=request.case_id,
+              capability_id=request.capability_id, model=self.model) as sp:
+        result = await self._run(prompt, options)
+        out = _parse_any(result)
+        set_output(sp, out)
+        return AskResult(answer=str(out.get("answer", "")), model=self.model,
+                         usage={"cost_usd": result.total_cost_usd, "turns": result.num_turns})
+
+
+ClaudeAgentSdkAdapter.ask = _ask
+
+
 def describe(adapter: ClaudeAgentSdkAdapter) -> dict:
     """What `/api/platform` reports about the configured adapter."""
     return {"name": adapter.name, "model": adapter.model, "effort": adapter.effort,

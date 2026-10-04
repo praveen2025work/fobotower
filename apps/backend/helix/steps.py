@@ -315,8 +315,9 @@ async def reason_group(state: CaseState, g: dict, note: str | None = None,
                        "priors": [{**p, "comment": guard.protect_text(
                            p.get("comment", ""), g["group_key"])} for p in g["priors"]]},
                 allowed_tools=list(m.reasoning.tools), output=m.reasoning.output,
-                reviewer_note=guard.protect_text(note, g["group_key"]) if note else None,
-                previous_finding=guard.protect(previous) if previous else None,
+                reviewer_note=guard.scrub(note, [g["group_key"], *members]) if note else None,
+                previous_finding=guard.scrub(guard.protect(previous), [g["group_key"], *members])
+                if previous else None,
                 verdicts=m.playbook.verdict_names() if m.playbook else None)
             adapter = llm()
             try:

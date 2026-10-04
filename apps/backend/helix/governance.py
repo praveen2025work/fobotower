@@ -128,6 +128,28 @@ class Protector:
                 text = text.replace(v, MASK)
         return text
 
+    def scrub(self, data: Any, known: list[dict[str, Any]]) -> Any:
+        """Tokenize every protected value from `known` (group keys, items)
+        wherever it appears in free text — labels, comments, questions."""
+        pairs = {(k.lower(), v) for d in known for k, v in d.items()
+                 if isinstance(v, str) and v and k.lower() in (self.pseudo_fields | self.mask_fields)}
+        ordered = sorted(pairs, key=lambda kv: -len(kv[1]))     # longest first
+
+        def text(t: str) -> str:
+            for k, v in ordered:
+                t = t.replace(v, self.token(k, v) if k in self.pseudo_fields else MASK)
+            return t
+
+        def walk(v: Any) -> Any:
+            if isinstance(v, str):
+                return text(v)
+            if isinstance(v, dict):
+                return {k: walk(x) for k, x in v.items()}
+            if isinstance(v, list):
+                return [walk(x) for x in v]
+            return v
+        return walk(data) if ordered else data
+
     def reveal(self, data: Any) -> Any:
         """Replace tokens with real values — in strings, dict values and lists."""
         if isinstance(data, str):

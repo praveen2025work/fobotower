@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
-from helix import authoring, capabilities, cases, knowledge, retention, runner, views
+from helix import authoring, capabilities, cases, chat, knowledge, retention, runner, views
 from helix import groups as team_groups
 from helix.config import settings
 from helix.entitlement import Caller, EntitlementError, StubEntitlement, entitlements
@@ -295,6 +295,34 @@ async def reinvestigate(case_id: str, group_id: str, body: ReinvestigateIn,
                         c: Caller = Depends(caller)) -> dict:
     result = await cases.reinvestigate(case_id, group_id, body.note, body.idempotency_key, c)
     return {**result, "case": await cases.case_detail(case_id, c)}
+
+
+class AskIn(BaseModel):
+    question: str = Field(min_length=1, max_length=4000)
+
+
+@app.get("/api/cases/{case_id}/messages")
+@_errors
+async def case_messages(case_id: str, c: Caller = Depends(caller)) -> list[dict]:
+    return await chat.messages(case_id, c)
+
+
+@app.post("/api/cases/{case_id}/ask", status_code=201)
+@_errors
+async def ask_case(case_id: str, body: AskIn, c: Caller = Depends(caller)) -> dict:
+    return await chat.ask(case_id, body.question, c)
+
+
+@app.get("/api/cases/{case_id}/history")
+@_errors
+async def case_history(case_id: str, c: Caller = Depends(caller)) -> list[dict]:
+    return await chat.history(case_id, c)
+
+
+@app.get("/api/cases/{case_id}/history/{checkpoint_id}")
+@_errors
+async def case_state_at(case_id: str, checkpoint_id: str, c: Caller = Depends(caller)) -> dict:
+    return await chat.state_at(case_id, checkpoint_id, c)
 
 
 class LegalHoldIn(BaseModel):

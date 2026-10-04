@@ -48,6 +48,14 @@ export default function CaseWorkspace(): JSX.Element {
           <h1 className="text-2xl font-bold tracking-tight text-surface-900">{c.labels.case}: {c.subject}</h1>
           <StatusBadge status={c.status} />
           {c.outcome && c.outcome !== c.status && <StatusBadge status={c.outcome} />}
+          {c.team_group && (
+            <Link
+              to={`/capabilities/${encodeURIComponent(c.capability_id)}/groups/${encodeURIComponent(c.team_group)}`}
+              className="rounded-md bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700 hover:underline"
+            >
+              group {c.team_group} v{c.team_group_version}
+            </Link>
+          )}
         </div>
         {c.draft && <p className="mt-1 text-sm text-surface-500">{c.draft.headline}</p>}
       </div>
@@ -223,7 +231,7 @@ function evidenceFor(calls: ToolCall[], group: Group): ToolCall[] {
 
 function ContextPanel({ c }: { c: CaseDetail }) {
   const release = useRelease(c.case_id);
-  const steps = useMemo(() => ["load", "group", "reason", "validate", "review", "record", ...(c.publish ? ["publish"] : [])], [c.publish]);
+
   const byWho = c.tool_calls.reduce<Record<string, number>>((acc, t) => ({ ...acc, [t.requested_by]: (acc[t.requested_by] ?? 0) + 1 }), {});
   const refused = c.tool_calls.filter((t) => !t.allowed).length;
 
@@ -254,7 +262,7 @@ function ContextPanel({ c }: { c: CaseDetail }) {
 
       <div>
         <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-surface-500">Workflow</h2>
-        <WorkflowStepper steps={steps} current={currentStep(c.status)} />
+        <WorkflowStepper steps={c.steps} pauseBefore={c.pause_before} current={currentStep(c.status)} />
       </div>
 
       {c.publish && (

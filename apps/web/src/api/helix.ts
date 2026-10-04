@@ -37,6 +37,41 @@ export interface CapabilitySummary {
   steps: string[];
   is_owner: boolean;
   can_decide: boolean;
+  configurable: string[];
+  groups: { group: string; name: string }[];
+}
+
+/** A team group: one team's configuration of a capability (e.g. a rec group). */
+export interface TeamGroup {
+  capability_id: string;
+  group: string;
+  name: string;
+  description: string;
+  version: number;
+  owners: { people: string[]; role: string | null; four_eyes: boolean };
+  sets: string[];
+  case_label: string;
+  item_label: string;
+  case_key: string[];
+  review_roles: string[];
+  is_owner: boolean;
+  can_open: boolean;
+  can_decide: boolean;
+}
+
+export interface GroupConfig {
+  group: string;
+  name: string;
+  description: string;
+  owners: { people: string[]; role: string | null; four_eyes: boolean };
+  set: Record<string, unknown>;
+}
+
+export interface TeamGroupDetail extends TeamGroup {
+  config: GroupConfig;
+  manifest: Manifest;
+  configurable: string[];
+  versions: (CapabilityVersion & { config: GroupConfig })[];
 }
 
 export interface Manifest {
@@ -55,6 +90,7 @@ export interface Manifest {
   review: { roles: string[] };
   publish: { tool: string; args: Record<string, unknown>; approver_roles: string[] } | null;
   match?: { left: { tool: string }; right: { tool: string }; keys: string[] } | null;
+  configurable: string[];
 }
 
 export interface CapabilityVersion {
@@ -81,6 +117,8 @@ export interface CaseSummary {
   status: CaseStatus;
   outcome: string | null;
   manifest_version: number;
+  team_group: string | null;
+  team_group_version: number | null;
   opened_by: string;
   opened_at: string;
   trace_id: string | null;
@@ -125,6 +163,8 @@ export interface ToolCall {
 export interface CaseDetail extends CaseSummary {
   draft: { headline: string } | null;
   labels: { case: string; item: string };
+  steps: string[];
+  pause_before: string[];
   columns: string[];
   items: ({ item_id: string; in_scope: boolean } & Record<string, unknown>)[];
   groups: Group[];
@@ -141,6 +181,7 @@ export interface InboxRow {
   case_label: string;
   subject: string;
   status: CaseStatus;
+  team_group: string | null;
   opened_at: string;
   opened_by: string;
   groups: number;
@@ -207,8 +248,19 @@ export const useCapabilities = () =>
   useQuery({ queryKey: ["capabilities"], queryFn: () => api.get<CapabilitySummary[]>("/capabilities") });
 export const useCapability = (id: string) =>
   useQuery({ queryKey: ["capability", id], queryFn: () => api.get<CapabilityDetail>(`/capabilities/${enc(id)}`) });
-export const useCases = (id: string) =>
-  useQuery({ queryKey: ["cases", id], queryFn: () => api.get<CaseSummary[]>(`/capabilities/${enc(id)}/cases`) });
+export const useCases = (id: string, teamGroup?: string) =>
+  useQuery({
+    queryKey: ["cases", id, teamGroup ?? "all"],
+    queryFn: () =>
+      api.get<CaseSummary[]>(`/capabilities/${enc(id)}/cases${teamGroup ? `?team_group=${enc(teamGroup)}` : ""}`),
+  });
+export const useGroups = (id: string, enabled = true) =>
+  useQuery({ queryKey: ["groups", id], queryFn: () => api.get<TeamGroup[]>(`/capabilities/${enc(id)}/groups`), enabled });
+export const useGroup = (id: string, group: string) =>
+  useQuery({
+    queryKey: ["group", id, group],
+    queryFn: () => api.get<TeamGroupDetail>(`/capabilities/${enc(id)}/groups/${enc(group)}`),
+  });
 export const useCase = (caseId: string) =>
   useQuery({ queryKey: ["case", caseId], queryFn: () => api.get<CaseDetail>(`/cases/${enc(caseId)}`) });
 export const useAudit = (capabilityId?: string) =>
@@ -231,8 +283,11 @@ function useRefreshCases() {
 export function useOpenCase(capabilityId: string) {
   const refresh = useRefreshCases();
   return useMutation({
-    mutationFn: (caseKey: Record<string, string>) =>
-      api.post<CaseDetail>(`/capabilities/${enc(capabilityId)}/cases`, { case_key: caseKey }),
+    mutationFn: (v: { caseKey: Record<string, string>; teamGroup?: string | null }) =>
+      api.post<CaseDetail>(`/capabilities/${enc(capabilityId)}/cases`, {
+        case_key: v.caseKey,
+        team_group: v.teamGroup ?? null,
+      }),
     onSuccess: (detail) => refresh(detail),
   });
 }
@@ -303,6 +358,28 @@ export function useApproveVersion() {
       api.post<{ version: number }>(`/capabilities/${enc(v.capabilityId)}/versions/${v.version}/approve`, {}),
     onSuccess: () => {
       for (const key of ["drafts", "capabilities", "capability", "overview"]) qc.invalidateQueries({ queryKey: [key] });
+    },
+  });
+}
+
+// ---------- team groups ----------
+
+export function useDraftGroup(capabilityId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { config: GroupConfig; note: string }) =>
+      api.post<{ group_id: string; version: number }>(`/capabilities/${enc(capabilityId)}/groups`, v),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["group"] }),
+  });
+}
+
+export function useApproveGroup(capabilityId: string, group: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (version: number) =>
+      api.post<{ version: number }>(`/capabilities/${enc(capabilityId)}/groups/${enc(group)}/versions/${version}/approve`, {}),
+    onSuccess: () => {
+      for (const key of ["group", "groups", "capabilities"]) qc.invalidateQueries({ queryKey: [key] });
     },
   });
 }

@@ -44,6 +44,14 @@ export default function Capabilities(): JSX.Element {
               One <span className="font-medium text-surface-700">{c.case_label}</span> per {c.case_key.join(" × ")} · items are{" "}
               <span className="font-medium text-surface-700">{c.item_label.toLowerCase()}s</span>
             </p>
+            {c.groups.length > 0 && (
+              <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs text-surface-500">
+                Configured by
+                {c.groups.map((g) => (
+                  <span key={g.group} className="rounded bg-primary-50 px-1.5 py-0.5 font-medium text-primary-700">{g.name}</span>
+                ))}
+              </div>
+            )}
             <div className="mt-3">
               <WorkflowStepper steps={c.steps} />
             </div>

@@ -291,6 +291,7 @@ async def case_detail(case_id: str, caller: Caller) -> dict:
         **_case_summary(case),
         "draft": case.draft,
         "labels": {"case": m.case.label, "item": m.case.item_label},
+        "steps": m.steps, "pause_before": m.pause_before,
         "columns": m.items.display or sorted({k for it in items for k in it.payload}),
         "items": [{"item_id": it.item_id, "in_scope": it.item_id in in_group, **it.payload}
                   for it in items],

@@ -3,16 +3,21 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import clsx from "clsx";
 import { Play } from "lucide-react";
 
-import { useCapability, useCases, useOpenCase, type Manifest } from "../api/helix";
+import { Users } from "lucide-react";
+
+import { useCapability, useCases, useGroups, useOpenCase, type Manifest, type TeamGroup } from "../api/helix";
 import StatusBadge from "../components/StatusBadge";
 import { Card, Empty, ErrorState, Loading, PageHeader, WorkflowStepper, formatTime } from "../components/ui";
 
-type Tab = "cases" | "definition" | "versions";
+type Tab = "groups" | "cases" | "definition" | "versions";
 
 export default function CapabilityDetail(): JSX.Element {
   const { id = "" } = useParams();
   const cap = useCapability(id);
-  const [tab, setTab] = useState<Tab>("cases");
+  const groups = useGroups(id);
+  const hasGroups = (groups.data?.length ?? 0) > 0;
+  const [chosen, setTab] = useState<Tab | null>(null);
+  const tab: Tab = chosen ?? (hasGroups ? "groups" : "cases");
 
   if (cap.isLoading) return <Loading what="capability" />;
   if (cap.error) return <ErrorState error={cap.error} />;
@@ -29,7 +34,7 @@ export default function CapabilityDetail(): JSX.Element {
         <WorkflowStepper steps={m.steps} pauseBefore={m.pause_before} />
       </div>
       <div className="mb-4 inline-flex rounded-lg border border-surface-200 bg-white p-1" role="tablist">
-        {(["cases", "definition", "versions"] as Tab[]).map((t) => (
+        {((hasGroups ? ["groups"] : []).concat(["cases", "definition", "versions"]) as Tab[]).map((t) => (
           <button
             key={t}
             role="tab"
@@ -37,12 +42,22 @@ export default function CapabilityDetail(): JSX.Element {
             onClick={() => setTab(t)}
             className={clsx("rounded-md px-3 py-1.5 text-sm font-medium capitalize", tab === t ? "bg-accent-500 text-white" : "text-surface-600 hover:bg-surface-50")}
           >
-            {t === "cases" ? `${m.case.label}s` : t}
+            {t === "cases" ? "Cases" : t}
           </button>
         ))}
       </div>
-      {tab === "cases" && <CasesTab id={id} manifest={m} />}
-      {tab === "definition" && <DefinitionTab manifest={m} />}
+      {tab === "groups" && <GroupsTab id={id} groups={groups.data ?? []} configurable={m.configurable} />}
+      {tab === "cases" && <CasesTab id={id} manifest={m} groups={groups.data ?? []} />}
+      {tab === "definition" && (
+        <>
+          {hasGroups && (
+            <p className="mb-3 text-sm text-surface-500">
+              The capability's defaults. Each group may change: {m.configurable.map((c) => <code key={c} className="mr-1 rounded bg-surface-100 px-1 text-xs">{c}</code>)}
+            </p>
+          )}
+          <ManifestDefinition manifest={m} />
+        </>
+      )}
       {tab === "versions" && (
         <Card title="Versions" aside={<span className="text-xs text-surface-500">An owner drafts; a different owner approves.</span>}>
           <ul className="divide-y divide-surface-100 text-sm">
@@ -64,51 +79,134 @@ export default function CapabilityDetail(): JSX.Element {
   );
 }
 
-function CasesTab({ id, manifest }: { id: string; manifest: Manifest }) {
-  const cases = useCases(id);
+function GroupsTab({ id, groups, configurable }: { id: string; groups: TeamGroup[]; configurable: string[] }) {
+  return (
+    <div>
+      <p className="mb-3 text-sm text-surface-500">
+        Each group is one team's configuration of this capability — its own sources, keys, thresholds, rules, instructions and
+        reviewers, within what the capability allows ({configurable.length} settings). Its owners change it; another owner approves.
+      </p>
+      <div className="grid gap-4 lg:grid-cols-2">
+        {groups.map((g) => (
+          <Link
+            key={g.group}
+            to={`/capabilities/${encodeURIComponent(id)}/groups/${encodeURIComponent(g.group)}`}
+            className="group rounded-xl border border-surface-200 bg-white p-5 transition-colors hover:border-primary-300"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-50 text-primary-600"><Users size={17} /></div>
+                <div>
+                  <h2 className="font-semibold text-surface-900 group-hover:text-primary-700">{g.name}</h2>
+                  <p className="font-mono text-[11px] text-surface-400">{g.group} · v{g.version}</p>
+                </div>
+              </div>
+              <div className="flex gap-1.5 text-[10px]">
+                {g.is_owner && <span className="rounded bg-primary-50 px-1.5 py-0.5 font-medium text-primary-700">Owner</span>}
+                {g.can_decide && <span className="rounded bg-accent-50 px-1.5 py-0.5 font-medium text-accent-700">Reviewer</span>}
+              </div>
+            </div>
+            {g.description && <p className="mt-3 text-sm text-surface-600">{g.description}</p>}
+            <p className="mt-3 text-xs text-surface-500">
+              {g.case_label} per {g.case_key.join(" × ")} · reviewed by {g.review_roles.join(", ")}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-1">
+              {g.sets.length === 0 ? (
+                <span className="text-xs text-surface-400">uses the capability's defaults</span>
+              ) : (
+                g.sets.map((p) => <code key={p} className="rounded bg-surface-100 px-1.5 py-0.5 text-[11px] text-surface-600">{p}</code>)
+              )}
+            </div>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CasesTab({ id, manifest, groups }: { id: string; manifest: Manifest; groups: TeamGroup[] }) {
+  const openable = groups.filter((g) => g.can_open);
+  const [group, setGroup] = useState<string>(openable[0]?.group ?? "");
+  const [filter, setFilter] = useState<string>("");
+  const cases = useCases(id, filter || undefined);
   const open = useOpenCase(id);
   const navigate = useNavigate();
-  const [values, setValues] = useState<Record<string, string>>(() => Object.fromEntries(manifest.case.key.map((k) => [k, ""])));
+  const chosen = groups.find((g) => g.group === group);
+  const keyFields = chosen ? chosen.case_key : manifest.case.key;
+  const label = chosen ? chosen.case_label : manifest.case.label;
+  const [values, setValues] = useState<Record<string, string>>({});
+  const names = Object.fromEntries(groups.map((g) => [g.group, g.name]));
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    open.mutate(values, { onSuccess: (d) => navigate(`/cases/${encodeURIComponent(d.case_id)}`) });
+    const caseKey = Object.fromEntries(keyFields.map((k) => [k, values[k] ?? ""]));
+    open.mutate({ caseKey, teamGroup: groups.length ? group : null }, {
+      onSuccess: (d) => navigate(`/cases/${encodeURIComponent(d.case_id)}`),
+    });
   };
 
   return (
     <div className="grid gap-4 xl:grid-cols-3">
-      <Card title={`Open a ${manifest.case.label.toLowerCase()}`}>
-        <form onSubmit={submit} className="space-y-3">
-          {manifest.case.key.map((k) => (
-            <label key={k} className="block text-xs font-medium text-surface-600">
-              {k}
-              <input
-                required
-                value={values[k]}
-                onChange={(e) => setValues((v) => ({ ...v, [k]: e.target.value }))}
-                className="mt-1 block w-full rounded-lg border border-surface-300 px-3 py-1.5 text-sm font-normal text-surface-900 focus:border-primary-400 focus:outline-none"
-              />
-            </label>
-          ))}
-          <button
-            type="submit"
-            disabled={open.isPending}
-            className="inline-flex items-center gap-2 rounded-lg bg-primary-700 px-4 py-2 text-sm font-medium text-white hover:bg-primary-800 disabled:opacity-50"
-          >
-            <Play size={14} /> {open.isPending ? "Running…" : "Open and run"}
-          </button>
-          {open.error && <ErrorState error={open.error} />}
-        </form>
+      <Card title={`Open a ${label.toLowerCase()}`}>
+        {groups.length > 0 && openable.length === 0 ? (
+          <Empty>None of this capability's groups lets you open cases.</Empty>
+        ) : (
+          <form onSubmit={submit} className="space-y-3">
+            {groups.length > 0 && (
+              <label className="block text-xs font-medium text-surface-600">
+                Group
+                <select
+                  value={group}
+                  onChange={(e) => setGroup(e.target.value)}
+                  className="mt-1 block w-full rounded-lg border border-surface-300 bg-white px-3 py-1.5 text-sm font-normal"
+                >
+                  {openable.map((g) => <option key={g.group} value={g.group}>{g.name}</option>)}
+                </select>
+              </label>
+            )}
+            {keyFields.map((k) => (
+              <label key={k} className="block text-xs font-medium text-surface-600">
+                {k}
+                <input
+                  required
+                  value={values[k] ?? ""}
+                  onChange={(e) => setValues((v) => ({ ...v, [k]: e.target.value }))}
+                  className="mt-1 block w-full rounded-lg border border-surface-300 px-3 py-1.5 text-sm font-normal text-surface-900 focus:border-primary-400 focus:outline-none"
+                />
+              </label>
+            ))}
+            <button
+              type="submit"
+              disabled={open.isPending}
+              className="inline-flex items-center gap-2 rounded-lg bg-primary-700 px-4 py-2 text-sm font-medium text-white hover:bg-primary-800 disabled:opacity-50"
+            >
+              <Play size={14} /> {open.isPending ? "Running…" : "Open and run"}
+            </button>
+            {open.error && <ErrorState error={open.error} />}
+          </form>
+        )}
       </Card>
-      <Card title={`${manifest.case.label}s`} className="xl:col-span-2">
+      <Card
+        title="Cases"
+        className="xl:col-span-2"
+        aside={groups.length > 0 && (
+          <select aria-label="Filter by group" value={filter} onChange={(e) => setFilter(e.target.value)} className="rounded-lg border border-surface-300 bg-white px-2 py-1 text-xs">
+            <option value="">All groups</option>
+            {groups.map((g) => <option key={g.group} value={g.group}>{g.name}</option>)}
+          </select>
+        )}
+      >
         {cases.isLoading && <Loading what="cases" />}
         {cases.error && <ErrorState error={cases.error} />}
-        {cases.data?.length === 0 && <Empty>No {manifest.case.label.toLowerCase()}s yet.</Empty>}
+        {cases.data?.length === 0 && <Empty>No cases yet.</Empty>}
         <ul className="divide-y divide-surface-100">
           {cases.data?.map((c) => (
             <li key={c.case_id}>
               <Link to={`/cases/${encodeURIComponent(c.case_id)}`} className="flex items-center justify-between gap-2 px-1 py-2.5 text-sm hover:bg-surface-50">
-                <span className="font-medium text-surface-800">{c.subject}</span>
+                <span>
+                  <span className="font-medium text-surface-800">{c.subject}</span>
+                  {c.team_group && <span className="ml-2 rounded bg-primary-50 px-1.5 py-0.5 text-[10px] font-medium text-primary-700">{names[c.team_group] ?? c.team_group}</span>}
+                </span>
                 <span className="flex items-center gap-3 text-xs text-surface-500">
                   {formatTime(c.opened_at)} · {c.opened_by}
                   <StatusBadge status={c.status} />
@@ -139,7 +237,7 @@ function Tools({ names }: { names: string[] }) {
   );
 }
 
-function DefinitionTab({ manifest: m }: { manifest: Manifest }) {
+export function ManifestDefinition({ manifest: m }: { manifest: Manifest }) {
   return (
     <div className="grid gap-4 xl:grid-cols-2">
       <Card title="Case and items">

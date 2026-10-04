@@ -15,8 +15,11 @@ npm run build:snapshot                # → dist-snapshot/ (snapshot.html + asse
 ```
 
 Then host `dist-snapshot/` anywhere static, or open it with `npx vite preview --outDir
-dist-snapshot`. The recorded data (`src/snapshot/data.json`) and the build are not
-committed.
+dist-snapshot`. The current snapshot (dev data, recorded 2026-10-04) is committed:
+the recorded responses in `src/snapshot/data.json` and the built copy in
+`dist-snapshot/` (open `index.html`). Recapture and rebuild to refresh both. The
+recorded data comes from the dev stack only, so never capture a snapshot from an
+environment with real data.
 
 Options for the capture script (environment variables):
 

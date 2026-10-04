@@ -21,6 +21,3 @@ apps/web/node_modules/
 # Helix runtime output (reports written by the documents service)
 var/
 
-# Helix web read-only snapshot: recorded data and its build
-apps/web/src/snapshot/data.json
-apps/web/dist-snapshot/

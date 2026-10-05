@@ -1,46 +1,85 @@
-"""FOBO on MB Rec's breaks: the matching is done upstream, Helix investigates.
+"""FOBO on MB Rec's breaks: the matching is done upstream, Helix investigates,
+following the FOBO Investigation Skill v1.0 (docs/helix/fobo-skill/).
 
-The run reads MB Rec's open breaks (never CATS and MOTIF positions), settles
-timing differences as MONITOR, sends aged breaks to a person, and stops at a
-tollgate so the controller can approve the classification and add what the
-desk said before the model is asked anything."""
+The run reads MB Rec's open breaks (never CATS and MOTIF positions), applies the
+skill's scenario checks (R5, posting failure, static outlier, reapplication),
+settles timing differences as MONITOR, sends aged breaks to a person, and stops
+at a tollgate so the controller can approve the classification and add what
+the desk said before the model is asked anything."""
 
 import uuid
 
 CAP, GROUP = "break.investigation", "fobo-prime"
-KEY = {"book": "PRIME-MB-01", "cob": "2026-09-29"}
 
 
-async def _open(api):
+async def _open(api, book, cob):
     res = await api.post(f"/api/capabilities/{CAP}/cases", headers=api.as_user("frank"),
-                         json={"case_key": KEY, "team_group": GROUP})
+                         json={"case_key": {"book": book, "cob": cob}, "team_group": GROUP})
     assert res.status_code == 201, res.text
     return res.json()
 
 
+async def _continue(api, case, note=None):
+    res = await api.post(f"/api/cases/{case['case_id']}/gates/reason", headers=api.as_user("frank"),
+                         json={"action": "continue", "comment": note, "idempotency_key": uuid.uuid4().hex})
+    after = res.json()
+    assert after["status"] == "awaiting_review", after.get("error")
+    return after
+
+
+def _findings(case):
+    return {g["group_key"]["category"]: g["finding"] for g in case["groups"]}
+
+
 async def test_breaks_come_from_mb_rec_and_wait_at_the_tollgate(api):
-    case = await _open(api)
+    case = await _open(api, "PRIME-MB-01", "2026-09-29")
     assert case["status"] == "paused_before_reason"
     tools = {c["tool"] for c in case["tool_calls"]}
     assert "mbrec.breaks" in tools
     assert not tools & {"cats.positions", "motif.positions"}               # no re-matching
     by = {i["instrument"]: i for i in case["items"]}
-    assert by["UST 10Y"]["category"] == "T" and by["UST 10Y"]["side"] == "BO"   # booked late, new: timing
     assert by["IRS 5Y USD"]["category"] == "K"                                 # open 2+ COBs: aged
+    assert by["UST 10Y"]["category"] == "F"                                    # §8 static outlier
     assert not [c for c in case["tool_calls"] if c["requested_by"] == "llm"]    # the model has not run
     assert case["waiting_on"]["roles"] == ["FOBO_CONTROLLER"] and case["waiting_on"]["you"]
 
 
 async def test_timing_is_monitored_and_the_desks_word_reaches_the_model(api):
-    case = await _open(api)
-    res = await api.post(f"/api/cases/{case['case_id']}/gates/reason", headers=api.as_user("frank"),
-                         json={"action": "continue", "idempotency_key": uuid.uuid4().hex,
-                               "comment": "Desk confirms the IRS swap was rebooked on Friday"})
-    after = res.json()
-    assert after["status"] == "awaiting_review", after.get("error")
-    groups = {g["group_key"]["category"]: g["finding"] for g in after["groups"]}
-    assert groups["T"]["verdict"] == "MONITOR" and groups["T"]["decided_by"] == "playbook"
-    aged = groups["K"]
-    assert aged["decided_by"].startswith("llm") and aged["sme_review"] is True
-    assert "note(s) from the tollgate" in aged["comment"]
+    case = await _open(api, "PRIME-MB-04", "2026-09-24")
+    after = await _continue(api, case, "Desk confirms the IRS swap was rebooked on Friday")
+    found = _findings(after)
+    assert found["T"]["verdict"] == "MONITOR" and found["T"]["decided_by"] == "playbook"
+    assert found["K"]["decided_by"].startswith("llm") and found["K"]["sme_review"] is True
+    assert "note(s) from the tollgate" in found["K"]["comment"]
     assert after["gate_decisions"][0]["comment"] == "Desk confirms the IRS swap was rebooked on Friday"
+
+
+async def test_the_skills_scenarios_are_settled_by_the_playbook(api):
+    after = await _continue(api, await _open(api, "PRIME-MB-06", "2026-09-25"))
+    by = {i["instrument"]: i for i in after["items"]}
+    assert (by["IRS 10Y EUR"]["category"], by["IRS 5Y USD"]["category"], by["GILT 5Y"]["category"]) == ("R", "J", "T")
+    found = _findings(after)
+    assert found["R"]["verdict"] == "CORRECT_AND_REPOST"            # §8: a rejection is corrected and re-posted
+    assert found["J"]["verdict"] == "POST"                          # §8: reapplication matches the carry-forward…
+    assert "materiality_threshold" in found["J"]["requires_confirmation"]   # …but P1: thresholds are unset
+    assert all(f["decided_by"] == "playbook" for f in (found["R"], found["J"], found["T"]))
+
+
+async def test_r5_nothing_is_investigated_while_the_book_is_incomplete(api):
+    after = await _continue(api, await _open(api, "PRIME-MB-06", "2026-09-22"))
+    assert {i["category"] for i in after["items"]} == {"W"}
+    found = _findings(after)["W"]
+    assert found["verdict"] == "ESCALATE" and found["escalate_to"] == "Operations"
+    assert not [c for c in after["tool_calls"] if c["requested_by"] == "llm"]
+
+
+def test_a_category_settled_whatever_the_side_needs_one_verdict_for_every_side():
+    import yaml
+
+    from helix.capabilities import seed_files
+    from helix.groups import GroupConfig, effective
+    base = next(m for m in seed_files() if m.id == CAP)
+    raw = yaml.safe_load(open(f"{__file__.rsplit('/apps/', 1)[0]}/config/helix/groups/{CAP}/{GROUP}.yaml"))
+    raw["set"]["playbook"]["verdicts"]["W"] = {"FO": "ESCALATE", "BO": "POST"}
+    _, found = effective(base, GroupConfig.model_validate(raw))
+    assert "playbook.categories.W: any_side needs one verdict for every side in the table" in found

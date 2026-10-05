@@ -7,6 +7,7 @@
 | [Review controls and everyday features](review-features.md) | Both | Bulk approval exclusions, confirmation, deadlines, recurring items, escalation tickets, Excel download, cover while away, measured time saved, configuring the orchestrator: what each does and the configuration that switches it on. |
 | [FOBO → Helix change guide](../migration/README.md) | Engineers moving FOBO in the office | Mapping from FOBO / Agent One to Helix, what to keep and retire, the model contract, invariants, phases, parity script, rollback, and a skill for office Claude Code. |
 | [Configure it: FOBO on MB Rec's breaks](configure-fobo-mb-rec.md) | Owners | Step by step, with screenshots: breaks already reconciled upstream, timing differences, other sources, the desk's input at a tollgate. |
+| [The FOBO skill in Helix](../fobo-skill/skill-to-helix.md) | Product Control, owners | The controllers' FOBO Investigation Skill v1.0, section by section: what is codified in the playbook, what goes to the model, what a person decides, and the gaps. |
 | [Worked examples](../examples.md) | Both | FOBO CATS vs MOTIF Prime vs Rates with real runs; accruals, substantiation, intercompany, journal controls and suspense examples. |
 
 The screenshots in `img/` come from the dev stack (stub model, dev users), dated 2026-10-04.

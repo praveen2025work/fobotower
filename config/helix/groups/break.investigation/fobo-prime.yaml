@@ -59,10 +59,26 @@ set:
     posting_policy_reference: { value: null }
     mtm_market_movement_tolerance: { value: null, unit: GBP }      # FO-4
     calculation_reasonable_tolerance: { value: null, unit: GBP }   # FO-6
+    same_day_resolution_cutoff: { value: null, unit: time (IST) }  # §10, not yet used by a rule
   playbook:
+    # Skill §4 order: the scenario checks first (they decide before any cause
+    # check), then timing, then FOBO's six cause checks. The first positive
+    # check is the cause; every check still runs and negatives are kept.
     checks:
-      # Timing first: a break open for two COBs or more is no longer "just
-      # timing" — a person looks at it; a new late booking will clear tomorrow.
+      # §3 R5 — do not begin while books are incomplete.
+      - { id: R5, when: "book_status != 'Complete'", category: W, side: UNKNOWN,
+          reason: "Book is {book_status} in MB Rec; R5: investigation starts only on complete books" }
+      # §8 posting failure — a mechanical failure, not a "should we post?" question.
+      - { id: POSTING_FAILED, when: "journal_status == 'rejected'", category: R, side: BO,
+          reason: "MOTIF rejected the posting; correct the rejection and re-post" }
+      # §8 static outlier — no enrichment or reference data: a false break until validated.
+      - { id: STATIC_OUTLIER, when: "not static_present", category: F, side: BO,
+          reason: "No static or enrichment data for the instrument; treat as a false break until validated" }
+      # §8 reapplication — yesterday's adjustment rolling forward unchanged.
+      - { id: REAPPLICATION, when: "prior_adjustment != 0 and abs(difference - prior_adjustment) < 0.01", category: J, side: BO,
+          reason: "Matches the prior-day adjustment carried forward" }
+      # Timing: a break open for two COBs or more is no longer "just timing" —
+      # a person looks at it; a new late booking will clear tomorrow.
       - { id: AGED, when: "age_days >= 2", category: K, side: UNKNOWN,
           reason: "Open in MB Rec for {age_days} COBs; a timing difference would have cleared" }
       - { id: TIMING, when: "age_days <= 1 and fo_booking_ts > bo_cutoff_ts", category: T, side: BO,
@@ -138,6 +154,9 @@ set:
       H: { name: Novel break,            determinism: judgement,     escalate_to: Product Control }
       T: { name: Timing difference,      determinism: deterministic, escalate_to: Operations }
       K: { name: Aged break,             determinism: judgement,     escalate_to: Product Control }
+      W: { name: Books not complete,     determinism: deterministic, escalate_to: Operations, any_side: true }
+      R: { name: Rejected posting,       determinism: deterministic, escalate_to: Operations }
+      J: { name: Reapplication,          determinism: deterministic, escalate_to: Product Control }
     default_category: H
     sides: [FO, BO]
     verdicts:
@@ -151,6 +170,9 @@ set:
       H: { FO: ESCALATE,    BO: ESCALATE }
       T: { FO: MONITOR,     BO: MONITOR }       # no adjustment: watch it clear on the next COB
       K: { FO: ESCALATE,    BO: ESCALATE }
+      W: { FO: ESCALATE,    BO: ESCALATE }      # R5: hold until the books are complete
+      R: { FO: CORRECT_AND_REPOST, BO: CORRECT_AND_REPOST }
+      J: { FO: POST,        BO: POST }          # §8: carry-forward matches → POST (P1 still applies)
     guards:
       - verdict: POST
         when: "side == 'FO'"
@@ -166,18 +188,47 @@ set:
   group_label: "{category_name} · {side_name}"
   rules: []
   reasoning:
+    # The FOBO Investigation Skill v1.0 (docs/helix/fobo-skill/), for the part
+    # the model does: the judgement breaks. What the skill makes mechanical —
+    # tests, findings, categories, the verdict table, R2, P1, R5 and the §8
+    # scenarios — already ran as the playbook before the model is asked.
     skill: |
-      You are a FOBO controller's assistant reconciling CATS (front office) to
-      MOTIF (back office). The playbook has already classified each break; the
-      ones you see are judgement calls (corporate actions, novel breaks) or
-      breaks whose side is not proven. Use the booking events to find why the
-      systems differ — late booking, price amendment, FX fixing, cancel/rebook
-      — and propose a verdict: POST (adjust MOTIF), DO_NOT_POST (fix upstream),
-      MONITOR (a timing difference that will clear) or ESCALATE. Use the break
-      history to tell a timing difference that clears from one that stays, and
-      weigh any notes the controller added at the tollgate (e.g. what the desk
-      said) — but cite figures only from the tools or the breaks. Never assume FO is correct. Cite only figures from the
-      tools or the breaks; escalate if the events do not explain the difference.
+      You are a senior Product Controller investigating FOBO breaks on the CATS
+      (front office) vs MOTIF (back office) reconciliation. You do not guess, you
+      do not default to posting, and you do not stop at the first plausible
+      explanation. The objective is to restore FO PnL = BO PnL + FOBO adjustments
+      truthfully; plugging an adjustment to force it is a failure.
+
+      What you receive has already been through the playbook: every break carries
+      its cause checks, its validation tests (FO-1…FO-8, BO-1…BO-6: pass, fail or
+      not run, and why), FO-6 findings, category and side. You only see what the
+      playbook could not settle: judgement categories (corporate action, novel,
+      aged) and breaks whose side is not proven. Use the tools for the rest:
+      MOTIF booking events, MB Rec break history.
+
+      Rules you never break:
+      - A break is a symptom, not an instruction to post (R1).
+      - Never assume FO is correct; validate FO before BO (R2). A cause that
+        originates in FO is never posted.
+      - Decompose by component; never reason about aggregate PnL (R3).
+      - Identify the truth before the adjustment (R4).
+      - If you cannot evidence it, escalate it (R6). A plausible cause is a
+        hypothesis: say what evidence would confirm it.
+      - Do not post by elimination: "BO passed" is not evidence of a genuine break.
+      - Price = 0 may be a valid corporate action; do not conclude without evidence.
+      - Never invent a threshold (P1). If a conclusion depends on an unset
+        threshold, say so and give the conclusion conditionally.
+      - Judgement breaks are recommendations for SME review, not assertions (R7).
+      - Weigh what the controller wrote at the tollgate (e.g. the desk's view) as
+        context, but cite figures only from the tools or the breaks.
+
+      Write your comment for the controller in this order, briefly:
+      Root cause (or "not established", with the competing hypotheses and the
+      evidence for each) · Tests you could not perform and what that does to your
+      confidence · Verdict and why (POST, DO_NOT_POST, CORRECT_AND_REPOST,
+      MONITOR or ESCALATE) · Remediation: who to engage, what to raise, what
+      preventative control or MB Rec rule to propose · End state: whether
+      BO + adjustments = FO will hold, or the investigation stays open.
     tools: [motif.booking_events, mbrec.break_history]
     # A subagent the model can hand the booking-event trawl to.
     specialists:
@@ -195,7 +246,7 @@ set:
   # owning team once the controller has decided — one per group, never twice.
   escalation:
     tool: ticketing.create_ticket
-    when: "action == 'approve' and (verdict == 'DO_NOT_POST' or status == 'escalated')"
+    when: "action == 'approve' and (verdict == 'DO_NOT_POST' or verdict == 'CORRECT_AND_REPOST' or status == 'escalated')"
     args:
       team: "{escalate_to}"
       title: "{subject}: {label}"

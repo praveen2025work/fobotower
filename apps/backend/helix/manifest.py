@@ -154,6 +154,11 @@ class CategorySpec(Strict):
     # investigates and a person (SME) decides
     determinism: Literal["deterministic", "judgement"]
     escalate_to: str | None = None     # the team that owns this kind of break
+    # Settled by the table whatever the side, proven or not — for a category that
+    # is not about a side at all (e.g. books not complete). Its table must give
+    # one verdict for every side. Off by default: an unproven side goes to the
+    # model and an SME (FOBO R2).
+    any_side: bool = False
 
 
 class GuardSpec(Strict):
@@ -475,6 +480,10 @@ def problems(m: Manifest) -> list[str]:
         for c in pb.checks:
             if c.category not in pb.categories:
                 out.append(f"playbook check {c.id}: unknown category `{c.category}`")
+        for code, c in pb.categories.items():
+            if c.any_side and (len(set(pb.verdicts.get(code, {}).values())) != 1
+                               or set(pb.verdicts.get(code, {})) != set(pb.sides)):
+                out.append(f"playbook.categories.{code}: any_side needs one verdict for every side in the table")
         for cat, sides in pb.verdicts.items():
             if cat not in pb.categories:
                 out.append(f"playbook.verdicts: unknown category `{cat}`")

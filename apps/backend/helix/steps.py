@@ -446,8 +446,9 @@ def _playbook_view(m: Manifest, members: list[dict], policy: dict) -> dict:
             "category_name": cat.name if cat else "Mixed causes",
             "escalate_to": cat.escalate_to if cat else None,
             "determinism": cat.determinism if cat else "judgement",
-            "deterministic": bool(cat and cat.determinism == "deterministic" and side in pb.sides
-                                  and pb.verdicts.get(category, {}).get(side)),
+            "deterministic": bool(cat and cat.determinism == "deterministic"
+                                  and (cat.any_side or (side in pb.sides
+                                                        and pb.verdicts.get(category, {}).get(side)))),
             "reasons": "; ".join(sorted({it.get("cause_reason", "") for it in members} - {""})),
             "unset_policy": unset,
             "blocked_by": sorted({b for it in members for b in it.get("blocked_by") or []})}
@@ -488,7 +489,9 @@ def _with_verdict(m: Manifest, play: dict, finding: dict, verdict: str | None, e
 
 
 def _playbook_finding(m: Manifest, g: dict, play: dict, env: dict) -> dict:
-    verdict = m.playbook.verdicts[play["category"]][play["side"]]
+    table = m.playbook.verdicts[play["category"]]
+    # any_side: one verdict for every side, so an unproven side takes it too
+    verdict = table.get(play["side"]) or next(iter(table.values()))
     comment = rules.render(m.playbook.comment, {**env, **play})
     return _with_verdict(m, play, {"status": "proposed", "decided_by": "playbook",
                                    "comment": comment, "reason": None}, verdict, env)

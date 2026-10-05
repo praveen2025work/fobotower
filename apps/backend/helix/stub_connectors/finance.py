@@ -286,11 +286,17 @@ def _open_breaks(book: str, cob: str) -> list[dict]:
         # A late booking is usually new (a timing difference that should clear
         # on the next COB); other breaks may have been open for a while.
         age = 0 if cause == "C1" else _rng("age", book, cob, ins).choice([0, 0, 1, 2, 4])
+        # What the skill's scenario checks read (§3 R5, §8): rare, deterministic.
+        x = _rng("mbrec-scenario", book, cob, ins).random()
         rows.append({"break_id": f"MBR-{zlib.crc32(f'{book}|{ins}'.encode()) % 10**6:06d}",
                      "book": book, "instrument": ins, "desk": f["desk"],
                      "break_type": "missing_motif" if b is None else "amount_break",
                      "cats_amount": f["mtm"], "motif_amount": b["mtm"] if b else None,
-                     "difference": diff, "age_days": age, "status": "open"})
+                     "difference": diff, "age_days": age, "status": "open",
+                     "book_status": "In Progress" if _rng("book-status", book, cob).random() < 0.03 else "Complete",
+                     "journal_status": "rejected" if x < 0.05 else "posted",
+                     "static_present": not (0.05 <= x < 0.09),
+                     "prior_adjustment": diff if 0.09 <= x < 0.14 else 0.0})
     return rows
 
 

@@ -2,6 +2,9 @@
 
 **Date:** 2026-10-05 · **For:** the capability owner and the FOBO Prime group owner.
 
+The rules come from the controllers' FOBO Investigation Skill. How each of its sections maps
+to this configuration: [`../fobo-skill/skill-to-helix.md`](../fobo-skill/skill-to-helix.md).
+
 **The situation.** MB Rec has already reconciled CATS (front office) to MOTIF (back office).
 What is left is the manual part a controller does each morning:
 

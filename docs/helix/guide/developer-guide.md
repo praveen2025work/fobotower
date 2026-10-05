@@ -410,7 +410,7 @@ This is how FOBO's rulebook is expressed. See
 | `checks[]` | `{id, when, category, side, reason}`. All checks run on every item and negatives are kept. The first positive check is the cause. |
 | `tests[]` | `{id, side, validates, check, fails_when, needs, evidence, policy, on_fail, requires_on_fail, blocks_post}`. A test whose `needs` are missing or whose `policy` is unset is **not run**, never passed. |
 | `findings[]` | `{id, test, when, indicates, side, description}`. A finding explains a break that no check explained. |
-| `categories` | `{X: {name, determinism: deterministic|judgement, escalate_to}}`, plus `default_category` |
+| `categories` | `{X: {name, determinism: deterministic|judgement, escalate_to, any_side}}`, plus `default_category`. `any_side: true` settles the category by its table even when the side is not proven (e.g. books not complete); its table must give one verdict for every side |
 | `verdicts` | category × side → verdict. Deterministic + proven side = settled by the table (`decided_by: playbook`). |
 | `guards[]` | `{verdict, when, instead, reason}`, applied in code after the table *and* after the model (R2: an FO cause never POSTs) |
 | `blocked_verdict` | what a POST becomes when a `blocks_post` test failed (ESCALATE) |

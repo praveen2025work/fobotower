@@ -1,7 +1,8 @@
 // Records the API responses behind the main screens into a snapshot file, so
 // a read-only copy of the app (npm run build:snapshot) can be opened anywhere
 // without the API. Run against a live stack: node scripts/capture-snapshot.mjs
-//   HELIX_WEB (http://localhost:5180), SNAPSHOT_USER (frank), PLAYWRIGHT (module path)
+//   HELIX_WEB (http://localhost:5180), SNAPSHOT_USER (frank), PLAYWRIGHT (module path),
+//   SNAPSHOT_CASES (extra case ids to include)
 import fs from "fs";
 const { chromium } = await import(process.env.PLAYWRIGHT ?? "playwright");
 const WEB = process.env.HELIX_WEB ?? "http://localhost:5180";
@@ -35,7 +36,10 @@ for (const c of await api("/api/capabilities")) {
   await visit(`/capabilities/${c.id}`, [/^groups$/i, /^cases$/i, /^configure$/i, /^flow$/i, /^evals$/i, /^versions$/i]);
   for (const g of await api(`/api/capabilities/${c.id}/groups`).catch(() => [])) await visit(`/capabilities/${c.id}/groups/${g.group}`);
 }
-for (const item of (await api("/api/inbox")).slice(0, 12)) await visit(`/cases/${item.case_id}`, ["Ask about this case", "Run history", "Proposal"]);
+// SNAPSHOT_CASES: extra cases to include (comma-separated ids), e.g. the demo's.
+const extra = (process.env.SNAPSHOT_CASES ?? "").split(",").filter(Boolean);
+const inbox = (await api("/api/inbox")).slice(0, 12).map((i) => i.case_id);
+for (const id of [...new Set([...extra, ...inbox])]) await visit(`/cases/${id}`, ["Ask about this case", "Run history", "Proposal"]);
 for (const path of ["/operations", "/authoring", "/audit", "/connectors"]) await visit(path);
 await b.close();
 fs.writeFileSync(OUT, JSON.stringify({ user: USER, captured_at: new Date().toISOString(), responses: data }));

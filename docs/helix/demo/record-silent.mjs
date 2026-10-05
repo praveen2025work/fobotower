@@ -105,7 +105,7 @@ const scenes = {
     return () => revealLines(p, d);
   },
   async s02(p, d) {
-    await p.setContent(card("Today: investigation by hand", ["Pull positions from CATS and MOTIF, break by break", "Find the cause, write it up, chase the sign-off", "≈ 12 minutes per break (FOBO's own basis)", "Every team builds its own tooling"], "The problem"));
+    await p.setContent(card("Today: investigation by hand", ["Pull the data, break by break", "Find the cause, write it up, chase the sign-off", "≈ 12 minutes per break (FOBO's own basis)", "Every team builds its own tooling"], "The problem"));
     return () => revealLines(p, d);
   },
   async s03(p, d, s) {
@@ -200,7 +200,7 @@ const scenes = {
       await sleep(2500);
       await highlight(p, p.getByRole("status").first());
       await sleep(d * 150);
-      await highlight(p, p.getByText(/^INC\d+/).first());
+      if (await p.getByText(/^INC\d+/).count()) await highlight(p, p.getByText(/^INC\d+/).first());
       await sleep(d * 150);
       await highlight(p, p.getByRole("button", { name: /Download Excel/ }).or(p.getByRole("link", { name: /Download Excel/ })));
     };
@@ -236,24 +236,58 @@ const scenes = {
       await hlUnion(p, p.getByText("Off switches"), p.getByRole("button", { name: "Switch off" }));
     };
   },
-  async s13(p, d) {
-    await p.goto(`${W}/`); await sleep(500);   // same origin, so the framed app sees the signed-in user
-    await p.setContent(`<html><body style="margin:0;height:100vh;display:flex;align-items:center;justify-content:center;gap:90px;
-      background:radial-gradient(circle at 85% 20%,#0b4f8a 0,#00395d 40%,#001b33 100%);font-family:Inter,system-ui,sans-serif;color:#fff">
-      <div style="max-width:420px"><div style="color:#00aeef;font-weight:700;letter-spacing:.14em;text-transform:uppercase;font-size:16px;margin-bottom:16px">On the move</div>
-      <div style="font-size:42px;font-weight:700;line-height:1.15">The same inbox<br>on a phone</div>
-      <div style="font-size:21px;opacity:.8;margin-top:18px">What is waiting, how urgent, what is at stake</div></div>
-      <div style="width:390px;height:660px;border-radius:44px;background:#0b1220;padding:12px;box-shadow:0 30px 60px rgba(0,0,0,.45)">
-      <iframe id="ph" src="${W}/inbox" style="width:390px;height:660px;border:0;border-radius:34px;background:#fff"></iframe></div></body></html>`);
-    await sleep(3000);
+  async s16(p, d, s) {
+    const r = await fetch(`${API}/capabilities/break.investigation/cases`, { method: "POST",
+      headers: { "X-Helix-User": "frank", "Content-Type": "application/json" },
+      body: JSON.stringify({ case_key: { book: process.env.GATE_BOOK || "PRIME-MB-04", cob: process.env.GATE_COB || "2026-10-01" }, team_group: "fobo-prime" }) });
+    const cid = (await r.json()).case_id;
+    for (let i = 0; i < 60; i++) {
+      const c = await (await fetch(`${API}/cases/${cid}`, { headers: { "X-Helix-User": "frank" } })).json();
+      if (c.status === "paused_before_reason") break;
+      await sleep(500);
+    }
+    console.log("s16 case", cid);
+    await p.goto(`${W}/cases/${cid}`); await sleep(2200);
     return async () => {
-      const f = p.frameLocator("#ph");
-      await sleep(d * 400);
-      await f.locator("main, body").first().evaluate(() => window.scrollBy({ top: 320, behavior: "smooth" })).catch(() => {});
+      await caption(p, s.caption);
+      await sleep(d * 60); await highlight(p, cardOf(p.getByText("Your tollgate")));
+      await sleep(d * 300); await highlight(p, p.locator("table").first());
+      await sleep(d * 200); await clearHl(p);
+      const note = p.getByLabel("Note (optional)");
+      await note.click(); await note.pressSequentially("Desk: the swap was amended on Friday", { delay: 30 });
+      await highlight(p, p.getByRole("button", { name: "Approve and continue" }));
+    };
+  },
+  async s17(p, d, s) {
+    await p.goto(`${W}/cases/${process.env.CASE_SECTIONS || "break.investigation.8baaeb378852"}`); await sleep(2200);
+    await p.getByRole("button", { name: /Aged break · side not proven/ }).first().click(); await sleep(700);
+    return async () => {
+      await caption(p, s.caption);
+      const dl = p.getByText("Root cause", { exact: true }).first().locator("xpath=ancestor::dl[1]");
+      await sleep(d * 60); await scrollTo(p, dl); await sleep(700); await highlight(p, dl);
+      await sleep(d * 330); await clearHl(p);
+      const list = p.locator("fieldset").filter({ hasText: "Sign-off checklist" });
+      await scrollTo(p, list); await sleep(900); await highlight(p, list);
+      for (const q of ["What did I check?", "Why did I check it?", "What evidence did I find?"]) {
+        await sleep(700);
+        await p.getByRole("radiogroup", { name: q }).getByRole("radio", { name: "yes" }).click().catch(() => {});
+      }
+    };
+  },
+  async s18(p, d, s) {
+    await p.goto(`${W}/cases/${process.env.CASE_DAY2 || "break.investigation.0a1f2f67ef18"}`); await sleep(2200);
+    return async () => {
+      await caption(p, s.caption);
+      const ft = p.getByText("Follow-through", { exact: true }).first().locator("xpath=..");
+      await sleep(d * 50); await scrollTo(p, ft); await sleep(800); await highlight(p, ft);
+      await sleep(d * 300); await clearHl(p);
+      await p.getByRole("link", { name: "reopened" }).first().click(); await sleep(2200);
+      await p.getByRole("button", { name: /Adjustment did not clear/ }).first().click().catch(() => {}); await sleep(800);
+      await hlUnion(p, p.getByText("Category", { exact: true }).first(), p.getByText("Product Control", { exact: true }).first());
     };
   },
   async s14(p, d) {
-    await p.setContent(card("What it means", ["Analysts move from investigating to reviewing", "One decision per pattern, not per break", "The same controls for every team", "New use cases as configuration, not new builds"], "Time and efficiency"));
+    await p.setContent(card("What it means", ["Analysts move from investigating to reviewing", "One decision per pattern, not per break", "The same features and controls for every team", "New use cases as configuration, not new builds"], "Time and efficiency"));
     return () => revealLines(p, d);
   },
   async s15(p, d) {
@@ -262,7 +296,7 @@ const scenes = {
   },
 };
 
-const users = { s03: "frank", s04: "frank", s05: "frank", s06: "frank", s07: "frank", s08: "rita", s09: "rita", s10: "rita", s11: "carol", s12: "frank", s13: "frank" };
+const users = { s03: "frank", s04: "frank", s05: "frank", s06: "frank", s07: "frank", s08: "rita", s09: "rita", s10: "rita", s11: "carol", s12: "frank", s16: "frank", s17: "frank", s18: "frank" };
 fs.mkdirSync(OUT, { recursive: true });
 for (const id of Object.keys(scenes)) {
   if (only && !only.split(",").includes(id)) continue;

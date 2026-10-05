@@ -1,9 +1,11 @@
 # Helix: executive demo (CIO and accounting MDs)
 
-**Latest, for presenting live:** [`helix-demo-silent.mp4`](helix-demo-silent.mp4), 3 min 49 s,
+**Latest, for presenting live:** [`helix-demo-silent.mp4`](helix-demo-silent.mp4), 4 min 20 s,
 no audio, recorded 2026-10-05 from the current app. You speak over it from
 [`presenter-script.md`](presenter-script.md), which gives each scene's start time, what is on
-screen and the words to say.
+screen and the words to say. Scenes 10–12 show the controllers' FOBO skill on MB Rec's breaks:
+the tollgate, the skill's answer sections and sign-off checklist, and the next COB's
+follow-through (an adjustment that did not clear stays open).
 
 **Click-through copy of the app:** [`helix-snapshot.html`](helix-snapshot.html), one file
 that opens in any browser with no setup. It is read-only and uses recorded dev data. Send it

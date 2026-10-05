@@ -139,16 +139,27 @@ export default function CaseWorkspace(): JSX.Element {
             only the breaks it did not have.
           </p>
         )}
-        {(c.follow_ups ?? []).length > 0 && (
-          <p className="mt-1 flex flex-wrap items-center gap-x-2 text-sm text-surface-600">
-            Late items since:
-            {(c.follow_ups ?? []).map((f) => (
-              <Link key={f.case_id} to={`/cases/${encodeURIComponent(f.case_id)}`} className="text-primary-700 hover:underline">
-                {f.subject.split(" · ").pop()}{f.outcome === "no_new_items" ? " (nothing new)" : ""}
-              </Link>
-            ))}
-          </p>
-        )}
+        {(c.follow_ups ?? []).length > 0 && (() => {
+          const ups = (c.follow_ups ?? []).filter((f) => f.outcome !== "no_new_items");
+          const late = ups.reduce((n, f) => n + (f.items ?? 0), 0);
+          const open = ups.filter((f) => !["completed", "failed", "stopped"].includes(f.status)).length;
+          return (
+            <div className="mt-1 text-sm text-surface-600">
+              <p>
+                The day: {c.items.length} {(c.labels?.item ?? "item").toLowerCase()}s here, {late} late in {ups.length} follow-up{ups.length === 1 ? "" : "s"}
+                {open > 0 && <span className="font-medium text-orange-700"> · {open} still open</span>}
+              </p>
+              <p className="flex flex-wrap items-center gap-x-2">
+                Late items since:
+                {(c.follow_ups ?? []).map((f) => (
+                  <Link key={f.case_id} to={`/cases/${encodeURIComponent(f.case_id)}`} className="text-primary-700 hover:underline">
+                    {f.subject.split(" · ").pop()}{f.outcome === "no_new_items" ? " (nothing new)" : ` (${f.items ?? 0}, ${f.status.replace(/_/g, " ")})`}
+                  </Link>
+                ))}
+              </p>
+            </div>
+          );
+        })()}
         <ActionCard c={c} />
       </div>
 

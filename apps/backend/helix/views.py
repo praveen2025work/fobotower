@@ -70,6 +70,8 @@ def _summary(c: Case, m: Manifest, groups: list[ProposalGroup], decided: set[str
         "case_label": m.case.label, "subject": c.subject, "status": c.status,
         "gate": gate_step(c.status),
         "team_group": c.team_group,
+        # late items for a key already worked (case.late_items: follow_up)
+        "follow_up_of": c.follow_up_of,
         "outcome": c.outcome, "opened_at": c.opened_at, "opened_by": c.opened_by,
         "groups": len(groups), "proposed": statuses.get("proposed", 0),
         "escalated": statuses.get("escalated", 0),

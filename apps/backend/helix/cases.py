@@ -291,8 +291,11 @@ async def follow_ups(case: Case) -> list[dict]:
     async with get_session() as s:
         rows = (await s.execute(select(Case).where(Case.follow_up_of == root)
                                 .order_by(Case.opened_at))).scalars().all()
+        counts = dict((await s.execute(select(CaseItem.case_id, func.count()).where(
+            CaseItem.case_id.in_([c.case_id for c in rows])).group_by(CaseItem.case_id))).all()) if rows else {}
     return [{"case_id": c.case_id, "subject": c.subject, "status": c.status, "outcome": c.outcome,
-             "opened_at": c.opened_at} for c in rows if c.case_id != case.case_id]
+             "opened_at": c.opened_at, "items": counts.get(c.case_id, 0)}
+            for c in rows if c.case_id != case.case_id]
 
 
 async def attempts(case: Case) -> list[dict]:

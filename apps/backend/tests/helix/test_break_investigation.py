@@ -118,6 +118,7 @@ async def test_late_exceptions_open_a_follow_up_with_only_the_new_breaks(api, mo
 
     again = (await api.get(f"/api/cases/{day['case_id']}", headers=api.as_user("frank"))).json()
     assert [f["case_id"] for f in again["follow_ups"]] == [nothing["case_id"], follow["case_id"]]
+    assert [f["items"] for f in again["follow_ups"]] == [0, 1]           # the day view counts late items
     assert len(again["items"]) == 3                            # the day's case is unchanged
 
 

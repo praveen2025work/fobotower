@@ -280,7 +280,7 @@ export interface CaseDetail extends CaseSummary {
   } | null;
   /** A follow-up for late items: the day's case it follows; and the follow-ups of this case. */
   follow_up_of?: string | null;
-  follow_ups?: { case_id: string; subject: string; status: string; outcome: string | null; opened_at: string }[];
+  follow_ups?: { case_id: string; subject: string; status: string; outcome: string | null; opened_at: string; items?: number }[];
   /** Questions asked for evidence, who may be asked, and whether the viewer may ask. */
   requests?: InfoRequest[];
   request_targets?: { id: string; name: string }[];
@@ -384,6 +384,8 @@ export interface InboxRow {
   needs_confirmation?: number;
   judgement_calls?: number;
   acting_for?: string | null;
+  /** Late items for a key already worked: the day's case. */
+  follow_up_of?: string | null;
 }
 
 export interface Overview {

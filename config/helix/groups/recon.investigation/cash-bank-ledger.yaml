@@ -34,3 +34,7 @@ set:
     checklist:
       - { id: within_limit, label: "Is each write-off within the limit and the policy?", prefill: verdict, required: false }
       - { id: counterparty_told, label: "Has the counterparty been contacted where the bank is short?", required: false }
+  # What neither a rule nor the model settled, for the rules' owners.
+  insights:
+    unexplained: { lookback_days: 30 }
+    automation_after: 5

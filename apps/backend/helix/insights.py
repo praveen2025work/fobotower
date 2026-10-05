@@ -93,3 +93,93 @@ async def recurring_overview(capability_id: str, caller: Caller, team_group: str
             t["runs"] += 1
     out = [t for t in tally.values() if t["runs"] >= t["min_runs"]]
     return sorted(out, key=lambda t: (-t["runs"], t["item_id"]))[:100]
+
+
+# ---------- what nothing explained, and what could be a rule ----------
+
+def _latest_decisions(decisions) -> dict[tuple[str, str], object]:
+    out = {}
+    for d in sorted(decisions, key=lambda d: d.decided_at):
+        out[(d.case_id, d.group_id)] = d
+    return out
+
+
+async def learning(capability_id: str, caller: Caller, team_group: str | None,
+                   limit_cases: int = 500) -> dict:
+    """Two lists for whoever owns the playbook or the rules:
+
+    unexplained  items nothing explained (insights.unexplained): with a
+                 playbook, no cause check was positive or the category is one
+                 listed (e.g. FOBO's H Novel); without one, the group was
+                 escalated because neither a rule nor the model settled it.
+    automation   groups the model proposed that reviewers approved unchanged
+                 at least `insights.automation_after` times and never
+                 rejected — e.g. FOBO's aged breaks on one side, or one
+                 variance account's commentary — candidates for a rule or a
+                 deterministic category.
+    Only the caller's visible cases count; re-runs of one key count once."""
+    from datetime import datetime, timedelta, timezone
+
+    from helix.cases import visible_cases
+    from helix.models import CaseItem, Decision
+
+    rows = await visible_cases(caller, capability_id=capability_id, team_group=team_group, limit=limit_cases)
+    latest: dict[str, tuple[Case, Manifest]] = {}
+    for c, m in rows:
+        latest.setdefault(str(sorted(c.case_key.items())) + (c.team_group or "") + (c.follow_up_of or ""), (c, m))
+    if not latest:
+        return {"unexplained": [], "unexplained_by_reason": [], "automation": []}
+    ids = [c.case_id for c, _ in latest.values()]
+    async with get_session() as s:
+        groups = (await s.execute(select(ProposalGroup).where(ProposalGroup.case_id.in_(ids)))).scalars().all()
+        decisions = (await s.execute(select(Decision).where(Decision.case_id.in_(ids)))).scalars().all()
+        items = {(i.case_id, i.item_id): i.payload for i in (await s.execute(
+            select(CaseItem).where(CaseItem.case_id.in_(ids)))).scalars()}
+    by_case = {c.case_id: (c, m) for c, m in latest.values()}
+    decided = _latest_decisions(decisions)
+    now = datetime.now(timezone.utc)
+
+    unexplained, tally = [], {}
+    auto: dict[tuple, dict] = {}
+    for g in groups:
+        c, m = by_case[g.case_id]
+        f = g.finding or {}
+        spec = m.insights.unexplained
+        if spec and c.opened_at >= now - timedelta(days=spec.lookback_days):
+            for item_id in g.item_ids:
+                it = items.get((g.case_id, item_id), {})
+                if m.playbook:
+                    why = ("no cause check explained it" if it.get("category") is not None and not it.get("cause")
+                           else f"{it.get('category')} · {it.get('category_name')}"
+                           if it.get("category") in spec.categories else None)
+                else:
+                    why = (f.get("reason") or "escalated") if (
+                        f.get("status") == "escalated" and f.get("decided_by") != "rule") else None
+                if why:
+                    unexplained.append({"case_id": c.case_id, "subject": c.subject, "team_group": c.team_group,
+                                        "item_id": item_id, "group": g.label, "why": why,
+                                        "amount": it.get(m.items.amount_field) if m.items.amount_field else None,
+                                        "opened_at": c.opened_at})
+                    tally[why] = tally.get(why, 0) + 1
+        if not str(f.get("decided_by", "")).startswith("llm"):
+            continue
+        d = decided.get((g.case_id, g.group_id))
+        if d is None:
+            continue
+        key = (c.team_group, tuple(sorted(g.group_key.items())), f.get("verdict"))
+        a = auto.setdefault(key, {"team_group": c.team_group, "group_key": dict(g.group_key), "label": g.label,
+                                  "verdict": f.get("verdict"), "approved": 0, "rejected": 0,
+                                  "needed": m.insights.automation_after, "cases": []})
+        if d.action == "approve":
+            a["approved"] += 1
+        else:
+            a["rejected"] += 1
+        a["cases"].append(c.subject)
+    automation = sorted((dict(a, cases=a["cases"][:5]) for a in auto.values()
+                         if a["approved"] >= a["needed"] and a["rejected"] == 0),
+                        key=lambda a: -a["approved"])
+    unexplained.sort(key=lambda r: r["opened_at"], reverse=True)
+    return {"unexplained": unexplained[:200],
+            "unexplained_by_reason": sorted(({"why": k, "items": v} for k, v in tally.items()),
+                                            key=lambda r: -r["items"]),
+            "automation": automation[:50]}

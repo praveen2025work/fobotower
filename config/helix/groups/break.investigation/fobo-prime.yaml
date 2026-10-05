@@ -285,6 +285,11 @@ set:
   # The same instrument breaking again on the same book, COB after COB.
   insights:
     recurring: { same: [book], lookback_cases: 10, min_runs: 2 }
+    # §9: H (Novel) feeds skill evolution — novel breaks, and breaks no check
+    # explained, are listed for the skill's owners to turn into new checks.
+    unexplained: { categories: [H], lookback_days: 30 }
+    # A judgement call approved unchanged five times is a candidate for a rule.
+    automation_after: 5
   # A fix upstream (DO_NOT_POST) or an escalation becomes a ticket for the
   # owning team once the controller has decided — one per group, never twice.
   escalation:

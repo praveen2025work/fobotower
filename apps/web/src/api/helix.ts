@@ -928,6 +928,19 @@ export const useRecurring = (id: string, teamGroup?: string, enabled = true) =>
     enabled,
   });
 
+/** What nothing explained, and model-proposed groups reviewers keep approving unchanged. */
+export interface Learning {
+  unexplained: { case_id: string; subject: string; team_group: string | null; item_id: string; group: string; why: string; amount: number | null; opened_at: string }[];
+  unexplained_by_reason: { why: string; items: number }[];
+  automation: { team_group: string | null; group_key: Record<string, string>; label: string; verdict: string | null; approved: number; rejected: number; needed: number; cases: string[] }[];
+}
+
+export const useLearning = (id: string, teamGroup?: string) =>
+  useQuery({
+    queryKey: ["learning", id, teamGroup ?? "all"],
+    queryFn: () => api.get<Learning>(`/capabilities/${enc(id)}/learning${teamGroup ? `?team_group=${enc(teamGroup)}` : ""}`),
+  });
+
 export interface DelegationRow {
   delegation_id: string;
   from_user: string;

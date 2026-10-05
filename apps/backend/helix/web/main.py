@@ -473,6 +473,16 @@ async def recurring(capability_id: str, team_group: str | None = None, c: Caller
     return await insights.recurring_overview(capability_id, c, team_group)
 
 
+@app.get("/api/capabilities/{capability_id}/learning")
+@_errors
+async def learning(capability_id: str, team_group: str | None = None, c: Caller = Depends(caller)) -> dict:
+    """What nothing explained (insights.unexplained), and model-proposed groups
+    reviewers keep approving unchanged: candidates for a rule."""
+    from helix import insights
+
+    return await insights.learning(capability_id, c, team_group)
+
+
 class AskIn(BaseModel):
     question: str = Field(min_length=1, max_length=4000)
 

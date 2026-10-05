@@ -78,6 +78,12 @@ limits:
   max_cost_usd_per_case: 5
   max_cost_usd_per_day: 50
 
+# Variances the model could not explain, and accounts whose commentary is
+# approved unchanged month after month (candidates for a rule like fx-reval).
+insights:
+  unexplained: { lookback_days: 90 }
+  automation_after: 3
+
 knowledge:
   entities: [account, cost_centre]
 retention:

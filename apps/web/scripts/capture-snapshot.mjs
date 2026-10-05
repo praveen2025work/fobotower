@@ -32,7 +32,7 @@ await visit("/");
 await visit("/inbox");
 await visit("/capabilities");
 for (const c of await api("/api/capabilities")) {
-  await visit(`/capabilities/${c.id}`, [/^groups$/i, /^cases$/i, /^flow$/i, /^definition$/i, /^instructions$/i, /^evals$/i, /^versions$/i]);
+  await visit(`/capabilities/${c.id}`, [/^groups$/i, /^cases$/i, /^configure$/i, /^flow$/i, /^evals$/i, /^versions$/i]);
   for (const g of await api(`/api/capabilities/${c.id}/groups`).catch(() => [])) await visit(`/capabilities/${c.id}/groups/${g.group}`);
 }
 for (const item of (await api("/api/inbox")).slice(0, 12)) await visit(`/cases/${item.case_id}`, ["Ask about this case", "Run history", "Proposal"]);

@@ -60,7 +60,7 @@ rita sees only her four RATES-LDN books.
 |---|---|
 | **Overview** | Your numbers: open cases, what is waiting on you, hours saved |
 | **Inbox** | Every case waiting on *you*, across capabilities |
-| **Capabilities** | The catalogue; open one to see its cases, groups, flow, definition, versions |
+| **Capabilities** | The catalogue; open one to see its cases, groups, configuration, flow, versions |
 | **Operations** | Health, runs, costs, the live tail of connector calls, off switches, schedules |
 | **Authoring** | Create a capability, from a BRD, a template or YAML; approve drafts |
 | **Audit** | Every connector call, allowed or refused |
@@ -126,14 +126,13 @@ Each capability page has these tabs:
 |---|---|
 | **Cases** | Open a case; the list of cases |
 | **Flow** | The workflow drawn from the manifest: tools per step, gates (bold), pauses for people, schedule |
-| **Definition** | Case key, data scope, sources, rules, model tools and instructions, reviewers, owners, policy |
-| **Instructions** | Edit only the model's instructions; this makes a new draft |
+| **Configure** | The orchestrator step by step: which steps run, where the run stops for a person, and every step's settings (see [§7a](#7a-configure-the-orchestrator)) |
 | **Evals** | Replay past decided cases on a draft and score agreement before going live |
 | **Versions** | Every version, who drafted and approved it, diffs, export for promotion |
 
 ![Flow](img/31-capability-flow.png)
 
-![Definition](img/30-capability-definition.png)
+![Configure](img/30-capability-configure.png)
 
 ![Versions](img/32-capability-versions.png)
 
@@ -246,12 +245,67 @@ The dark theme:
 
 ![Dark](img/60-dark-rates-case.png)
 
+## 7a. Configure the orchestrator
+
+The **Configure** tab of a capability, and the *Configure this group's orchestrator* section
+of a group page, show the orchestrator one step at a time. Everyone can look; owners can
+change it.
+
+**On the left is the pipeline:**
+
+| Mark | Meaning |
+|---|---|
+| Green dot | The step runs |
+| Grey dot | The step is switched off |
+| Lock | A gate: validate, review and record are always on |
+| Hand | The run stops for a person before this step |
+| Blue dot | You changed something in this step |
+| Red number | Problems to fix in this step |
+
+**On the right are the selected step's settings.** Choose from the lists rather than typing
+YAML:
+
+| Step | What you set |
+|---|---|
+| Start: what a case is | Its name, key, title, data scope, when it opens (manually, by API, on a schedule, by event) and its deadline |
+| Thresholds | Named values. Leave one empty until it is confirmed: anything that depends on it is flagged for confirmation |
+| Get the items | One system, or two systems matched: the tools, their arguments, the match keys and the tolerance |
+| Enrich, Reference lookups | The extra reads joined onto the items, and the knowledge-graph lookups as of the business date |
+| Playbook | Cause checks, categories, the verdict table (category × side), guards, validation tests, and which thresholds a verdict needs |
+| Group | What items are grouped by, and how a group is named |
+| Rules, then the model | Rules first; then the model or people; the model's tools (read only), instructions, specialists and spend caps |
+| Human review | Reviewers, when an explanation is required, confirmation, what "Approve all" leaves out, two approvers, delegation |
+| Record and follow-up | What decisions are learned across, tickets for owning teams, recurring items, Excel columns, retention |
+| Write back | The write tool, one write per group or per case, and who releases it |
+| Owners | Capability only: who may change it, and what each team group may set |
+
+**Each edit is checked as you make it**, by the same checks a draft must pass. The bar at the
+top says *Passes every platform check*, or how many problems there are. Each problem shows
+on its step, in the server's words.
+
+**When you are done,** choose *Review and submit*. You see every change as *before → after*.
+Add a note and submit. This makes a draft. Another owner approves it under *Versions*, and
+new cases use it from then on.
+
+**A team group sees the same steps** with the capability's settings locked. For example,
+which steps run is the capability's choice. The group changes only what the capability's
+*configurable* list allows, and the draft holds only those paths.
+
+![A group's playbook](img/47-group-configure-playbook.png)
+
+![A problem, shown on its step](img/48-group-configure-problem.png)
+
+![Review and submit](img/49-group-configure-submit.png)
+
+YAML is still there for those who prefer it: *Advanced: edit this group as YAML* on a group
+page, and *Authoring* for a whole manifest.
+
 ## 8. Change a capability safely
 
 1. **Draft** the change in one of these places:
-   - *Instructions* tab, for the model's wording only;
+   - the *Configure* tab, for the capability, step by step;
    - the group page, for one team's settings;
-   - *Authoring*, for the whole manifest.
+   - *Authoring*, for the whole manifest as YAML.
 2. **Evals** (recommended). Shadow-run the draft on past decided cases. It writes nothing
    and reports agreement, verdict match and wording similarity.
 3. **Approve.** A different owner approves the draft and reads the **diff** in *Versions*.

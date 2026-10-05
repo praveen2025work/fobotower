@@ -559,7 +559,9 @@ export function useSubmitDraft() {
   return useMutation({
     mutationFn: (v: { yaml: string; note: string }) =>
       api.post<{ capability_id: string; version: number }>("/authoring/submit", v),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["drafts"] }),
+    onSuccess: () => {
+      for (const key of ["drafts", "capability"]) qc.invalidateQueries({ queryKey: [key] });
+    },
   });
 }
 
@@ -571,6 +573,23 @@ export function useApproveVersion() {
     onSuccess: () => {
       for (const key of ["drafts", "capabilities", "capability", "overview"]) qc.invalidateQueries({ queryKey: [key] });
     },
+  });
+}
+
+/** What a draft would be refused for, checked without storing anything. */
+export interface ConfigCheck {
+  ok: boolean;
+  problems: string[];
+}
+
+export function useConfigCheck(capabilityId: string, body: { manifest?: unknown; config?: unknown } | null) {
+  const key = body ? JSON.stringify(body) : "";
+  return useQuery({
+    queryKey: ["config-check", capabilityId, key],
+    queryFn: () => api.post<ConfigCheck>(`/capabilities/${enc(capabilityId)}/check`, body),
+    enabled: !!body,
+    staleTime: 60_000,
+    retry: false,
   });
 }
 
@@ -775,17 +794,6 @@ export const useDiff = (id: string, a: number | null, b: number | null, group?: 
   });
 
 export const useTemplates = () => useQuery({ queryKey: ["templates"], queryFn: () => api.get<Template[]>("/authoring/templates") });
-
-export function useDraftInstructions(id: string) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (v: { skill: string; note: string; team_group?: string | null }) =>
-      api.post<{ version: number }>(`/capabilities/${enc(id)}/instructions`, v),
-    onSuccess: () => {
-      for (const key of ["capability", "group", "drafts"]) qc.invalidateQueries({ queryKey: [key] });
-    },
-  });
-}
 
 export function useImportBundle() {
   const qc = useQueryClient();

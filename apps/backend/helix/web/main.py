@@ -258,6 +258,26 @@ async def draft_version(capability_id: str, body: DraftIn, c: Caller = Depends(c
     return {"version": await capabilities.draft(capability_id, body.manifest, body.note, c)}
 
 
+class CheckIn(BaseModel):
+    manifest: dict | None = None    # a whole capability manifest, or…
+    config: dict | None = None      # …a group's configuration
+
+
+@app.post("/api/capabilities/{capability_id}/check")
+@_errors
+async def check_configuration(capability_id: str, body: CheckIn, c: Caller = Depends(caller)) -> dict:
+    """What a draft would be refused for, without storing anything: the
+    configuration screens check each edit as it is made."""
+    _, base = await capabilities.active(capability_id)
+    if not await team_groups.visible(c, capability_id, base):
+        raise LookupError(capability_id)
+    if (body.manifest is None) == (body.config is None):
+        raise HTTPException(422, "send either a manifest or a group config")
+    found = (capabilities.check(capability_id, body.manifest) if body.manifest is not None
+             else team_groups.check(base, body.config))
+    return {"ok": not found, "problems": found}
+
+
 @app.post("/api/capabilities/{capability_id}/versions/{version}/approve")
 @_errors
 async def approve_version(capability_id: str, version: int, c: Caller = Depends(caller)) -> dict:

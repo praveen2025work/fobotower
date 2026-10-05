@@ -5,19 +5,16 @@ import { Play } from "lucide-react";
 
 import { Users } from "lucide-react";
 
-import { stringify } from "yaml";
-
-import { useCapabilities, useCapability, useCases, useGroups, useOpenCase, useSubmitDraft, type Manifest, type TeamGroup } from "../api/helix";
+import { useCapabilities, useCapability, useCases, useGroups, useOpenCase, type Manifest, type TeamGroup } from "../api/helix";
 import EvalsPanel from "../components/capability/EvalsPanel";
 import RecurringPanel from "../components/capability/RecurringPanel";
-import SettingsForm, { setPath, type Changes } from "../components/capability/SettingsForm";
 import FlowDiagram from "../components/capability/FlowDiagram";
-import InstructionsEditor from "../components/capability/InstructionsEditor";
 import VersionsPanel from "../components/capability/VersionsPanel";
+import OrchestratorEditor from "../components/orchestrator/OrchestratorEditor";
 import StatusBadge from "../components/StatusBadge";
 import { Card, Empty, ErrorState, Loading, PageHeader, WorkflowStepper, formatTime } from "../components/ui";
 
-type Tab = "groups" | "cases" | "flow" | "definition" | "instructions" | "evals" | "versions";
+type Tab = "groups" | "cases" | "configure" | "flow" | "evals" | "versions";
 
 export default function CapabilityDetail(): JSX.Element {
   const { id = "" } = useParams();
@@ -45,7 +42,7 @@ export default function CapabilityDetail(): JSX.Element {
         <WorkflowStepper steps={m.steps} pauseBefore={m.pause_before} />
       </div>
       <div className="mb-4 flex max-w-full overflow-x-auto rounded-lg border border-surface-200 bg-card p-1 sm:inline-flex" role="tablist">
-        {((hasGroups ? ["groups"] : []).concat(["cases", "flow", "definition", "instructions", "evals", "versions"]) as Tab[]).map((t) => (
+        {((hasGroups ? ["groups"] : []).concat(["cases", "configure", "flow", "evals", "versions"]) as Tab[]).map((t) => (
           <button
             key={t}
             role="tab"
@@ -62,23 +59,18 @@ export default function CapabilityDetail(): JSX.Element {
       {tab === "cases" && (hasRecurring || (groups.data ?? []).length > 0) && (
         <div className="mt-4"><RecurringPanel capabilityId={id} /></div>
       )}
-      {tab === "definition" && (
+      {tab === "configure" && (
         <>
-          {hasGroups && (
-            <p className="mb-3 text-sm text-surface-500">
-              The capability's defaults. Each group may change: {m.configurable.map((c) => <code key={c} className="mr-1 rounded bg-surface-100 px-1 text-xs">{c}</code>)}
-            </p>
-          )}
-          <ManifestDefinition manifest={m} />
+          <p className="mb-2 text-sm text-surface-500">
+            The orchestrator step by step: which steps run, where the run stops for a person, and each step's settings.
+            {hasGroups && " These are the defaults; each team group may change what is listed under its owners' settings."}
+            {isOwner ? " Changes become a draft that another owner approves." : " Its owners change it."}
+          </p>
+          <OrchestratorEditor capabilityId={id} manifest={m as unknown as Record<string, unknown>} mode={{ kind: "capability" }} canEdit={isOwner} />
         </>
       )}
       {tab === "flow" && (
         <Card title="Workflow"><FlowDiagram capabilityId={id} /></Card>
-      )}
-      {tab === "instructions" && (
-        <Card title="Model instructions">
-          <InstructionsEditor capabilityId={id} current={m.reasoning.skill} />
-        </Card>
       )}
       {tab === "evals" && (
         <Card title="Evals — try a version on past decisions">
@@ -87,7 +79,6 @@ export default function CapabilityDetail(): JSX.Element {
       )}
       {tab === "versions" && (
         <div className="space-y-4">
-          {isOwner && <CapabilitySettings manifest={m} />}
           <Card title="Versions" aside={<span className="text-xs text-surface-500">An owner drafts; a different owner approves.</span>}>
             <VersionsPanel capabilityId={id} versions={cap.data.versions} />
           </Card>
@@ -235,73 +226,5 @@ function CasesTab({ id, manifest, groups }: { id: string; manifest: Manifest; gr
         </ul>
       </Card>
     </div>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="grid grid-cols-3 gap-2 py-1.5 text-sm">
-      <dt className="text-surface-500">{label}</dt>
-      <dd className="col-span-2 text-surface-800">{children}</dd>
-    </div>
-  );
-}
-
-function Tools({ names }: { names: string[] }) {
-  return (
-    <span className="flex flex-wrap gap-1">
-      {names.length ? names.map((t) => <code key={t} className="rounded bg-surface-100 px-1.5 py-0.5 text-xs">{t}</code>) : "—"}
-    </span>
-  );
-}
-
-export function ManifestDefinition({ manifest: m }: { manifest: Manifest }) {
-  return (
-    <div className="grid gap-4 xl:grid-cols-2">
-      <Card title="Case and items">
-        <dl className="divide-y divide-surface-100">
-          <Field label="Case">{m.case.label} per {m.case.key.join(" × ")} (opens on {m.case.opens_on})</Field>
-          <Field label="Data scope">{Object.entries(m.case.scopes).map(([f, s]) => `${f} → ${s}`).join(", ") || "—"}</Field>
-          <Field label="Items from">{m.items.load ? <Tools names={[m.items.load.tool]} /> : m.match ? <Tools names={[m.match.left.tool, m.match.right.tool]} /> : "—"}</Field>
-          <Field label="In scope when"><code className="text-xs">{m.items.in_scope ?? "always"}</code></Field>
-          <Field label="Grouped by">{m.group_by.join(", ") || "one group"}</Field>
-        </dl>
-      </Card>
-      <Card title="Reasoning">
-        <dl className="divide-y divide-surface-100">
-          <Field label="Rules first">{m.rules.length ? m.rules.map((r) => <div key={r.id}><code className="text-xs">{r.when}</code> → {r.then.status}</div>) : "none"}</Field>
-          <Field label="Then">{m.reasoning.reasoner === "llm" ? "the model, with these tools" : "people (no model)"}</Field>
-          <Field label="Model tools"><Tools names={m.reasoning.tools} /></Field>
-          <Field label="Instructions"><p className="whitespace-pre-wrap text-xs text-surface-600">{m.reasoning.skill || "—"}</p></Field>
-        </dl>
-      </Card>
-      <Card title="People and governance">
-        <dl className="divide-y divide-surface-100">
-          <Field label="Reviewers">{m.review.roles.join(", ")}</Field>
-          <Field label="Owners">{[...m.owners.people, m.owners.role].filter(Boolean).join(", ")}{m.owners.four_eyes && " · four-eyes"}</Field>
-          <Field label="Write-back">{m.publish ? <><Tools names={[m.publish.tool]} /> released by {m.publish.approver_roles.join(", ")}</> : "none"}</Field>
-          <Field label="Policy">{Object.entries(m.policy).map(([k, v]) => `${k} = ${String(v.value)}${v.unit ? ` ${v.unit}` : ""}`).join(", ") || "—"}</Field>
-        </dl>
-      </Card>
-    </div>
-  );
-}
-
-/** A capability's own owners change its everyday settings as a form; it becomes a draft version. */
-function CapabilitySettings({ manifest }: { manifest: Manifest }) {
-  const submit = useSubmitDraft();
-  return (
-    <SettingsForm
-      manifest={manifest as unknown as Record<string, unknown>}
-      configurable={null}
-      onSubmit={(changes: Changes, note: string) => {
-        let next = manifest as unknown as Record<string, unknown>;
-        for (const [path, value] of Object.entries(changes)) next = setPath(next, path, value);
-        submit.mutate({ yaml: stringify(next), note: note || `settings: ${Object.keys(changes).join(", ")}` });
-      }}
-      pending={submit.isPending}
-      error={submit.error}
-      done={submit.data ? `Version ${submit.data.version} drafted. Another owner approves it below or in Authoring.` : null}
-    />
   );
 }

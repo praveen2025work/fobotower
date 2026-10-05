@@ -265,7 +265,7 @@ payloads; Helix's own spans carry the model's view only.
 | Controls | off switches for a capability, a group or a connector (Operations; `HELIX_ADMIN_ROLE` for connectors); `limits` caps model spend per case and per day |
 | Scale | groups reasoned in parallel (`HELIX_REASON_CONCURRENCY`, one at a time under a spend limit); `reasoning.specialists` as Agent SDK subagents (`HELIX_SUBAGENT_TOOL`) |
 | Evals | capability page → *Evals*: replay past decided cases, hidden, on any version; agreement, verdict match, wording (judge); spans in Phoenix |
-| Developers | *Flow* diagram, *Instructions* editor, version diffs, templates in Authoring, export a version and import it elsewhere as a draft (`HELIX_ENV_NAME`, `HELIX_PROMOTION_KEY`) |
+| Developers | *Configure* (the orchestrator, step by step, checked as you edit), *Flow* diagram, version diffs, templates in Authoring, export a version and import it elsewhere as a draft (`HELIX_ENV_NAME`, `HELIX_PROMOTION_KEY`) |
 | Smoke test | `scripts/helix_office_smoke.py --user <id> [--case <cap> --group <g> --key k=v …]` — database, entitlements, every connector, LLM, Phoenix, and one real case |
 
 ## 4. Onboarding a capability

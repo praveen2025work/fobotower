@@ -3,7 +3,6 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import type { InboxRow } from "../../api/helix";
-import SettingsForm from "../../components/capability/SettingsForm";
 import { mockApi, renderAt } from "../../test/render";
 import InboxPage from "../Inbox";
 
@@ -80,36 +79,5 @@ describe("Inbox on a phone", () => {
     } finally {
       window.matchMedia = original;
     }
-  });
-});
-
-describe("Settings form", () => {
-  const manifest = {
-    case: { opens_on: "schedule", schedule: "30 6 * * 1-5", due: { from: "cob", business_days: 1, at: "11:00" } },
-    policy: { materiality_threshold: { value: null, unit: "GBP" }, fx_tolerance: { value: 50, unit: "GBP" } },
-    review: { roles: ["FOBO_CONTROLLER"], bulk_exclude: ["confirmation", "judgement"], allow_delegation: false },
-  };
-
-  it("shows only what the owner may change and submits just the changes", async () => {
-    let submitted: Record<string, unknown> | null = null;
-    renderAt("/", "/", (
-      <SettingsForm
-        manifest={manifest}
-        configurable={["policy.*", "case.due"]}
-        onSubmit={(changes) => { submitted = changes; }}
-        pending={false}
-        error={null}
-        done={null}
-      />
-    ));
-    expect(screen.queryByLabelText(/Reviewers/)).not.toBeInTheDocument();     // not this group's to change
-    expect(screen.queryByLabelText(/Schedule/)).not.toBeInTheDocument();      // nor is the schedule
-    const button = screen.getByRole("button", { name: /Submit settings for approval/ });
-    expect(button).toBeDisabled();
-    await userEvent.type(screen.getByLabelText(/materiality threshold/), "10000");
-    expect(button).toHaveTextContent("(1 change)");
-    await userEvent.click(button);
-    expect(submitted).toEqual({ "policy.materiality_threshold": { value: 10000, unit: "GBP" } });
-    expect(within(screen.getByRole("group", { name: /Deadline/ })).getByLabelText(/At/)).toHaveValue("11:00");
   });
 });

@@ -1,6 +1,7 @@
 // One team group — a team's configuration of a capability (e.g. the CATS vs
-// MOTIF rec group): what it sets, the configuration its cases run on, its
-// version history, and editing it (owners draft; another owner approves).
+// MOTIF rec group): what it sets, its orchestrator step by step (editable by
+// its owners where the capability allows), its version history, and YAML for
+// those who prefer it. Owners draft; another owner approves.
 
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
@@ -11,12 +12,10 @@ import { currentUser } from "../api/client";
 import { useApproveGroup, useDraftGroup, useGroup, type GroupConfig } from "../api/helix";
 import FlowDiagram from "../components/capability/FlowDiagram";
 import RecurringPanel from "../components/capability/RecurringPanel";
-import SettingsForm, { setPath, type Changes } from "../components/capability/SettingsForm";
-import InstructionsEditor from "../components/capability/InstructionsEditor";
 import VersionsPanel from "../components/capability/VersionsPanel";
+import OrchestratorEditor from "../components/orchestrator/OrchestratorEditor";
 import StatusBadge from "../components/StatusBadge";
 import { Card, Empty, ErrorState, Loading, PageHeader, formatTime } from "../components/ui";
-import { ManifestDefinition } from "./CapabilityDetail";
 
 export default function GroupDetail(): JSX.Element {
   const { id = "", group = "" } = useParams();
@@ -58,60 +57,35 @@ export default function GroupDetail(): JSX.Element {
         <div className="mb-4"><RecurringPanel capabilityId={id} teamGroup={group} /></div>
       )}
 
-      {g.is_owner && (
-        <div className="mb-4">
-          <GroupSettings capabilityId={id} config={g.config} manifest={g.manifest as unknown as Record<string, unknown>} configurable={g.configurable} />
-        </div>
-      )}
-
-      <h2 className="mb-2 text-sm font-semibold text-surface-800">Configuration its cases run on</h2>
-      <ManifestDefinition manifest={g.manifest} />
+      <h2 className="mb-2 text-sm font-semibold text-surface-800">Configure this group's orchestrator</h2>
+      <p className="mb-2 text-xs text-surface-500">
+        Step by step, as its cases run today. {g.is_owner ? "Change what this group may set; the rest is the capability's and shown locked." : "Its owners change it."} Changes go to another owner for approval.
+      </p>
+      <OrchestratorEditor
+        capabilityId={id}
+        manifest={g.manifest as unknown as Record<string, unknown>}
+        mode={{ kind: "group", config: g.config, configurable: g.configurable }}
+        canEdit={g.is_owner}
+      />
 
       <div className="mt-4">
         <Card title="Workflow"><FlowDiagram capabilityId={id} teamGroup={group} /></Card>
       </div>
 
       <div className="mt-4 grid gap-4 xl:grid-cols-2">
-        {g.is_owner && <EditGroup capabilityId={id} config={g.config} />}
         <Versions capabilityId={id} group={group} versions={g.versions} isOwner={g.is_owner} fourEyes={g.owners.four_eyes} />
-      </div>
-
-      <div className="mt-4 grid gap-4 xl:grid-cols-2">
-        {g.is_owner && (
-          <Card title="This team's model instructions">
-            <InstructionsEditor capabilityId={id} teamGroup={group} current={g.manifest.reasoning.skill} />
-          </Card>
-        )}
         <Card title="What changed between versions">
           <VersionsPanel capabilityId={id} group={group} versions={g.versions} />
         </Card>
       </div>
-    </div>
-  );
-}
 
-/** The settings form for a group: changes land in the group's `set`, as a draft. */
-function GroupSettings({ capabilityId, config, manifest, configurable }: {
-  capabilityId: string;
-  config: GroupConfig;
-  manifest: Record<string, unknown>;
-  configurable: string[];
-}) {
-  const draft = useDraftGroup(capabilityId);
-  const submit = (changes: Changes, note: string) => {
-    let set = config.set as Record<string, unknown>;
-    for (const [path, value] of Object.entries(changes)) set = setPath(set, path, value);
-    draft.mutate({ config: { ...config, set }, note: note || `settings: ${Object.keys(changes).join(", ")}` });
-  };
-  return (
-    <SettingsForm
-      manifest={manifest}
-      configurable={configurable}
-      onSubmit={submit}
-      pending={draft.isPending}
-      error={draft.error}
-      done={draft.data ? `Version ${draft.data.version} drafted. Another owner approves it under Versions.` : null}
-    />
+      {g.is_owner && (
+        <details className="mt-4 rounded-xl border border-surface-200 bg-card p-4">
+          <summary className="cursor-pointer text-sm font-semibold text-surface-800">Advanced: edit this group as YAML</summary>
+          <div className="mt-3"><EditGroup capabilityId={id} config={g.config} /></div>
+        </details>
+      )}
+    </div>
   );
 }
 
@@ -135,7 +109,7 @@ function EditGroup({ capabilityId, config }: { capabilityId: string; config: Gro
   };
 
   return (
-    <Card title="Change this group">
+    <div>
       <label className="block text-xs font-medium text-surface-600">
         Settings (YAML) — only what this group changes
         <textarea
@@ -161,8 +135,8 @@ function EditGroup({ capabilityId, config }: { capabilityId: string; config: Gro
       </div>
       {parseError && <div className="mt-2"><ErrorState error={new Error(`Not valid YAML: ${parseError}`)} /></div>}
       {draft.error && <div className="mt-2"><ErrorState error={draft.error} /></div>}
-      {draft.data && <p className="mt-2 text-sm text-green-700">Version {draft.data.version} drafted. Another owner approves it below.</p>}
-    </Card>
+      {draft.data && <p className="mt-2 text-sm text-green-700">Version {draft.data.version} drafted. Another owner approves it under Versions.</p>}
+    </div>
   );
 }
 

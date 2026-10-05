@@ -72,8 +72,9 @@ it("lets a group owner change the group as a draft for another owner to approve"
   await userEvent.clear(editor);
   await userEvent.type(editor, "policy:{enter}  auto_adjust_limit:{enter}    value: 999");
   await userEvent.click(screen.getByRole("button", { name: /Submit for approval/ }));
-  await waitFor(() => expect(calls.some((c) => c.method === "POST")).toBe(true));
-  const body = calls.find((c) => c.method === "POST")!.body as { config: { set: unknown; owners: unknown } };
+  const isDraft = (c: { method: string; path: string }) => c.method === "POST" && c.path.endsWith("/groups");
+  await waitFor(() => expect(calls.some(isDraft)).toBe(true));
+  const body = calls.find(isDraft)!.body as { config: { set: unknown; owners: unknown } };
   expect(body.config.set).toEqual({ policy: { auto_adjust_limit: { value: 999 } } });
   expect(body.config.owners).toEqual(detail.config.owners);                      // owners are not edited here
   expect(await screen.findByText(/Version 2 drafted/)).toBeInTheDocument();

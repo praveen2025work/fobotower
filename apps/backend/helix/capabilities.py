@@ -89,6 +89,23 @@ async def versions(capability_id: str) -> list[dict]:
              "decided_by": r.decided_by, "decided_at": r.decided_at} for r in rows]
 
 
+def schema_problems(e: ValueError) -> list[str]:
+    """A schema error as one line per field: `path: message`."""
+    errs = getattr(e, "errors", lambda: [])()
+    return [f"{'.'.join(map(str, x['loc']))}: {x['msg']}" for x in errs] or [str(e)]
+
+
+def check(capability_id: str, manifest: dict) -> list[str]:
+    """Everything wrong with a proposed manifest, without storing it — what
+    `draft` would refuse. The configuration screens call it as people edit."""
+    try:
+        m = Manifest.model_validate(manifest)
+    except ValueError as e:
+        return schema_problems(e)
+    found = [] if m.id == capability_id else ["id: the manifest id does not match the capability"]
+    return found + problems(m)
+
+
 async def draft(capability_id: str, manifest: dict, note: str, caller: Caller) -> int:
     _, current = await active(capability_id)
     if not is_owner(caller, current):

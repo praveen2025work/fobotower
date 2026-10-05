@@ -98,9 +98,17 @@ def effective(base: Manifest, cfg: GroupConfig) -> tuple[Manifest | None, list[s
     try:
         m = Manifest.model_validate(merge(base.model_dump(by_alias=True), cfg.set, base.configurable))
     except ValueError as e:
-        errs = getattr(e, "errors", lambda: [])()
-        return None, [f"{'.'.join(map(str, x['loc']))}: {x['msg']}" for x in errs] or [str(e)]
+        return None, capabilities.schema_problems(e)
     return m, problems(m)
+
+
+def check(base: Manifest, config: dict) -> list[str]:
+    """Everything wrong with a proposed group, without storing it."""
+    try:
+        cfg = GroupConfig.model_validate(config)
+    except ValueError as e:
+        return capabilities.schema_problems(e)
+    return effective(base, cfg)[1]
 
 
 def is_group_owner(caller: Caller, cfg: GroupConfig) -> bool:

@@ -103,3 +103,24 @@ def test_group_settings_replace_at_the_configurable_path():
     allowed, refused = set_paths({"policy": {"x": {"value": 1}}, "owners": {"people": ["me"]}},
                                  base.configurable)
     assert allowed == ["policy.x"] and refused == ["owners.people"]
+
+
+async def test_a_configuration_is_checked_without_being_stored(api):
+    """The configuration screens check each edit as it is made; nothing is drafted."""
+    cap = (await api.get(f"/api/capabilities/{RECON}", headers=api.as_user("erin"))).json()
+    m = cap["manifest"]
+    check = lambda body: api.post(f"/api/capabilities/{RECON}/check", headers=api.as_user("erin"), json=body)  # noqa: E731
+    assert (await check({"manifest": m})).json() == {"ok": True, "problems": []}
+    no_review = {**m, "steps": [s for s in m["steps"] if s != "review"]}
+    found = (await check({"manifest": no_review})).json()
+    assert not found["ok"] and "`review` is required" in found["problems"]
+    bad_shape = {**m, "review": {**m["review"], "confirm": "maybe"}}
+    assert any(p.startswith("review.confirm:") for p in (await check({"manifest": bad_shape})).json()["problems"])
+
+    group = (await api.get(f"/api/capabilities/{RECON}/groups/{FOBO}", headers=api.as_user("frank"))).json()
+    cfg = group["config"]
+    assert (await check({"config": cfg})).json()["ok"]
+    sneaky = {**cfg, "set": {**cfg["set"], "steps": ["match", "group", "reason", "draft", "validate", "record"]}}
+    assert any("not configurable" in p for p in (await check({"config": sneaky})).json()["problems"])
+    versions = (await api.get(f"/api/capabilities/{RECON}", headers=api.as_user("erin"))).json()["versions"]
+    assert versions == cap["versions"]                                    # nothing was drafted

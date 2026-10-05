@@ -441,7 +441,7 @@ All routes are under `/api` and are identified by the identity header.
 | Area | Routes |
 |---|---|
 | Me / platform | `GET /me`, `GET /platform`, `GET /overview`, `GET /operations`, `GET /inbox`, `GET /audit` |
-| Capabilities | `GET /capabilities`, `GET /capabilities/{id}`, `POST /capabilities/{id}/versions`, `POST /capabilities/{id}/versions/{v}/approve`, `GET …/versions/{a}/diff/{b}`, `GET …/versions/{v}/export`, `GET …/flow`, `POST …/instructions` |
+| Capabilities | `GET /capabilities`, `GET /capabilities/{id}`, `POST /capabilities/{id}/versions`, `POST /capabilities/{id}/versions/{v}/approve`, `GET …/versions/{a}/diff/{b}`, `GET …/versions/{v}/export`, `GET …/flow`, `POST …/instructions`, `POST …/check` (a manifest or group config, checked without storing: `{ok, problems}`) |
 | Groups | `GET /capabilities/{id}/groups`, `GET …/groups/{g}`, `POST …/groups`, `POST …/groups/{g}/versions/{v}/approve`, `GET …/groups/{g}/versions/{a}/diff/{b}` |
 | Authoring | `POST /authoring/draft` (BRD → manifest), `POST /authoring/submit`, `GET /authoring/drafts`, `GET /authoring/templates`, `POST /promotion/import` |
 | Cases | `GET/POST /capabilities/{id}/cases`, `GET /cases/{id}`, `POST /cases/{id}/decisions`, `POST …/decisions/bulk`, `POST …/groups/{g}/reinvestigate`, `POST …/rerun`, `POST …/publish`, `POST …/publish/retry`, `GET …/documents/{name}`, `POST …/legal-hold` |

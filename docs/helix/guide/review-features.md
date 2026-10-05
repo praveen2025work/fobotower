@@ -18,7 +18,7 @@ Rates groups simply use all of them.
 | [Excel download](#7-excel-download) | "Download Excel" on every case | `export.columns` (optional) |
 | [Cover while away](#8-cover-while-away) | Hand reviews to a colleague until a date. Their decisions say "for frank" | `review.allow_delegation` |
 | [Measured time saved](#9-measured-time-saved) | "Hours saved (measured)" on the overview, from time actually spent per group | always on |
-| [Settings form](#10-settings-form) | Owners change thresholds, reviewers, schedule, deadline and review controls without YAML | the capability's `configurable` list |
+| [Configure the orchestrator](#10-configure-the-orchestrator) | Owners change every step's settings without YAML, checked as they go | the capability's `configurable` list |
 
 A group can set a feature only when its capability lists the path in `configurable`. The
 reconciliation capability allows all of these paths.
@@ -202,14 +202,25 @@ While the cover lasts:
 - **The declared figure stays.** The declared "Hours saved" figure remains, with its own
   basis.
 
-## 10. Settings form
+## 10. Configure the orchestrator
 
-- **Where it appears.** On a group's page for its owners, and on a capability's *Versions*
-  tab for its owners.
-- **What it shows.** Only what that owner may change: threshold values (empty means "not
-  confirmed yet"), reviewer roles, schedule, deadline, bulk exclusions and delegation.
-- **What happens on submit.** It sends only the changed paths as a draft version. Another
-  owner approves it, as with a YAML change.
+This replaces the earlier settings form, which covered only thresholds, reviewers, schedule
+and deadline.
+
+- **Where it appears.** The *Configure* tab of a capability, and the *Configure this group's
+  orchestrator* section of a group page.
+- **What it covers.** Every step of the workflow:
+  - which steps run, and where the run stops for a person;
+  - the item source and match;
+  - enrich, reference lookups and the playbook (checks, categories, verdict table, guards,
+    tests);
+  - grouping, rules, and the model (tools, instructions, specialists, spend caps);
+  - review controls, tickets, recurring items, export, retention and write-back.
+- **Checked as you edit.** Each edit is checked by the server, with the checks a draft must
+  pass. Problems show on their step.
+- **What happens on submit.** You review the changes as *before → after*, then submit. For
+  a group, only its configurable paths are sent. Another owner approves the draft. See the
+  [user guide §7a](user-guide.md#7a-configure-the-orchestrator).
 
 ## Also in this release
 
@@ -227,5 +238,5 @@ While the cover lasts:
 |---|---|
 | Backend | `helix/review.py`, `helix/escalation.py`, `helix/deadlines.py`, `helix/insights.py`, `helix/export.py`; `manifest.py` (`DueSpec`, `RecurringSpec`, `EscalationSpec`, `ExportSpec`, `review.*`, `group_label`, `side_names`, `amount_unit`) |
 | Database | Migration `d224c0604a72`: `helix_ticket`, `helix_delegation`, case `due_at` / `due_notified` / `review_ready_at`, decision `confirmed` / `on_behalf_of` / `review_seconds` |
-| Web | `components/Urgency.tsx`, `components/DelegationPanel.tsx`, `components/capability/SettingsForm.tsx`, `components/capability/RecurringPanel.tsx`, plus the case workspace, inbox and overview pages |
-| Tests | `tests/helix/test_review_features.py`, `src/pages/__tests__/Features.test.tsx` |
+| Web | `components/Urgency.tsx`, `components/DelegationPanel.tsx`, `components/orchestrator/` (the configuration editor), `components/capability/RecurringPanel.tsx`, plus the case workspace, inbox and overview pages |
+| Tests | `tests/helix/test_review_features.py`, `src/pages/__tests__/Features.test.tsx`, `src/components/orchestrator/__tests__/` |

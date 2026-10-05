@@ -7,6 +7,7 @@ import { useState } from "react";
 import { MessageCircleQuestion, Send, X } from "lucide-react";
 
 import { useAskForEvidence, useCancelRequest, type CaseDetail } from "../../api/helix";
+import { download } from "../../api/client";
 import StatusBadge from "../StatusBadge";
 import { ErrorState, formatTime } from "../ui";
 
@@ -42,6 +43,15 @@ export default function RequestsPanel({ c }: { c: CaseDetail }) {
             <p className="mt-0.5 text-[11px] text-surface-500">About {label(r.group_id)} · {r.asked_by} · {formatTime(r.asked_at)}</p>
             <p className="mt-1 text-surface-800">“{r.question}”</p>
             {r.answer && <p className="mt-1 rounded bg-green-50 px-2 py-1 text-green-900">{r.answer} <span className="text-[11px] text-green-700">— {r.answered_by}</span></p>}
+            {r.attachment && (
+              <button type="button" onClick={() => void download(r.attachment!.url.replace(/^\/api/, ""), r.attachment!.name)}
+                className="mt-1 text-[11px] font-medium text-primary-700 hover:underline">Attached: {r.attachment.name.split("--").pop()}</button>
+            )}
+            {r.status === "open" && (r.reminded_at || r.escalated_at) && (
+              <p className="mt-1 text-[11px] text-surface-500">
+                {r.escalated_at ? `Unanswered: reviewers told ${formatTime(r.escalated_at)}` : `Reminded ${formatTime(r.reminded_at!)}`}
+              </p>
+            )}
             {r.status === "open" && r.group_id && <p className="mt-1 text-[11px] text-amber-700">This group waits for the answer before it is decided.</p>}
           </li>
         ))}

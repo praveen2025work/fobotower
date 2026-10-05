@@ -29,7 +29,7 @@ from helix.models import Case, Decision, Notification, NotificationRead
 log = logging.getLogger("helix.notify")
 
 
-async def _send_webhook(n: Notification, link: str) -> None:
+async def _send_webhook(n: Notification, link: str, extra: dict | None = None) -> None:
     url = settings().notify_webhook_url
     if not url:
         return
@@ -39,20 +39,23 @@ async def _send_webhook(n: Notification, link: str) -> None:
                                          "link": link, "kind": n.kind, "case_id": n.case_id,
                                          "capability_id": n.capability_id,
                                          "audience_roles": n.audience_roles,
-                                         "audience_users": n.audience_users})
+                                         "audience_users": n.audience_users, **(extra or {})})
     except Exception:
         log.exception("notification webhook failed")
 
 
 async def send(*, capability_id: str, kind: str, title: str, body: str = "", case_id: str | None = None,
-               roles: list[str] | None = None, users: list[str] | None = None) -> str:
+               roles: list[str] | None = None, users: list[str] | None = None,
+               extra: dict | None = None) -> str:
+    """`extra` goes to the webhook only, e.g. a question's id and where a bot
+    posts the answer, so a Teams or email flow can reply without the console."""
     n = Notification(notification_id=uuid.uuid4().hex, case_id=case_id, capability_id=capability_id,
                      kind=kind, title=title, body=body, audience_roles=sorted(set(roles or [])),
                      audience_users=sorted(set(users or [])))
     async with get_session() as s:
         s.add(n)
         await s.commit()
-    await _send_webhook(n, f"{settings().console_url}/cases/{case_id}" if case_id else settings().console_url)
+    await _send_webhook(n, f"{settings().console_url}/cases/{case_id}" if case_id else settings().console_url, extra)
     return n.notification_id
 
 
@@ -97,6 +100,11 @@ async def case_changed(case_id: str) -> None:
                body=body[:500], roles=list(roles), users=users)
 
 
+# A question goes to people who may not see the case (a trader, Operations):
+# they see the question itself, as in Inbox → Questions for you.
+QUESTION_KINDS = {"question", "question_reminder"}
+
+
 def _addressed(n: Notification, caller: Caller) -> bool:
     return caller.user_id in (n.audience_users or []) or bool(set(n.audience_roles or []) & caller.roles)
 
@@ -115,7 +123,7 @@ async def for_caller(caller: Caller, limit: int = 50) -> dict:
         for n in rows:
             if not _addressed(n, caller):
                 continue
-            if n.case_id:
+            if n.case_id and n.kind not in QUESTION_KINDS:
                 case = await s.get(Case, n.case_id)
                 if case is None or not may_see_case(caller, await pinned(case), case.case_key):
                     continue

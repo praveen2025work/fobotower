@@ -308,6 +308,9 @@ set:
       - { id: cats-support, name: "CATS support",         roles: [CATS_SUPPORT] }
     hold_decision: true
     reinvestigate_on_answer: true
+    # Chase: remind the people asked after 2 hours; after 4, tell the controllers.
+    remind_after_hours: 2
+    escalate_after_hours: 4
   # The same instrument breaking again on the same book, COB after COB.
   insights:
     recurring: { same: [book], lookback_cases: 10, min_runs: 2 }

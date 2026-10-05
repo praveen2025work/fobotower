@@ -312,6 +312,10 @@ export interface InfoRequest {
   answered_by: string | null;
   answered_at: string | null;
   can_answer?: boolean;
+  /** A file the answer came with, kept as the case's evidence. */
+  attachment?: { name: string; url: string } | null;
+  reminded_at?: string | null;
+  escalated_at?: string | null;
 }
 
 /** An open question addressed to the viewer, with just the rows it is about. */
@@ -551,8 +555,13 @@ export const useMyQuestions = () =>
 export function useAnswerQuestion() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (v: { requestId: string; answer: string }) =>
-      api.post<InfoRequest>(`/requests/${enc(v.requestId)}/answer`, { answer: v.answer }),
+    mutationFn: (v: { requestId: string; answer: string; file?: File | null }) => {
+      if (!v.file) return api.post<InfoRequest>(`/requests/${enc(v.requestId)}/answer`, { answer: v.answer });
+      const form = new FormData();
+      form.append("answer", v.answer);
+      form.append("file", v.file);
+      return upload<InfoRequest>(`/requests/${enc(v.requestId)}/answer-with-file`, form);
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["my-questions"] }),
   });
 }

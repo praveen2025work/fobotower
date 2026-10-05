@@ -56,6 +56,13 @@ async def upload(case_id: str, filename: str, content: bytes, note: str | None, 
     case, m = await _case(case_id, caller)
     if not (caller.has_any_role(m.review.roles) or caller.user_id == case.opened_by):
         raise PermissionError(f"{caller.user_id} may not add evidence to this case")
+    return await store(case, filename, content, note, caller.user_id)
+
+
+async def store(case: Case, filename: str, content: bytes, note: str | None, uploaded_by: str) -> dict:
+    """Keep a file as the case's evidence (checked: type, size, real content).
+    Who may add it is the caller's to check — a reviewer, or someone answering
+    a question about the case (asks.answer)."""
     name = _clean(filename)
     ext = "." + name.rsplit(".", 1)[-1].lower() if "." in name else ""
     if ext not in KINDS:
@@ -70,7 +77,7 @@ async def upload(case_id: str, filename: str, content: bytes, note: str | None, 
     async with get_session() as s:
         await s.merge(Document(scope=_scope_of(case), name=stored, content=content, content_type=content_type,
                                sha256=digest, kind="evidence", case_id=case.case_id,
-                               uploaded_by=caller.user_id, note=(note or "").strip() or None))
+                               uploaded_by=uploaded_by, note=(note or "").strip() or None))
         await s.commit()
     return {"name": stored, "sha256": digest, "bytes": len(content)}
 

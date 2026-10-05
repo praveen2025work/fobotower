@@ -12,7 +12,7 @@ group back to the model (`requests.reinvestigate_on_answer`).
 """
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
 
@@ -31,7 +31,10 @@ def _view(r: InfoRequest, caller: Caller | None = None) -> dict:
     out = {"request_id": r.request_id, "case_id": r.case_id, "group_id": r.group_id,
            "target": r.target, "target_name": r.target_name, "question": r.question,
            "asked_by": r.asked_by, "asked_at": r.asked_at, "status": r.status,
-           "answer": r.answer, "answered_by": r.answered_by, "answered_at": r.answered_at}
+           "answer": r.answer, "answered_by": r.answered_by, "answered_at": r.answered_at,
+           "attachment": ({"name": r.attachment, "url": f"/api/cases/{r.case_id}/evidence/{r.attachment}"}
+                          if r.attachment else None),
+           "reminded_at": r.reminded_at, "escalated_at": r.escalated_at}
     if caller is not None:
         out["can_answer"] = r.status == "open" and _addressed(r, caller)
     return out
@@ -78,14 +81,26 @@ async def ask(case_id: str, target_id: str, question: str, group_id: str | None,
         out = _view(r)
     await notify.send(capability_id=case.capability_id, case_id=case_id, kind="question",
                       title=f"Question from {caller.user_id}: {case.subject}" + (f" · {label}" if label else ""),
-                      body=question[:500], roles=target.roles, users=target.users)
+                      body=question[:500], roles=target.roles, users=target.users, extra=_bot_fields(r))
     return out
 
 
-async def answer(request_id: str, text: str, caller: Caller | None, on_behalf: str | None = None) -> dict:
+def _bot_fields(r: InfoRequest) -> dict:
+    """What a Teams or email flow needs to collect the answer and post it back."""
+    from helix.config import settings
+    base = settings().console_url
+    return {"request_id": r.request_id, "question": r.question, "target": r.target,
+            "answer_url": f"{base}/api/requests/{r.request_id}/answer",
+            "answer_with_file_url": f"{base}/api/requests/{r.request_id}/answer-with-file",
+            "answer_in_console": f"{base}/inbox"}
+
+
+async def answer(request_id: str, text: str, caller: Caller | None, on_behalf: str | None = None,
+                 file: tuple[str, bytes] | None = None) -> dict:
     """An addressee answers (caller), or a bot answers for someone (on_behalf,
-    with the event secret checked by the route)."""
-    from helix import cases, notify
+    with the event secret checked by the route). A file sent with the answer
+    (requests.allow_attachments) is kept as the case's evidence."""
+    from helix import cases, evidence, notify
 
     text = (text or "").strip()
     if not text:
@@ -98,13 +113,23 @@ async def answer(request_id: str, text: str, caller: Caller | None, on_behalf: s
             raise PermissionError(f"this question is for {r.target_name}")
         if r.status != "open":
             raise AskError(f"this question is {r.status}")
+        case = await s.get(Case, r.case_id)
+        m = await cases._pinned(case)
+        who = caller.user_id if caller is not None else (on_behalf or "bot")
+        if file is not None:
+            if not m.requests.allow_attachments:
+                raise AskError("answers to this capability's questions cannot carry files")
+            try:
+                saved = await evidence.store(case, file[0], file[1],
+                                             f"{r.target_name} ({who}), answering: {r.question}"[:500], who)
+            except cases.CaseError as e:
+                raise AskError(str(e)) from None
+            r.attachment = saved["name"]
         r.status, r.answer = "answered", text
-        r.answered_by = caller.user_id if caller is not None else (on_behalf or "bot")
+        r.answered_by = who
         r.answered_at = datetime.now(timezone.utc)
         await s.commit()
         out = _view(r)
-        case = await s.get(Case, r.case_id)
-    m = await cases._pinned(case)
     await notify.send(capability_id=case.capability_id, case_id=case.case_id, kind="answered",
                       title=f"{r.target_name} answered: {case.subject}", body=text[:500], users=[r.asked_by])
     if (r.group_id and m.requests.reinvestigate_on_answer and case.status == "awaiting_review"
@@ -161,6 +186,7 @@ async def answers_for(case_id: str, group_id: str | None) -> list[str]:
             InfoRequest.case_id == case_id, InfoRequest.status == "answered")
             .order_by(InfoRequest.answered_at))).scalars().all()
     return [f"{r.target_name} ({r.answered_by}) answered \"{r.question}\": {r.answer}"
+            + (f" (attached: {r.attachment}, in the case's documents)" if r.attachment else "")
             for r in rows if r.group_id in (None, group_id)]
 
 
@@ -189,3 +215,37 @@ async def mine(caller: Caller) -> list[dict]:
                         "group_label": group.label if group else None, "columns": columns,
                         "rows": [{c: i.get(c) for c in columns} for i in items]})
     return out
+
+
+async def chase(now: datetime | None = None) -> list[tuple[str, str]]:
+    """Unanswered questions: remind the people asked after
+    requests.remind_after_hours, and tell the reviewers and whoever asked after
+    requests.escalate_after_hours. Each happens once per question. Run by the
+    scheduler every minute, like deadline reminders."""
+    from helix import cases, notify
+
+    now = now or datetime.now(timezone.utc)
+    done = []
+    async with get_session() as s:
+        rows = (await s.execute(select(InfoRequest).where(InfoRequest.status == "open"))).scalars().all()
+        for r in rows:
+            case = await s.get(Case, r.case_id)
+            m = await cases._pinned(case)
+            spec = m.requests
+            age = now - r.asked_at
+            if (spec.escalate_after_hours and r.escalated_at is None
+                    and age >= timedelta(hours=spec.escalate_after_hours)):
+                r.escalated_at = now
+                await notify.send(capability_id=case.capability_id, case_id=case.case_id, kind="question_unanswered",
+                                  title=f"Unanswered for {spec.escalate_after_hours:g}h: {r.target_name} · {case.subject}",
+                                  body=r.question[:500], roles=list(m.review.roles), users=[r.asked_by])
+                done.append((r.request_id, "escalated"))
+            elif (spec.remind_after_hours and r.reminded_at is None
+                    and age >= timedelta(hours=spec.remind_after_hours)):
+                r.reminded_at = now
+                await notify.send(capability_id=case.capability_id, case_id=case.case_id, kind="question_reminder",
+                                  title=f"Reminder — question from {r.asked_by}: {case.subject}",
+                                  body=r.question[:500], roles=r.roles, users=r.users, extra=_bot_fields(r))
+                done.append((r.request_id, "reminded"))
+        await s.commit()
+    return done

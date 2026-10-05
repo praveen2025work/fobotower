@@ -95,3 +95,52 @@ def test_a_target_names_who_answers():
     m = next(x for x in seed_files() if x.id == CAP).model_dump(by_alias=True)
     found = problems(Manifest.model_validate({**m, "requests": {"targets": [{"id": "desk", "name": "Desk"}]}}))
     assert "requests.targets[desk]: name the roles or the people who answer" in found
+
+
+async def test_an_answer_can_carry_a_file_and_a_bot_gets_what_it_needs_to_reply(api, monkeypatch):
+    from helix import notify
+    sent = []
+
+    async def capture(n, link, extra=None):
+        sent.append((n.kind, extra or {}))
+    monkeypatch.setattr(notify, "_send_webhook", capture)
+    case = await _case_at_review(api)
+    aged = _group(case, "K")
+    rid = (await api.post(f"/api/cases/{case['case_id']}/requests", headers=api.as_user("frank"),
+                          json={"target": "desk", "group_id": aged["group_id"],
+                                "question": "Send the amended trade ticket"})).json()["request_id"]
+    question = next(extra for kind, extra in sent if kind == "question")
+    assert question["request_id"] == rid and question["answer_url"].endswith(f"/api/requests/{rid}/answer")
+    assert question["answer_with_file_url"].endswith("/answer-with-file")
+
+    res = await api.post(f"/api/requests/{rid}/answer-with-file", headers=api.as_user("tom"),
+                         data={"answer": "Ticket attached"},
+                         files={"file": ("ticket.pdf", b"%PDF-1.4 amended ticket", "application/pdf")})
+    assert res.status_code == 200, res.text
+    after = (await api.get(f"/api/cases/{case['case_id']}", headers=api.as_user("frank"))).json()
+    r = after["requests"][0]
+    assert r["attachment"]["name"].endswith("ticket.pdf")
+    kept = next(e for e in after["evidence"] if e["name"] == r["attachment"]["name"])
+    assert kept["uploaded_by"] == "tom" and "answering: Send the amended trade ticket" in kept["note"]
+    bad = await api.post(f"/api/requests/{rid}/answer-with-file", headers=api.as_user("tom"),
+                         data={"answer": "again"}, files={"file": ("x.exe", b"MZ", "application/octet-stream")})
+    assert bad.status_code in (409, 422)
+
+
+async def test_unanswered_questions_are_chased_then_escalated_once(api):
+    from datetime import datetime, timedelta, timezone
+
+    from helix import asks
+    case = await _case_at_review(api)
+    rid = (await api.post(f"/api/cases/{case['case_id']}/requests", headers=api.as_user("frank"),
+                          json={"target": "operations", "question": "Why was the journal rejected?"})).json()["request_id"]
+    now = datetime.now(timezone.utc)
+    assert await asks.chase(now + timedelta(hours=1)) == []
+    assert await asks.chase(now + timedelta(hours=2, minutes=5)) == [(rid, "reminded")]
+    assert await asks.chase(now + timedelta(hours=3)) == []                    # once
+    assert await asks.chase(now + timedelta(hours=4, minutes=5)) == [(rid, "escalated")]
+    assert await asks.chase(now + timedelta(hours=9)) == []
+    olga = (await api.get("/api/notifications", headers=api.as_user("olga"))).json()
+    assert any(n["kind"] == "question_reminder" for n in olga["items"])
+    frank = (await api.get("/api/notifications", headers=api.as_user("frank"))).json()
+    assert any(n["kind"] == "question_unanswered" for n in frank["items"])

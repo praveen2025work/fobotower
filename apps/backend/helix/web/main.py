@@ -400,6 +400,26 @@ async def answer_request(request_id: str, body: AnswerIn, request: Request) -> d
     return await asks.answer(request_id, body.answer, await caller(request))
 
 
+@app.post("/api/requests/{request_id}/answer-with-file")
+@_errors
+async def answer_request_with_file(request_id: str, request: Request, answer: str = Form(..., min_length=1, max_length=8000),
+                                   file: UploadFile = File(...), answered_by: str | None = Form(None)) -> dict:
+    """The same, with a file (PDF or workbook) kept as the case's evidence."""
+    from helix import evidence
+
+    content = await file.read(evidence.MAX_BYTES + 1)
+    upload = (file.filename or "evidence", content)
+    sent = request.headers.get("X-Helix-Event-Secret")
+    if sent is not None:
+        secret = settings().event_secret
+        if not secret or not hmac.compare_digest(sent.encode(), secret.encode()):
+            raise HTTPException(401, "bad event secret")
+        if not answered_by:
+            raise HTTPException(422, "a bot answering says who for: answered_by")
+        return await asks.answer(request_id, answer, None, on_behalf=answered_by, file=upload)
+    return await asks.answer(request_id, answer, await caller(request), file=upload)
+
+
 @app.post("/api/requests/{request_id}/cancel")
 @_errors
 async def cancel_request(request_id: str, c: Caller = Depends(caller)) -> dict:

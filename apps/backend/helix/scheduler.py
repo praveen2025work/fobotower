@@ -171,5 +171,8 @@ async def run_forever() -> None:
                 from helix import deadlines
                 for case_id, kind in await deadlines.check(at):
                     log.info("deadline reminder %s for %s", kind, case_id)
+                from helix import asks
+                for request_id, kind in await asks.chase(at):
+                    log.info("question %s %s", request_id, kind)
         except Exception:
             log.exception("scheduler tick failed")

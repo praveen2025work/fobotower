@@ -95,7 +95,7 @@ async def fail(case_id: str, e: BaseException) -> None:
 # What each pause waits for; nothing else moves a run past it. Any other
 # pause is a tollgate, crossed only when a person passes it.
 _CROSSES = {"review": {"decisions"}, "publish": {"publish_approval"}}
-_GATE = {"gates_passed"}
+_GATE = {"gates_passed", "gate_notes"}
 
 _SPANS = {"open": "case.run", "resume": "review.resume", "publish": "publish.release",
           "recover": "case.recover"}

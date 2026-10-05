@@ -30,7 +30,25 @@ SYNC_USER = "system:config-sync"
 
 
 def _same(a: dict, b: dict) -> bool:
-    return json.dumps(a, sort_keys=True, default=str) == json.dumps(b, sort_keys=True, default=str)
+    # Compared as values, not text: a number stored as 12.0 equals the file's 12.
+    as_json = lambda d: json.loads(json.dumps(d, default=str))  # noqa: E731
+    return as_json(a) == as_json(b)
+
+
+def _manifest(stored: dict) -> dict:
+    """A stored manifest as today's schema writes it, so a field added since
+    (with its default) is not mistaken for a change in the file."""
+    try:
+        return Manifest.model_validate(stored).model_dump(by_alias=True)
+    except ValueError:
+        return stored
+
+
+def _config(stored: dict) -> dict:
+    try:
+        return team_groups.GroupConfig.model_validate(stored).model_dump()
+    except ValueError:
+        return stored
 
 
 async def _capabilities(dry_run: bool) -> list[str]:
@@ -41,18 +59,19 @@ async def _capabilities(dry_run: bool) -> list[str]:
             rows = (await s.execute(select(CapabilityVersion).where(
                 CapabilityVersion.capability_id == m.id))).scalars().all()
         active = next((r for r in rows if r.status == "active"), None)
-        if active is None or _same(active.manifest, body):
+        if active is not None and _same(_manifest(active.manifest), body):
             continue
-        if any(r.status == "draft" and _same(r.manifest, body) for r in rows):
+        if any(r.status == "draft" and _same(_manifest(r.manifest), body) for r in rows):
             out.append(f"{m.id}: a draft with this file is waiting for approval")
             continue
+        # A capability that is not live yet (a new file) is drafted as version 1.
         found = problems(Manifest.model_validate(body))
         if found:
             out.append(f"{m.id}: file has problems, not drafted: {'; '.join(found)}")
             continue
         if not dry_run:
             async with get_session() as s:
-                n = max(r.version for r in rows) + 1
+                n = max((r.version for r in rows), default=0) + 1
                 s.add(CapabilityVersion(capability_id=m.id, version=n, manifest=body, status="draft",
                                         note="from config files (config-sync)", drafted_by=SYNC_USER))
                 await s.commit()
@@ -66,7 +85,12 @@ async def _groups(dry_run: bool) -> list[str]:
     if not root.exists():
         return out
     for folder in sorted(p for p in root.iterdir() if p.is_dir()):
-        _, base = await capabilities.active(folder.name)
+        try:
+            _, base = await capabilities.active(folder.name)
+        except capabilities.CapabilityError:
+            out += [f"{folder.name}/{p.stem}: waits for capability {folder.name} to be approved"
+                    for p in sorted(folder.glob("*.yaml"))]
+            continue
         for path in sorted(folder.glob("*.yaml")):
             cfg = team_groups.GroupConfig.model_validate(yaml.safe_load(path.read_text()))
             body = cfg.model_dump()
@@ -74,10 +98,10 @@ async def _groups(dry_run: bool) -> list[str]:
                 rows = (await s.execute(select(GroupVersion).where(
                     GroupVersion.capability_id == folder.name, GroupVersion.group_id == cfg.group))).scalars().all()
             active = next((r for r in rows if r.status == "active"), None)
-            if active is None or _same(active.config, body):
+            if active is not None and _same(_config(active.config), body):
                 continue
             label = f"{folder.name}/{cfg.group}"
-            if any(r.status == "draft" and _same(r.config, body) for r in rows):
+            if any(r.status == "draft" and _same(_config(r.config), body) for r in rows):
                 out.append(f"{label}: a draft with this file is waiting for approval")
                 continue
             _, found = team_groups.effective(base, cfg)
@@ -86,9 +110,9 @@ async def _groups(dry_run: bool) -> list[str]:
                 continue
             if not dry_run:
                 async with get_session() as s:
-                    n = (await s.execute(select(func.max(GroupVersion.version)).where(
+                    n = ((await s.execute(select(func.max(GroupVersion.version)).where(
                         GroupVersion.capability_id == folder.name,
-                        GroupVersion.group_id == cfg.group))).scalar_one() + 1
+                        GroupVersion.group_id == cfg.group))).scalar_one() or 0) + 1
                     s.add(GroupVersion(capability_id=folder.name, group_id=cfg.group, version=n, config=body,
                                        status="draft", note="from config files (config-sync)", drafted_by=SYNC_USER))
                     await s.commit()

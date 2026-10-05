@@ -46,9 +46,10 @@ BEFORE — FOBO on Agent One (one app, one team)
 AFTER — FOBO as a rec group on Helix (one platform, every accounting team)
 
   Helix web (inbox, case workspace, review, release)    ← all teams
-  Helix API ── capability recon.investigation (shared engine, mandatory gates)
-                 └── group cats-motif (Prime), cats-motif-rates (Rates), …  ← FOBO is YAML here
-       steps: match → enrich → resolve → classify → group → reason → draft
+  Helix API ── capability break.investigation (shared engine, mandatory gates)
+                 └── group fobo-prime (Prime), a Rates group, …  ← FOBO is YAML here
+       steps: load (MB Rec's breaks) → enrich → resolve → classify (timing first) → group
+              → tollgate (controller + the desk's input) → reason → draft
               → validate* → review* → record*         (* gates cannot be removed)
        ├── llm: Agent One's Agent SDK wrapper as the Helix LLM adapter (one call per group)
        ├── gateway: allow-list, data scope, audit row, masking → office MCP servers
@@ -65,7 +66,7 @@ similar names.
 | FOBO concept | FOBO / Agent One (typical place) | Helix target | How it moves |
 |---|---|---|---|
 | Rec run (book × COB) | `investigation/agent_run.py`, `state.py` | a **case** keyed `[book, cob]` | `set.case` in the group file |
-| CATS vs MOTIF positions | `steps/gather.py` + CATS/MOTIF clients | `match` (left `cats.positions`, right `motif.positions`, key `instrument`, tolerance) | config |
+| The breaks (MB Rec has already reconciled CATS to MOTIF) | `steps/gather.py` reads them from MB Rec | `load` from `mbrec.breaks` on the **Break investigation** capability — no re-matching (see [Configure it](../guide/configure-fobo-mb-rec.md)) | config |
 | Dated FO/BO snapshots | `gather.py` (`break_snapshots`) | `enrich` with `motif.break_snapshots` | config |
 | Book → desk → team as of COB | `steps/resolve.py`, `knowledge_graph/ontology.py` | `resolve` + `config/helix/knowledge/fobo-reference.yaml`, `knowledge.as_of: cob` | reference YAML |
 | Cause checks C1–C6 (all run, negatives kept) | `cause_checks/checks.py` + `reasons.py` | `playbook.checks[]` (`when`, `category`, `side`, `reason`) | **code → expressions** |
@@ -96,7 +97,10 @@ similar names.
 | Users, roles, books visible | FOBO auth | `HELIX_ENTITLEMENT_URL` (roles + `book` data scope), `HELIX_IDENTITY_HEADER` | env |
 
 **Reference implementation.** The Prime group, already converted and tested:
-`config/helix/groups/recon.investigation/cats-motif.yaml`. Rates: `cats-motif-rates.yaml`.
+`config/helix/groups/break.investigation/fobo-prime.yaml` (MB Rec's breaks, timing checks,
+the tollgate). The older `recon.investigation/cats-motif.yaml` and `cats-motif-rates.yaml` match
+CATS to MOTIF in Helix itself. Use them only where no system has reconciled already. Their
+playbook is the same.
 Behaviour tests: `apps/backend/tests/helix/test_fobo_playbook.py`. Line-by-line parity:
 [`../fobo-on-helix.md`](../fobo-on-helix.md).
 
@@ -229,8 +233,8 @@ Each phase ends with a check and your sign-off. Office Claude stops at every one
 | 0 | **Inventory.** Map Agent One's FOBO code and config to every row of §2. Record the actual policy values, schedule, books, roles, MCP server URLs and tool names. Write `MIGRATION_INVENTORY.md` | every §2 row has an office location or "not present"; open questions are listed |
 | 1 | **Bring Helix in.** Add `apps/backend/helix`, its migrations, `apps/web`, `config/helix` from `praveen2025work/fobotower` main. Give it its own database (`HELIX_DATABASE_URL`). Run `alembic upgrade head` | the API starts with the stub model; `pytest tests/helix` is green |
 | 2 | **Connectors.** Point `cats`, `motif` (and `ticketing`, `documents` if used) at the office MCP servers. Start from `connectors.office.example.yaml`; secrets go in env only | `scripts/helix_office_smoke.py --user <id>` passes database, entitlements, connectors |
-| 3 | **Rules as config.** Copy `cats-motif.yaml` and set the office values from the inventory: books, schedule, policy values (nulls stay null), tests, categories, verdicts, guards, roles. Copy `fobo-reference.yaml` with the office's book → desk → team lineage. One file per FOBO rec group (Prime, Rates, …). Anything the YAML cannot express goes to `MIGRATION_GAPS.md`, not into engine code | `python -m helix.config_sync` creates drafts, a second owner approves, and §5 tests pass |
-| 4 | **Model.** Plug Agent One's SDK call into the adapter (§4.1). Trim the skill (§4.3). Set `HELIX_LLM_ADAPTER`, `PHOENIX_COLLECTOR_ENDPOINT`, `HELIX_ENTITLEMENT_URL`, `HELIX_IDENTITY_HEADER`, `HELIX_TRUSTED_PROXY_SECRET` | smoke test with `--case recon.investigation --group cats-motif --key book=… --key cob=…` passes, and the trace appears in Phoenix |
+| 3 | **Rules as config.** Copy `break.investigation/fobo-prime.yaml` and set the office values from the inventory: books, schedule, policy values (nulls stay null), tests, categories, verdicts, guards, roles. Copy `fobo-reference.yaml` with the office's book → desk → team lineage. One file per FOBO rec group (Prime, Rates, …). Anything the YAML cannot express goes to `MIGRATION_GAPS.md`, not into engine code | `python -m helix.config_sync` creates drafts, a second owner approves, and §5 tests pass |
+| 4 | **Model.** Plug Agent One's SDK call into the adapter (§4.1). Trim the skill (§4.3). Set `HELIX_LLM_ADAPTER`, `PHOENIX_COLLECTOR_ENDPOINT`, `HELIX_ENTITLEMENT_URL`, `HELIX_IDENTITY_HEADER`, `HELIX_TRUSTED_PROXY_SECRET` | smoke test with `--case break.investigation --group fobo-prime --key book=… --key cob=…` passes, and the trace appears in Phoenix |
 | 5 | **Parallel run.** Run each book's COB in both systems for an agreed period (suggested: 10 business days, every book). Compare with the parity script (below). Log every difference in `PARITY_LOG.md` with a cause and a decision | zero unexplained differences across the period; Product Control signs off |
 | 6 | **Cut-over and retire.** Switch the 11:00 schedule to Helix, turn off the FOBO trigger, and move users to Helix web. Retire the §3 list after one clean month-end. Keep FOBO tables read-only | Helix is the only system writing; rollback plan tested once |
 
@@ -263,7 +267,7 @@ Paste this into Claude Code in the office repo, after copying the skill (top of 
 
 ```text
 Use the fobo-to-helix skill. We are moving our FOBO on Agent One to Helix: FOBO becomes
-the CATS vs MOTIF rec groups of Helix's recon.investigation capability. The change guide
+groups of Helix's break.investigation capability, on MB Rec's breaks. The change guide
 is docs/helix/migration/README.md.
 
 Start with Phase 0 only: inventory our FOBO code and config against every row of the

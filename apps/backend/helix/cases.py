@@ -217,9 +217,13 @@ async def pass_gate(case_id: str, step: str, action: str, comment: str | None,
             raise PermissionError(f"passing this tollgate needs one of: {', '.join(m.gate(step).roles)}")
         if action == "stop" and m.gate(step).stop_needs_comment and not (comment or "").strip():
             raise CaseError("say why you stop the run: a comment is required")
-        passed = list((await s.execute(select(GateDecision.step).where(
+        earlier = (await s.execute(select(GateDecision).where(
             GateDecision.case_id == case_id, GateDecision.action == "continue")
-            .order_by(GateDecision.decided_at))).scalars())
+            .order_by(GateDecision.decided_at))).scalars().all()
+        passed = [g.step for g in earlier]
+        notes = [{"step": g.step, "by": g.decided_by, "comment": g.comment} for g in earlier if g.comment]
+        if action == "continue" and (comment or "").strip():
+            notes.append({"step": step, "by": caller.user_id, "comment": comment.strip()})
         s.add(GateDecision(gate_id=uuid.uuid4().hex, case_id=case_id, step=step, action=action,
                            comment=(comment or "").strip() or None, decided_by=caller.user_id,
                            idempotency_key=idempotency_key))
@@ -231,7 +235,7 @@ async def pass_gate(case_id: str, step: str, action: str, comment: str | None,
         await s.commit()
     with span("gate.decision", root=True, case_id=case_id, step=step, action=action, user=caller.user_id):
         if action == "continue":
-            await runner.submit(case_id, "resume", {"gates_passed": [*passed, step]})
+            await runner.submit(case_id, "resume", {"gates_passed": [*passed, step], "gate_notes": notes})
         else:
             from helix import notify
             await notify.case_changed(case_id)

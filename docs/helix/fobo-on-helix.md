@@ -14,7 +14,14 @@ platform when the team is ready, and other rec groups get the same machinery.
 | Behaviour tests | `apps/backend/tests/helix/test_fobo_playbook.py` |
 | Worked examples (Prime vs Rates) | [`examples.md`](examples.md) |
 
-**How a FOBO run goes on Helix:**
+**In the office, the breaks come from MB Rec,** which has already reconciled CATS to MOTIF.
+That setup is *Break investigation* with the `fobo-prime` group: it reads MB Rec's open breaks
+(`load`), adds timing checks and a tollgate for the desk's input, and never re-matches. See
+[Configure it: FOBO on MB Rec's breaks](guide/configure-fobo-mb-rec.md). The run below is the
+matching variant (`recon.investigation`), for where Helix itself must match the two
+systems. Its playbook is the same.
+
+**How a FOBO run goes on Helix (matching variant):**
 
 ```
 match (CATS vs MOTIF) → enrich (break snapshots) → resolve (book → desk → team, as of the COB)

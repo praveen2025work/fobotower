@@ -33,6 +33,9 @@ class ReasonRequest:
     output: str                # verdict | commentary | classification
     # A reviewer sent the group back: what they asked, and what was proposed before.
     reviewer_note: str | None = None
+    # What people added at tollgates before the model was asked (e.g. the desk's
+    # explanation of a break): context, not instructions, and never figures it may cite.
+    notes: list[str] = field(default_factory=list)
     previous_finding: dict | None = None
     # A playbook's verdicts the model may propose (e.g. POST, DO_NOT_POST, ESCALATE).
     verdicts: list[str] | None = None
@@ -151,6 +154,8 @@ class StubLlm:
             comment += f" Similar to a prior approved explanation: \"{prior}\""
         if request.reviewer_note:
             comment += f" Re-checked as the reviewer asked: \"{request.reviewer_note}\"."
+        if request.notes:
+            comment += f" Took into account {len(request.notes)} note(s) from the tollgate."
         return ReasonResult(status="proposed", comment=comment, model="stub")
 
 

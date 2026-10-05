@@ -33,6 +33,17 @@ connectors:
     tools:
       positions: { description: "End-of-day FO positions and MTM per book and COB", scope: { arg: book, key: book } }
 
+  # MB Rec: the breaks FOBO investigates, already reconciled (break.investigation).
+  mbrec:
+    name: MB Rec — reconciled breaks
+    transport: http
+    url: https://mbrec-mcp.internal.example/mcp
+    headers_env: { Authorization: MBREC_MCP_AUTHORIZATION }
+    classification: confidential
+    tools:
+      breaks:        { description: "Open breaks MB Rec reconciled for a book and COB", scope: { arg: book, key: book } }
+      break_history: { description: "The last five COBs of one instrument's break", scope: { arg: book, key: book } }
+
   motif:
     name: MOTIF — back-office positions and events
     transport: http

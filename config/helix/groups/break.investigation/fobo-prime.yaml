@@ -1,0 +1,211 @@
+# FOBO Prime on Break investigation: the breaks come from MB Rec, which has
+# already reconciled CATS (front office) to MOTIF (back office). Helix does the
+# manual part a controller does today:
+#
+#   load      MB Rec's open breaks for the book and COB (no re-matching)
+#   enrich    the dated FO/BO snapshot per instrument (motif.break_snapshots)
+#   resolve   the book's desk and escalation team, as of the COB
+#   classify  timing first (new late booking → MONITOR; open 2+ COBs → aged,
+#             a person decides), then FOBO's six cause checks and tests
+#   tollgate  a controller approves the breaks and the classification before
+#             the model is asked anything, and adds what the desk said
+#   reason    the verdict table settles what it can; the model investigates the
+#             rest with booking events and MB Rec's break history
+#   review    the controller signs off; DO_NOT_POST and escalations raise a
+#             ticket for the owning team
+group: fobo-prime
+name: FOBO Prime — MB Rec breaks
+description: Prime books' breaks from MB Rec (CATS vs MOTIF already reconciled), investigated with FOBO's playbook, timing checks and the desk's input.
+owners:
+  people: [frank]
+  role: HELIX_FOBO_RECON_OWNER
+  four_eyes: true
+set:
+  case:
+    label: Break run
+    item_label: Break
+    subject: "{book} · COB {cob}"
+    # A case opens when MB Rec finishes its end-of-day run for a book and posts
+    # the COB to POST /api/events — the breaks exist only once MB Rec has
+    # reconciled. (The CATS vs MOTIF matching group keeps the 06:30 schedule.)
+    opens_on: event
+    events: true
+    opens_as: helix-scheduler
+    # Signed off by 11:00 on the business day after the COB; reviewers are
+    # reminded two hours before, owners told if it is missed.
+    due: { from: cob, business_days: 1, at: "11:00", warn_hours: 2 }
+  # MB Rec has already reconciled CATS to MOTIF: read its open breaks.
+  items:
+    load: { tool: mbrec.breaks, args: { book: $case.book, cob: $case.cob } }
+    id_field: instrument
+    amount_field: difference
+    amount_unit: GBP
+    display: [instrument, desk, break_type, age_days, category, side, cause_reason, cats_amount, motif_amount, difference, owner_desk, escalate_to]
+  enrich:
+    - tool: motif.break_snapshots
+      args: { book: $case.book, cob: $case.cob }
+      keys: [instrument]
+  knowledge:
+    entities: [instrument, book]
+    reference: fobo-reference
+    as_of: cob
+    priors_lookback_days: 180         # FOBO: prior resolutions from the last 180 days
+  resolve:
+    - { node: "book:{book}", path: [belongs_to], as: owner_desk }
+    - { node: "book:{book}", path: [belongs_to, escalates_to], as: owner_team }
+  # Rule P1: a threshold Product Control has not confirmed stays null.
+  policy:
+    materiality_threshold: { value: null, unit: GBP }
+    posting_policy_reference: { value: null }
+    mtm_market_movement_tolerance: { value: null, unit: GBP }      # FO-4
+    calculation_reasonable_tolerance: { value: null, unit: GBP }   # FO-6
+  playbook:
+    checks:
+      # Timing first: a break open for two COBs or more is no longer "just
+      # timing" — a person looks at it; a new late booking will clear tomorrow.
+      - { id: AGED, when: "age_days >= 2", category: K, side: UNKNOWN,
+          reason: "Open in MB Rec for {age_days} COBs; a timing difference would have cleared" }
+      - { id: TIMING, when: "age_days <= 1 and fo_booking_ts > bo_cutoff_ts", category: T, side: BO,
+          reason: "Booked after the MOTIF cut-off; expected to clear on the next COB" }
+      - { id: C1, when: "fo_booking_ts > bo_cutoff_ts", category: C, side: BO,
+          reason: "Nostro statement received after 23:30 cutoff" }
+      - { id: C2, when: "not mapping_present", category: F, side: BO,
+          reason: "Reference does not resolve in static data" }
+      - { id: C3, when: "fo_dataset_id != bo_dataset_id", category: A, side: UNKNOWN,
+          reason: "FO and BO priced from different curve datasets" }
+      - { id: C4, when: "len(symdiff(fo_components, bo_components)) > 0", category: E, side: UNKNOWN,
+          reason: "Fee or funding component present on one side only" }
+      - { id: C5, when: "fo_version != bo_version", category: E, side: FO,
+          reason: "Pending desk confirmation since the 11:00 run" }
+      - { id: C6, when: "len(symdiff(fo_adjustments, bo_adjustments)) > 0", category: D, side: BO,
+          reason: "Two entries with identical settlement reference" }
+    # Validation tests (skill §5–§6): every test runs on every break; a test
+    # whose evidence is missing or whose threshold is unset is "not run" (P1),
+    # never passed by default. A blocking failure holds a POST.
+    tests:
+      - { id: FO-1, side: FO, validates: Position, check: "Prior day close position = current day open position",
+          fails_when: "fo_prev_close_position != fo_open_position", needs: [fo_prev_close_position, fo_open_position],
+          evidence: [Position file], on_fail: "Hold adjustment; escalate position issue", blocks_post: true }
+      - { id: FO-2, side: FO, validates: Price, check: "Yesterday close price = today open price",
+          fails_when: "fo_prev_close_price != fo_open_price", needs: [fo_prev_close_price, fo_open_price],
+          evidence: [Pricing file], on_fail: "Hold adjustment; raise market-data DQ", blocks_post: true }
+      - { id: FO-3, side: FO, validates: Pull Factor, check: "Yesterday pull factor = today opening pull factor",
+          fails_when: "fo_prev_pull_factor != fo_open_pull_factor", needs: [fo_prev_pull_factor, fo_open_pull_factor],
+          on_fail: "Go to FO-6 before concluding", requires_on_fail: [FO-6] }
+      - { id: FO-4, side: FO, validates: MTM, check: "Does Position x Price Movement explain MTM?",
+          fails_when: "abs(mtm_unexplained) > policy.mtm_market_movement_tolerance", needs: [mtm_unexplained],
+          policy: [mtm_market_movement_tolerance], on_fail: "Isolate which of the three; escalate", blocks_post: true }
+      - { id: FO-5, side: FO, validates: Trading PnL, check: "Do trade economics explain Trading PnL?",
+          fails_when: "not trade_pnl_explained", needs: [trade_pnl_explained], on_fail: "Move to Step 4 trade layer" }
+      - { id: FO-6, side: FO, validates: Redemption Events, check: "Redemption occurred? Factor changed? PnL expected? CATS calculated it?",
+          fails_when: "(redemption_event or factor_changed) and not cats_calculated or (factor_changed and not redemption_event)",
+          needs: [redemption_event, factor_changed, cats_calculated],
+          evidence: [Corporate action file, Pull factor history], on_fail: "See findings A/B/C" }
+      - { id: FO-7, side: FO, validates: Price, check: "Price = 0 — valid corporate action or data quality issue?",
+          fails_when: "fo_price == 0", needs: [fo_price], evidence: [Corporate action file, Trade file, Bond metadata],
+          on_fail: "Obtain trade file, corporate action file, bond metadata before concluding", blocks_post: true }
+      - { id: FO-8, side: FO, validates: Price, check: "Holiday close = next business day open, for position, price and pull factor",
+          fails_when: "not holiday_carry_ok", needs: [holiday_carry_ok], on_fail: "Recurring root cause of PnL distortion — check explicitly" }
+      - { id: BO-1, side: BO, validates: Position, check: "Position balance; position quantity; settlement activity",
+          fails_when: "not bo_position_balanced", needs: [bo_position_balanced] }
+      - { id: BO-2, side: BO, validates: Price, check: "Market price; accounting price; pricing source",
+          fails_when: "not bo_price_source_ok", needs: [bo_price_source_ok] }
+      - { id: BO-3, side: BO, validates: Pull Factor, check: "Factor used; redemption treatment; calculation logic",
+          fails_when: "not bo_factor_ok", needs: [bo_factor_ok] }
+      - { id: BO-4, side: BO, validates: Settlement, check: "Trade settled? Settlement date? Quantity settled? Cash settled?",
+          fails_when: "not bo_settled", needs: [bo_settled] }
+      - { id: BO-5, side: BO, validates: Cash Movement, check: "Redemption cash; coupon cash; settlement cash",
+          fails_when: "not bo_cash_ok", needs: [bo_cash_ok] }
+      - { id: BO-6, side: BO, validates: Journal Generation, check: "MOTIF entry generated? Journal posted? Journal rejected?",
+          fails_when: "not bo_journal_posted", needs: [bo_journal_posted], evidence: [Journal status] }
+    # FO-6 findings (skill §6): what the redemption analysis shows.
+    findings:
+      - { id: A, test: FO-6, when: "redemption_event and pnl_expected and not cats_calculated",
+          indicates: C, side: FO, description: "Pull factor event missing; expected PnL exists, FO shows zero" }
+      - { id: B, test: FO-6, when: "factor_changed and not redemption_event",
+          indicates: B, side: FO, description: "Pull factor applied too early; artificial PnL generated" }
+      - { id: C, test: FO-6, when: "redemption_event and cats_calculated",
+          description: "Redemption correctly reflected; proceed to BO validation" }
+    blocked_verdict: ESCALATE
+    categories:
+      A: { name: Price break,            determinism: deterministic, escalate_to: Market data }
+      B: { name: Pull factor break,      determinism: deterministic, escalate_to: CATS support }
+      C: { name: Redemption break,       determinism: deterministic, escalate_to: CATS support }
+      D: { name: Settlement break,       determinism: deterministic, escalate_to: Operations }
+      E: { name: Trade booking break,    determinism: deterministic, escalate_to: Desk }
+      F: { name: Data quality break,     determinism: deterministic, escalate_to: Technology }
+      G: { name: Corporate action break, determinism: judgement,     escalate_to: Product Control }
+      H: { name: Novel break,            determinism: judgement,     escalate_to: Product Control }
+      T: { name: Timing difference,      determinism: deterministic, escalate_to: Operations }
+      K: { name: Aged break,             determinism: judgement,     escalate_to: Product Control }
+    default_category: H
+    sides: [FO, BO]
+    verdicts:
+      A: { FO: DO_NOT_POST, BO: POST }
+      B: { FO: DO_NOT_POST, BO: POST }
+      C: { FO: DO_NOT_POST, BO: POST }
+      D: { FO: DO_NOT_POST, BO: POST }
+      E: { FO: DO_NOT_POST, BO: POST }
+      F: { FO: DO_NOT_POST, BO: DO_NOT_POST }
+      G: { FO: ESCALATE,    BO: ESCALATE }
+      H: { FO: ESCALATE,    BO: ESCALATE }
+      T: { FO: MONITOR,     BO: MONITOR }       # no adjustment: watch it clear on the next COB
+      K: { FO: ESCALATE,    BO: ESCALATE }
+    guards:
+      - verdict: POST
+        when: "side == 'FO'"
+        instead: ESCALATE
+        reason: "R2: a cause originating in FO never posts — it would mask the upstream failure"
+    escalate_verdicts: [ESCALATE]
+    confirm_verdicts: [POST]
+    verdict_policy: [materiality_threshold, posting_policy_reference]
+    comment: "{category_name} ({side}): {reasons}. Verdict per playbook; owner {escalate_to}."
+    side_names: { FO: front office, BO: back office, UNKNOWN: side not proven }
+  group_by: [category, side]
+  # Groups named in business words: "Redemption break · back office".
+  group_label: "{category_name} · {side_name}"
+  rules: []
+  reasoning:
+    skill: |
+      You are a FOBO controller's assistant reconciling CATS (front office) to
+      MOTIF (back office). The playbook has already classified each break; the
+      ones you see are judgement calls (corporate actions, novel breaks) or
+      breaks whose side is not proven. Use the booking events to find why the
+      systems differ — late booking, price amendment, FX fixing, cancel/rebook
+      — and propose a verdict: POST (adjust MOTIF), DO_NOT_POST (fix upstream),
+      MONITOR (a timing difference that will clear) or ESCALATE. Use the break
+      history to tell a timing difference that clears from one that stays, and
+      weigh any notes the controller added at the tollgate (e.g. what the desk
+      said) — but cite figures only from the tools or the breaks. Never assume FO is correct. Cite only figures from the
+      tools or the breaks; escalate if the events do not explain the difference.
+    tools: [motif.booking_events, mbrec.break_history]
+    # A subagent the model can hand the booking-event trawl to.
+    specialists:
+      - name: booking-events
+        description: Reads MOTIF booking and amendment events for a book and finds the ones behind a break
+        instructions: |
+          Given a book, COB and the breaks, read the booking events and return the
+          events (type, instrument, amount, time) that explain each break, or say
+          that none do. Do not conclude a verdict.
+        tools: [motif.booking_events]
+  # The same instrument breaking again on the same book, COB after COB.
+  insights:
+    recurring: { same: [book], lookback_cases: 10, min_runs: 2 }
+  # A fix upstream (DO_NOT_POST) or an escalation becomes a ticket for the
+  # owning team once the controller has decided — one per group, never twice.
+  escalation:
+    tool: ticketing.create_ticket
+    when: "action == 'approve' and (verdict == 'DO_NOT_POST' or status == 'escalated')"
+    args:
+      team: "{escalate_to}"
+      title: "{subject}: {label}"
+      description: "{comment}"
+      priority: P3
+  review:
+    # "Approve all" leaves verdicts needing confirmation and judgement calls
+    # for one-by-one review; confirming takes a tick and the controller's words.
+    bulk_exclude: [confirmation, judgement]
+    confirm: tick_and_comment
+    allow_delegation: true
+    roles: [FOBO_CONTROLLER]
+    require_comment: [reject, escalated]

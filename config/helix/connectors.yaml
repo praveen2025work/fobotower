@@ -95,6 +95,19 @@ connectors:
         description: End-of-day FO positions and MTM per book and COB
         scope: { arg: book, key: book }
 
+  mbrec:
+    name: MB Rec — reconciled breaks (stub)
+    transport: inproc
+    target: helix.stub_connectors.finance:build_mbrec
+    classification: confidential
+    tools:
+      breaks:
+        description: Open breaks MB Rec reconciled for a book and COB (CATS vs MOTIF, difference, type, days open)
+        scope: { arg: book, key: book }
+      break_history:
+        description: The last five COBs of one instrument's break (open or cleared)
+        scope: { arg: book, key: book }
+
   motif:
     name: MOTIF — back-office positions and events (stub)
     transport: inproc

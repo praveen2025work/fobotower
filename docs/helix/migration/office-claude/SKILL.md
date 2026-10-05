@@ -1,13 +1,13 @@
 ---
 name: fobo-to-helix
-description: Move FOBO (CATS vs MOTIF break investigation, already running on the office Agent One / Claude Agent SDK platform) onto Helix as rec groups of the shared recon.investigation capability. Use when asked to inventory, convert, configure, parity-test, cut over or retire FOBO for Helix. Works phase by phase from docs/helix/migration/README.md and stops for sign-off after each phase.
+description: Move FOBO (CATS vs MOTIF break investigation, already running on the office Agent One / Claude Agent SDK platform) onto Helix as groups of the shared break.investigation capability (breaks MB Rec has already reconciled). Use when asked to inventory, convert, configure, parity-test, cut over or retire FOBO for Helix. Works phase by phase from docs/helix/migration/README.md and stops for sign-off after each phase.
 ---
 
 # FOBO → Helix migration
 
 You are converting this repository's FOBO, which runs on Agent One, so that FOBO runs as
 **configuration on Helix**: one group file per FOBO rec group (Prime, Rates, …) on Helix's
-`recon.investigation` capability. The Agent SDK call, MCP servers and Phoenix setup that
+`break.investigation` capability, which reads the breaks MB Rec has already reconciled. The Agent SDK call, MCP servers and Phoenix setup that
 Agent One already has are plugged into Helix. They are not rebuilt.
 
 **Read first, every session:**
@@ -16,8 +16,10 @@ Agent One already has are plugged into Helix. They are not rebuilt.
    or retire (§3), the model contract (§4), invariants (§5), accepted differences (§6),
    phases (§7).
 2. `docs/helix/fobo-on-helix.md` — the line-by-line parity table.
-3. The reference conversion: `config/helix/groups/recon.investigation/cats-motif.yaml`
-   (Prime) and `cats-motif-rates.yaml` (Rates).
+3. The reference conversion: `config/helix/capabilities/break-investigation.yaml` and
+   `config/helix/groups/break.investigation/fobo-prime.yaml`. These read MB Rec's breaks,
+   with timing checks and a tollgate. See `docs/helix/guide/configure-fobo-mb-rec.md`.
+   FOBO never re-matches CATS to MOTIF; that is MB Rec's job.
 
 If any of these files is missing, stop. Ask the user to copy them in from
 `praveen2025work/fobotower` (main).
@@ -132,9 +134,10 @@ entitlements and connectors.
 
 For each FOBO rec group in the inventory:
 
-1. Copy `cats-motif.yaml` to a new group file and set the office values:
-   - `case.schedule_keys` (books), `schedule`, `due`;
-   - `match` tolerance;
+1. Copy `break.investigation/fobo-prime.yaml` to a new group file and set the office values:
+   - `items.load` (the MB Rec breaks tool and its arguments), `due`, how cases open
+     (MB Rec's event);
+   - the timing checks (`AGED`, `TIMING`) as the office defines them;
    - `policy` (nulls stay null);
    - `playbook` checks, tests, findings, categories, verdicts, guards;
    - `review.roles`, owners.
@@ -173,7 +176,7 @@ Check: drafts approved, §5 tests and new tests green.
 Check:
 
 ```
-scripts/helix_office_smoke.py --user <id> --case recon.investigation --group <group> --key book=<book> --key cob=<cob>
+scripts/helix_office_smoke.py --user <id> --case break.investigation --group <group> --key book=<book> --key cob=<cob>
 ```
 
 It must pass, and the trace must show in Phoenix. Report the model, turns and cost per group.

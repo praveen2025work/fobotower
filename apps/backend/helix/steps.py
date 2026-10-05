@@ -45,6 +45,7 @@ class CaseState(TypedDict, total=False):
     decisions: list[dict]          # written on resume, from helix_decision
     publish_approval: dict         # written on resume, from helix_publish_approval
     gates_passed: list[str]        # tollgates a person passed, in order (helix_gate_decision)
+    gate_notes: list[dict]         # what they wrote there: [{step, by, comment}] — context for the model
     published: list[dict]
     outcome: str | None
     escalation_reason: str | None
@@ -404,6 +405,8 @@ async def reason_group(state: CaseState, g: dict, note: str | None = None,
                            p.get("comment", ""), g["group_key"])} for p in g["priors"]]},
                 allowed_tools=list(m.reasoning.tools), output=m.reasoning.output,
                 reviewer_note=guard.scrub(note, [g["group_key"], *members]) if note else None,
+                notes=[guard.scrub(f"{n['by']} (tollgate before {n['step']}): {n['comment']}", [g["group_key"], *members])
+                       for n in state.get("gate_notes", []) if n.get("comment")],
                 previous_finding=guard.scrub(guard.protect(previous), [g["group_key"], *members])
                 if previous else None,
                 verdicts=m.playbook.verdict_names() if m.playbook else None,

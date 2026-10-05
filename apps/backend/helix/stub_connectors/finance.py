@@ -269,6 +269,53 @@ def build_motif() -> MCPServer:
     return server
 
 
+# ---------- MB Rec: the reconciliation system FOBO's breaks come from ----------
+# MB Rec has already matched CATS to MOTIF; Helix reads its open breaks and
+# investigates them. It never re-matches the positions itself.
+
+def _open_breaks(book: str, cob: str) -> list[dict]:
+    fo = {r["instrument"]: r for r in _fo_positions(book, cob)}
+    bo = {r["instrument"]: r for r in motif_positions(book, cob)["rows"]}
+    rows = []
+    for ins, f in fo.items():
+        b = bo.get(ins)
+        diff = round(f["mtm"] - (b["mtm"] if b else 0.0), 2)
+        if b is not None and abs(diff) <= 0.5:
+            continue
+        cause = _rng("cause", book, cob, ins).choice(CAUSES)
+        # A late booking is usually new (a timing difference that should clear
+        # on the next COB); other breaks may have been open for a while.
+        age = 0 if cause == "C1" else _rng("age", book, cob, ins).choice([0, 0, 1, 2, 4])
+        rows.append({"break_id": f"MBR-{zlib.crc32(f'{book}|{ins}'.encode()) % 10**6:06d}",
+                     "book": book, "instrument": ins, "desk": f["desk"],
+                     "break_type": "missing_motif" if b is None else "amount_break",
+                     "cats_amount": f["mtm"], "motif_amount": b["mtm"] if b else None,
+                     "difference": diff, "age_days": age, "status": "open"})
+    return rows
+
+
+def mbrec_breaks(book: str, cob: str) -> dict:
+    """Open breaks MB Rec reconciled for one book and COB: CATS vs MOTIF amounts,
+    the difference, the break type and how many COBs it has been open."""
+    return {"rows": _open_breaks(book, cob)}
+
+
+def mbrec_break_history(book: str, cob: str, instrument: str) -> dict:
+    """The last five COBs of one instrument's break in MB Rec: open or cleared,
+    and the difference — to tell a timing difference that clears from one that stays."""
+    r = _rng("history", book, instrument)
+    return {"rows": [{"instrument": instrument, "cobs_ago": n,
+                      "status": r.choice(["open", "cleared", "cleared"]),
+                      "difference": round(r.uniform(-50_000, 50_000), 2)} for n in range(1, 6)]}
+
+
+def build_mbrec() -> MCPServer:
+    server = MCPServer(name="mbrec", instructions="MB Rec reconciled breaks (stub).")
+    server.add_tool(mbrec_breaks, name="breaks", description=mbrec_breaks.__doc__)
+    server.add_tool(mbrec_break_history, name="break_history", description=mbrec_break_history.__doc__)
+    return server
+
+
 # ---------- reporting (write) ----------
 
 PUBLISHED: list[dict] = []   # what the stub reporting system received, for tests and demos

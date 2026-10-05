@@ -56,8 +56,12 @@ async def test_a_question_holds_its_group_until_the_desk_answers_and_the_answer_
     finding = _group(after, "K")["finding"]
     assert "Prime desk (trader) (tom) answered" in finding["reviewer_note"]          # back to the model with it
     assert after["requests"][0]["status"] == "answered"
+    # §14: the answer is what Helix shows against "What evidence did I find?"
+    evidence_q = next(q for q in _group(after, "K")["checklist"] if q["id"] == "evidence")
+    assert "Yes, cancelled and rebooked" in evidence_q["known"]
     ok = await api.post(f"/api/cases/{after['case_id']}/decisions", headers=api.as_user("frank"),
                         json={"group_id": aged["group_id"], "action": "approve", "comment": "Desk confirmed the rebook",
+                              "checklist": [{"id": q["id"], "answer": "yes"} for q in after["review"]["checklist"]],
                               "idempotency_key": uuid.uuid4().hex})
     assert ok.status_code == 201, ok.text
 

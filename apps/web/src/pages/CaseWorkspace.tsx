@@ -40,6 +40,7 @@ import {
   useRerun,
   useRetryPublish,
   type CaseDetail,
+  type ChecklistAnswer,
   type CheckResult,
   type Group,
   type ReviewFlag,
@@ -50,6 +51,7 @@ import CaseChat from "../components/case/CaseChat";
 import EvidencePanel from "../components/case/EvidencePanel";
 import RequestsPanel from "../components/case/RequestsPanel";
 import FollowThroughPanel from "../components/case/FollowThroughPanel";
+import { ChecklistAnswers, SignOffChecklist, checklistComplete } from "../components/case/SignOffChecklist";
 import CaseHistory from "../components/case/CaseHistory";
 import StatusBadge from "../components/StatusBadge";
 import { DueBadge } from "../components/Urgency";
@@ -427,10 +429,14 @@ function ProposalPanel({ c, group }: { c: CaseDetail; group: Group }) {
   const [comment, setComment] = useState("");
   const [note, setNote] = useState("");
   const [confirmed, setConfirmed] = useState(false);
+  const [answers, setAnswers] = useState<Record<string, ChecklistAnswer>>({});
   const shownAt = useRef(Date.now());
   useEffect(() => {
     shownAt.current = Date.now();
+    setAnswers({});
   }, [group.group_id]);
+  const questions = group.checklist ?? [];
+  const checklistOk = checklistComplete(questions, answers);
   const f = group.finding;
   const confirmMode = c.review?.confirm ?? "tick_and_comment";
   const needsConfirm = (group.flags ?? []).includes("confirmation") && confirmMode !== "none";
@@ -456,7 +462,18 @@ function ProposalPanel({ c, group }: { c: CaseDetail; group: Group }) {
           {sentBack > 0 && <span className="text-[11px] text-surface-500">re-investigated {sentBack}×</span>}
         </div>
         <PlaybookPanel group={group} />
-        {f?.comment && <p className="mt-3 rounded-lg border border-surface-200 bg-surface-50 p-3 text-sm leading-relaxed text-surface-800">{f.comment}</p>}
+        {f?.sections && f.sections.length > 0 ? (
+          <dl className="mt-3 space-y-2 rounded-lg border border-surface-200 bg-surface-50 p-3 text-sm">
+            {f.sections.map((sec) => (
+              <div key={sec.id}>
+                <dt className="text-xs font-semibold uppercase tracking-wide text-surface-500">{sec.label}</dt>
+                <dd className={clsx("leading-relaxed", sec.text ? "text-surface-800" : "italic text-surface-400")}>{sec.text || "not answered"}</dd>
+              </div>
+            ))}
+          </dl>
+        ) : (
+          f?.comment && <p className="mt-3 rounded-lg border border-surface-200 bg-surface-50 p-3 text-sm leading-relaxed text-surface-800">{f.comment}</p>
+        )}
         <EscalationCard group={group} canDecide={c.can_decide} />
         {f?.previous && (
           <p className="mt-2 text-xs text-surface-500">
@@ -490,6 +507,7 @@ function ProposalPanel({ c, group }: { c: CaseDetail; group: Group }) {
             {group.decision.confirmed && <span className="rounded bg-yellow-100 px-1.5 py-0.5 text-[10px] font-semibold text-yellow-800">confirmed</span>}
           </p>
           {group.decision.comment && <p className="mt-1 text-surface-600">{group.decision.comment}</p>}
+          {group.decision.checklist && group.decision.checklist.length > 0 && <ChecklistAnswers answers={group.decision.checklist} />}
           {group.ticket && (
             <p className={clsx("mt-2 flex items-center gap-1.5 text-xs", group.ticket.status === "raised" ? "text-primary-700" : "text-red-700")}>
               <Ticket size={12} />
@@ -519,6 +537,7 @@ function ProposalPanel({ c, group }: { c: CaseDetail; group: Group }) {
               </span>
             </label>
           )}
+          {questions.length > 0 && <SignOffChecklist questions={questions} answers={answers} onChange={setAnswers} />}
           <label className="block text-xs font-medium text-surface-600">
             {needsWordsToApprove
               ? needsConfirm && f?.status !== "escalated"
@@ -534,13 +553,15 @@ function ProposalPanel({ c, group }: { c: CaseDetail; group: Group }) {
           </label>
           <div className="mt-2 flex flex-wrap gap-2">
             <button
-              disabled={decide.isPending || (needsWordsToApprove && !comment.trim()) || (needsConfirm && !confirmed)}
+              disabled={decide.isPending || (needsWordsToApprove && !comment.trim()) || (needsConfirm && !confirmed) || !checklistOk}
+              title={checklistOk ? undefined : "Answer the required checklist questions yes or n/a"}
               onClick={() =>
                 decide.mutate({
                   groupId: group.group_id,
                   action: "approve",
                   comment,
                   confirmed: needsConfirm ? confirmed : false,
+                  checklist: questions.length ? Object.values(answers) : undefined,
                   reviewSeconds: Math.round((Date.now() - shownAt.current) / 1000),
                 })
               }

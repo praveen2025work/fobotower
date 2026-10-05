@@ -62,6 +62,14 @@ reasoning:
     drove the variance. Cite only figures returned by the tools or present
     in the items. Do not estimate. If the evidence does not explain the
     variance, say so and escalate.
+  # Commentary in parts a reviewer can check and the reporting pack can use.
+  sections:
+    - { id: driver, label: What drove it,
+        hint: "The journals or plan changes behind the variance, with their figures" }
+    - { id: one_off, label: One-off or recurring,
+        hint: "Whether it reverses next period, and the evidence" }
+    - { id: action, label: Action,
+        hint: "Anything finance must do: an accrual, a reclass, a forecast change; or none" }
 
 # Decisions link to the accounts and cost centres they concern, so priors also
 # come from related accounts; finished cases are kept seven years.
@@ -77,6 +85,12 @@ retention:
 
 review:
   roles: [FIN_PREPARER, FIN_REVIEWER]
+  # Before approving commentary for the reporting pack. Answered and kept on
+  # the decision; not required (required: true would make them a condition).
+  checklist:
+    - { id: driver_evidenced, label: "Is the driver evidenced by journals or the plan?", prefill: driver, required: false }
+    - { id: reversal, label: "Is it clear whether it reverses next period?", prefill: one_off, required: false }
+    - { id: action_owned, label: "Does any action have an owner?", prefill: action, required: false }
 
 # Write-back: approved commentary goes to the reporting pack only after a
 # reviewer who did not sign off the lane releases it (four-eyes).

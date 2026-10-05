@@ -169,7 +169,18 @@ export interface Finding {
   reinvestigations?: number;
   reviewer_note?: string;
   previous?: { status: string; comment: string; reason: string | null; decided_by: string };
+  /** The model's answer in the configured parts (reasoning.sections). */
+  sections?: { id: string; label: string; text: string }[];
 }
+
+/** One sign-off checklist question, with what Helix already knows (review.checklist). */
+export interface ChecklistQuestion {
+  id: string;
+  label: string;
+  required: boolean;
+  known: string;
+}
+export type ChecklistAnswer = { id: string; label?: string; answer: "yes" | "no" | "n/a" | null; note?: string | null };
 
 export interface Group {
   group_id: string;
@@ -185,7 +196,10 @@ export interface Group {
     decided_at: string;
     on_behalf_of?: string | null;
     confirmed?: boolean;
+    checklist?: ChecklistAnswer[] | null;
   } | null;
+  /** The sign-off checklist for this group, prefilled. */
+  checklist?: ChecklistQuestion[] | null;
   flags?: ReviewFlag[];
   /** Flags that keep this group out of "Approve all" (review.bulk_exclude). */
   bulk_blockers?: ReviewFlag[];
@@ -244,6 +258,7 @@ export interface CaseDetail extends CaseSummary {
     confirm?: "none" | "tick" | "tick_and_comment";
     allow_delegation?: boolean;
     roles?: string[];
+    checklist?: { id: string; label: string; required: boolean; prefill: string | null }[];
   };
   publish: {
     tool: string;
@@ -488,6 +503,7 @@ export function useDecide(caseId: string) {
       comment: string;
       confirmed?: boolean;
       reviewSeconds?: number;
+      checklist?: ChecklistAnswer[];
     }) =>
       api.post<{ case: CaseDetail }>(`/cases/${enc(caseId)}/decisions`, {
         group_id: v.groupId,
@@ -495,6 +511,7 @@ export function useDecide(caseId: string) {
         comment: v.comment || null,
         confirmed: v.confirmed ?? false,
         review_seconds: v.reviewSeconds ?? null,
+        checklist: v.checklist ?? null,
         idempotency_key: newIdempotencyKey(),
       }),
     onSuccess: (res) => refresh(res.case),

@@ -242,13 +242,26 @@ set:
       - Weigh what the controller wrote at the tollgate (e.g. the desk's view) as
         context, but cite figures only from the tools or the breaks.
 
-      Write your comment for the controller in this order, briefly:
-      Root cause (or "not established", with the competing hypotheses and the
-      evidence for each) · Tests you could not perform and what that does to your
-      confidence · Verdict and why (POST, DO_NOT_POST, CORRECT_AND_REPOST,
-      MONITOR or ESCALATE) · Remediation: who to engage, what to raise, what
-      preventative control or MB Rec rule to propose · End state: whether
-      BO + adjustments = FO will hold, or the investigation stays open.
+      Answer in the sections you are given (the skill's §12 output). The break
+      summary, the checks performed and the classification are already on the
+      case from the playbook; write the rest, briefly, for the controller.
+    # §12 Required output format: sections 3 and 5–7 (1, 2 and 4 are the
+    # break table, the tests and the classification Helix already shows).
+    sections:
+      - { id: root_cause, label: Root cause, required: true,
+          hint: "One clear statement; rank multiple causes; or say it is not established and why" }
+      - { id: hypotheses, label: Hypotheses not proven,
+          hint: "Competing explanations, and the evidence that would confirm each (§13)" }
+      - { id: tests_not_performed, label: Tests not performed, required: true,
+          hint: "Which tests you could not perform and what that does to your confidence" }
+      - { id: verdict_reason, label: Verdict and why, required: true,
+          hint: "POST, DO_NOT_POST, CORRECT_AND_REPOST, MONITOR or ESCALATE, and the reason" }
+      - { id: remediation, label: Remediation and follow-up, required: true,
+          hint: "Who to engage and what to raise (§11)" }
+      - { id: preventative_control, label: Preventative control,
+          hint: "The control or MB Rec rule to propose so it does not recur" }
+      - { id: end_state, label: End-state validation, required: true,
+          hint: "Whether BO + adjustments = FO will hold, or that the investigation stays open" }
     tools: [motif.booking_events, mbrec.break_history]
     # A subagent the model can hand the booking-event trawl to.
     specialists:
@@ -290,3 +303,14 @@ set:
     allow_delegation: true
     roles: [FOBO_CONTROLLER]
     require_comment: [reject, escalated]
+    # §14 Completion checklist: the nine questions, answered before approval,
+    # with what Helix already knows shown next to each.
+    checklist:
+      - { id: what_checked,   label: "What did I check?",                           prefill: tests }
+      - { id: why_checked,    label: "Why did I check it?",                         prefill: category }
+      - { id: evidence,       label: "What evidence did I find?",                   prefill: evidence }
+      - { id: root_cause,     label: "What root cause was identified?",             prefill: root_cause }
+      - { id: adjustment,     label: "Should an adjustment be posted?",             prefill: verdict }
+      - { id: why_or_why_not, label: "Why (or why not)?",                           prefill: verdict_reason }
+      - { id: engage,         label: "Who must be engaged afterwards?",             prefill: remediation }
+      - { id: control,        label: "What preventative control should be introduced?", prefill: preventative_control, required: false }

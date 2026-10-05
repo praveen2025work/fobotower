@@ -410,3 +410,42 @@ describe("Asking for evidence", () => {
     expect(await screen.findByRole("link", { name: "the day's case" })).toHaveAttribute("href", "/cases/fin.c0");
   });
 });
+
+describe("Sections, checklist and follow-through", () => {
+  const withSections = group("6100", {
+    finding: { status: "proposed", decided_by: "llm:stub", comment: "x",
+      sections: [{ id: "root_cause", label: "Root cause", text: "Payroll accrual reversed" }, { id: "end_state", label: "End-state validation", text: "" }] },
+    checklist: [
+      { id: "what_checked", label: "What did I check?", required: true, known: "14 tests on 1 item(s): 12 passed, 0 failed, 2 not run" },
+      { id: "control", label: "What preventative control should be introduced?", required: false, known: "" },
+    ],
+  });
+
+  it("shows the answer in its sections and needs the checklist to approve", async () => {
+    const calls = mockApi({ "GET /cases/fin.c1": detail({ groups: [withSections] }), "POST /cases/fin.c1/decisions": { case: detail({ groups: [withSections] }) } });
+    open();
+    expect(await screen.findByText("Payroll accrual reversed")).toBeInTheDocument();
+    expect(screen.getByText("not answered")).toBeInTheDocument();
+    expect(screen.getByText(/Helix: 14 tests on 1 item/)).toBeInTheDocument();
+    const approve = screen.getByRole("button", { name: "Approve" });
+    expect(approve).toBeDisabled();
+    await userEvent.click(within(screen.getByRole("radiogroup", { name: "What did I check?" })).getByRole("radio", { name: "yes" }));
+    expect(approve).toBeEnabled();
+    await userEvent.click(approve);
+    await waitFor(() => expect(calls.some((c) => c.method === "POST")).toBe(true));
+    const post = calls.find((c) => c.method === "POST")!.body as Record<string, unknown>;
+    expect(post.checklist).toEqual([{ id: "what_checked", answer: "yes" }]);
+  });
+
+  it("shows what cleared on the next run and what is still open", async () => {
+    mockApi({ "GET /cases/fin.c1": detail({
+      follow_through_spec: { series: ["book"], order_by: "cob", verdicts: ["MONITOR"] },
+      follow_through: { cleared: 1, still_open: 1, items: [
+        { item_id: "GILT 5Y", verdict: "MONITOR", status: "still_open", checked_in: "fin.c2", checked_at: "" },
+        { item_id: "JGB 10Y", verdict: "MONITOR", status: "cleared", checked_in: "fin.c2", checked_at: "" }] },
+    }) });
+    open();
+    expect(await screen.findByText("1 cleared")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "reopened" })).toHaveAttribute("href", "/cases/fin.c2");
+  });
+});

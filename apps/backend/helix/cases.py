@@ -359,7 +359,7 @@ async def _case_items(s, case_id: str) -> dict[str, dict]:
 
 async def decide(case_id: str, group_id: str, action: str, comment: str | None,
                  idempotency_key: str, caller: Caller, confirmed: bool = False,
-                 review_seconds: int | None = None) -> dict:
+                 review_seconds: int | None = None, checklist: list[dict] | None = None) -> dict:
     if action not in ("approve", "reject"):
         raise CaseError("action must be approve or reject")
     comment = (comment or "").strip() or None
@@ -393,11 +393,16 @@ async def decide(case_id: str, group_id: str, action: str, comment: str | None,
             raise CaseError("this group was escalated: approving it needs your explanation")
         if why := review.confirmation_problem(m, group.finding, action, confirmed, comment):
             raise CaseError(why)
+        from helix import checklist as sign_off
+        try:
+            answers = sign_off.answered(m, action, checklist)
+        except sign_off.ChecklistError as e:
+            raise CaseError(str(e)) from None
         decision = Decision(decision_id=uuid.uuid4().hex, case_id=case_id, group_id=group_id,
                             action=action, comment=comment, decided_by=caller.user_id,
                             idempotency_key=idempotency_key,
                             confirmed=bool(confirmed and action == "approve"),
-                            on_behalf_of=on_behalf_of,
+                            on_behalf_of=on_behalf_of, checklist=answers,
                             review_seconds=(max(0, min(int(review_seconds), 8 * 3600))
                                             if review_seconds is not None else None))
         s.add(decision)
@@ -410,7 +415,8 @@ async def decide(case_id: str, group_id: str, action: str, comment: str | None,
 
 
 async def bulk_decide(case_id: str, group_ids: list[str], action: str, comment: str | None,
-                      idempotency_key: str, caller: Caller, review_seconds: int | None = None) -> dict:
+                      idempotency_key: str, caller: Caller, review_seconds: int | None = None,
+                      checklist: list[dict] | None = None) -> dict:
     """The same decision on many groups. Each is checked on its own: an escalated
     group without a comment is refused while the others go through. Approving
     in bulk leaves the groups the capability marks for one-by-one review
@@ -431,7 +437,7 @@ async def bulk_decide(case_id: str, group_ids: list[str], action: str, comment: 
         try:
             share = round(review_seconds / max(1, len(group_ids))) if review_seconds is not None else None
             r = await decide(case_id, gid, action, comment, f"{idempotency_key}:{gid}", caller,
-                             review_seconds=share)
+                             review_seconds=share, checklist=checklist)
             done.append({"group_id": gid, **r})
         except (CaseError, PermissionError) as e:
             refused.append({"group_id": gid, "reason": str(e)})
@@ -699,6 +705,10 @@ async def case_detail(case_id: str, caller: Caller) -> dict:
     from helix import insights
     recurring = await insights.recurring_for_case(case, m, sorted(in_group))
     now = datetime.now(timezone.utc)
+    from helix import checklist
+    items_by = {it.item_id: it.payload for it in items}
+    evidence_rows = await _evidence(case_id)
+    requests = await asks.for_case(case_id, caller)
     return {
         **_case_summary(case),
         "due_state": deadlines.state(case.due_at, case.status, now,
@@ -711,7 +721,7 @@ async def case_detail(case_id: str, caller: Caller) -> dict:
         # What became of this case's decisions in the next run (follow_through).
         "follow_through": (await follow_through.for_case(case_id)) if m.follow_through else None,
         "follow_through_spec": m.follow_through.model_dump() if m.follow_through else None,
-        "requests": await asks.for_case(case_id, caller),
+        "requests": requests,
         "request_targets": [{"id": t.id, "name": t.name} for t in m.requests.targets],
         "can_ask": bool(m.requests.targets) and (
             (may_decide and case.status == "awaiting_review")
@@ -728,11 +738,16 @@ async def case_detail(case_id: str, caller: Caller) -> dict:
             "flags": review.flags(g.finding),
             "ticket": tickets.get(g.group_id),
             "bulk_blockers": review.bulk_blockers(m, g.finding),
+            "checklist": checklist.known(m, g.finding, [items_by[i] for i in g.item_ids if i in items_by],
+                                         evidence_rows, [r for r in requests
+                                                         if r["status"] == "answered" and r["group_id"] in (None, g.group_id)])
+            if m.review.checklist else None,
             "decision": ({"action": latest[g.group_id].action,
                           "comment": latest[g.group_id].comment,
                           "decided_by": latest[g.group_id].decided_by,
                           "on_behalf_of": latest[g.group_id].on_behalf_of,
                           "confirmed": latest[g.group_id].confirmed,
+                          "checklist": latest[g.group_id].checklist,
                           "decided_at": latest[g.group_id].decided_at}
                          if g.group_id in latest else None),
         } for g in groups],
@@ -747,7 +762,7 @@ async def case_detail(case_id: str, caller: Caller) -> dict:
                         "error": c.error, "latency_ms": c.latency_ms, "called_at": c.called_at,
                         "result": c.result} for c in calls],
         "documents": _documents(case_id, calls),
-        "evidence": await _evidence(case_id),
+        "evidence": evidence_rows,
         "can_decide": (may_decide and case.status == "awaiting_review"
                        and (m.review.opener_may_decide
                             or case.opened_by not in (caller.user_id, on_behalf_of))),
@@ -764,7 +779,8 @@ async def case_detail(case_id: str, caller: Caller) -> dict:
                    "max_reinvestigations": m.review.max_reinvestigations,
                    "roles": list(m.review.roles),
                    "bulk_exclude": m.review.bulk_exclude, "confirm": m.review.confirm,
-                   "allow_delegation": m.review.allow_delegation},
+                   "allow_delegation": m.review.allow_delegation,
+                   "checklist": [q.model_dump() for q in m.review.checklist]},
         "publish": ({"tool": m.publish.tool, "approver_roles": m.publish.approver_roles,
                      "per": m.publish.per,
                      "can_release": (case.status == "awaiting_publish"

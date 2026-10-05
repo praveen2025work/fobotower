@@ -322,6 +322,8 @@ class DecisionIn(BaseModel):
     confirmed: bool = False
     # Time the reviewer spent on the group before deciding (the console measures it).
     review_seconds: int | None = Field(default=None, ge=0)
+    # The sign-off checklist: [{id, answer: yes|no|n/a, note}].
+    checklist: list[dict] | None = None
 
 
 @app.post("/api/cases/{case_id}/decisions", status_code=201)
@@ -329,7 +331,7 @@ class DecisionIn(BaseModel):
 async def decide(case_id: str, body: DecisionIn, c: Caller = Depends(caller)) -> dict:
     result = await cases.decide(case_id, body.group_id, body.action, body.comment,
                                 body.idempotency_key, c, confirmed=body.confirmed,
-                                review_seconds=body.review_seconds)
+                                review_seconds=body.review_seconds, checklist=body.checklist)
     return {**result, "case": await cases.case_detail(case_id, c)}
 
 
@@ -339,13 +341,16 @@ class BulkDecisionIn(BaseModel):
     comment: str | None = None
     idempotency_key: str = Field(min_length=8, max_length=96)
     review_seconds: int | None = Field(default=None, ge=0)
+    # One set of checklist answers for every group approved.
+    checklist: list[dict] | None = None
 
 
 @app.post("/api/cases/{case_id}/decisions/bulk", status_code=201)
 @_errors
 async def decide_bulk(case_id: str, body: BulkDecisionIn, c: Caller = Depends(caller)) -> dict:
     result = await cases.bulk_decide(case_id, body.group_ids, body.action, body.comment,
-                                     body.idempotency_key, c, review_seconds=body.review_seconds)
+                                     body.idempotency_key, c, review_seconds=body.review_seconds,
+                                     checklist=body.checklist)
     return {**result, "case": await cases.case_detail(case_id, c)}
 
 

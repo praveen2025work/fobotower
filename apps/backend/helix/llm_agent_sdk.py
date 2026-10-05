@@ -87,11 +87,22 @@ QueryFn = Callable[..., AsyncIterator[Any]]
 
 def _schema(request: ReasonRequest) -> dict:
     """The result schema; with a playbook, the model also proposes a verdict
-    from the playbook's list (guards in code still apply after)."""
-    if not request.verdicts:
+    from the playbook's list (guards in code still apply after); with sections,
+    it answers each as its own field."""
+    props = dict(RESULT_SCHEMA["properties"])
+    required = list(RESULT_SCHEMA["required"])
+    if request.verdicts:
+        props["verdict"] = {"type": "string", "enum": list(request.verdicts)}
+    if request.sections:
+        props["sections"] = {
+            "type": "object", "additionalProperties": False,
+            "properties": {s["id"]: {"type": "string", "description": f"{s['label']}. {s.get('hint', '')}".strip()}
+                           for s in request.sections},
+            "required": [s["id"] for s in request.sections if s.get("required")]}
+        required.append("sections")
+    if props == RESULT_SCHEMA["properties"]:
         return RESULT_SCHEMA
-    return {**RESULT_SCHEMA, "properties": {
-        **RESULT_SCHEMA["properties"], "verdict": {"type": "string", "enum": list(request.verdicts)}}}
+    return {**RESULT_SCHEMA, "properties": props, "required": required}
 
 
 def _sdk_tool_name(qualified: str) -> str:
@@ -121,6 +132,9 @@ def _prompt(request: ReasonRequest) -> str:
         "items": request.group.get("items", []),
         "approved_explanations_for_similar_groups": request.group.get("priors", []),
         **({"notes_from_people": request.notes} if request.notes else {}),
+        **({"answer_in_sections": [{"id": s["id"], "label": s["label"], "what_it_must_say": s.get("hint", ""),
+                                    "required": bool(s.get("required"))} for s in request.sections]}
+           if request.sections else {}),
         **({"reviewer_note": request.reviewer_note,
             "previous_finding": request.previous_finding} if request.reviewer_note else {}),
         "output": request.output,
@@ -228,7 +242,8 @@ class ClaudeAgentSdkAdapter:
                     sp.set_attribute(f"helix.llm.{k}", v)
             return ReasonResult(status=out["status"], comment=out.get("comment", ""),
                                 reason=out.get("reason") or None, model=self.model, usage=usage,
-                                verdict=out.get("verdict") or None)
+                                verdict=out.get("verdict") or None,
+                                sections={k: v for k, v in (out.get("sections") or {}).items() if isinstance(v, str)})
 
 
 ASK_RULES = """

@@ -41,6 +41,8 @@ class ReasonRequest:
     verdicts: list[str] | None = None
     # Subagents the model may hand work to: [{name, description, instructions, tools}]
     specialists: list[dict] = field(default_factory=list)
+    # The parts the answer is returned in: [{id, label, hint, required}]; empty = one comment.
+    sections: list[dict] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -51,6 +53,7 @@ class ReasonResult:
     model: str | None = None
     usage: dict = field(default_factory=dict)  # tokens, cost — for tracing
     verdict: str | None = None             # when the request offered verdicts
+    sections: dict = field(default_factory=dict)   # section id -> text, when the request named sections
 
 
 @dataclass(frozen=True)
@@ -156,7 +159,8 @@ class StubLlm:
             comment += f" Re-checked as the reviewer asked: \"{request.reviewer_note}\"."
         if request.notes:
             comment += f" Took into account {len(request.notes)} note(s) from the tollgate."
-        return ReasonResult(status="proposed", comment=comment, model="stub")
+        sections = {s["id"]: _stub_section(s, request, comment, seen, prior) for s in request.sections}
+        return ReasonResult(status="proposed", comment=comment, model="stub", sections=sections)
 
 
     async def ask(self, request, tools):
@@ -173,6 +177,22 @@ class StubLlm:
         if evidence:
             answer += " I also looked at " + "; ".join(evidence) + "."
         return AskResult(answer=answer, model="stub")
+
+
+def _stub_section(spec: dict, request: "ReasonRequest", comment: str, seen: str, prior: str | None) -> str:
+    """A section the stub can fill without inventing anything: the comment for
+    the conclusion, what it read for the evidence, and plain "not established"
+    where only a real investigation could say (so a reviewer sees the gap)."""
+    sid, label = spec["id"], spec["label"].lower()
+    if any(w in sid or w in label for w in ("cause", "conclusion", "driver", "explanation", "summary")):
+        return comment
+    if any(w in sid or w in label for w in ("evidence", "checks", "tests", "sources")):
+        return f"Reviewed {seen}."
+    if any(w in sid or w in label for w in ("hypothes", "alternative")):
+        return f"Similar to a prior approved explanation: \"{prior}\"" if prior else "None beyond the conclusion."
+    if "not" in sid and "perform" in sid or "not performed" in label or "could not" in label:
+        return "None: every test with evidence was run; tests without evidence are listed as not run."
+    return "Not established from the evidence read; for the reviewer."
 
 
 def _highlight(tool: str, rows: list[dict]) -> str | None:

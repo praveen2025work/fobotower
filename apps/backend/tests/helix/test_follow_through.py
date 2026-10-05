@@ -17,7 +17,9 @@ async def _approve_all(api, case, user):
     for g in case["groups"]:
         res = await api.post(f"/api/cases/{case['case_id']}/decisions", headers=api.as_user(user),
                              json={"group_id": g["group_id"], "action": "approve", "comment": "Agreed",
-                                   "confirmed": True, "idempotency_key": uuid.uuid4().hex})
+                                   "confirmed": True, "idempotency_key": uuid.uuid4().hex,
+                                   "checklist": [{"id": q["id"], "answer": "yes"}
+                                                 for q in (case.get("review") or {}).get("checklist", [])]})
         assert res.status_code == 201, res.text
     return (await api.get(f"/api/cases/{case['case_id']}", headers=api.as_user(user))).json()
 

@@ -432,7 +432,8 @@ async def reason_group(state: CaseState, g: dict, note: str | None = None,
                 previous_finding=guard.scrub(guard.protect(previous), [g["group_key"], *members])
                 if previous else None,
                 verdicts=m.playbook.verdict_names() if m.playbook else None,
-                specialists=[sp.model_dump() for sp in m.reasoning.specialists])
+                specialists=[sp.model_dump() for sp in m.reasoning.specialists],
+                sections=[sec.model_dump() for sec in m.reasoning.sections])
             adapter = llm()
             try:
                 res = await adapter.reason(request, gateway.invoker(ctx))
@@ -440,6 +441,8 @@ async def reason_group(state: CaseState, g: dict, note: str | None = None,
                            "comment": guard.reveal(res.comment),
                            "reason": guard.reveal(res.reason) if res.reason else None,
                            "model": res.model, "usage": res.usage}
+                if m.reasoning.sections:
+                    finding = _with_sections(m, finding, res, guard)
                 if play:
                     finding = _judged(m, play, finding, res.verdict, env)
             except (gateway.ToolDenied, gateway.ToolFailed) as e:
@@ -450,6 +453,20 @@ async def reason_group(state: CaseState, g: dict, note: str | None = None,
                            "comment": "", "reason": f"REASONER_ERROR: {type(e).__name__}: {e}"}
         sp.set_attribute("helix.decided_by", finding["decided_by"])
         sp.set_attribute("helix.status", finding["status"])
+    return finding
+
+
+def _with_sections(m: Manifest, finding: dict, res, guard) -> dict:
+    """The answer's sections, in the configured order; a required one that is
+    missing or empty sends the group to a person."""
+    got = {k: guard.reveal(v).strip() for k, v in (res.sections or {}).items() if isinstance(v, str)}
+    sections = [{"id": sec.id, "label": sec.label, "text": got.get(sec.id, "")} for sec in m.reasoning.sections]
+    missing = [sec.label for sec in m.reasoning.sections if sec.required and not got.get(sec.id)]
+    finding = {**finding, "sections": sections}
+    if not finding.get("comment"):
+        finding["comment"] = "\n\n".join(f"{x['label']}: {x['text']}" for x in sections if x["text"])
+    if missing and finding["status"] == "proposed":
+        finding.update(status=ESCALATED, reason=f"MISSING_SECTION: {', '.join(missing)}")
     return finding
 
 
@@ -629,7 +646,8 @@ async def validate(state: CaseState) -> dict:
     for group_id, f in findings.items():
         if f["status"] != "proposed":
             continue
-        missing = ungrounded(f["comment"], grounded)
+        text = " ".join([f["comment"], *(x.get("text", "") for x in f.get("sections") or [])])
+        missing = ungrounded(text, grounded)
         if missing:
             f = {**f, "status": ESCALATED,
                  "reason": f"UNGROUNDED_FIGURE: {', '.join(f'{n:,.2f}' for n in missing)}"}

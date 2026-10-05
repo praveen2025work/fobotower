@@ -28,3 +28,9 @@ set:
       then:
         status: proposed
         comment: "One difference of {total} with {counterparty}, within the write-off limit; propose write-off."
+  # Before approving: the write-off policy's two questions.
+  review:
+    roles: [CASH_OPS]
+    checklist:
+      - { id: within_limit, label: "Is each write-off within the limit and the policy?", prefill: verdict, required: false }
+      - { id: counterparty_told, label: "Has the counterparty been contacted where the bank is short?", required: false }

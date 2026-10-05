@@ -84,12 +84,14 @@ configurable:
   - reasoning.skill
   - reasoning.tools
   - reasoning.specialists
+  - reasoning.sections
   - review.roles
   - review.require_comment
   - review.dual_review_when
   - review.bulk_exclude
   - review.confirm
   - review.allow_delegation
+  - review.checklist
   - requests
   - insights
   - export

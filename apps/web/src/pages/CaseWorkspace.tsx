@@ -48,6 +48,7 @@ import {
 import { ActionCard, EscalationCard, ReleaseSummary } from "../components/case/CaseActions";
 import CaseChat from "../components/case/CaseChat";
 import EvidencePanel from "../components/case/EvidencePanel";
+import RequestsPanel from "../components/case/RequestsPanel";
 import CaseHistory from "../components/case/CaseHistory";
 import StatusBadge from "../components/StatusBadge";
 import { DueBadge } from "../components/Urgency";
@@ -129,6 +130,22 @@ export default function CaseWorkspace(): JSX.Element {
           </button>
         </div>
         {c.draft && <p className="mt-1 text-sm text-surface-500">{c.draft.headline}</p>}
+        {c.follow_up_of && (
+          <p className="mt-1 text-sm text-surface-600">
+            Late items for <Link to={`/cases/${encodeURIComponent(c.follow_up_of)}`} className="text-primary-700 hover:underline">the day's case</Link>:
+            only the breaks it did not have.
+          </p>
+        )}
+        {(c.follow_ups ?? []).length > 0 && (
+          <p className="mt-1 flex flex-wrap items-center gap-x-2 text-sm text-surface-600">
+            Late items since:
+            {(c.follow_ups ?? []).map((f) => (
+              <Link key={f.case_id} to={`/cases/${encodeURIComponent(f.case_id)}`} className="text-primary-700 hover:underline">
+                {f.subject.split(" · ").pop()}{f.outcome === "no_new_items" ? " (nothing new)" : ""}
+              </Link>
+            ))}
+          </p>
+        )}
         <ActionCard c={c} />
       </div>
 
@@ -793,6 +810,8 @@ function ContextPanel({ c }: { c: CaseDetail }) {
           {release.error && <div className="mt-2"><ErrorState error={release.error} /></div>}
         </div>
       )}
+
+      <RequestsPanel c={c} />
 
       <EvidencePanel c={c} canUpload={c.can_decide || c.status === "awaiting_review"} />
 

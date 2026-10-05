@@ -217,6 +217,7 @@ Source of truth: `apps/backend/helix/manifest.py` (Pydantic; unknown keys are re
 | `steps` | list | required | see §7 |
 | `pause_before` | list | `[review]` | the run waits for people before these steps |
 | `tollgates` | {step: {roles, check, stop_needs_comment}} | {} | who passes each stop other than review and publish, and what they check (§7a) |
+| `requests` | {targets: [{id, name, roles, users}], hold_decision, reinvestigate_on_answer} | no targets | who reviewers may ask for evidence; an open question holds its group; an answer goes to the model |
 | `group_by` | list | [] (one group) | item fields that form a group |
 | `rules` | list[Rule] | [] | settled before the model |
 | `reasoning` | ReasoningSpec | | the model |
@@ -252,6 +253,10 @@ Source of truth: `apps/backend/helix/manifest.py` (Pydantic; unknown keys are re
 | `schedule_keys` | [] | keys to open per tick; templates `{prev_business_day}`, `{prev_month}`, … |
 | `events` | false | may `POST /api/events` open cases |
 | `opens_as` | — | the service user scheduled or event cases run as |
+
+`case.late_items`: `ignore` (default) or `follow_up`. With `follow_up`, a later event for a key that
+already has a case opens a follow-up case (`<case>.f<n>`, `follow_up_of` set). Its `load` takes
+only the items no case for that key has yet. With nothing new, it closes as `no_new_items`.
 
 ### items, match, compare, enrich
 
@@ -500,7 +505,7 @@ All routes are under `/api` and are identified by the identity header.
 | Area | Routes |
 |---|---|
 | Me / platform | `GET /me`, `GET /platform`, `GET /overview`, `GET /operations`, `GET /inbox`, `GET /audit` |
-| Capabilities | `GET /capabilities`, `GET /capabilities/{id}`, `POST /capabilities/{id}/versions`, `POST /capabilities/{id}/versions/{v}/approve`, `GET …/versions/{a}/diff/{b}`, `GET …/versions/{v}/export`, `GET …/flow`, `POST …/instructions`, `POST /cases/{id}/gates/{step}` (pass or stop at a tollgate), `POST …/check` (a manifest or group config, checked without storing: `{ok, problems}`) |
+| Capabilities | `GET /capabilities`, `GET /capabilities/{id}`, `POST /capabilities/{id}/versions`, `POST /capabilities/{id}/versions/{v}/approve`, `GET …/versions/{a}/diff/{b}`, `GET …/versions/{v}/export`, `GET …/flow`, `POST …/instructions`, `POST /cases/{id}/gates/{step}` (pass or stop at a tollgate), `POST /cases/{id}/requests` (ask for evidence), `GET /requests` (questions for me), `POST /requests/{rid}/answer` (an addressee, or a bot with the event secret and `answered_by`), `POST /requests/{rid}/cancel`, `POST …/check` (a manifest or group config, checked without storing: `{ok, problems}`) |
 | Groups | `GET /capabilities/{id}/groups`, `GET …/groups/{g}`, `POST …/groups`, `POST …/groups/{g}/versions/{v}/approve`, `GET …/groups/{g}/versions/{a}/diff/{b}` |
 | Authoring | `POST /authoring/draft` (BRD → manifest), `POST /authoring/submit`, `GET /authoring/drafts`, `GET /authoring/templates`, `POST /promotion/import` |
 | Cases | `GET/POST /capabilities/{id}/cases`, `GET /cases/{id}`, `POST /cases/{id}/decisions`, `POST …/decisions/bulk`, `POST …/groups/{g}/reinvestigate`, `POST …/rerun`, `POST …/publish`, `POST …/publish/retry`, `GET …/documents/{name}`, `POST …/legal-hold` |

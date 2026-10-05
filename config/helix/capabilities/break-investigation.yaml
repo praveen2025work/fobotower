@@ -74,6 +74,7 @@ configurable:
   - case.events
   - case.opens_as
   - case.due
+  - case.late_items
   - items
   - policy.*
   - rules
@@ -88,6 +89,7 @@ configurable:
   - review.bulk_exclude
   - review.confirm
   - review.allow_delegation
+  - requests
   - insights
   - export
   - escalation

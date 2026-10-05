@@ -58,6 +58,10 @@ export const STAGES: Stage[] = [
         when: (m) => get(m, "case.opens_on") === "schedule",
         columns: (m) => keyFields(m).map((k) => ({ key: k.value, label: k.value, wide: true })) },
       { kind: "bool", path: "case.events", label: "Other systems may open cases (POST /api/events)" },
+      { kind: "select", path: "case.late_items", label: "When another notification arrives for a key already open", options: [
+        { value: "ignore", label: "Nothing new: the existing case is the answer" },
+        { value: "follow_up", label: "Open a follow-up case with only the new items" }],
+        help: "e.g. MB Rec notifies late exceptions for a book and COB already being worked. A signed-off case is never changed." },
       { kind: "text", path: "case.opens_as", label: "Scheduled and event cases run as", placeholder: "helix-scheduler", help: "A service user with the roles and data scopes those cases need." },
       { kind: "object", path: "case.due", label: "Deadline", toggle: "Cases have a deadline", empty: { from: "opened", business_days: 1, hours: 0, at: null, warn_hours: 2 },
         fields: [
@@ -224,7 +228,7 @@ export const STAGES: Stage[] = [
     id: "review", step: "review", gate: true,
     title: "Human review",
     says: "People decide every group. The run always stops here until they do.",
-    owns: /^review/,
+    owns: /^review|^requests/,
     fields: [
       { kind: "list", path: "review.roles", label: "Reviewers (roles)" },
       { kind: "multi", path: "review.require_comment", label: "The reviewer must explain", options: [{ value: "reject", label: "a rejection" }, { value: "escalated", label: "approving an escalated group" }] },
@@ -237,6 +241,12 @@ export const STAGES: Stage[] = [
       { kind: "number", path: "review.max_reinvestigations", label: "Times a group may be sent back", min: 0, max: 10 },
       { kind: "bool", path: "review.opener_may_decide", label: "Whoever opened a case may also sign it off" },
       { kind: "bool", path: "review.allow_delegation", label: "Reviewers may hand their reviews to a colleague while away" },
+      { kind: "rows", path: "requests.targets", label: "Who reviewers may ask for evidence", addLabel: "Add someone to ask",
+        help: "Ask rather than assume: a desk, a trader, Operations. They are notified, see only the breaks asked about, and answer in Helix.",
+        newRow: { id: "", name: "", roles: [], users: [] },
+        columns: [{ key: "id", label: "Id" }, { key: "name", label: "Shown as", wide: true }, { key: "roles", label: "Answered by roles", kind: "list" }, { key: "users", label: "…or people", kind: "list" }] },
+      { kind: "bool", path: "requests.hold_decision", label: "A group with an open question waits for the answer" },
+      { kind: "bool", path: "requests.reinvestigate_on_answer", label: "An answer sends its group back to the model" },
     ],
   },
   {

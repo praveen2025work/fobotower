@@ -273,6 +273,11 @@ def build_motif() -> MCPServer:
 # MB Rec has already matched CATS to MOTIF; Helix reads its open breaks and
 # investigates them. It never re-matches the positions itself.
 
+# Test hook: breaks MB Rec raises later in the day for a book and COB, as if a
+# controller or a re-run added exceptions after the first notification.
+LATE_BREAKS: dict[tuple[str, str], list[dict]] = {}
+
+
 def _open_breaks(book: str, cob: str) -> list[dict]:
     fo = {r["instrument"]: r for r in _fo_positions(book, cob)}
     bo = {r["instrument"]: r for r in motif_positions(book, cob)["rows"]}
@@ -297,7 +302,7 @@ def _open_breaks(book: str, cob: str) -> list[dict]:
                      "journal_status": "rejected" if x < 0.05 else "posted",
                      "static_present": not (0.05 <= x < 0.09),
                      "prior_adjustment": diff if 0.09 <= x < 0.14 else 0.0})
-    return rows
+    return rows + LATE_BREAKS.get((book, cob), [])
 
 
 def mbrec_breaks(book: str, cob: str) -> dict:

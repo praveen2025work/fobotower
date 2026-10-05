@@ -16,7 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
-from helix import authoring, capabilities, cases, chat, controls, devtools, evals, evidence, knowledge, notify, retention, review, runner, scheduler, views
+from helix import asks, authoring, capabilities, cases, chat, controls, devtools, evals, evidence, knowledge, notify, retention, review, runner, scheduler, views
 from helix import groups as team_groups
 from helix.config import settings
 from helix.entitlement import Caller, EntitlementError, StubEntitlement, entitlements
@@ -87,6 +87,8 @@ def _errors(fn):
         except cases.CaseError as e:
             raise HTTPException(409, str(e)) from e
         except review.ReviewError as e:
+            raise HTTPException(422, str(e)) from e
+        except asks.AskError as e:
             raise HTTPException(422, str(e)) from e
     return wrapped
 
@@ -352,6 +354,53 @@ class ReinvestigateIn(BaseModel):
     idempotency_key: str = Field(min_length=8, max_length=128)
 
 
+class AskIn(BaseModel):
+    target: str = Field(min_length=1, max_length=64)
+    question: str = Field(min_length=1, max_length=4000)
+    group_id: str | None = Field(default=None, max_length=128)   # None = about the whole case
+
+
+@app.post("/api/cases/{case_id}/requests", status_code=201)
+@_errors
+async def ask_for_evidence(case_id: str, body: AskIn, c: Caller = Depends(caller)) -> dict:
+    """Ask a desk, a trader or Operations for evidence (FOBO skill §13)."""
+    return await asks.ask(case_id, body.target, body.question, body.group_id, c)
+
+
+@app.get("/api/requests")
+@_errors
+async def my_requests(c: Caller = Depends(caller)) -> list[dict]:
+    """Open questions addressed to the caller."""
+    return await asks.mine(c)
+
+
+class AnswerIn(BaseModel):
+    answer: str = Field(min_length=1, max_length=8000)
+    answered_by: str | None = Field(default=None, max_length=64)   # a bot answering for someone
+
+
+@app.post("/api/requests/{request_id}/answer")
+@_errors
+async def answer_request(request_id: str, body: AnswerIn, request: Request) -> dict:
+    """The addressee answers; or a bot (Teams, email) answers for them with the
+    event secret (X-Helix-Event-Secret) and `answered_by`."""
+    secret = settings().event_secret
+    sent = request.headers.get("X-Helix-Event-Secret")
+    if sent is not None:
+        if not secret or not hmac.compare_digest(sent.encode(), secret.encode()):
+            raise HTTPException(401, "bad event secret")
+        if not body.answered_by:
+            raise HTTPException(422, "a bot answering says who for: answered_by")
+        return await asks.answer(request_id, body.answer, None, on_behalf=body.answered_by)
+    return await asks.answer(request_id, body.answer, await caller(request))
+
+
+@app.post("/api/requests/{request_id}/cancel")
+@_errors
+async def cancel_request(request_id: str, c: Caller = Depends(caller)) -> dict:
+    return await asks.cancel(request_id, c)
+
+
 class GateIn(BaseModel):
     action: str = Field(pattern="^(continue|stop)$")
     comment: str | None = Field(default=None, max_length=4000)
@@ -574,7 +623,7 @@ async def event(body: EventIn, request: Request) -> dict:
     if not m.case.events or not m.case.opens_as:
         raise PermissionError(f"{body.capability_id} does not take events")
     as_user = await entitlements().get(m.case.opens_as)
-    case_id = await cases.open_case(body.capability_id, body.case_key, as_user, body.team_group)
+    case_id = await cases.open_case(body.capability_id, body.case_key, as_user, body.team_group, late=True)
     return {"case_id": case_id, "opened_as": m.case.opens_as, "event": body.event}
 
 

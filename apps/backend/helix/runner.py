@@ -47,7 +47,8 @@ async def pinned(case: Case) -> Manifest:
 def initial_state(case: Case, m: Manifest) -> dict:
     return {"case_id": case.case_id, "capability_id": case.capability_id,
             "manifest_version": case.manifest_version, "manifest": m.model_dump(by_alias=True),
-            "case_key": case.case_key, "caller": case.run_as}
+            "case_key": case.case_key, "caller": case.run_as,
+            **({"follow_up_of": case.follow_up_of} if case.follow_up_of else {})}
 
 
 def _config(case_id: str) -> dict:
@@ -83,6 +84,15 @@ async def _status_after_run(app, case_id: str) -> str:
             case.status = "completed"
         await s.commit()
         return case.status
+
+
+async def _nothing_new(case_id: str) -> str:
+    """A follow-up that found no late items: there is nothing to work."""
+    async with get_session() as s:
+        case = await s.get(Case, case_id)
+        case.status, case.outcome = "completed", "no_new_items"
+        await s.commit()
+    return "completed"
 
 
 async def fail(case_id: str, e: BaseException) -> None:
@@ -144,6 +154,9 @@ async def run_case(case_id: str, kind: str = "open", update: dict | None = None)
                             "approved_by": None, "approved_at": now_iso(), "nothing_to_write": True}})
                         await app.ainvoke(None, config)
                     status = await _status_after_run(app, case_id)
+                    values = (await app.aget_state(config)).values or {}
+                    if values.get("follow_up_of") and not values.get("items"):
+                        status = await _nothing_new(case_id)
             except Exception as e:
                 log.exception("case %s: run failed", case_id)
                 await fail(case_id, e)

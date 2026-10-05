@@ -83,3 +83,39 @@ def test_a_category_settled_whatever_the_side_needs_one_verdict_for_every_side()
     raw["set"]["playbook"]["verdicts"]["W"] = {"FO": "ESCALATE", "BO": "POST"}
     _, found = effective(base, GroupConfig.model_validate(raw))
     assert "playbook.categories.W: any_side needs one verdict for every side in the table" in found
+
+
+async def test_late_exceptions_open_a_follow_up_with_only_the_new_breaks(api, monkeypatch):
+    import dataclasses
+
+    from helix.config import settings
+    from helix.stub_connectors import finance
+    from helix.web import main
+    monkeypatch.setattr(main, "settings", lambda: dataclasses.replace(settings(), event_secret="evt"))
+    key = {"book": "PRIME-MB-04", "cob": "2026-09-24"}
+
+    async def notify():
+        res = await api.post("/api/events", headers={"X-Helix-Event-Secret": "evt"},
+                             json={"capability_id": CAP, "team_group": GROUP, "case_key": key})
+        assert res.status_code == 201, res.text
+        return (await api.get(f"/api/cases/{res.json()['case_id']}", headers=api.as_user("frank"))).json()
+
+    day = await notify()
+    assert day["follow_up_of"] is None and len(day["items"]) == 3
+
+    nothing = await notify()                                   # MB Rec notifies again: nothing new
+    assert nothing["follow_up_of"] == day["case_id"]
+    assert (nothing["status"], nothing["outcome"], nothing["items"]) == ("completed", "no_new_items", [])
+
+    first = finance.mbrec_breaks(**key)["rows"][0]
+    late = {**first, "instrument": "SOFR FUT", "break_id": "MBR-LATE-1", "difference": 1250.0,
+            "cats_amount": 1250.0, "motif_amount": 0.0, "age_days": 0}
+    monkeypatch.setitem(finance.LATE_BREAKS, (key["book"], key["cob"]), [late])
+    follow = await notify()                                    # a late exception
+    assert follow["case_id"].endswith(".f2") and follow["subject"].endswith("late items 2")
+    assert [i["instrument"] for i in follow["items"]] == ["SOFR FUT"]   # only the new break
+    assert follow["status"] == "paused_before_reason"          # through the same tollgate
+
+    again = (await api.get(f"/api/cases/{day['case_id']}", headers=api.as_user("frank"))).json()
+    assert [f["case_id"] for f in again["follow_ups"]] == [nothing["case_id"], follow["case_id"]]
+    assert len(again["items"]) == 3                            # the day's case is unchanged

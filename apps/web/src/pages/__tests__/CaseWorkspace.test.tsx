@@ -367,3 +367,46 @@ describe("Tollgate", () => {
     expect(within(card).queryByRole("button")).not.toBeInTheDocument();
   });
 });
+
+describe("Asking for evidence", () => {
+  const atReview = (extra: Partial<CaseDetail> = {}) => detail({
+    request_targets: [{ id: "desk", name: "Prime desk (trader)" }, { id: "operations", name: "Operations (MOTIF)" }],
+    can_ask: true,
+    requests: [],
+    ...extra,
+  });
+
+  it("asks the desk about one group", async () => {
+    const calls = mockApi({
+      "GET /cases/fin.c1": atReview(),
+      "POST /cases/fin.c1/requests": { request_id: "r1" },
+    });
+    open();
+    const panel = await screen.findByRole("region", { name: "Questions" });
+    await userEvent.click(within(panel).getByRole("button", { name: /Ask for evidence/ }));
+    await userEvent.selectOptions(within(panel).getByLabelText("About"), "6100");
+    await userEvent.type(within(panel).getByLabelText("Question"), "Was it rebooked?");
+    await userEvent.click(within(panel).getByRole("button", { name: /Send/ }));
+    await waitFor(() => expect(calls.some((c) => c.method === "POST")).toBe(true));
+    expect(calls.find((c) => c.method === "POST")!.body).toEqual({ target: "desk", question: "Was it rebooked?", group_id: "6100" });
+  });
+
+  it("shows an open question holding its group, and an answer", async () => {
+    mockApi({ "GET /cases/fin.c1": atReview({ requests: [
+      { request_id: "r1", case_id: "fin.c1", group_id: "6100", target: "desk", target_name: "Prime desk (trader)", question: "Rebooked?",
+        asked_by: "frank", asked_at: "", status: "open", answer: null, answered_by: null, answered_at: null },
+      { request_id: "r2", case_id: "fin.c1", group_id: null, target: "operations", target_name: "Operations (MOTIF)", question: "Outage?",
+        asked_by: "frank", asked_at: "", status: "answered", answer: "No outage", answered_by: "olga", answered_at: "" },
+    ] }) });
+    open();
+    const panel = await screen.findByRole("region", { name: "Questions" });
+    expect(within(panel).getByText(/waits for the answer/)).toBeInTheDocument();
+    expect(within(panel).getByText(/No outage/)).toBeInTheDocument();
+  });
+
+  it("links a follow-up of late items to the day's case", async () => {
+    mockApi({ "GET /cases/fin.c1": detail({ follow_up_of: "fin.c0" }) });
+    open();
+    expect(await screen.findByRole("link", { name: "the day's case" })).toHaveAttribute("href", "/cases/fin.c0");
+  });
+});

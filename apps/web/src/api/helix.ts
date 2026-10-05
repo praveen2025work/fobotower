@@ -263,9 +263,42 @@ export interface CaseDetail extends CaseSummary {
     check?: string;                // what the person checks there
     stop_needs_comment?: boolean;
   } | null;
+  /** A follow-up for late items: the day's case it follows; and the follow-ups of this case. */
+  follow_up_of?: string | null;
+  follow_ups?: { case_id: string; subject: string; status: string; outcome: string | null; opened_at: string }[];
+  /** Questions asked for evidence, who may be asked, and whether the viewer may ask. */
+  requests?: InfoRequest[];
+  request_targets?: { id: string; name: string }[];
+  can_ask?: boolean;
   /** The capability's tollgates: human stops before steps other than review and publish. */
   tollgates?: { step: string; roles: string[]; check: string }[];
   gate_decisions?: { step: string; action: "continue" | "stop"; comment: string | null; decided_by: string; decided_at: string }[];
+}
+
+/** A question to a desk, a trader or Operations, and its answer. */
+export interface InfoRequest {
+  request_id: string;
+  case_id: string;
+  group_id: string | null;
+  target: string;
+  target_name: string;
+  question: string;
+  asked_by: string;
+  asked_at: string;
+  status: "open" | "answered" | "cancelled";
+  answer: string | null;
+  answered_by: string | null;
+  answered_at: string | null;
+  can_answer?: boolean;
+}
+
+/** An open question addressed to the viewer, with just the rows it is about. */
+export interface QuestionForMe extends InfoRequest {
+  subject: string;
+  case_label: string;
+  group_label: string | null;
+  columns: string[];
+  rows: Record<string, unknown>[];
 }
 
 export interface CaseMessage {
@@ -467,6 +500,36 @@ export function useRelease(caseId: string) {
     mutationFn: () =>
       api.post<{ case: CaseDetail }>(`/cases/${enc(caseId)}/publish`, { idempotency_key: newIdempotencyKey() }),
     onSuccess: (res) => refresh(res.case),
+  });
+}
+
+/** Ask a desk, a trader or Operations for evidence about a group or the case. */
+export function useAskForEvidence(caseId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { target: string; question: string; group_id: string | null }) =>
+      api.post<InfoRequest>(`/cases/${enc(caseId)}/requests`, v),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["case", caseId] }),
+  });
+}
+
+export function useCancelRequest(caseId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (requestId: string) => api.post<InfoRequest>(`/requests/${enc(requestId)}/cancel`, {}),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["case", caseId] }),
+  });
+}
+
+export const useMyQuestions = () =>
+  useQuery({ queryKey: ["my-questions"], queryFn: () => api.get<QuestionForMe[]>("/requests") });
+
+export function useAnswerQuestion() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { requestId: string; answer: string }) =>
+      api.post<InfoRequest>(`/requests/${enc(v.requestId)}/answer`, { answer: v.answer }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["my-questions"] }),
   });
 }
 

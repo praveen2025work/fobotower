@@ -64,7 +64,7 @@ rules it must never break.
 | "If an adjustment was posted: BO + adjustments = FO, else stays open" | — | Gap 4 |
 | **§12 Output format** | 1 break summary → the break table on the case · 2 checks performed → the tests table (pass / fail / not run, with evidence) · 4 classification → category, side, determinism on every group · 3, 5, 6, 7 → the model's comment, in that order, for judgement breaks; the playbook's wording for settled ones | In Helix + added now (gap 3 for structured fields) |
 | **§13 Evidence discipline** — say which tests could not run | Tests "not run" with the reason; the model must state them and their effect on confidence | In Helix + added now |
-| §13 "ask for it" | Today: the controller adds it at the tollgate or attaches it | Gap 1 |
+| §13 "ask for it" | *Ask for evidence*: a reviewer asks the desk, Operations or CATS support (`requests.targets`); the group waits; the answer goes back to the model | Added now |
 | **§14 Completion checklist** | Items 1–4 shown on the case (checks, evidence, root cause); 5–9 in the verdict and the model's comment | Gap 7 for a checklist at sign-off |
 | **§15 Governing principle** | The design: components first, verdict mechanical once the cause is known | In Helix |
 | **Local parameters** | `policy`: materiality, MTM tolerance (FO-4), calculation tolerance (FO-6), posting policy reference, same-day cut-off — all `null` until Product Control confirms. Escalation routing → `categories.*.escalate_to` and the ticketing tool. Books in scope → data scopes and MB Rec's events | In Helix (cut-off added now, not yet used by a rule) |
@@ -90,11 +90,9 @@ A field that is missing makes the test that needs it "not run". Nothing is assum
 
 ## Gaps: what needs building, in order of value
 
-1. **Ask for evidence (§13).** From a group, ask the desk, a trader or Operations for a
-   named piece of evidence. The group waits as "awaiting information". The answer is attached
-   to the case and goes to the model.
-2. **Add late exceptions to an open case.** A later MB Rec notification for the same book and
-   COB adds its new breaks to the case, instead of being ignored.
+1. ~~Ask for evidence (§13)~~ — done: `requests` (see the [walkthrough](../guide/fobo-capability-walkthrough.md)).
+2. ~~Late exceptions~~ — done: `case.late_items: follow_up` opens a linked follow-up case with
+   only the new breaks.
 3. **Structured output (§12).** Have the model return root cause, hypotheses, tests not
    performed, remediation, preventative control and end state as separate fields. The case
    would show them as the skill's sections, and they could be reported on.

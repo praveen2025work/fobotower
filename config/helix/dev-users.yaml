@@ -27,6 +27,14 @@ users:
     name: Frank (FOBO controller, all books; CATS vs MOTIF owner)
     roles: [FOBO_CONTROLLER, HELIX_FOBO_RECON_OWNER]
     data_scopes: { book: ["*"] }
+  tom:
+    name: Tom (Prime desk trader; answers controllers' questions)
+    roles: [PRIME_DESK]
+    data_scopes: {}
+  olga:
+    name: Olga (Operations, MOTIF postings)
+    roles: [FOBO_OPERATIONS]
+    data_scopes: {}
   gina:
     name: Gina (FOBO controller, PRIME-MB-01; CATS vs MOTIF owner)
     roles: [FOBO_CONTROLLER, HELIX_FOBO_RECON_OWNER]

@@ -18,7 +18,7 @@ from sqlalchemy import String, and_, cast, func, not_, or_, select
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.exc import IntegrityError
 
-from helix import capabilities, deadlines, escalation, review, rules, runner
+from helix import asks, capabilities, deadlines, escalation, review, rules, runner
 from helix.db import get_session
 from helix.entitlement import Caller
 from helix.manifest import Manifest
@@ -152,17 +152,30 @@ async def _latest_attempt(s, root: str) -> Case | None:
 
 
 async def open_case(capability_id: str, case_key: dict, caller: Caller,
-                    team_group: str | None = None) -> str:
+                    team_group: str | None = None, late: bool = False) -> str:
     """Open a case and start its run. Opening a key that already has a case
-    returns its latest attempt. A capability with groups runs every case under
-    one group — its team's configuration — on the merged manifest."""
+    returns its latest attempt — unless this is a later notification (`late`)
+    and the capability takes late items (`case.late_items: follow_up`): then a
+    follow-up case linked to it reads the source again for what is new.
+    A capability with groups runs every case under one group — its team's
+    configuration — on the merged manifest."""
     version, group_version, m = await _resolve(capability_id, team_group, caller)
     await _not_switched_off(capability_id, team_group)
     key = _check_key(m, case_key, caller)
     root = case_id_for(capability_id, {**key, "__group": team_group} if team_group else key)
     async with get_session() as s:
         if (existing := await _latest_attempt(s, root)) is not None:
-            return existing.case_id
+            if not (late and m.case.late_items == "follow_up"):
+                return existing.case_id
+            n = (await s.execute(select(func.count()).select_from(Case).where(
+                Case.follow_up_of == root))).scalar_one() + 1
+            follow = _new_case(f"{root}.f{n}", f"{root}.f{n}", 1, capability_id, version, team_group,
+                               group_version, m, key, caller)
+            follow.follow_up_of, follow.subject = root, f"{follow.subject} · late items {n}"
+            s.add(follow)
+            await s.commit()
+            await runner.submit(follow.case_id, "open")
+            return follow.case_id
         s.add(_new_case(root, root, 1, capability_id, version, team_group, group_version,
                         m, key, caller))
         try:
@@ -272,6 +285,16 @@ async def rerun_case(case_id: str, caller: Caller) -> str:
     return new_id
 
 
+async def follow_ups(case: Case) -> list[dict]:
+    """The follow-up cases late items opened for this case's key."""
+    root = case.follow_up_of or case.root_case_id or case.case_id
+    async with get_session() as s:
+        rows = (await s.execute(select(Case).where(Case.follow_up_of == root)
+                                .order_by(Case.opened_at))).scalars().all()
+    return [{"case_id": c.case_id, "subject": c.subject, "status": c.status, "outcome": c.outcome,
+             "opened_at": c.opened_at} for c in rows if c.case_id != case.case_id]
+
+
 async def attempts(case: Case) -> list[dict]:
     root = case.root_case_id or case.case_id
     async with get_session() as s:
@@ -359,6 +382,9 @@ async def decide(case_id: str, group_id: str, action: str, comment: str | None,
         group = await s.get(ProposalGroup, (case_id, group_id))
         if group is None:
             raise CaseError(f"no group {group_id!r} in this case")
+        if m.requests.hold_decision and (waiting := await asks.open_on_group(case_id, group_id)):
+            raise CaseError(f"a question to {waiting[0].target_name} is still open; "
+                            "wait for the answer or cancel the question")
         escalated = (group.finding or {}).get("status") == "escalated"
         if comment is None and action == "reject" and "reject" in m.review.require_comment:
             raise CaseError("say why you reject it: a comment is required")
@@ -603,7 +629,8 @@ def _case_summary(c: Case) -> dict:
             "team_group_version": c.team_group_version, "opened_by": c.opened_by,
             "opened_at": c.opened_at, "trace_id": c.trace_id, "error": c.error,
             "attempt": c.attempt or 1, "rerun_of": c.rerun_of, "legal_hold": bool(c.legal_hold),
-            "due_at": c.due_at, "review_ready_at": c.review_ready_at}
+            "due_at": c.due_at, "review_ready_at": c.review_ready_at,
+            "follow_up_of": c.follow_up_of}
 
 
 async def list_cases(capability_id: str, caller: Caller, team_group: str | None = None,
@@ -680,6 +707,12 @@ async def case_detail(case_id: str, caller: Caller) -> dict:
         "id_field": m.items.id_field, "amount_field": m.items.amount_field,
         "recurring": recurring,
         "attempts": await attempts(case),
+        "follow_ups": await follow_ups(case),
+        "requests": await asks.for_case(case_id, caller),
+        "request_targets": [{"id": t.id, "name": t.name} for t in m.requests.targets],
+        "can_ask": bool(m.requests.targets) and (
+            (may_decide and case.status == "awaiting_review")
+            or bool((st := gate_step(case.status)) and may_pass_gate(caller, m, st))),
         "draft": case.draft,
         "labels": {"case": m.case.label, "item": m.case.item_label},
         "steps": m.steps, "pause_before": m.pause_before,

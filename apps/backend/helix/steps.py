@@ -15,7 +15,7 @@ from typing import Any, TypedDict
 
 from sqlalchemy import select
 
-from helix import controls, gateway, knowledge, rules
+from helix import asks, controls, gateway, knowledge, rules
 from helix.db import get_session
 from helix.entitlement import Caller
 from helix.governance import Protector, fields_for
@@ -44,6 +44,7 @@ class CaseState(TypedDict, total=False):
     review_cycles: int
     decisions: list[dict]          # written on resume, from helix_decision
     publish_approval: dict         # written on resume, from helix_publish_approval
+    follow_up_of: str | None       # a follow-up case: the case of the same key it follows
     gates_passed: list[str]        # tollgates a person passed, in order (helix_gate_decision)
     gate_notes: list[dict]         # what they wrote there: [{step, by, comment}] — context for the model
     published: list[dict]
@@ -112,8 +113,22 @@ async def load(state: CaseState) -> dict:
     except (gateway.ToolDenied, gateway.ToolFailed) as e:
         return _escalate("LOAD_FAILED", str(e))
     items = [{**row, "item_id": str(row[m.items.id_field])} for row in result.get("rows", [])]
+    if state.get("follow_up_of"):
+        # Late items only: what no case for this key (the first, or an earlier
+        # follow-up) has taken already.
+        seen = await _items_already_taken(state["follow_up_of"], state["case_id"])
+        items = [it for it in items if it["item_id"] not in seen]
     await _save_items(state["case_id"], items)
     return {"items": items}
+
+
+async def _items_already_taken(root: str, case_id: str) -> set[str]:
+    from helix.models import Case, CaseItem
+    async with get_session() as s:
+        cases = select(Case.case_id).where(
+            ((Case.case_id == root) | (Case.root_case_id == root) | (Case.follow_up_of == root))
+            & (Case.case_id != case_id))
+        return set((await s.execute(select(CaseItem.item_id).where(CaseItem.case_id.in_(cases)))).scalars())
 
 
 async def match(state: CaseState) -> dict:
@@ -405,8 +420,10 @@ async def reason_group(state: CaseState, g: dict, note: str | None = None,
                            p.get("comment", ""), g["group_key"])} for p in g["priors"]]},
                 allowed_tools=list(m.reasoning.tools), output=m.reasoning.output,
                 reviewer_note=guard.scrub(note, [g["group_key"], *members]) if note else None,
-                notes=[guard.scrub(f"{n['by']} (tollgate before {n['step']}): {n['comment']}", [g["group_key"], *members])
-                       for n in state.get("gate_notes", []) if n.get("comment")],
+                notes=[guard.scrub(text, [g["group_key"], *members]) for text in [
+                    *(f"{n['by']} (tollgate before {n['step']}): {n['comment']}"
+                      for n in state.get("gate_notes", []) if n.get("comment")),
+                    *await asks.answers_for(state["case_id"], g["group_id"])]],
                 previous_finding=guard.scrub(guard.protect(previous), [g["group_key"], *members])
                 if previous else None,
                 verdicts=m.playbook.verdict_names() if m.playbook else None,

@@ -114,6 +114,8 @@ class Case(HelixBase):
     root_case_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
     attempt: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
     rerun_of: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    # A follow-up for late items: the case of the same key it follows (its root).
+    follow_up_of: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
     # Data-scope values (scope -> value) the case belongs to, for filtering in SQL.
     scope: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     legal_hold: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
@@ -211,6 +213,29 @@ class Decision(HelixBase):
     decided_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+
+
+class InfoRequest(HelixBase):
+    """A reviewer asking someone (a desk, a trader, Operations) for evidence
+    about a case or one of its groups, and their answer."""
+
+    __tablename__ = "helix_info_request"
+    request_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    case_id: Mapped[str] = mapped_column(
+        String(128), ForeignKey("helix_case.case_id", ondelete="CASCADE"), index=True
+    )
+    group_id: Mapped[str | None] = mapped_column(String(128), nullable=True)   # None = the whole case
+    target: Mapped[str] = mapped_column(String(64))
+    target_name: Mapped[str] = mapped_column(String(128))
+    roles: Mapped[list] = mapped_column(JSONB, default=list)
+    users: Mapped[list] = mapped_column(JSONB, default=list)
+    question: Mapped[str] = mapped_column(Text)
+    asked_by: Mapped[str] = mapped_column(String(64))
+    asked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    status: Mapped[str] = mapped_column(String(16), default="open")   # open | answered | cancelled
+    answer: Mapped[str | None] = mapped_column(Text, nullable=True)
+    answered_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    answered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class GateDecision(HelixBase):

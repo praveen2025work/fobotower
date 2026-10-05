@@ -51,6 +51,12 @@ class CaseSpec(Strict):
     # plus business days and hours, optionally at a time of day. Inboxes count
     # down to it; owners and reviewers are told when it is near and when missed.
     due: DueSpec | None = None
+    # When an event arrives for a key that already has a case (e.g. MB Rec
+    # notifies late exceptions for a book and COB already being worked):
+    #   ignore     the existing case is the answer; nothing new is read
+    #   follow_up  a follow-up case linked to it reads the source again and
+    #              takes only the items no case for that key has yet
+    late_items: Literal["ignore", "follow_up"] = "ignore"
 
 
 class ToolCallSpec(Strict):
@@ -277,6 +283,26 @@ class PublishSpec(Strict):
                 for k, v in self.args.items() if isinstance(v, str) and v.startswith(wrong)]
 
 
+class RequestTarget(Strict):
+    """Someone a reviewer may ask for evidence: a desk, a trader, Operations…"""
+    id: str = Field(pattern=r"^[a-z][a-z0-9-]{1,40}$")
+    name: str                          # shown to the reviewer, e.g. "Desk (trader)"
+    roles: list[str] = Field(default_factory=list)   # who answers: anyone with one of these roles
+    users: list[str] = Field(default_factory=list)   # …or these people
+
+
+class RequestsSpec(Strict):
+    """Asking for evidence instead of assuming it (FOBO skill §13). A reviewer
+    asks a target a question about a group (or the case); they are notified and
+    answer in Helix (or a bot answers for them through the API). The answer is
+    kept on the case and reaches the model as context."""
+    targets: list[RequestTarget] = Field(default_factory=list)
+    # A group with an open question waits for the answer before it is decided.
+    hold_decision: bool = True
+    # During review, an answer sends its group back to the model with it.
+    reinvestigate_on_answer: bool = True
+
+
 class TollgateSpec(Strict):
     """A person approves the run's work so far before it goes on — e.g. the
     matched breaks before the model investigates them. The run waits at the
@@ -364,6 +390,8 @@ class Manifest(Strict):
     # Who passes each human stop other than review and publish, and what they check.
     # A stop without an entry here is passed by the reviewers.
     tollgates: dict[str, TollgateSpec] = Field(default_factory=dict)
+    # Who reviewers may ask for evidence, and what an open question holds back.
+    requests: RequestsSpec = Field(default_factory=RequestsSpec)
     group_by: list[str] = Field(default_factory=list)
     # How a group is named, a template over its key fields and, with a
     # playbook, category_name and side_name — e.g. "{category_name} · {side_name}".
@@ -499,6 +527,11 @@ def problems(m: Manifest) -> list[str]:
                 out.append(f"playbook finding {f.id}: unknown test `{f.test}`")
             if f.indicates and f.indicates not in pb.categories:
                 out.append(f"playbook finding {f.id}: unknown category `{f.indicates}`")
+    ids = [t.id for t in m.requests.targets]
+    if len(set(ids)) != len(ids):
+        out.append("requests.targets: each target needs its own id")
+    out += [f"requests.targets[{t.id}]: name the roles or the people who answer"
+            for t in m.requests.targets if not t.roles and not t.users]
     for step in m.tollgates:
         if step in ("review", "publish"):
             out.append(f"tollgates.{step}: `{step}` has its own controls (review, publish)")

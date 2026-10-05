@@ -6,6 +6,7 @@ import { UserCheck } from "lucide-react";
 import { currentUser } from "../api/client";
 import { useInbox, type InboxRow } from "../api/helix";
 import DelegationPanel from "../components/DelegationPanel";
+import QuestionsForYou from "../components/QuestionsForYou";
 import { useIsPhone } from "../hooks/useIsPhone";
 import StatusBadge from "../components/StatusBadge";
 import { DueBadge, ageText, urgency } from "../components/Urgency";
@@ -149,6 +150,7 @@ export default function InboxPage(): JSX.Element {
   return (
     <div>
       <PageHeader title="Inbox" subtitle="Cases waiting for your review or your release of a write-back." />
+      <QuestionsForYou />
       <Card>
         {inbox.isLoading && <Loading what="inbox" />}
         {inbox.error && <ErrorState error={inbox.error} />}

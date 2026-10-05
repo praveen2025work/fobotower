@@ -30,6 +30,10 @@ set:
     # reconciled. (The CATS vs MOTIF matching group keeps the 06:30 schedule.)
     opens_on: event
     events: true
+    # MB Rec may notify more exceptions for a book and COB already being worked:
+    # each later notification opens a follow-up case with only the new breaks,
+    # linked to the day's case. A case already signed off is never changed.
+    late_items: follow_up
     opens_as: helix-scheduler
     # Signed off by 11:00 on the business day after the COB; reviewers are
     # reminded two hours before, owners told if it is missed.
@@ -239,6 +243,16 @@ set:
           events (type, instrument, amount, time) that explain each break, or say
           that none do. Do not conclude a verdict.
         tools: [motif.booking_events]
+  # Skill §13: ask for evidence rather than assume it. A controller asks one of
+  # these about a group (or the case); the group waits for the answer, which
+  # sends it back to the model with the answer as context.
+  requests:
+    targets:
+      - { id: desk,         name: "Prime desk (trader)",  roles: [PRIME_DESK] }
+      - { id: operations,   name: "Operations (MOTIF)",   roles: [FOBO_OPERATIONS] }
+      - { id: cats-support, name: "CATS support",         roles: [CATS_SUPPORT] }
+    hold_decision: true
+    reinvestigate_on_answer: true
   # The same instrument breaking again on the same book, COB after COB.
   insights:
     recurring: { same: [book], lookback_cases: 10, min_runs: 2 }

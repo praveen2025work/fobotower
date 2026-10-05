@@ -81,3 +81,26 @@ describe("Inbox on a phone", () => {
     }
   });
 });
+
+describe("Questions for you", () => {
+  it("shows the trader only the breaks asked about, and sends the answer", async () => {
+    const calls = mockApi({
+      "GET /inbox": [],
+      "GET /me/delegations": { away: [], covering: [] },
+      "GET /dev/users": [],
+      "GET /requests": [{ request_id: "r1", case_id: "c1", group_id: "K", target: "desk", target_name: "Prime desk (trader)",
+        question: "Was the IRS swap rebooked?", asked_by: "frank", asked_at: "2026-10-05T09:00:00Z", status: "open",
+        answer: null, answered_by: null, answered_at: null, can_answer: true, subject: "PRIME-MB-04 · COB 2026-09-24",
+        case_label: "Break run", group_label: "Aged break", columns: ["instrument", "difference"],
+        rows: [{ instrument: "IRS 5Y USD", difference: -85.5 }] }],
+      "POST /requests/r1/answer": { request_id: "r1", status: "answered" },
+    });
+    renderAt("/inbox", "/inbox", <InboxPage />);
+    expect(await screen.findByText(/Was the IRS swap rebooked/)).toBeInTheDocument();
+    expect(screen.getByText("IRS 5Y USD")).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText("Your answer"), "Yes, on Friday");
+    await userEvent.click(screen.getByRole("button", { name: /Answer/ }));
+    await waitFor(() => expect(calls.some((c) => c.method === "POST")).toBe(true));
+    expect(calls.find((c) => c.method === "POST")!.body).toEqual({ answer: "Yes, on Friday" });
+  });
+});

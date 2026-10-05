@@ -5,6 +5,10 @@ no audio, recorded 2026-10-05 from the current app. You speak over it from
 [`presenter-script.md`](presenter-script.md), which gives each scene's start time, what is on
 screen and the words to say.
 
+**Click-through copy of the app:** [`helix-snapshot.html`](helix-snapshot.html), one file
+that opens in any browser with no setup. It is read-only and uses recorded dev data. Send it
+to your team or open it after the video.
+
 The narrated version below (2026-10-04) is kept for sending to people who will watch it alone.
 
 **Video:** [`helix-demo.mp4`](helix-demo.mp4), 3 min 06 s, 1280×720, with voice-over and

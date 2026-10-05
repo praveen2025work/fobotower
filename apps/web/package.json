@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "build:snapshot": "vite build --mode snapshot",
+    "build:snapshot": "vite build --mode snapshot && node scripts/inline-snapshot.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",

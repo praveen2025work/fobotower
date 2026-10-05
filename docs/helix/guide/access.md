@@ -11,15 +11,18 @@ To make a new snapshot from a running stack (API on :8300, web on :5180):
 ```bash
 cd apps/web
 node scripts/capture-snapshot.mjs     # walks the main screens, writes src/snapshot/data.json
-npm run build:snapshot                # → dist-snapshot/ (snapshot.html + assets, relative paths)
+npm run build:snapshot                # → dist-snapshot/helix-snapshot.html (one self-contained file)
 ```
 
-Then host `dist-snapshot/` anywhere static, or open it with `npx vite preview --outDir
-dist-snapshot`. The current snapshot (dev data, recorded 2026-10-04) is committed:
-the recorded responses in `src/snapshot/data.json` and the built copy in
-`dist-snapshot/` (open `index.html`). Recapture and rebuild to refresh both. The
-recorded data comes from the dev stack only, so never capture a snapshot from an
-environment with real data.
+**`helix-snapshot.html` is one file with everything inside it.** Double-click it, or send it
+to your team by email or Teams, and it opens in any browser: no server, no install, no login.
+It also works on a phone. The current copy (dev data, recorded 2026-10-05) is in
+[`../demo/helix-snapshot.html`](../demo/helix-snapshot.html).
+
+The build also leaves `snapshot.html` + `assets/` in `dist-snapshot/`, for hosting on a
+static web server. The recorded responses are in `src/snapshot/data.json`; recapture and
+rebuild to refresh them. The recorded data comes from the dev stack only, so never capture
+a snapshot from an environment with real data.
 
 Options for the capture script (environment variables):
 

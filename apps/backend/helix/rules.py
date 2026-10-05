@@ -53,6 +53,17 @@ def _check(node: ast.AST) -> None:
             raise ExpressionError(f"allowed functions: {', '.join(sorted(_FUNCS))}")
 
 
+def names(source: str) -> tuple[set[str], set[str]]:
+    """(fields, policies) an expression reads — e.g. `abs(x) > policy.limit`
+    reads field x and policy limit. Function names are not fields."""
+    tree = compile_expr(source)
+    calls = {id(n.func) for n in ast.walk(tree) if isinstance(n, ast.Call)}
+    fields = {n.id for n in ast.walk(tree)
+              if isinstance(n, ast.Name) and id(n) not in calls and n.id != "policy"}
+    policies = {n.attr for n in ast.walk(tree) if isinstance(n, ast.Attribute)}
+    return fields, policies
+
+
 def compile_expr(source: str) -> ast.Expression:
     try:
         tree = ast.parse(source, mode="eval")

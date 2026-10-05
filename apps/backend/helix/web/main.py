@@ -473,6 +473,22 @@ async def recurring(capability_id: str, team_group: str | None = None, c: Caller
     return await insights.recurring_overview(capability_id, c, team_group)
 
 
+@app.get("/api/capabilities/{capability_id}/contract")
+@_errors
+async def data_contract(capability_id: str, team_group: str | None = None, c: Caller = Depends(caller)) -> dict:
+    """The data the configuration reads and the parameters still to confirm
+    (of the capability, or of one team group's effective configuration)."""
+    from helix import capabilities, contract
+    from helix import groups as team_groups
+
+    _, m = await capabilities.active(capability_id)
+    if team_group:
+        _, _, m = await team_groups.active_group(capability_id, team_group)
+    if not capabilities.can_see(c, m):
+        raise PermissionError(f"{c.user_id} has no role for {capability_id}")
+    return contract.contract(m)
+
+
 @app.get("/api/capabilities/{capability_id}/learning")
 @_errors
 async def learning(capability_id: str, team_group: str | None = None, c: Caller = Depends(caller)) -> dict:

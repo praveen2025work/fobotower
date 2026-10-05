@@ -13,6 +13,7 @@ import { useApproveGroup, useDraftGroup, useGroup, type GroupConfig } from "../a
 import FlowDiagram from "../components/capability/FlowDiagram";
 import RecurringPanel from "../components/capability/RecurringPanel";
 import LearningPanel from "../components/capability/LearningPanel";
+import DataContractPanel from "../components/capability/DataContractPanel";
 import VersionsPanel from "../components/capability/VersionsPanel";
 import OrchestratorEditor from "../components/orchestrator/OrchestratorEditor";
 import StatusBadge from "../components/StatusBadge";
@@ -58,6 +59,7 @@ export default function GroupDetail(): JSX.Element {
         <div className="mb-4"><RecurringPanel capabilityId={id} teamGroup={group} /></div>
       )}
       <div className="mb-4"><LearningPanel capabilityId={id} teamGroup={group} /></div>
+      <div className="mb-4"><DataContractPanel capabilityId={id} teamGroup={group} /></div>
 
       <h2 className="mb-2 text-sm font-semibold text-surface-800">Configure this group's orchestrator</h2>
       <p className="mb-2 text-xs text-surface-500">

@@ -928,6 +928,21 @@ export const useRecurring = (id: string, teamGroup?: string, enabled = true) =>
     enabled,
   });
 
+/** The data a configuration reads, and the parameters still to confirm. */
+export interface DataContract {
+  source: string;
+  enrich: string[];
+  data: { field: string; used_by: string[]; from: string; derived: boolean }[];
+  parameters: { name: string; value: unknown; unit: string | null; used_by: string[]; to_confirm: boolean; missing?: boolean }[];
+  to_confirm: string[];
+}
+
+export const useDataContract = (id: string, teamGroup?: string) =>
+  useQuery({
+    queryKey: ["contract", id, teamGroup ?? "all"],
+    queryFn: () => api.get<DataContract>(`/capabilities/${enc(id)}/contract${teamGroup ? `?team_group=${enc(teamGroup)}` : ""}`),
+  });
+
 /** What nothing explained, and model-proposed groups reviewers keep approving unchanged. */
 export interface Learning {
   unexplained: { case_id: string; subject: string; team_group: string | null; item_id: string; group: string; why: string; amount: number | null; opened_at: string }[];

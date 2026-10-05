@@ -9,6 +9,7 @@ import { useCapabilities, useCapability, useCases, useGroups, useOpenCase, type 
 import EvalsPanel from "../components/capability/EvalsPanel";
 import RecurringPanel from "../components/capability/RecurringPanel";
 import LearningPanel from "../components/capability/LearningPanel";
+import DataContractPanel from "../components/capability/DataContractPanel";
 import FlowDiagram from "../components/capability/FlowDiagram";
 import VersionsPanel from "../components/capability/VersionsPanel";
 import OrchestratorEditor from "../components/orchestrator/OrchestratorEditor";
@@ -61,6 +62,7 @@ export default function CapabilityDetail(): JSX.Element {
         <div className="mt-4"><RecurringPanel capabilityId={id} /></div>
       )}
       {tab === "cases" && <div className="mt-4"><LearningPanel capabilityId={id} /></div>}
+      {tab === "configure" && <div className="mt-4"><DataContractPanel capabilityId={id} /></div>}
       {tab === "configure" && (
         <>
           <p className="mb-2 text-sm text-surface-500">

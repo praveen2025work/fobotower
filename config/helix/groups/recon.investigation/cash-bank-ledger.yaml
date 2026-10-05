@@ -10,3 +10,21 @@ owners:
 set:
   policy:
     write_off_limit: { value: 100, unit: GBP }
+  # Follow-through: each approved break is checked on the next day's run for
+  # the entity. A break that is gone has cleared; one still on the statement
+  # after it was written off is not written off twice — it goes to a person.
+  follow_through:
+    series: [entity]
+    order_by: date
+  rules:
+    - id: written-off-still-open
+      when: carried > 0
+      then:
+        status: escalated
+        comment: "{carried} of these breaks were decided on an earlier day and are still open; check the earlier action before writing off again."
+        reason: STILL_OPEN_AFTER_DECISION
+    - id: small-single-break
+      when: count == 1 and abs(total) <= policy.write_off_limit
+      then:
+        status: proposed
+        comment: "One difference of {total} with {counterparty}, within the write-off limit; propose write-off."

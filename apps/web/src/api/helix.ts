@@ -273,6 +273,13 @@ export interface CaseDetail extends CaseSummary {
   /** The capability's tollgates: human stops before steps other than review and publish. */
   tollgates?: { step: string; roles: string[]; check: string }[];
   gate_decisions?: { step: string; action: "continue" | "stop"; comment: string | null; decided_by: string; decided_at: string }[];
+  /** What became of this case's decisions in the next run of its series (follow_through). */
+  follow_through?: {
+    cleared: number;
+    still_open: number;
+    items: { item_id: string; verdict: string | null; status: "cleared" | "still_open"; checked_in: string; checked_at: string }[];
+  } | null;
+  follow_through_spec?: { series: string[]; order_by: string; verdicts: string[] } | null;
 }
 
 /** A question to a desk, a trader or Operations, and its answer. */

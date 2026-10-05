@@ -75,6 +75,7 @@ configurable:
   - case.opens_as
   - case.due
   - case.late_items
+  - follow_through
   - items
   - policy.*
   - rules

@@ -210,6 +210,9 @@ class Decision(HelixBase):
     # Seconds the reviewer spent on the group before deciding, as the console
     # measured it (time on screen) — the measured side of "time saved".
     review_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # The sign-off checklist (review.checklist) as the reviewer answered it:
+    # [{id, label, answer: yes|no|n/a, note}].
+    checklist: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     decided_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -236,6 +239,26 @@ class InfoRequest(HelixBase):
     answer: Mapped[str | None] = mapped_column(Text, nullable=True)
     answered_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
     answered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Evidence the answer came with (a case evidence document's name).
+    attachment: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    # When the addressees were reminded, and when it was escalated to the reviewers.
+    reminded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    escalated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class FollowThrough(HelixBase):
+    """What became of a decided item in the next run of the same series
+    (follow_through): cleared (gone) or still_open (still there)."""
+
+    __tablename__ = "helix_follow_through"
+    case_id: Mapped[str] = mapped_column(
+        String(128), ForeignKey("helix_case.case_id", ondelete="CASCADE"), primary_key=True
+    )
+    item_id: Mapped[str] = mapped_column(String(256), primary_key=True)
+    verdict: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    status: Mapped[str] = mapped_column(String(16))          # cleared | still_open
+    checked_in: Mapped[str] = mapped_column(String(128))     # the case that checked it
+    checked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
 class GateDecision(HelixBase):

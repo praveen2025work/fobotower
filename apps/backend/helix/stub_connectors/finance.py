@@ -92,7 +92,9 @@ def _cash(entity: str, date: str) -> list[dict]:
     rows = []
     for i in range(1, 25):
         cp = r.choice(COUNTERPARTIES)
-        rows.append({"ref": f"TX{i:04d}", "counterparty": cp,
+        # A bank reference is unique to its day; TX9001 (below) is the one
+        # ledger item that stays unmatched day after day.
+        rows.append({"ref": f"TX{date.replace('-', '')[2:]}-{i:02d}", "counterparty": cp,
                      "counterparty_account": f"GB{zlib.crc32(cp.encode()) % 10**8:08d}",
                      "amount": round(r.uniform(-250_000, 250_000), 2), "value_date": date})
     return rows

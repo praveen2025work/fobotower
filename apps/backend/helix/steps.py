@@ -15,7 +15,7 @@ from typing import Any, TypedDict
 
 from sqlalchemy import select
 
-from helix import asks, controls, gateway, knowledge, rules
+from helix import asks, controls, follow_through, gateway, knowledge, rules
 from helix.db import get_session
 from helix.entitlement import Caller
 from helix.governance import Protector, fields_for
@@ -118,6 +118,7 @@ async def load(state: CaseState) -> dict:
         # follow-up) has taken already.
         seen = await _items_already_taken(state["follow_up_of"], state["case_id"])
         items = [it for it in items if it["item_id"] not in seen]
+    items = await follow_through.carry(state, m, items)
     await _save_items(state["case_id"], items)
     return {"items": items}
 
@@ -158,6 +159,7 @@ async def match(state: CaseState) -> dict:
             "difference": round((la or 0.0) - (ra or 0.0), 2), "break_type": status,
             **{f: v for f, v in base.items() if f not in spec.keys and f != spec.amount_field},
         })
+    items = await follow_through.carry(state, m, items)
     await _save_items(state["case_id"], items)
     return {"items": items}
 
@@ -377,9 +379,12 @@ async def reason_group(state: CaseState, g: dict, note: str | None = None,
     m = _manifest(state)
     policy = m.policy_values()
     items = {it["item_id"]: it for it in state["items"]}
-    env = {**g["group_key"], "total": g["total"], "count": g["count"],
-           "label": g["label"], "policy": policy}
     members = [items[i] for i in g["item_ids"] if i in items]
+    # carried: how many of the group's items were decided in the last run of
+    # the series and are still here (follow_through).
+    env = {**g["group_key"], "total": g["total"], "count": g["count"],
+           "label": g["label"], "policy": policy,
+           "carried": sum(1 for it in members if it.get("carried_verdict"))}
     play = _playbook_view(m, members, policy) if m.playbook else None
     with span("reason.group", case_id=state["case_id"], group_id=g["group_id"],
               reinvestigation=bool(note)) as sp:

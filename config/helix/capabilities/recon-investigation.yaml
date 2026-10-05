@@ -100,6 +100,7 @@ configurable:
   - review.confirm
   - review.allow_delegation
   - insights
+  - follow_through
   - export
   - escalation
   - knowledge

@@ -18,7 +18,7 @@ from sqlalchemy import String, and_, cast, func, not_, or_, select
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.exc import IntegrityError
 
-from helix import asks, capabilities, deadlines, escalation, review, rules, runner
+from helix import asks, capabilities, deadlines, escalation, follow_through, review, rules, runner
 from helix.db import get_session
 from helix.entitlement import Caller
 from helix.manifest import Manifest
@@ -708,6 +708,9 @@ async def case_detail(case_id: str, caller: Caller) -> dict:
         "recurring": recurring,
         "attempts": await attempts(case),
         "follow_ups": await follow_ups(case),
+        # What became of this case's decisions in the next run (follow_through).
+        "follow_through": (await follow_through.for_case(case_id)) if m.follow_through else None,
+        "follow_through_spec": m.follow_through.model_dump() if m.follow_through else None,
         "requests": await asks.for_case(case_id, caller),
         "request_targets": [{"id": t.id, "name": t.name} for t in m.requests.targets],
         "can_ask": bool(m.requests.targets) and (

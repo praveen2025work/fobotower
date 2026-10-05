@@ -49,6 +49,7 @@ import { ActionCard, EscalationCard, ReleaseSummary } from "../components/case/C
 import CaseChat from "../components/case/CaseChat";
 import EvidencePanel from "../components/case/EvidencePanel";
 import RequestsPanel from "../components/case/RequestsPanel";
+import FollowThroughPanel from "../components/case/FollowThroughPanel";
 import CaseHistory from "../components/case/CaseHistory";
 import StatusBadge from "../components/StatusBadge";
 import { DueBadge } from "../components/Urgency";
@@ -629,6 +630,14 @@ function ProposalPanel({ c, group }: { c: CaseDetail; group: Group }) {
                             <Repeat size={9} /> {recurring[it.item_id].runs} runs
                           </span>
                         )}
+                        {i === 0 && typeof it.carried_verdict === "string" && it.carried_verdict && (
+                          <span
+                            title={`Decided ${String(it.carried_verdict).replace(/_/g, " ")} in ${String(it.carried_from ?? "the last run")}; still open`}
+                            className="ml-1.5 inline-flex items-center rounded bg-amber-100 px-1 text-[10px] font-semibold text-amber-800"
+                          >
+                            carried · {String(it.carried_verdict).replace(/_/g, " ")}
+                          </span>
+                        )}
                       </td>
                     );
                   })}
@@ -812,6 +821,8 @@ function ContextPanel({ c }: { c: CaseDetail }) {
       )}
 
       <RequestsPanel c={c} />
+
+      <FollowThroughPanel c={c} />
 
       <EvidencePanel c={c} canUpload={c.can_decide || c.status === "awaiting_review"} />
 

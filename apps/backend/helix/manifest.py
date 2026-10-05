@@ -254,12 +254,26 @@ class SpecialistSpec(Strict):
     tools: list[str] = Field(default_factory=list)
 
 
+class SectionSpec(Strict):
+    """One part of the model's answer, returned as its own field (e.g. root
+    cause, remediation, end state) so the case shows it, a reviewer can check
+    it and it can be reported on."""
+    id: str = Field(pattern=r"^[a-z][a-z0-9_]{0,40}$")
+    label: str
+    # What the section must say, given to the model.
+    hint: str = ""
+    # An answer without it is escalated to a person (like an ungrounded figure).
+    required: bool = False
+
+
 class ReasoningSpec(Strict):
     reasoner: Literal["llm", "none"] = "llm"
     skill: str = ""                    # instructions to the model
     tools: list[str] = Field(default_factory=list)   # tools the model may call
     specialists: list[SpecialistSpec] = Field(default_factory=list)
     output: Literal["verdict", "commentary", "classification"] = "commentary"
+    # The parts the model's answer is returned in; empty = one free-text comment.
+    sections: list[SectionSpec] = Field(default_factory=list)
 
 
 class PublishSpec(Strict):
@@ -301,6 +315,12 @@ class RequestsSpec(Strict):
     hold_decision: bool = True
     # During review, an answer sends its group back to the model with it.
     reinvestigate_on_answer: bool = True
+    # Remind the people asked after this many hours without an answer…
+    remind_after_hours: float | None = Field(default=None, gt=0)
+    # …and tell the reviewers (and whoever asked) after this many.
+    escalate_after_hours: float | None = Field(default=None, gt=0)
+    # May an answer come with a file (kept as the case's evidence)?
+    allow_attachments: bool = True
 
 
 class TollgateSpec(Strict):
@@ -313,6 +333,32 @@ class TollgateSpec(Strict):
     check: str = ""
     # Stopping the run needs the person's reason.
     stop_needs_comment: bool = True
+
+
+class ChecklistItem(Strict):
+    """One question a reviewer answers before approving (e.g. FOBO skill §14:
+    "Has every applicable FO test been performed or marked unable to test?")."""
+    id: str = Field(pattern=r"^[a-z][a-z0-9_]{0,40}$")
+    label: str
+    # Must be answered yes (or n/a) to approve; otherwise answering is optional.
+    required: bool = True
+    # What Helix already knows, shown next to the question: tests (the tests
+    # run, failed and not run), evidence (evidence and answers on the case),
+    # verdict, category, or a reasoning section id.
+    prefill: str | None = None
+
+
+class FollowThroughSpec(Strict):
+    """Check each decision in the next run of the same series: an item that is
+    gone has cleared; one still there carries what was decided
+    (carried_verdict, carried_from, carried_runs) for the rules to act on —
+    e.g. after an adjustment, BO + adjustments must equal FO on the next COB."""
+    # Case-key fields that stay the same run to run, e.g. [book].
+    series: list[str]
+    # The case-key field that advances, e.g. cob.
+    order_by: str
+    # Verdicts to follow; empty = every approved group.
+    verdicts: list[str] = Field(default_factory=list)
 
 
 class ReviewSpec(Strict):
@@ -341,6 +387,8 @@ class ReviewSpec(Strict):
     # May a reviewer hand their reviews to a colleague while away? The colleague
     # decides on their behalf, within the absent reviewer's data scope; both are recorded.
     allow_delegation: bool = False
+    # Questions a reviewer answers before approving a group (sign-off checklist).
+    checklist: list[ChecklistItem] = Field(default_factory=list)
 
 
 class RecurringSpec(Strict):
@@ -351,8 +399,20 @@ class RecurringSpec(Strict):
     min_runs: int = Field(default=2, ge=2, le=100)   # seen in at least this many runs, this one included
 
 
+class UnexplainedSpec(Strict):
+    """Items nothing explained: no check was positive (playbook), or the
+    category is one of these (e.g. FOBO's H Novel). Listed across cases for
+    the playbook's owners to turn into new checks."""
+    categories: list[str] = Field(default_factory=list)
+    lookback_days: int = Field(default=30, ge=1, le=365)
+
+
 class InsightsSpec(Strict):
     recurring: RecurringSpec | None = None
+    unexplained: UnexplainedSpec | None = None
+    # A judgement category whose model-proposed verdict reviewers approved
+    # unchanged this many times is listed as a candidate for a deterministic rule.
+    automation_after: int = Field(default=5, ge=2, le=1000)
 
 
 class EscalationSpec(Strict):
@@ -410,6 +470,8 @@ class Manifest(Strict):
     limits: LimitsSpec = Field(default_factory=LimitsSpec)
     insights: InsightsSpec = Field(default_factory=InsightsSpec)
     escalation: EscalationSpec | None = None
+    # Re-check decisions in the next run of the same series.
+    follow_through: FollowThroughSpec | None = None
     export: ExportSpec = Field(default_factory=ExportSpec)
     # What a group (a team's configuration of this capability, e.g. one rec group)
     # may set: dotted paths; "x.*" = anything under x. Owners stay the capability's.
@@ -539,6 +601,25 @@ def problems(m: Manifest) -> list[str]:
             out.append(f"tollgates.{step}: the run does not stop before `{step}` (add it to pause_before)")
     if m.steps and m.steps[0] in m.pause_before:
         out.append(f"pause_before: the run cannot stop before its first step `{m.steps[0]}`; there is nothing to check yet")
+    if m.follow_through:
+        ft = m.follow_through
+        out += [f"follow_through.series: `{f}` is not in case.key" for f in ft.series if f not in m.case.key]
+        if ft.order_by not in m.case.key:
+            out.append(f"follow_through.order_by: `{ft.order_by}` is not in case.key")
+        elif ft.order_by in ft.series:
+            out.append(f"follow_through.order_by: `{ft.order_by}` advances run to run; it cannot also be in series")
+    ids = [s.id for s in m.reasoning.sections]
+    if len(set(ids)) != len(ids):
+        out.append("reasoning.sections: each section needs its own id")
+    ids = [c.id for c in m.review.checklist]
+    if len(set(ids)) != len(ids):
+        out.append("review.checklist: each question needs its own id")
+    known = {"tests", "evidence", "verdict", "category"} | {s.id for s in m.reasoning.sections}
+    out += [f"review.checklist[{c.id}].prefill: `{c.prefill}` is not tests, evidence, verdict, category or a reasoning section"
+            for c in m.review.checklist if c.prefill and c.prefill not in known]
+    if (m.requests.remind_after_hours and m.requests.escalate_after_hours
+            and m.requests.escalate_after_hours <= m.requests.remind_after_hours):
+        out.append("requests.escalate_after_hours: escalate after the reminder, not before it")
     if m.knowledge.as_of and m.knowledge.as_of not in m.case.key:
         out.append(f"knowledge.as_of: `{m.knowledge.as_of}` is not in case.key")
     if "compare" in m.steps and m.compare is None:

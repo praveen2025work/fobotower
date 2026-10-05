@@ -81,6 +81,14 @@ set:
       # §8 reapplication — yesterday's adjustment rolling forward unchanged.
       - { id: REAPPLICATION, when: "prior_adjustment != 0 and abs(difference - prior_adjustment) < 0.01", category: J, side: BO,
           reason: "Matches the prior-day adjustment carried forward" }
+      # §4 step 9 / §11 end state (follow_through): what was decided on the last
+      # COB is re-tested. A break still open after an adjustment means
+      # BO + adjustments ≠ FO: the investigation stays open. A MONITOR that
+      # did not clear is no longer "just timing".
+      - { id: ADJUSTMENT_NOT_CLEARED, when: "carried_verdict in ['POST', 'CORRECT_AND_REPOST']", category: U, side: UNKNOWN,
+          reason: "{carried_verdict} approved on {carried_from}, yet the break is still open: BO + adjustments ≠ FO" }
+      - { id: MONITOR_NOT_CLEARED, when: "carried_verdict == 'MONITOR'", category: K, side: UNKNOWN,
+          reason: "Monitored on {carried_from} as a timing difference; it did not clear" }
       # Timing: a break open for two COBs or more is no longer "just timing" —
       # a person looks at it; a new late booking will clear tomorrow.
       - { id: AGED, when: "age_days >= 2", category: K, side: UNKNOWN,
@@ -161,6 +169,7 @@ set:
       W: { name: Books not complete,     determinism: deterministic, escalate_to: Operations, any_side: true }
       R: { name: Rejected posting,       determinism: deterministic, escalate_to: Operations }
       J: { name: Reapplication,          determinism: deterministic, escalate_to: Product Control }
+      U: { name: Adjustment did not clear, determinism: judgement,   escalate_to: Product Control }
     default_category: H
     sides: [FO, BO]
     verdicts:
@@ -177,6 +186,7 @@ set:
       W: { FO: ESCALATE,    BO: ESCALATE }      # R5: hold until the books are complete
       R: { FO: CORRECT_AND_REPOST, BO: CORRECT_AND_REPOST }
       J: { FO: POST,        BO: POST }          # §8: carry-forward matches → POST (P1 still applies)
+      U: { FO: ESCALATE,    BO: ESCALATE }      # §11: the end state failed; the investigation stays open
     guards:
       - verdict: POST
         when: "side == 'FO'"
@@ -187,6 +197,12 @@ set:
     verdict_policy: [materiality_threshold, posting_policy_reference]
     comment: "{category_name} ({side}): {reasons}. Verdict per playbook; owner {escalate_to}."
     side_names: { FO: front office, BO: back office, UNKNOWN: side not proven }
+  # §4 step 9 end state: each approved adjustment and MONITOR is re-tested on
+  # the book's next COB. Cleared or still open shows on the earlier case.
+  follow_through:
+    series: [book]
+    order_by: cob
+    verdicts: [POST, CORRECT_AND_REPOST, MONITOR]
   group_by: [category, side]
   # Groups named in business words: "Redemption break · back office".
   group_label: "{category_name} · {side_name}"

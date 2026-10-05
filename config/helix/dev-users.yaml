@@ -31,6 +31,10 @@ users:
     name: Tom (Prime desk trader; answers controllers' questions)
     roles: [PRIME_DESK]
     data_scopes: {}
+  ravi:
+    name: Ravi (Rates desk trader; answers controllers' questions)
+    roles: [RATES_DESK]
+    data_scopes: {}
   olga:
     name: Olga (Operations, MOTIF postings)
     roles: [FOBO_OPERATIONS]

@@ -32,6 +32,7 @@ connectors:
     classification: confidential
     tools:
       positions: { description: "End-of-day FO positions and MTM per book and COB", scope: { arg: book, key: book } }
+      trades:    { description: "FO trades per book and COB (skill §7 trade level)", scope: { arg: book, key: book } }
 
   # MB Rec: the breaks FOBO investigates, already reconciled (break.investigation).
   mbrec:
@@ -54,6 +55,7 @@ connectors:
       positions:       { description: "End-of-day BO positions and MTM per book and COB", scope: { arg: book, key: book } }
       booking_events:  { description: "Booking and amendment events behind a book's breaks", scope: { arg: book, key: book } }
       break_snapshots: { description: "Dated FO/BO snapshots per instrument", scope: { arg: book, key: book } }
+      trades:          { description: "BO trades per book and COB (skill §7 trade level)", scope: { arg: book, key: book } }
 
   reporting:
     name: Management reporting pack

@@ -119,3 +119,46 @@ async def test_late_exceptions_open_a_follow_up_with_only_the_new_breaks(api, mo
     again = (await api.get(f"/api/cases/{day['case_id']}", headers=api.as_user("frank"))).json()
     assert [f["case_id"] for f in again["follow_ups"]] == [nothing["case_id"], follow["case_id"]]
     assert len(again["items"]) == 3                            # the day's case is unchanged
+
+
+async def test_rates_is_a_second_group_on_the_same_capability(api):
+    """FOBO Rates: the same skill, its own books, reviewers and thresholds."""
+    res = await api.post(f"/api/capabilities/{CAP}/cases", headers=api.as_user("rita"),
+                         json={"case_key": {"book": "RATES-LDN-01", "cob": "2026-09-29"}, "team_group": "fobo-rates"})
+    assert res.status_code == 201, res.text
+    case = res.json()
+    assert case["status"] == "paused_before_reason" and case["waiting_on"]["roles"] == ["FOBO_RATES_CONTROLLER"]
+    assert {c["tool"] for c in case["tool_calls"]} >= {"mbrec.breaks", "motif.break_snapshots"}
+    after = (await api.post(f"/api/cases/{case['case_id']}/gates/reason", headers=api.as_user("rita"),
+                            json={"action": "continue", "idempotency_key": uuid.uuid4().hex})).json()
+    assert after["status"] == "awaiting_review", after.get("error")
+    # Product Control confirmed the Rates materiality and posting policy: a POST is not flagged
+    posts = [g["finding"] for g in after["groups"] if g["finding"].get("verdict") == "POST"]
+    assert all(not f.get("requires_confirmation") for f in posts)
+    # Rita sees London books only; FOBO Prime's controller is not a Rates reviewer
+    ny = await api.post(f"/api/capabilities/{CAP}/cases", headers=api.as_user("rita"),
+                        json={"case_key": {"book": "RATES-NY-01", "cob": "2026-09-29"}, "team_group": "fobo-rates"})
+    assert ny.status_code in (403, 404)
+    gate = await api.post(f"/api/cases/{case['case_id']}/decisions", headers=api.as_user("frank"),
+                          json={"group_id": after["groups"][0]["group_id"], "action": "approve", "comment": "x",
+                                "idempotency_key": uuid.uuid4().hex})
+    assert gate.status_code in (403, 404)
+
+
+async def test_the_model_can_go_to_trade_level_and_a_missing_side_is_judgement(api, monkeypatch):
+    """§7: CATS and MOTIF trades are the model's tools; §8: a missing side
+    (not a late booking) is a judgement call, never settled by the table."""
+    from helix.stub_connectors import finance
+    key = ("PRIME-MB-04", "2026-09-24")
+    known = finance.mbrec_breaks(*key)["rows"][0]
+    missing = {**known, "instrument": "XCCY 7Y", "break_id": "MBR-MISS", "break_type": "missing_motif",
+               "motif_amount": None, "age_days": 0, "journal_status": "posted", "static_present": True,
+               "prior_adjustment": 0.0}
+    monkeypatch.setitem(finance.LATE_BREAKS, key, [missing])
+    after = await _continue(api, await _open(api, *key))
+    item = next(i for i in after["items"] if i["instrument"] == "XCCY 7Y")
+    assert (item["cause"], item["category"]) == ("MISSING_SIDE", "M")
+    found = _findings(after)["M"]
+    assert found["decided_by"].startswith("llm") and found["sme_review"] is True
+    model_tools = {c["tool"] for c in after["tool_calls"] if c["requested_by"] == "llm"}
+    assert {"cats.trades", "motif.trades"} <= model_tools

@@ -36,17 +36,21 @@ async def test_commentary_approved_unchanged_again_and_again_is_a_rule_candidate
     assert not any(a["group_key"]["account"].startswith("71") for a in out["automation"])
 
 
-async def test_fobo_lists_what_no_check_explained(api):
-    opened = []
-    for cob in ("2026-09-22", "2026-09-23", "2026-09-24", "2026-09-25", "2026-09-26", "2026-09-29"):
-        opened.append((await api.post("/api/capabilities/break.investigation/cases", headers=api.as_user("frank"),
-                                      json={"case_key": {"book": "PRIME-MB-01", "cob": cob},
-                                            "team_group": "fobo-prime"})).json())
+async def test_fobo_lists_what_no_check_explained(api, monkeypatch):
+    from helix.stub_connectors import finance
+
+    key = ("PRIME-MB-01", "2026-09-29")
+    known = finance.mbrec_breaks(*key)["rows"][0]
+    # A break no snapshot and no scenario explains: a novel break (H).
+    novel = {**known, "instrument": "XCCY 7Y", "break_id": "MBR-NOVEL", "break_type": "amount_break",
+             "age_days": 0, "journal_status": "posted", "static_present": True, "prior_adjustment": 0.0}
+    monkeypatch.setitem(finance.LATE_BREAKS, key, [novel])
+    case = (await api.post("/api/capabilities/break.investigation/cases", headers=api.as_user("frank"),
+                           json={"case_key": {"book": key[0], "cob": key[1]}, "team_group": "fobo-prime"})).json()
+    assert next(i for i in case["items"] if i["instrument"] == "XCCY 7Y")["category"] == "H"
     out = (await api.get("/api/capabilities/break.investigation/learning?team_group=fobo-prime",
                          headers=api.as_user("frank"))).json()
-    expected = {(c["case_id"], i["item_id"]) for c in opened for i in c["items"]
-                if i["category"] == "H" or not i.get("cause")}
-    listed = {(r["case_id"], r["item_id"]) for r in out["unexplained"]
-              if r["case_id"] in {c["case_id"] for c in opened}}
-    assert expected and listed == expected
-    assert {r["why"] for r in out["unexplained_by_reason"]} >= {"no cause check explained it"}
+    expected = {i["item_id"] for i in case["items"] if i["category"] == "H" or not i.get("cause")}
+    listed = {r["item_id"] for r in out["unexplained"] if r["case_id"] == case["case_id"]}
+    assert "XCCY 7Y" in listed and listed == expected
+    assert "no cause check explained it" in {r["why"] for r in out["unexplained_by_reason"]}

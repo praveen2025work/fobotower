@@ -165,6 +165,49 @@ def cats_positions(book: str, cob: str) -> dict:
     return {"rows": _fo_positions(book, cob)}
 
 
+def _trades(book: str, cob: str, instrument: str | None) -> list[dict]:
+    """The trades behind each FO position: quantity, direction, consideration,
+    price, pull factor and settlement — what the skill's §7 validates."""
+    rows = []
+    for pos in _fo_positions(book, cob):
+        if instrument and pos["instrument"] != instrument:
+            continue
+        r = _rng("trades", book, cob, pos["instrument"])
+        for n in range(1, r.randint(2, 4) + 1):
+            qty = r.randint(1, 200) * 1000
+            price = round(r.uniform(90, 110), 4)
+            rows.append({"trade_id": f"T-{zlib.crc32(f'{book}|{pos['instrument']}|{n}'.encode()) % 10**7:07d}",
+                         "instrument": pos["instrument"], "quantity": qty,
+                         "direction": r.choice(["buy", "sell"]), "price": price,
+                         "consideration": round(qty * price / 100, 2), "pull_factor": 1.0,
+                         "settlement_date": cob, "settled": r.random() > 0.1})
+    return rows
+
+
+def cats_trades(book: str, cob: str, instrument: str | None = None) -> dict:
+    """Front-office (CATS) trades for a book and COB (optionally one instrument)."""
+    return {"rows": _trades(book, cob, instrument)}
+
+
+def motif_trades(book: str, cob: str, instrument: str | None = None) -> dict:
+    """Back-office (MOTIF) trades for a book and COB (optionally one instrument):
+    the same trades as booked in MOTIF — a missing trade, or a different
+    quantity, price or pull factor, is what a trade-level investigation finds."""
+    r = _rng("motif-trades", book, cob)
+    rows = []
+    for t in _trades(book, cob, instrument):
+        roll = r.random()
+        if roll < 0.06:
+            continue                                         # not in MOTIF
+        if roll < 0.12:
+            t = {**t, "pull_factor": 0.67}                   # factor applied in MOTIF only
+        elif roll < 0.16:
+            t = {**t, "quantity": t["quantity"] - 1000,
+                 "consideration": round((t["quantity"] - 1000) * t["price"] / 100, 2)}
+        rows.append(t)
+    return {"rows": rows}
+
+
 def motif_positions(book: str, cob: str) -> dict:
     """Back-office (MOTIF) positions and MTM for one book and COB date."""
     r = _rng("motif-diff", book, cob)
@@ -260,6 +303,7 @@ def booking_events(book: str, cob: str, break_type: str | None = None,
 def build_cats() -> MCPServer:
     server = MCPServer(name="cats", instructions="CATS front-office positions (stub).")
     server.add_tool(cats_positions, name="positions", description=cats_positions.__doc__)
+    server.add_tool(cats_trades, name="trades", description=cats_trades.__doc__)
     return server
 
 
@@ -267,6 +311,7 @@ def build_motif() -> MCPServer:
     server = MCPServer(name="motif", instructions="MOTIF back-office positions and events (stub).")
     server.add_tool(motif_positions, name="positions", description=motif_positions.__doc__)
     server.add_tool(booking_events, name="booking_events", description=booking_events.__doc__)
+    server.add_tool(motif_trades, name="trades", description=motif_trades.__doc__)
     server.add_tool(break_snapshots, name="break_snapshots", description=break_snapshots.__doc__)
     return server
 

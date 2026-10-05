@@ -1,24 +1,25 @@
-# FOBO Prime on Break investigation: the breaks come from MB Rec, which has
-# already reconciled CATS (front office) to MOTIF (back office). Helix does the
-# manual part a controller does today:
+# FOBO Rates on Break investigation: the same capability and the same
+# controllers' skill as FOBO Prime (fobo-prime.yaml) — MB Rec's breaks, the
+# §8 scenarios, timing, FO-1…BO-6, the verdict table, R2, P1, follow-through,
+# the §12 sections and §14 checklist — run by the Rates team with its own:
 #
-#   load      MB Rec's open breaks for the book and COB (no re-matching)
-#   enrich    the dated FO/BO snapshot per instrument (motif.break_snapshots)
-#   resolve   the book's desk and escalation team, as of the COB
-#   classify  timing first (new late booking → MONITOR; open 2+ COBs → aged,
-#             a person decides), then FOBO's six cause checks and tests
-#   tollgate  a controller approves the breaks and the classification before
-#             the model is asked anything, and adds what the desk said
-#   reason    the verdict table settles what it can; the model investigates the
-#             rest with booking events and MB Rec's break history
-#   review    the controller signs off; DO_NOT_POST and escalations raise a
-#             ticket for the owning team
-group: fobo-prime
-name: FOBO Prime — MB Rec breaks
-description: Prime books' breaks from MB Rec (CATS vs MOTIF already reconciled), investigated with FOBO's playbook, timing checks and the desk's input.
+#   books and data scope   RATES-LDN-01…04, RATES-NY-01…02 (scope: book)
+#   owners and reviewers   rita and raj (HELIX_FOBO_RATES_OWNER); FOBO_RATES_CONTROLLER signs off
+#   thresholds             materiality and the posting policy confirmed by Product
+#                          Control (so a POST is not flagged for confirmation);
+#                          the FO-4/FO-6 tolerances still to confirm
+#   due                    12:00 the business day after the COB (Prime 11:00)
+#   instructions           Rates-specific: curve datasets and fixings first
+#
+# The Rates rec group that matches CATS to MOTIF itself
+# (groups/recon.investigation/cats-motif-rates.yaml) stays for books MB Rec
+# does not reconcile.
+group: fobo-rates
+name: FOBO Rates — MB Rec breaks
+description: Rates books' breaks from MB Rec (London, New York), investigated with the FOBO skill; Rates thresholds and reviewers.
 owners:
-  people: [frank]
-  role: HELIX_FOBO_RECON_OWNER
+  people: [rita, raj]
+  role: HELIX_FOBO_RATES_OWNER
   four_eyes: true
 set:
   case:
@@ -37,7 +38,7 @@ set:
     opens_as: helix-scheduler
     # Signed off by 11:00 on the business day after the COB; reviewers are
     # reminded two hours before, owners told if it is missed.
-    due: { from: cob, business_days: 1, at: "11:00", warn_hours: 2 }
+    due: { from: cob, business_days: 1, at: "12:00", warn_hours: 2 }
   # MB Rec has already reconciled CATS to MOTIF: read its open breaks.
   items:
     load: { tool: mbrec.breaks, args: { book: $case.book, cob: $case.cob } }
@@ -59,8 +60,8 @@ set:
     - { node: "book:{book}", path: [belongs_to, escalates_to], as: owner_team }
   # Rule P1: a threshold Product Control has not confirmed stays null.
   policy:
-    materiality_threshold: { value: null, unit: GBP }
-    posting_policy_reference: { value: null }
+    materiality_threshold: { value: 10000, unit: GBP }               # confirmed by Product Control
+    posting_policy_reference: { value: PC-RATES-2026-03 }
     mtm_market_movement_tolerance: { value: null, unit: GBP }      # FO-4
     calculation_reasonable_tolerance: { value: null, unit: GBP }   # FO-6
     same_day_resolution_cutoff: { value: null, unit: time (IST) }  # §10, not yet used by a rule
@@ -222,7 +223,9 @@ set:
     # scenarios — already ran as the playbook before the model is asked.
     skill: |
       You are a senior Product Controller investigating FOBO breaks on the CATS
-      (front office) vs MOTIF (back office) reconciliation. You do not guess, you
+      (front office) vs MOTIF (back office) reconciliation for Rates books.
+      Check curve datasets and fixings first: most Rates breaks are a curve or
+      fixing taken at a different time. You do not guess, you
       do not default to posting, and you do not stop at the first plausible
       explanation. The objective is to restore FO PnL = BO PnL + FOBO adjustments
       truthfully; plugging an adjustment to force it is a failure.
@@ -300,7 +303,7 @@ set:
   # sends it back to the model with the answer as context.
   requests:
     targets:
-      - { id: desk,         name: "Prime desk (trader)",  roles: [PRIME_DESK] }
+      - { id: desk,         name: "Rates desk (trader)",  roles: [RATES_DESK] }
       - { id: operations,   name: "Operations (MOTIF)",   roles: [FOBO_OPERATIONS] }
       - { id: cats-support, name: "CATS support",         roles: [CATS_SUPPORT] }
     hold_decision: true
@@ -329,7 +332,7 @@ set:
     bulk_exclude: [confirmation, judgement]
     confirm: tick_and_comment
     allow_delegation: true
-    roles: [FOBO_CONTROLLER]
+    roles: [FOBO_RATES_CONTROLLER]
     require_comment: [reject, escalated]
     # §14 Completion checklist: the nine questions, answered before approval,
     # with what Helix already knows shown next to each.

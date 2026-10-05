@@ -44,8 +44,11 @@ async def test_a_new_capability_file_and_its_groups_arrive_as_first_drafts():
         await s.commit()
     assert await config_sync.sync() == [
         f"{cap}: drafted a new version — an owner approves it",
-        f"{cap}/fobo-prime: waits for capability {cap} to be approved"]
+        f"{cap}/fobo-prime: waits for capability {cap} to be approved",
+        f"{cap}/fobo-rates: waits for capability {cap} to be approved"]
     await capabilities.approve(cap, 1, await StubEntitlement().get("erin"))
-    assert await config_sync.sync() == [f"{cap}/fobo-prime: drafted a new version — a group owner approves it"]
+    assert await config_sync.sync() == [f"{cap}/fobo-prime: drafted a new version — a group owner approves it",
+                                        f"{cap}/fobo-rates: drafted a new version — a group owner approves it"]
     await team_groups.approve(cap, "fobo-prime", 1, await StubEntitlement().get("frank"))
+    await team_groups.approve(cap, "fobo-rates", 1, await StubEntitlement().get("raj"))
     assert await config_sync.sync() == []

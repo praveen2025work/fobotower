@@ -22,7 +22,7 @@ from helix import capabilities, deadlines, escalation, review, rules, runner
 from helix.db import get_session
 from helix.entitlement import Caller
 from helix.manifest import Manifest
-from helix.models import Case, CaseItem, Decision, ProposalGroup, PublishApproval, ToolCall
+from helix.models import Case, CaseItem, Decision, GateDecision, ProposalGroup, PublishApproval, ToolCall
 from helix.observability import span
 from helix.rules import render
 
@@ -83,7 +83,10 @@ async def visible_cases(caller: Caller, *, capability_id: str | None = None,
     if team_group:
         query = query.where(Case.team_group == team_group)
     if statuses:
-        query = query.where(Case.status.in_(statuses))
+        # "paused_before_*" = waiting at any tollgate
+        exact = [x for x in statuses if not x.endswith("*")]
+        prefixes = [x[:-1] for x in statuses if x.endswith("*")]
+        query = query.where(or_(Case.status.in_(exact), *[Case.status.startswith(p) for p in prefixes]))
     query = query.order_by(Case.opened_at.desc(), Case.case_id).offset(offset)
     if limit:
         query = query.limit(limit)
@@ -178,7 +181,63 @@ async def _not_switched_off(capability_id: str, team_group: str | None) -> None:
         raise CaseError(str(e)) from e
 
 
-RERUNNABLE = ("failed", "escalated")
+RERUNNABLE = ("failed", "escalated", "stopped")
+GATE_PREFIX = "paused_before_"
+
+
+def gate_step(status: str) -> str | None:
+    """The step a case waits before at a tollgate, or None."""
+    return status[len(GATE_PREFIX):] if status.startswith(GATE_PREFIX) else None
+
+
+def may_pass_gate(caller: Caller, m: Manifest, step: str) -> bool:
+    return caller.has_any_role(m.gate(step).roles)
+
+
+async def pass_gate(case_id: str, step: str, action: str, comment: str | None,
+                    idempotency_key: str, caller: Caller) -> dict:
+    """A person at a tollgate: `continue` lets the run go on to `step`; `stop`
+    ends it there (it can be re-run as a new attempt). Recorded either way."""
+    if action not in ("continue", "stop"):
+        raise CaseError("a tollgate is passed with continue or stop")
+    async with get_session() as s:
+        case = await s.get(Case, case_id)
+        if case is None:
+            raise LookupError(case_id)
+        m = await _pinned(case)
+        if not may_see_case(caller, m, case.case_key) and not may_pass_gate(caller, m, step):
+            raise LookupError(case_id)
+        existing = (await s.execute(select(GateDecision).where(
+            GateDecision.idempotency_key == idempotency_key))).scalar_one_or_none()
+        if existing is not None:
+            return {"replayed": True, "status": case.status}
+        if gate_step(case.status) != step:
+            raise CaseError(f"case is {case.status}, not waiting at the tollgate before `{step}`")
+        if not may_see_case(caller, m, case.case_key) or not may_pass_gate(caller, m, step):
+            raise PermissionError(f"passing this tollgate needs one of: {', '.join(m.gate(step).roles)}")
+        if action == "stop" and m.gate(step).stop_needs_comment and not (comment or "").strip():
+            raise CaseError("say why you stop the run: a comment is required")
+        passed = list((await s.execute(select(GateDecision.step).where(
+            GateDecision.case_id == case_id, GateDecision.action == "continue")
+            .order_by(GateDecision.decided_at))).scalars())
+        s.add(GateDecision(gate_id=uuid.uuid4().hex, case_id=case_id, step=step, action=action,
+                           comment=(comment or "").strip() or None, decided_by=caller.user_id,
+                           idempotency_key=idempotency_key))
+        if action == "stop":
+            case.status, case.outcome = "stopped", "stopped"
+            case.error = f"Stopped before `{step}` by {caller.user_id}: {(comment or '').strip()}"
+        else:
+            case.status = "running"
+        await s.commit()
+    with span("gate.decision", root=True, case_id=case_id, step=step, action=action, user=caller.user_id):
+        if action == "continue":
+            await runner.submit(case_id, "resume", {"gates_passed": [*passed, step]})
+        else:
+            from helix import notify
+            await notify.case_changed(case_id)
+    async with get_session() as s:
+        status = (await s.get(Case, case_id)).status
+    return {"replayed": False, "status": status}
 
 
 async def rerun_case(case_id: str, caller: Caller) -> str:
@@ -193,7 +252,7 @@ async def rerun_case(case_id: str, caller: Caller) -> str:
         if latest.case_id != case_id:
             raise CaseError(f"a newer attempt exists: {latest.case_id}")
         if case.status not in RERUNNABLE:
-            raise CaseError(f"case is {case.status}; only a failed or escalated case can be re-run")
+            raise CaseError(f"case is {case.status}; only a failed, escalated or stopped case can be re-run")
     version, group_version, m = await _resolve(case.capability_id, case.team_group, caller)
     await _not_switched_off(case.capability_id, case.team_group)
     key = _check_key(m, case.case_key, caller)
@@ -601,6 +660,8 @@ async def case_detail(case_id: str, caller: Caller) -> dict:
         calls = (await s.execute(select(ToolCall).where(ToolCall.case_id == case_id)
                                  .order_by(ToolCall.called_at))).scalars().all()
         release = await s.get(PublishApproval, case_id)
+        gates = (await s.execute(select(GateDecision).where(GateDecision.case_id == case_id)
+                                 .order_by(GateDecision.decided_at))).scalars().all()
     latest = _latest(decisions)
     in_group = {i for g in groups for i in g.item_ids}
     tickets = await escalation.for_case(case_id)
@@ -673,12 +734,21 @@ async def case_detail(case_id: str, caller: Caller) -> dict:
                     if m.publish else None),
         # Who the case waits on, and — when it is not this caller — why not, in plain words.
         "waiting_on": _waiting_on(case, m, caller, decisions, may_decide, on_behalf_of),
+        "tollgates": [{"step": st, "roles": m.gate(st).roles, "check": m.gate(st).check}
+                      for st in m.pause_before if st not in ("review", "publish")],
+        "gate_decisions": [{"step": g.step, "action": g.action, "comment": g.comment,
+                            "decided_by": g.decided_by, "decided_at": g.decided_at} for g in gates],
     }
 
 
 def _waiting_on(case: Case, m: Manifest, caller: Caller, decisions: list[Decision],
                 may_decide: bool, on_behalf_of: str | None) -> dict | None:
     deciders = {d.decided_by for d in decisions}
+    if step := gate_step(case.status):
+        gate = m.gate(step)
+        why_not = None if may_pass_gate(caller, m, step) else f"passing this tollgate needs one of: {', '.join(gate.roles)}"
+        return {"step": "gate", "gate": step, "roles": list(gate.roles), "check": gate.check,
+                "stop_needs_comment": gate.stop_needs_comment, "you": why_not is None, "why_not": why_not}
     if case.status == "awaiting_review":
         why_not = None
         if not may_decide:

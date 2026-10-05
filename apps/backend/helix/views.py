@@ -11,7 +11,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import select
 
 from helix import capabilities, deadlines, review
-from helix.cases import visible_cases
+from helix.cases import gate_step, visible_cases
 from helix.db import get_session
 from helix.entitlement import Caller
 from helix.manifest import Manifest
@@ -68,6 +68,7 @@ def _summary(c: Case, m: Manifest, groups: list[ProposalGroup], decided: set[str
         "judgement_calls": flagged.get("judgement", 0),
         "case_id": c.case_id, "capability_id": c.capability_id, "capability_name": m.name,
         "case_label": m.case.label, "subject": c.subject, "status": c.status,
+        "gate": gate_step(c.status),
         "team_group": c.team_group,
         "outcome": c.outcome, "opened_at": c.opened_at, "opened_by": c.opened_by,
         "groups": len(groups), "proposed": statuses.get("proposed", 0),
@@ -79,6 +80,8 @@ def _summary(c: Case, m: Manifest, groups: list[ProposalGroup], decided: set[str
 def _my_action(c: Case, m: Manifest, caller: Caller, deciders: set[str]) -> str | None:
     if c.status == "awaiting_review" and caller.has_any_role(m.review.roles):
         return "review"
+    if (step := gate_step(c.status)) and caller.has_any_role(m.gate(step).roles):
+        return "gate"
     if (c.status == "awaiting_publish" and m.publish
             and caller.has_any_role(m.publish.approver_roles) and caller.user_id not in deciders):
         return "release"
@@ -90,7 +93,7 @@ async def inbox(caller: Caller) -> list[dict]:
     and, while they cover for an absent colleague, that colleague's reviews
     on capabilities that allow delegation (marked with `acting_for`)."""
     visible = [(c, m, None) for c, m in await _visible_cases(
-        caller, statuses=("awaiting_review", "awaiting_publish"))]
+        caller, statuses=("awaiting_review", "awaiting_publish", "paused_before_*"))]
     seen = {c.case_id for c, _, _ in visible}
     for absent in await review.covering_for(caller):
         for c, m in await _visible_cases(absent, statuses=("awaiting_review",)):
@@ -314,7 +317,7 @@ async def operations(caller: Caller) -> dict:
     cost_before, _ = usage([c.case_id for c, _ in cases_before])
     p95_now = _p95([(t.latency_ms or 0) / 1000 for t in calls_now if t.allowed])
     p95_before = _p95([(t.latency_ms or 0) / 1000 for t in calls_before if t.allowed])
-    pending = sum(1 for c, _ in visible if c.status in ("awaiting_review", "awaiting_publish"))
+    pending = sum(1 for c, _ in visible if c.status in ("awaiting_review", "awaiting_publish") or gate_step(c.status))
 
     # One fleet row per capability × team group, in aria-ai's FleetAgent shape.
     from helix import groups as team_groups

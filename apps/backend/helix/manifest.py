@@ -272,6 +272,18 @@ class PublishSpec(Strict):
                 for k, v in self.args.items() if isinstance(v, str) and v.startswith(wrong)]
 
 
+class TollgateSpec(Strict):
+    """A person approves the run's work so far before it goes on — e.g. the
+    matched breaks before the model investigates them. The run waits at the
+    gate (pause_before) until someone continues it or stops it."""
+    # Who may pass it; empty = the capability's reviewers.
+    roles: list[str] = Field(default_factory=list)
+    # What the person checks, shown at the gate, e.g. "Are both sides complete?"
+    check: str = ""
+    # Stopping the run needs the person's reason.
+    stop_needs_comment: bool = True
+
+
 class ReviewSpec(Strict):
     roles: list[str]                   # who may decide
     approve_by: Literal["group"] = "group"
@@ -344,6 +356,9 @@ class Manifest(Strict):
     policy: dict[str, PolicyValue] = Field(default_factory=dict)
     steps: list[str]
     pause_before: list[str] = Field(default_factory=lambda: ["review"])
+    # Who passes each human stop other than review and publish, and what they check.
+    # A stop without an entry here is passed by the reviewers.
+    tollgates: dict[str, TollgateSpec] = Field(default_factory=dict)
     group_by: list[str] = Field(default_factory=list)
     # How a group is named, a template over its key fields and, with a
     # playbook, category_name and side_name — e.g. "{category_name} · {side_name}".
@@ -391,7 +406,13 @@ class Manifest(Strict):
         return self.tools_used() - self.write_tools()
 
     def visible_to_roles(self) -> set[str]:
-        return set(self.review.roles) | ({self.owners.role} if self.owners.role else set())
+        return (set(self.review.roles) | ({self.owners.role} if self.owners.role else set())
+                | {r for g in self.tollgates.values() for r in g.roles})
+
+    def gate(self, step: str) -> TollgateSpec:
+        """The tollgate before `step` (the reviewers pass it unless it names others)."""
+        g = self.tollgates.get(step) or TollgateSpec()
+        return g if g.roles else g.model_copy(update={"roles": list(self.review.roles)})
 
 
 def _expressions(m: Manifest) -> list[tuple[str, str | None]]:
@@ -469,6 +490,13 @@ def problems(m: Manifest) -> list[str]:
                 out.append(f"playbook finding {f.id}: unknown test `{f.test}`")
             if f.indicates and f.indicates not in pb.categories:
                 out.append(f"playbook finding {f.id}: unknown category `{f.indicates}`")
+    for step in m.tollgates:
+        if step in ("review", "publish"):
+            out.append(f"tollgates.{step}: `{step}` has its own controls (review, publish)")
+        elif step not in m.pause_before:
+            out.append(f"tollgates.{step}: the run does not stop before `{step}` (add it to pause_before)")
+    if m.steps and m.steps[0] in m.pause_before:
+        out.append(f"pause_before: the run cannot stop before its first step `{m.steps[0]}`; there is nothing to check yet")
     if m.knowledge.as_of and m.knowledge.as_of not in m.case.key:
         out.append(f"knowledge.as_of: `{m.knowledge.as_of}` is not in case.key")
     if "compare" in m.steps and m.compare is None:
@@ -514,7 +542,7 @@ def problems(m: Manifest) -> list[str]:
         head = path.split(".")[0]
         if head not in top:
             out.append(f"configurable: `{path}` is not a manifest field")
-        if head in ("id", "owners", "configurable", "steps", "pause_before", "publish", "retention", "limits"):
+        if head in ("id", "owners", "configurable", "steps", "pause_before", "tollgates", "publish", "retention", "limits"):
             out.append(f"configurable: `{path}` cannot be set by a group "
                        "(identity, ownership, workflow gates, write-back, retention and spend limits stay with the capability)")
     for sp in m.reasoning.specialists:

@@ -30,13 +30,17 @@ const STATUS_STYLES: Record<string, string> = {
   approve: "bg-green-100 text-green-700 border-green-200",
   reject: "bg-red-100 text-red-700 border-red-200",
   failed: "bg-red-100 text-red-700 border-red-200",
+  gate: "bg-amber-100 text-amber-800 border-amber-200",
+  stopped: "bg-surface-100 text-surface-600 border-surface-300",
   read: "bg-surface-100 text-surface-600 border-surface-200",
   write: "bg-orange-100 text-orange-700 border-orange-200",
 };
 
 function StatusBadge({ status, className }: StatusBadgeProps) {
+  // A run waiting at a tollgate: "paused_before_reason" reads "tollgate: reason".
+  const gate = status.startsWith("paused_before_") ? status.slice("paused_before_".length) : null;
   const style =
-    STATUS_STYLES[status.toLowerCase()] ?? STATUS_STYLES.unknown;
+    STATUS_STYLES[gate ? "gate" : status.toLowerCase()] ?? STATUS_STYLES.unknown;
 
   return (
     <span
@@ -46,7 +50,7 @@ function StatusBadge({ status, className }: StatusBadgeProps) {
         className,
       )}
     >
-      {status.replace(/_/g, " ")}
+      {gate ? `tollgate: ${gate}` : status === "gate" ? "tollgate" : status.replace(/_/g, " ")}
     </span>
   );
 }

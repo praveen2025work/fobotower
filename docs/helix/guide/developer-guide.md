@@ -216,6 +216,7 @@ Source of truth: `apps/backend/helix/manifest.py` (Pydantic; unknown keys are re
 | `policy` | {name: {value, unit?}} | {} | thresholds used in expressions as `policy.<name>`; `null` = not confirmed |
 | `steps` | list | required | see §7 |
 | `pause_before` | list | `[review]` | the run waits for people before these steps |
+| `tollgates` | {step: {roles, check, stop_needs_comment}} | {} | who passes each stop other than review and publish, and what they check (§7a) |
 | `group_by` | list | [] (one group) | item fields that form a group |
 | `rules` | list[Rule] | [] | settled before the model |
 | `reasoning` | ReasoningSpec | | the model |
@@ -327,6 +328,64 @@ Tool arguments can use `$case.<field>`, `$case_id` and `$subject`.
 
 ◆ marks a gate, which is mandatory. ⏸ marks a pause (`pause_before`). The order is checked
 on submit: every step's inputs must be produced by an earlier step.
+
+### How the steps feed the model
+
+The steps run in order, and each one adds to what the model is given. The model never
+compares the two systems itself: `match` does that in code (keys plus tolerance), so the
+breaks are exact, repeatable and the same on every run. By the time a group reaches
+`reason`, each item carries:
+
+1. **Both sides' values and the difference** — from `match` (or `load` and `compare`).
+2. **Extra data joined on** — from `enrich`, e.g. dated FO/BO snapshots.
+3. **Reference data as of the business date** — from `resolve`, e.g. the owning desk and
+   team.
+4. **The playbook's work** — from `classify`: every cause check (negatives kept), every
+   validation test (pass, fail or not run), the category and the side.
+5. **Its group, and priors** — from `group`: similar approved decisions from the
+   knowledge graph.
+
+The model then gets one group at a time with all of that, plus:
+- the read tools the capability allows (through the gateway);
+- its instructions;
+- any specialists.
+
+What the rules or the verdict table settle never reaches the model. Whatever it proposes
+is checked afterwards by the guards and `validate`.
+
+## 7a. Tollgates: a person approves the work so far
+
+Any step except the first can have a **tollgate** (`pause_before` plus an optional
+`tollgates` entry). The run stops before that step and waits for a person, who sees what the
+earlier steps produced and then either:
+
+- **continues** — the run resumes at that step from its checkpoint, or
+- **stops** — the case ends as `stopped`, with their reason, and may be re-run as a new
+  attempt.
+
+```yaml
+pause_before: [reason, review, publish]
+tollgates:
+  reason:                       # before the model is asked anything
+    roles: [FIN_REVIEWER]       # empty = the capability's reviewers
+    check: Do the variances tie to the ledger, and is the budget this month's?
+    stop_needs_comment: true
+```
+
+- **How it shows.** The case status is `paused_before_<step>`. It appears in the inbox of
+  people with those roles (action `gate`), notifies them, and counts against the deadline.
+- **How it is recorded.** Each decision is stored in `helix_gate_decision` and shown on the
+  case.
+- **What crosses it.** A run crosses a tollgate only through `POST /api/cases/{id}/gates/{step}`
+  (`{action: continue|stop, comment, idempotency_key}`). A recovery or restart never skips
+  it.
+- **Where to set it.** In *Configure*: each step has a "Tollgate" switch with who passes it
+  and what they check.
+
+Typical places:
+- before `reason`: check the matched data before any model spend;
+- before `group`: check the playbook's classification;
+- before `enrich`: check the match is complete.
 
 ## 8. Expressions
 
@@ -441,7 +500,7 @@ All routes are under `/api` and are identified by the identity header.
 | Area | Routes |
 |---|---|
 | Me / platform | `GET /me`, `GET /platform`, `GET /overview`, `GET /operations`, `GET /inbox`, `GET /audit` |
-| Capabilities | `GET /capabilities`, `GET /capabilities/{id}`, `POST /capabilities/{id}/versions`, `POST /capabilities/{id}/versions/{v}/approve`, `GET …/versions/{a}/diff/{b}`, `GET …/versions/{v}/export`, `GET …/flow`, `POST …/instructions`, `POST …/check` (a manifest or group config, checked without storing: `{ok, problems}`) |
+| Capabilities | `GET /capabilities`, `GET /capabilities/{id}`, `POST /capabilities/{id}/versions`, `POST /capabilities/{id}/versions/{v}/approve`, `GET …/versions/{a}/diff/{b}`, `GET …/versions/{v}/export`, `GET …/flow`, `POST …/instructions`, `POST /cases/{id}/gates/{step}` (pass or stop at a tollgate), `POST …/check` (a manifest or group config, checked without storing: `{ok, problems}`) |
 | Groups | `GET /capabilities/{id}/groups`, `GET …/groups/{g}`, `POST …/groups`, `POST …/groups/{g}/versions/{v}/approve`, `GET …/groups/{g}/versions/{a}/diff/{b}` |
 | Authoring | `POST /authoring/draft` (BRD → manifest), `POST /authoring/submit`, `GET /authoring/drafts`, `GET /authoring/templates`, `POST /promotion/import` |
 | Cases | `GET/POST /capabilities/{id}/cases`, `GET /cases/{id}`, `POST /cases/{id}/decisions`, `POST …/decisions/bulk`, `POST …/groups/{g}/reinvestigate`, `POST …/rerun`, `POST …/publish`, `POST …/publish/retry`, `GET …/documents/{name}`, `POST …/legal-hold` |

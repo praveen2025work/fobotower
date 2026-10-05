@@ -254,12 +254,18 @@ export interface CaseDetail extends CaseSummary {
   } | null;
   /** Who the case waits on; when it is not the viewer, why not. */
   waiting_on?: {
-    step: "review" | "release";
+    step: "review" | "release" | "gate";
     roles: string[];
     you: boolean;
     why_not: string | null;
     reviewed_by?: string[];
+    gate?: string;                 // the step a tollgate stands before
+    check?: string;                // what the person checks there
+    stop_needs_comment?: boolean;
   } | null;
+  /** The capability's tollgates: human stops before steps other than review and publish. */
+  tollgates?: { step: string; roles: string[]; check: string }[];
+  gate_decisions?: { step: string; action: "continue" | "stop"; comment: string | null; decided_by: string; decided_at: string }[];
 }
 
 export interface CaseMessage {
@@ -309,7 +315,8 @@ export interface InboxRow {
   proposed: number;
   escalated: number;
   decided: number;
-  action: "review" | "release";
+  action: "review" | "release" | "gate";
+  gate?: string | null;            // waiting at the tollgate before this step
   age_hours?: number;
   due_at?: string | null;
   due_state?: DueState;
@@ -460,6 +467,18 @@ export function useRelease(caseId: string) {
     mutationFn: () =>
       api.post<{ case: CaseDetail }>(`/cases/${enc(caseId)}/publish`, { idempotency_key: newIdempotencyKey() }),
     onSuccess: (res) => refresh(res.case),
+  });
+}
+
+/** A person at a tollgate: continue the run, or stop it with a reason. */
+export function usePassGate(caseId: string) {
+  const refresh = useRefreshCases();
+  return useMutation({
+    mutationFn: (v: { step: string; action: "continue" | "stop"; comment: string | null }) =>
+      api.post<CaseDetail>(`/cases/${enc(caseId)}/gates/${enc(v.step)}`, {
+        action: v.action, comment: v.comment, idempotency_key: newIdempotencyKey(),
+      }),
+    onSuccess: (detail) => refresh(detail),
   });
 }
 

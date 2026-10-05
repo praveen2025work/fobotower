@@ -44,6 +44,7 @@ class CaseState(TypedDict, total=False):
     review_cycles: int
     decisions: list[dict]          # written on resume, from helix_decision
     publish_approval: dict         # written on resume, from helix_publish_approval
+    gates_passed: list[str]        # tollgates a person passed, in order (helix_gate_decision)
     published: list[dict]
     outcome: str | None
     escalation_reason: str | None

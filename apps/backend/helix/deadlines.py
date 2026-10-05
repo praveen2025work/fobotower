@@ -31,6 +31,11 @@ from helix.scheduler import tz
 log = logging.getLogger("helix.deadlines")
 
 OPEN_STATUSES = ("running", "awaiting_review", "awaiting_publish")
+GATE_PREFIX = "paused_before_"     # waiting at a tollgate: also open
+
+
+def is_open(status: str) -> bool:
+    return status in OPEN_STATUSES or status.startswith(GATE_PREFIX)
 
 
 def _base(spec_from: str, case_key: dict, opened_at: datetime) -> datetime:
@@ -71,7 +76,7 @@ def due_at(m: Manifest, case_key: dict, opened_at: datetime) -> datetime | None:
 
 def state(due: datetime | None, status: str, now: datetime, warn_hours: float = 2) -> str | None:
     """on_time | due_soon | overdue — for open cases with a due date; None otherwise."""
-    if due is None or status not in OPEN_STATUSES:
+    if due is None or not is_open(status):
         return None
     if now >= due:
         return "overdue"
@@ -85,7 +90,8 @@ async def check(now: datetime | None = None) -> list[tuple[str, str]]:
     now = now or datetime.now(tz())
     async with get_session() as s:
         cases = (await s.execute(select(Case).where(
-            Case.due_at.is_not(None), Case.status.in_(OPEN_STATUSES), Case.shadow_of.is_(None),
+            Case.due_at.is_not(None), Case.status.in_(OPEN_STATUSES) | Case.status.startswith(GATE_PREFIX),
+            Case.shadow_of.is_(None),
             (Case.due_notified.is_(None)) | (Case.due_notified == "soon")))).scalars().all()
     sent = []
     for c in cases:

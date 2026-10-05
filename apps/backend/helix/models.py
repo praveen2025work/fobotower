@@ -213,6 +213,25 @@ class Decision(HelixBase):
     )
 
 
+class GateDecision(HelixBase):
+    """A person passing (or stopping a run at) a tollgate: a stop before a step
+    other than review and publish. Idempotent on its key."""
+
+    __tablename__ = "helix_gate_decision"
+    gate_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    case_id: Mapped[str] = mapped_column(
+        String(128), ForeignKey("helix_case.case_id", ondelete="CASCADE"), index=True
+    )
+    step: Mapped[str] = mapped_column(String(32))     # the step it stopped before
+    action: Mapped[str] = mapped_column(String(16))   # continue | stop
+    comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    decided_by: Mapped[str] = mapped_column(String(64))
+    idempotency_key: Mapped[str] = mapped_column(String(128), unique=True)
+    decided_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
 class PublishApproval(HelixBase):
     """The second person releasing a case's write-back. One per case."""
 

@@ -92,8 +92,10 @@ async def fail(case_id: str, e: BaseException) -> None:
         await s.commit()
 
 
-# What each pause waits for; nothing else moves a run past it.
+# What each pause waits for; nothing else moves a run past it. Any other
+# pause is a tollgate, crossed only when a person passes it.
 _CROSSES = {"review": {"decisions"}, "publish": {"publish_approval"}}
+_GATE = {"gates_passed"}
 
 _SPANS = {"open": "case.run", "resume": "review.resume", "publish": "publish.release",
           "recover": "case.recover"}
@@ -120,7 +122,7 @@ async def run_case(case_id: str, kind: str = "open", update: dict | None = None)
                     snap = await app.aget_state(config)
                     started = snap.created_at is not None
                     paused_at = snap.next[0] if snap.next and snap.next[0] in m.pause_before else None
-                    if paused_at and (not update or not set(update) <= _CROSSES.get(paused_at, set())):
+                    if paused_at and (not update or not set(update) <= _CROSSES.get(paused_at, _GATE)):
                         # A pause is crossed only with what it waits for — never by
                         # a bare resume (a recovery must not skip a person's sign-off).
                         return await _status_after_run(app, case_id)

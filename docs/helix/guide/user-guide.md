@@ -287,6 +287,19 @@ on its step, in the server's words.
 Add a note and submit. This makes a draft. Another owner approves it under *Versions*, and
 new cases use it from then on.
 
+**Tollgates.** On any step after the first, *Tollgate* makes the run wait there for a person.
+Set who passes it and what they should check. For example, a tollgate before *Rules, then the
+model* means a reviewer approves the matched data before the model is asked anything:
+
+- the case appears in their inbox as **Tollgate**;
+- the case page shows what has been done so far, with **Approve and continue** and **Stop
+  the run** (stopping needs a reason; the case can be re-run as a new attempt);
+- every decision is recorded on the case.
+
+![Setting a tollgate](img/27-configure-tollgate.png)
+
+![A case at its tollgate](img/26-case-tollgate.png)
+
 **A team group sees the same steps** with the capability's settings locked. For example,
 which steps run is the capability's choice. The group changes only what the capability's
 *configurable* list allows, and the draft holds only those paths.

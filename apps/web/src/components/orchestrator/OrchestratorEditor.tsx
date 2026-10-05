@@ -33,7 +33,7 @@ const stepsOf = (m: Json) => (get(m, "steps") as string[]) ?? [];
 const pausesOf = (m: Json) => (get(m, "pause_before") as string[]) ?? [];
 
 /** The field paths a stage edits, to tell which stages hold changes. */
-const stagePaths = (s: Stage) => s.fields.map((f) => f.path).concat(s.step ? ["steps", "pause_before"] : []);
+const stagePaths = (s: Stage) => s.fields.map((f) => f.path).concat(s.step ? [`tollgates.${s.step}`] : []);
 
 function isOn(m: Json, s: Stage): boolean {
   if (s.id === "source") return true;
@@ -46,10 +46,19 @@ function switchStep(m: Json, s: Stage, on: boolean): Json {
   let out = setPath(m, "steps", STEP_ORDER.filter((x) => want.has(x)));
   if (on) out = s.onEnable ? s.onEnable(out) : out;
   else {
-    out = setPath(out, "pause_before", pausesOf(out).filter((x) => x !== s.step));
+    out = setTollgate(out, s.step!, false);
     for (const c of s.clears ?? []) out = setPath(out, c.path, c.value);
   }
   return out;
+}
+
+/** Put a tollgate before `step`, or take it away (the stop and its settings go together). */
+function setTollgate(m: Json, step: string, on: boolean): Json {
+  const gates = { ...((get(m, "tollgates") as Json) ?? {}) };
+  if (on) gates[step] = gates[step] ?? { roles: [], check: "", stop_needs_comment: true };
+  else delete gates[step];
+  const pauses = pausesOf(m).filter((x) => x !== step);
+  return setPath(setPath(m, "tollgates", gates), "pause_before", on ? [...pauses, step] : pauses);
 }
 
 function switchSource(m: Json, to: "load" | "match"): Json {
@@ -134,7 +143,10 @@ export default function OrchestratorEditor({ capabilityId, manifest, mode, canEd
   const pauseLocked = locked("pause_before");
   const steps = stepsOf(working);
   const pauses = pausesOf(working);
-  const changedIn = (s: Stage) => changes.some((c) => stagePaths(s).some((p) => c === p || c.startsWith(`${p}.`) || p.startsWith(`${c}.`)));
+  const toggled = (s: Stage) => !!s.step && (["steps", "pause_before"] as const).some(
+    (k) => ((get(manifest, k) as string[]) ?? []).includes(s.step!) !== ((get(working, k) as string[]) ?? []).includes(s.step!));
+  const changedIn = (s: Stage) => toggled(s)
+    || changes.some((c) => stagePaths(s).some((p) => c === p || c.startsWith(`${p}.`) || p.startsWith(`${c}.`)));
 
   return (
     <div className="space-y-3">
@@ -224,12 +236,24 @@ export default function OrchestratorEditor({ capabilityId, manifest, mode, canEd
             </div>
           )}
 
-          {stage.step && !stage.gate && isOn(working, stage) && stage.step !== "publish" && (
-            <label className="mt-3 inline-flex items-center gap-2 text-xs text-surface-700">
-              <input type="checkbox" checked={pauses.includes(stage.step)} disabled={!!pauseLocked}
-                onChange={(e) => setWorking((w) => setPath(w, "pause_before", e.target.checked ? [...pausesOf(w), stage.step!] : pausesOf(w).filter((x) => x !== stage.step)))} />
-              <Hand size={12} className="text-amber-600" /> Stop for a person before this step
-            </label>
+          {stage.step && !stage.gate && isOn(working, stage) && stage.step !== "publish" && stage.step !== steps[0] && (
+            <div className={clsx("mt-3 rounded-lg border p-3", pauses.includes(stage.step) ? "border-amber-200 bg-amber-50/60" : "border-surface-200")}>
+              <label className="inline-flex items-center gap-2 text-xs font-medium text-surface-800">
+                <input type="checkbox" checked={pauses.includes(stage.step)} disabled={!!pauseLocked}
+                  onChange={(e) => setWorking((w) => setTollgate(w, stage.step!, e.target.checked))} />
+                <Hand size={12} className="text-amber-600" /> Tollgate: a person approves the work so far before this step
+              </label>
+              <p className="mt-0.5 text-[11px] text-surface-500">
+                The run waits here. The person sees what the earlier steps produced, then continues the run or stops it with a reason.
+              </p>
+              {pauses.includes(stage.step) && (
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <Field ctx={{ ...ctx, locked: () => pauseLocked }} spec={{ kind: "list", path: `tollgates.${stage.step}.roles`, label: "Passed by (roles)", help: "Empty = the capability's reviewers." }} />
+                  <Field ctx={{ ...ctx, locked: () => pauseLocked }} spec={{ kind: "text", path: `tollgates.${stage.step}.check`, label: "What they check", placeholder: "e.g. Are both sides complete for the COB?" }} />
+                  <Field ctx={{ ...ctx, locked: () => pauseLocked }} spec={{ kind: "bool", path: `tollgates.${stage.step}.stop_needs_comment`, label: "Stopping the run needs a reason" }} />
+                </div>
+              )}
+            </div>
           )}
           {(stage.step === "review" || (stage.step === "publish" && isOn(working, stage))) && (
             <p className="mt-3 inline-flex items-center gap-1.5 text-xs text-surface-600"><Hand size={12} className="text-amber-600" /> The run always stops here for a person.</p>

@@ -2,10 +2,11 @@
 // their review, their release, or who else it waits on and why not them —
 // plus the release summary and the plain-words escalation card.
 
+import { useState } from "react";
 import clsx from "clsx";
-import { CheckCircle2, Clock3, Eye, Scale, Send, ShieldAlert, Ticket } from "lucide-react";
+import { CheckCircle2, Clock3, Eye, Hand, OctagonX, Play, Scale, Send, ShieldAlert, Ticket } from "lucide-react";
 
-import { useRelease, type CaseDetail, type Finding, type Group, type ReviewFlag } from "../../api/helix";
+import { usePassGate, useRelease, type CaseDetail, type Finding, type Group, type ReviewFlag } from "../../api/helix";
 import StatusBadge from "../StatusBadge";
 import { ErrorState, formatTime, formatValue } from "../ui";
 
@@ -73,6 +74,17 @@ export function ActionCard({ c }: { c: CaseDetail }) {
     );
   }
 
+  if (w?.step === "gate" && w.gate) return <GateCard c={c} />;
+
+  if (c.status === "stopped") {
+    return (
+      <Shell tone="waiting" icon={OctagonX} title="Stopped at a tollgate">
+        <p>{c.error ?? "A person stopped the run."}</p>
+        {c.can_rerun && <p className="mt-0.5 text-xs opacity-80">Fix what was wrong, then re-run it as a new attempt; this one stays as evidence.</p>}
+      </Shell>
+    );
+  }
+
   if (c.status === "completed") {
     const tickets = c.groups.filter((g) => g.ticket?.status === "raised").length;
     const signed = [...new Set(c.groups.map((g) => g.decision?.decided_by).filter(Boolean))].join(", ");
@@ -87,6 +99,79 @@ export function ActionCard({ c }: { c: CaseDetail }) {
     );
   }
   return null;
+}
+
+/** What each step does next, in words — for "the run goes on to …". */
+const NEXT: Record<string, string> = {
+  enrich: "reading more data onto the items", resolve: "looking up reference data", classify: "running the playbook",
+  compare: "comparing to the baseline", group: "grouping the items", reason: "the rules and the model's investigation",
+  draft: "drafting the summary",
+};
+
+/** A tollgate: a person approves the work so far before the run goes on — or stops it. */
+function GateCard({ c }: { c: CaseDetail }) {
+  const w = c.waiting_on!;
+  const step = w.gate!;
+  const pass = usePassGate(c.case_id);
+  const [comment, setComment] = useState("");
+  const [stopping, setStopping] = useState(false);
+  const done = c.steps.slice(0, c.steps.indexOf(step));
+  const inScope = c.groups.reduce((n, g) => n + g.item_ids.length, 0);
+  const modelRan = c.tool_calls.some((t) => t.requested_by === "llm");
+  const needWords = stopping && w.stop_needs_comment && !comment.trim();
+  return (
+    <Shell tone={w.you ? "action" : "waiting"} icon={Hand} title={w.you ? "Your tollgate" : "Waiting at a tollgate"}>
+      <p>
+        The run stopped before <strong>{NEXT[step] ?? step}</strong>, for a person to approve the work so far.
+        {w.check && <> Check: <em>{w.check}</em></>}
+      </p>
+      <p className="mt-0.5 text-xs opacity-80">
+        Done so far: {done.join(" → ")} · {c.items.length} {c.labels.item.toLowerCase()}{c.items.length === 1 ? "" : "s"}
+        {c.groups.length > 0 && <>, {inScope} in scope in {c.groups.length} {c.groups.length === 1 ? "group" : "groups"}</>}
+        {modelRan ? "" : " · the model has not been asked anything yet"}. The data is below; each step's state is under Run history.
+      </p>
+      {!w.you && <p className="mt-0.5 text-xs opacity-80">{w.why_not}.</p>}
+      {(c.gate_decisions ?? []).length > 0 && (
+        <p className="mt-0.5 text-xs opacity-80">
+          Passed earlier: {(c.gate_decisions ?? []).map((g) => `${g.step} by ${g.decided_by}`).join(", ")}.
+        </p>
+      )}
+      {w.you && (
+        <div className="mt-2 space-y-2">
+          <label className="block text-xs font-medium">
+            {stopping ? `Why stop the run?${w.stop_needs_comment ? " (required)" : ""}` : "Note (optional)"}
+            <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={2}
+              className="mt-1 block w-full rounded-lg border border-surface-300 bg-card px-2 py-1.5 text-sm font-normal text-surface-800" />
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {!stopping ? (
+              <>
+                <button type="button" disabled={pass.isPending} onClick={() => pass.mutate({ step, action: "continue", comment: comment.trim() || null })}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-brand-fg hover:bg-brand-strong disabled:opacity-50">
+                  <Play size={13} /> Approve and continue
+                </button>
+                <button type="button" onClick={() => setStopping(true)}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-1.5 text-sm text-red-700 hover:bg-red-50">
+                  <OctagonX size={13} /> Stop the run
+                </button>
+              </>
+            ) : (
+              <>
+                <button type="button" disabled={pass.isPending || needWords} onClick={() => pass.mutate({ step, action: "stop", comment: comment.trim() || null })}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50">
+                  <OctagonX size={13} /> Stop here
+                </button>
+                <button type="button" onClick={() => setStopping(false)} className="rounded-lg border border-surface-300 px-3 py-1.5 text-sm text-surface-700 hover:bg-surface-50">
+                  Cancel
+                </button>
+              </>
+            )}
+          </div>
+          {pass.error && <ErrorState error={pass.error} />}
+        </div>
+      )}
+    </Shell>
+  );
 }
 
 const TONES = {

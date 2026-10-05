@@ -315,3 +315,55 @@ describe("CaseWorkspace", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("not mocked");
   });
 });
+
+describe("Tollgate", () => {
+  const atGate = (you: boolean) => detail({
+    status: "paused_before_reason",
+    pause_before: ["reason", "review", "publish"],
+    groups: [group("6100", { finding: null }), group("7200", { finding: null })],
+    tool_calls: [],
+    can_decide: false,
+    waiting_on: { step: "gate", gate: "reason", roles: ["FIN_REVIEWER"], check: "Do the variances tie to the ledger?",
+      stop_needs_comment: true, you, why_not: you ? null : "passing this tollgate needs one of: FIN_REVIEWER" },
+    tollgates: [{ step: "reason", roles: ["FIN_REVIEWER"], check: "Do the variances tie to the ledger?" }],
+    gate_decisions: [],
+  });
+
+  it("shows the work so far and lets the right person continue the run", async () => {
+    const calls = mockApi({
+      "GET /cases/fin.c1": atGate(true),
+      "POST /cases/fin.c1/gates/reason": detail(),
+    });
+    open();
+    const card = await screen.findByRole("status", { name: "Your tollgate" });
+    expect(within(card).getByText(/Do the variances tie to the ledger\?/)).toBeInTheDocument();
+    expect(within(card).getByText(/the model has not been asked anything yet/)).toBeInTheDocument();
+    await userEvent.click(within(card).getByRole("button", { name: /Approve and continue/ }));
+    await waitFor(() => expect(calls.some((c) => c.method === "POST")).toBe(true));
+    expect(calls.find((c) => c.method === "POST")!.body).toMatchObject({ action: "continue", comment: null });
+  });
+
+  it("needs a reason to stop the run", async () => {
+    const calls = mockApi({
+      "GET /cases/fin.c1": atGate(true),
+      "POST /cases/fin.c1/gates/reason": detail({ status: "stopped", outcome: "stopped", error: "Stopped before `reason` by bob: stale budget" }),
+    });
+    open();
+    const card = await screen.findByRole("status", { name: "Your tollgate" });
+    await userEvent.click(within(card).getByRole("button", { name: /Stop the run/ }));
+    const stop = within(card).getByRole("button", { name: /Stop here/ });
+    expect(stop).toBeDisabled();
+    await userEvent.type(within(card).getByLabelText(/Why stop the run/), "stale budget");
+    await userEvent.click(stop);
+    await waitFor(() => expect(calls.some((c) => c.method === "POST")).toBe(true));
+    expect(calls.find((c) => c.method === "POST")!.body).toMatchObject({ action: "stop", comment: "stale budget" });
+  });
+
+  it("tells anyone else who it waits for", async () => {
+    mockApi({ "GET /cases/fin.c1": atGate(false) });
+    open();
+    const card = await screen.findByRole("status", { name: "Waiting at a tollgate" });
+    expect(within(card).getByText(/needs one of: FIN_REVIEWER/)).toBeInTheDocument();
+    expect(within(card).queryByRole("button")).not.toBeInTheDocument();
+  });
+});

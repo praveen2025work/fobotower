@@ -96,6 +96,11 @@ describe("Orchestrator editor", () => {
     await userEvent.click(screen.getByRole("checkbox", { name: /This step runs/ }));          // back off
     await screen.findByText("Passes every platform check");
 
+    // a tollgate before the model: the run waits for a person, who is named
+    await userEvent.click(screen.getByRole("button", { name: /Rules, then the model/ }));
+    await userEvent.click(screen.getByRole("checkbox", { name: /Tollgate: a person approves/ }));
+    await userEvent.type(screen.getByRole("textbox", { name: /What they check/ }), "Are both sides complete?");
+
     // switching enrich off, and submitting the whole manifest as a draft
     await userEvent.click(screen.getByRole("button", { name: /Enrich/ }));
     await userEvent.click(screen.getByRole("checkbox", { name: /This step runs/ }));
@@ -106,6 +111,8 @@ describe("Orchestrator editor", () => {
     const sent = parse((calls.find((c) => c.path === "/authoring/submit")!.body as { yaml: string }).yaml);
     expect(sent.steps).toEqual(["match", "group", "reason", "draft", "validate", "review", "record"]);
     expect(sent.enrich).toEqual([]);
+    expect(sent.pause_before).toEqual(["review", "reason"]);
+    expect(sent.tollgates).toEqual({ reason: { roles: [], check: "Are both sides complete?", stop_needs_comment: true } });
   });
 
   it("is read-only for someone who does not own it", async () => {

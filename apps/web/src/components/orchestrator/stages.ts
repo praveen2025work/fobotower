@@ -303,6 +303,8 @@ export const STEP_ORDER = ["load", "match", "enrich", "resolve", "classify", "co
 
 /** The stage a server problem belongs to (the first that owns it). */
 export function stageOf(problem: string): string {
-  if (/required|gates must|must be the last|must pause|must come right after|needs .* produced by no earlier|listed twice|unknown step/.test(problem)) return "pipeline";
+  const gate = /^tollgates\.([a-z]+):/.exec(problem);
+  if (gate) return STAGES.find((s) => s.step === gate[1])?.id ?? "pipeline";
+  if (/required|gates must|must be the last|must pause|must come right after|needs .* produced by no earlier|listed twice|unknown step|cannot stop before/.test(problem)) return "pipeline";
   return STAGES.find((s) => s.owns.test(problem))?.id ?? "pipeline";
 }

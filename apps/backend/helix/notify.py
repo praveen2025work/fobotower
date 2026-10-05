@@ -4,6 +4,7 @@ After every run (or job) the case's new state decides who hears about it:
 
   awaiting_review    the capability's reviewers           "needs your review"
   awaiting_publish   the write-back approvers             "needs your release"
+  paused_before_X    the tollgate's roles                 "waits for you before X"
   completed          whoever opened it, and its deciders  "completed" / "published"
   failed             whoever opened it, and the owners    "failed: …"
   escalated          whoever opened it, and the reviewers "escalated"
@@ -81,7 +82,14 @@ async def case_changed(case_id: str) -> None:
         "failed": ("failed", f"{what} failed", case.error or "", owners_role, [case.opened_by, *m.owners.people]),
         "escalated": ("escalated", f"{what} was escalated", case.error or "",
                       m.review.roles, [case.opened_by]),
+        "stopped": ("stopped", f"{what} was stopped at a tollgate", case.error or "",
+                    owners_role, [case.opened_by]),
     }.get(case.status)
+    if plan is None and case.status.startswith("paused_before_"):
+        step = case.status[len("paused_before_"):]
+        gate = m.gate(step)
+        plan = ("gate_needed", f"{what} waits for you before `{step}`",
+                gate.check or "Check the work so far, then continue or stop the run.", gate.roles, [])
     if plan is None or plan[0] == last:
         return
     kind, title, body, roles, users = plan

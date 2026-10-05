@@ -352,6 +352,20 @@ class ReinvestigateIn(BaseModel):
     idempotency_key: str = Field(min_length=8, max_length=128)
 
 
+class GateIn(BaseModel):
+    action: str = Field(pattern="^(continue|stop)$")
+    comment: str | None = Field(default=None, max_length=4000)
+    idempotency_key: str = Field(min_length=8, max_length=128)
+
+
+@app.post("/api/cases/{case_id}/gates/{step}")
+@_errors
+async def pass_gate(case_id: str, step: str, body: GateIn, c: Caller = Depends(caller)) -> dict:
+    """A person at a tollgate: continue the run to `step`, or stop it there."""
+    await cases.pass_gate(case_id, step, body.action, body.comment, body.idempotency_key, c)
+    return await cases.case_detail(case_id, c)
+
+
 @app.post("/api/cases/{case_id}/groups/{group_id}/reinvestigate", status_code=201)
 @_errors
 async def reinvestigate(case_id: str, group_id: str, body: ReinvestigateIn,

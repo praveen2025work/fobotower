@@ -26,7 +26,7 @@ function InboxCards({ rows }: { rows: InboxRow[] }) {
               <StatusBadge status={r.action} />
             </div>
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-surface-600">
-              <span>{r.decided}/{r.groups} decided</span>
+              <span>{r.gate ? `Approve the work so far before ${r.gate}` : `${r.decided}/${r.groups} decided`}</span>
               {r.escalated > 0 && <span className="font-medium text-orange-700">{r.escalated} escalated</span>}
               {(r.needs_confirmation ?? 0) > 0 && (
                 <span className="rounded bg-yellow-100 px-1.5 text-[11px] font-semibold text-yellow-800">{r.needs_confirmation} to confirm</span>
@@ -88,7 +88,7 @@ export function InboxTable({ rows }: { rows: InboxRow[] }) {
               </td>
               <td className="px-2 py-2 text-surface-600">{r.capability_name}</td>
               <td className="px-2 py-2 text-xs text-surface-600">
-                {r.decided}/{r.groups} decided · {r.proposed} proposed
+                {r.gate ? `Approve the work so far before ${r.gate} · ${r.groups} groups` : `${r.decided}/${r.groups} decided · ${r.proposed} proposed`}
                 {r.escalated > 0 && <span className="ml-1 font-medium text-orange-700">· {r.escalated} escalated</span>}
                 {(r.needs_confirmation ?? 0) > 0 && (
                   <span className="ml-1 rounded bg-yellow-100 px-1 text-[10px] font-semibold text-yellow-800">{r.needs_confirmation} to confirm</span>

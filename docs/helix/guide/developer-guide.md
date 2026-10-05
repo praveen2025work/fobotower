@@ -217,17 +217,19 @@ Source of truth: `apps/backend/helix/manifest.py` (Pydantic; unknown keys are re
 | `steps` | list | required | see §7 |
 | `pause_before` | list | `[review]` | the run waits for people before these steps |
 | `tollgates` | {step: {roles, check, stop_needs_comment}} | {} | who passes each stop other than review and publish, and what they check (§7a) |
-| `requests` | {targets: [{id, name, roles, users}], hold_decision, reinvestigate_on_answer} | no targets | who reviewers may ask for evidence; an open question holds its group; an answer goes to the model |
+| `requests` | {targets: [{id, name, roles, users}], hold_decision, reinvestigate_on_answer, remind_after_hours, escalate_after_hours, allow_attachments} | no targets | who reviewers may ask for evidence; an open question holds its group; an answer (optionally with a file) goes to the model; unanswered ones are chased, then escalated |
+| `follow_through` | {series, order_by, verdicts} | — | re-check each decision in the next run of the series: items still there carry `carried_verdict`, `carried_from`, `carried_runs` (and groups `carried`); the earlier case shows what cleared |
 | `group_by` | list | [] (one group) | item fields that form a group |
 | `rules` | list[Rule] | [] | settled before the model |
-| `reasoning` | ReasoningSpec | | the model |
-| `review` | ReviewSpec | required | who decides |
+| `reasoning` | ReasoningSpec | | the model; `reasoning.sections` [{id, label, hint, required}] makes it answer in named parts (a required one missing → escalated; every section's figures are validated) |
+| `review` | ReviewSpec | required | who decides; `review.checklist` [{id, label, required, prefill}] are questions answered before approving (prefill: tests, evidence, verdict, category or a section id) |
 | `publish` | PublishSpec | — | write-back after release |
 | `enrich` | list[EnrichSpec] | [] | join more data onto items |
 | `playbook` | PlaybookSpec | — | deterministic checks, tests, verdicts (§9) |
 | `knowledge` | KnowledgeSpec | | priors and reference lineage |
 | `resolve` | list[ResolveSpec] | [] | graph lookups onto items |
 | `retention` | {days} | — | how long cases are kept (legal hold overrides) |
+| `insights` | {recurring, unexplained: {categories, lookback_days}, automation_after} | | items that keep coming back; items nothing explained; model proposals approved unchanged N times (rule candidates). `GET /api/capabilities/{id}/recurring`, `/learning` |
 | `metrics` | {manual_minutes_per_item: 12} | | basis of "hours saved" |
 | `limits` | {max_cost_usd_per_case, max_cost_usd_per_day} | — | spend caps; over the cap → escalate to people |
 | `configurable` | list of dotted paths (`x.*` allowed) | [] | what groups may set |
@@ -505,10 +507,10 @@ All routes are under `/api` and are identified by the identity header.
 | Area | Routes |
 |---|---|
 | Me / platform | `GET /me`, `GET /platform`, `GET /overview`, `GET /operations`, `GET /inbox`, `GET /audit` |
-| Capabilities | `GET /capabilities`, `GET /capabilities/{id}`, `POST /capabilities/{id}/versions`, `POST /capabilities/{id}/versions/{v}/approve`, `GET …/versions/{a}/diff/{b}`, `GET …/versions/{v}/export`, `GET …/flow`, `POST …/instructions`, `POST /cases/{id}/gates/{step}` (pass or stop at a tollgate), `POST /cases/{id}/requests` (ask for evidence), `GET /requests` (questions for me), `POST /requests/{rid}/answer` (an addressee, or a bot with the event secret and `answered_by`), `POST /requests/{rid}/cancel`, `POST …/check` (a manifest or group config, checked without storing: `{ok, problems}`) |
+| Capabilities | `GET /capabilities`, `GET /capabilities/{id}`, `POST /capabilities/{id}/versions`, `POST /capabilities/{id}/versions/{v}/approve`, `GET …/versions/{a}/diff/{b}`, `GET …/versions/{v}/export`, `GET …/flow`, `POST …/instructions`, `POST /cases/{id}/gates/{step}` (pass or stop at a tollgate), `POST /cases/{id}/requests` (ask for evidence), `GET /requests` (questions for me), `POST /requests/{rid}/answer` (an addressee, or a bot with the event secret and `answered_by`), `POST /requests/{rid}/answer-with-file` (multipart: answer, file, answered_by), `POST /requests/{rid}/cancel`, `GET /capabilities/{id}/contract?team_group=` (data needed, parameters to confirm), `GET …/learning` (unexplained items, rule candidates), `GET …/recurring`, `POST …/check` (a manifest or group config, checked without storing: `{ok, problems}`) |
 | Groups | `GET /capabilities/{id}/groups`, `GET …/groups/{g}`, `POST …/groups`, `POST …/groups/{g}/versions/{v}/approve`, `GET …/groups/{g}/versions/{a}/diff/{b}` |
 | Authoring | `POST /authoring/draft` (BRD → manifest), `POST /authoring/submit`, `GET /authoring/drafts`, `GET /authoring/templates`, `POST /promotion/import` |
-| Cases | `GET/POST /capabilities/{id}/cases`, `GET /cases/{id}`, `POST /cases/{id}/decisions`, `POST …/decisions/bulk`, `POST …/groups/{g}/reinvestigate`, `POST …/rerun`, `POST …/publish`, `POST …/publish/retry`, `GET …/documents/{name}`, `POST …/legal-hold` |
+| Cases | `GET/POST /capabilities/{id}/cases`, `GET /cases/{id}`, `POST /cases/{id}/decisions` (with `checklist` answers when the capability has a sign-off checklist), `POST …/decisions/bulk`, `POST …/groups/{g}/reinvestigate`, `POST …/rerun`, `POST …/publish`, `POST …/publish/retry`, `GET …/documents/{name}`, `POST …/legal-hold` |
 | Evidence and chat | `POST /cases/{id}/evidence`, `GET …/evidence/{name}`, `GET …/evidence-pack`, `GET …/messages`, `POST …/ask`, `GET …/history`, `GET …/history/{checkpoint}` |
 | Operations | `GET /notifications`, `POST /notifications/read`, `POST /events`, `GET /schedules`, `GET/POST /switches`, `POST /capabilities/{id}/evals`, `GET …/evals`, `GET /evals/{run}`, `POST /entitlements/invalidate` |
 

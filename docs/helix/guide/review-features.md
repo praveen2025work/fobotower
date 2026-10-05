@@ -222,6 +222,25 @@ and deadline.
   a group, only its configurable paths are sent. Another owner approves the draft. See the
   [user guide §7a](user-guide.md#7a-configure-the-orchestrator).
 
+## 11. Investigation features (any capability)
+
+Seven features, each switched on by configuration and used by FOBO, cash and variance
+commentary in their own ways. The [features by capability](features-by-capability.md) matrix
+shows each one's settings.
+
+| Feature | What a person sees |
+|---|---|
+| **Answer in sections** (`reasoning.sections`) | the model's proposal as named parts, e.g. root cause, remediation, end state |
+| **Sign-off checklist** (`review.checklist`) | yes / no / n/a questions above *Approve*, with Helix's answer next to each |
+| **Follow-through** (`follow_through`) | on the earlier case: what cleared on the next run and what is still open; on the item: *carried · MONITOR* |
+| **Learning from the work** (`insights.unexplained`, `.automation_after`) | on capability and group pages: what nothing explained, and what could be a rule |
+| **Data and parameters** (derived) | on capability (Configure tab) and group pages: the fields each check reads, the thresholds still to confirm |
+| **Chasing questions** (`requests.remind_after_hours`, `.escalate_after_hours`) | reminders to the people asked, then a notice to the reviewers |
+| **Answers with a file** (`requests.allow_attachments`) | *Attach* when answering; the file is on the question and in the case's evidence |
+
+Also: follow-up cases are marked *late items* in the inbox, and the day's case shows the day's
+totals.
+
 ## Also in this release
 
 - **Pages load on demand.** The first download dropped from 765 KB to 261 KB.

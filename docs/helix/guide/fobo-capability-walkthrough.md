@@ -14,7 +14,8 @@ The section-by-section mapping of the skill is in [skill-to-helix.md](../fobo-sk
 | **Capability** | The shape of the work, the same for every team: where breaks come from, which steps run and in what order, the tollgate, the gates, retention, and what a team may change | Helix team and the capability owner (erin) | *Break investigation* (`break.investigation`) |
 | **Team group** | One team's configuration of it: its books, thresholds, playbook (the skill's rules), the model's instructions and tools, reviewers, who may be asked, deadline | That team's owners (frank) | *FOBO Prime — MB Rec breaks* (`fobo-prime`) |
 
-Rates is a second group on the same capability, with its own books, thresholds and reviewers.
+Rates is a second group on the same capability (`fobo-rates`), with its own books, thresholds and
+reviewers.
 Any team whose breaks come from a reconciliation engine can be a group of it too.
 
 Both layers are edited in **Capabilities → *name* → Configure**. Each change is checked as it
@@ -151,6 +152,23 @@ breaks with an unproven side.
    which is unchanged.
 
    ![The follow-up case](img/93-case-follow-up.png)
+
+## Part 4 — What else the skill asks for, and where it is
+
+| Skill | In Helix | Where to see it |
+|---|---|---|
+| §12 output | the model answers in the skill's sections; a required one missing goes to a person | the group's proposal, section by section |
+| §14 checklist | the controller answers the questions before approving; Helix shows what it knows next to each | above *Approve* |
+| §4 step 9 / §11 end state | each POST, CORRECT & RE-POST and MONITOR is re-tested on the next COB; still open → U (adjustment did not clear) or K | *Follow-through* on the earlier case; *carried* on the break |
+| §7 trade level | CATS and MOTIF trades are the model's tools, with a trade-level specialist | the *Data used* list |
+| §8 missing side | `MISSING_SIDE` → M, judgement | the checks column |
+| §9 H feeds the skill | novel and unexplained breaks, and rule candidates | *Learning from the work* on the group page |
+| Local parameters | what is set, where it is used, what is still to confirm | *Data and parameters* on the group page |
+| §13 ask for evidence | chased after 2 h and escalated after 4 h; answers may carry a file; Teams/email bots can answer | the case's *Questions* |
+
+FOBO Rates (`fobo-rates`) is the same, with the Rates books, reviewers and confirmed thresholds.
+Every row is a platform feature: see [features by capability](features-by-capability.md) for how
+cash and variance commentary use the same features.
 
 ## The same as files
 

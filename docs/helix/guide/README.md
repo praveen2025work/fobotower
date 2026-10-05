@@ -8,7 +8,11 @@
 | [FOBO → Helix change guide](../migration/README.md) | Engineers moving FOBO in the office | Mapping from FOBO / Agent One to Helix, what to keep and retire, the model contract, invariants, phases, parity script, rollback, and a skill for office Claude Code. |
 | [FOBO as a Helix capability — the walkthrough](fobo-capability-walkthrough.md) | Product Control, owners | Screen by screen: the capability and the FOBO Prime group, the skill's rules in the playbook, asking the desk, late exceptions. |
 | [Configure it: FOBO on MB Rec's breaks](configure-fobo-mb-rec.md) | Owners | Step by step, with screenshots: breaks already reconciled upstream, timing differences, other sources, the desk's input at a tollgate. |
-| [The FOBO skill in Helix](../fobo-skill/skill-to-helix.md) | Product Control, owners | The controllers' FOBO Investigation Skill v1.0, section by section: what is codified in the playbook, what goes to the model, what a person decides, and the gaps. |
+| [The FOBO skill in Helix](../fobo-skill/skill-to-helix.md) | Product Control, owners | The controllers' FOBO Investigation Skill v1.0, section by section: what is codified in the playbook, what goes to the model, what a person decides; all its gaps are now built. |
+| [Features by capability](features-by-capability.md) | Owners, architects | Every feature (sections, checklist, follow-through, insights, data contract, questions…) and how FOBO, cash, variance and report validation each configure it. |
+| [FOBO Prime data contract and parameters](../fobo-skill/mbrec-data-contract.md) | MB Rec, MOTIF, Product Control | The fields each check and test reads, and the thresholds still to confirm, derived from the configuration. |
+| [Questions by Teams or email](questions-by-teams-or-email.md) | Integration | The webhook payload, answering for someone with the event secret, files, chasing; a Power Automate recipe. |
+| [Real-model evals (office)](real-model-evals.md) | Helix team, owners | Running evals on the Agent SDK before go-live and after every change; what to look for; go/no-go. |
 | [Worked examples](../examples.md) | Both | FOBO CATS vs MOTIF Prime vs Rates with real runs; accruals, substantiation, intercompany, journal controls and suspense examples. |
 
 The screenshots in `img/` come from the dev stack (stub model, dev users), dated 2026-10-04.

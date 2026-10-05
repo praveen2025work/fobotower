@@ -22,14 +22,14 @@ rules it must never break.
 **Status key:**
 - **In Helix** — already there before today.
 - **Added now** — added to the FOBO Prime configuration today.
-- **Gap** — needs building; listed at the end.
+- **Gap** — needed building; all are now built (listed at the end).
 
 ## Section by section
 
 | Skill | Helix | Status |
 |---|---|---|
 | **§1 Role** — senior Product Controller, forensic, evidence-backed root cause plus verdict | First paragraph of `reasoning.skill` | Added now |
-| **§2 Invariant** FO PnL = BO PnL + Δ adjustments | Stated in `reasoning.skill`; the model must say whether it will hold | Added now (checked mechanically: gap 4) |
+| **§2 Invariant** FO PnL = BO PnL + Δ adjustments | Stated in `reasoning.skill`; checked on the next COB by follow-through (§4 step 9 below) | In Helix |
 | **R1** A break is a symptom, not an instruction to post | Nothing posts without a cause: the table posts only when a check positively found a BO cause; no positive check → H Novel → ESCALATE | In Helix |
 | **R2** Never assume FO is correct | Guard in code: a POST whose cause is FO becomes ESCALATE, after the table *and* after the model. An unproven side is never settled by the table; it goes to the model and an SME | In Helix |
 | **R3** Decompose before you diagnose | Every test names the component it validates (Position, Price, MTM, Pull Factor…); results are per break, never aggregate | In Helix |
@@ -44,30 +44,30 @@ rules it must never break.
 | §4 steps 2–5 FO, then BO, then trade level, then Novel | All tests run on every break (negatives kept, so the reviewer sees what was ruled out); the first positive check in order is the cause; nothing found → H Novel | In Helix (all run rather than stopping early; same result, more evidence) |
 | §4 steps 6–7 classify, decide | Categories and the verdict table | In Helix |
 | §4 step 8 remediation | Tickets to the owning team on DO_NOT_POST, CORRECT_AND_REPOST and escalations; the model writes the remediation | In Helix + added now |
-| §4 step 9 end state | — | Gap 4 |
+| §4 step 9 end state | `follow_through`: every approved POST, CORRECT & RE-POST and MONITOR is re-tested on the book's next COB. A break that is gone has cleared (shown on the earlier case). One still open after an adjustment → check `ADJUSTMENT_NOT_CLEARED` → U *Adjustment did not clear* → ESCALATE (the investigation stays open). A MONITOR that did not clear → `MONITOR_NOT_CLEARED` → K | In Helix |
 | **§5 FO-1…FO-8** | `playbook.tests`, each with `fails_when`, the fields it `needs`, its evidence, `on_fail`; FO-1, FO-2, FO-4, FO-7 hold a POST (`blocks_post`); FO-3 failing requires FO-6 | In Helix |
 | A test whose evidence is missing | "not run", never passed (§13: "unable to test") | In Helix |
 | **FO-6 findings A/B/C** | `playbook.findings`: A and B indicate a category and side FO; C proceeds to BO | In Helix |
 | Worked case (pull factor 1.00 → 0.67) | Finding A → C/FO → DO_NOT_POST, owner CATS support (`tests/helix/test_fobo_playbook.py`) | In Helix |
 | **§6 BO-1…BO-6** | `playbook.tests` with side BO | In Helix |
 | Decision Point 2 — do not post by elimination | As R1; and in `reasoning.skill` | In Helix + added now |
-| **§7 Trade level** | Needs trade-level data (quantity, direction, consideration, price, factor, settlement) as a tool | Gap 5 |
+| **§7 Trade level** | `cats.trades` and `motif.trades` are the model's tools (quantity, direction, consideration, price, pull factor, settlement), with a *trade-level* specialist that compares them per trade | In Helix |
 | **§8 Reapplication** | Check `REAPPLICATION`: `prior_adjustment` equals today's difference → J *Reapplication* (BO) → **POST**, flagged for confirmation while thresholds are unset (P1) | Added now |
-| §8 Missing side | `break_type: missing_motif` is on every break; validating ISIN and enrichment is judgement → model | In Helix (no dedicated check) |
+| §8 Missing side | Check `MISSING_SIDE` (after timing, so a late booking stays T): `break_type == 'missing_motif'` → M *Missing side*, judgement → the model with the trade tools, then a person | In Helix |
 | §8 Static outlier | Check `STATIC_OUTLIER`: `not static_present` → F *Data quality* (BO) → **DO NOT POST** | Added now |
 | §8 Posting failure | Check `POSTING_FAILED`: `journal_status == 'rejected'` → R *Rejected posting* → **CORRECT_AND_REPOST**, ticket to Operations | Added now |
 | **§9 Categories A–H** | `playbook.categories` A–H with determinism and owning team; plus T (timing), K (aged), W (books not complete), R (rejected posting), J (reapplication) | In Helix + added now |
 | "Exactly one primary category" | The first positive check; the others are kept on the break as secondary evidence | In Helix |
-| Category H feeds skill evolution | Approved decisions become priors for the next run; eval sets replay decided cases on a changed playbook | In Helix (gap 6: an H report) |
+| Category H feeds skill evolution | *Learning from the work* lists H and breaks no check explained (`insights.unexplained`) for the skill's owners, and judgement calls approved unchanged 5× as rule candidates; eval sets replay decided cases on a changed playbook | In Helix |
 | **§10 Verdicts** POST / DO NOT POST / ESCALATE / CORRECT & RE-POST | All four in the table; plus MONITOR for timing differences | Added now (CORRECT_AND_REPOST) |
 | **§11 Remediation** | Tickets to the owning team (`escalation`); *Recurring items* for "recurring or systemic"; the model writes who to engage and which preventative control or MB Rec rule to propose | In Helix + added now |
-| "If an adjustment was posted: BO + adjustments = FO, else stays open" | — | Gap 4 |
-| **§12 Output format** | 1 break summary → the break table on the case · 2 checks performed → the tests table (pass / fail / not run, with evidence) · 4 classification → category, side, determinism on every group · 3, 5, 6, 7 → the model's comment, in that order, for judgement breaks; the playbook's wording for settled ones | In Helix + added now (gap 3 for structured fields) |
+| "If an adjustment was posted: BO + adjustments = FO, else stays open" | `follow_through` and `ADJUSTMENT_NOT_CLEARED` (see §4 step 9 above) | In Helix |
+| **§12 Output format** | 1 break summary → the break table · 2 checks performed → the tests table · 4 classification → category, side, determinism · 3, 5, 6, 7 → `reasoning.sections`: root cause, hypotheses, tests not performed, verdict and why, remediation, preventative control, end state, each its own field; a required one missing sends the group to a person | In Helix |
 | **§13 Evidence discipline** — say which tests could not run | Tests "not run" with the reason; the model must state them and their effect on confidence | In Helix + added now |
 | §13 "ask for it" | *Ask for evidence*: a reviewer asks the desk, Operations or CATS support (`requests.targets`); the group waits; the answer goes back to the model | Added now |
-| **§14 Completion checklist** | Items 1–4 shown on the case (checks, evidence, root cause); 5–9 in the verdict and the model's comment | Gap 7 for a checklist at sign-off |
+| **§14 Completion checklist** | `review.checklist`: the questions answered yes / no / n/a before approving, with Helix's answer next to each (tests, evidence and answers, verdict, root cause, remediation…); kept on the decision. Questions 6 and 7 are one ("why, or why not") since only one applies | In Helix |
 | **§15 Governing principle** | The design: components first, verdict mechanical once the cause is known | In Helix |
-| **Local parameters** | `policy`: materiality, MTM tolerance (FO-4), calculation tolerance (FO-6), posting policy reference, same-day cut-off — all `null` until Product Control confirms. Escalation routing → `categories.*.escalate_to` and the ticketing tool. Books in scope → data scopes and MB Rec's events | In Helix (cut-off added now, not yet used by a rule) |
+| **Local parameters** | `policy`, all `null` until Product Control confirms; the *Data and parameters* panel lists each, where it is used, and what is still to confirm ([data contract](mbrec-data-contract.md)). FOBO Rates has materiality and the posting policy confirmed | In Helix (cut-off and FO-6 tolerance not yet used by a rule) |
 | **P1** never invent a threshold | A POST while a threshold is unset is flagged "requires controller confirmation"; approving it needs a tick and the controller's words; a test whose threshold is unset is "not run" | In Helix |
 | Appendix A worked example | Reproduced in the behaviour tests | In Helix |
 
@@ -88,23 +88,24 @@ they come from MB Rec or from the extra-data step (MOTIF snapshots).
 
 A field that is missing makes the test that needs it "not run". Nothing is assumed.
 
-## Gaps: what needs building, in order of value
+## Gaps: what needed building — all done
 
-1. ~~Ask for evidence (§13)~~ — done: `requests` (see the [walkthrough](../guide/fobo-capability-walkthrough.md)).
-2. ~~Late exceptions~~ — done: `case.late_items: follow_up` opens a linked follow-up case with
-   only the new breaks.
-3. **Structured output (§12).** Have the model return root cause, hypotheses, tests not
-   performed, remediation, preventative control and end state as separate fields. The case
-   would show them as the skill's sections, and they could be reported on.
-4. **End-state validation (§11, §4 step 9).** After an adjustment, re-test
-   `BO + adjustments = FO` on the next COB. Close the investigation if it holds and reopen it
-   if not. The same mechanism closes MONITOR breaks that cleared.
-5. **Trade-level tool (§7).** A CATS/MOTIF trade-file connector, so the model can validate
-   quantity, direction, consideration, price, factor and settlement per trade.
-6. **Category H report.** Novel breaks across cases, for the skill's owners to turn into new
-   checks.
-7. **Completion checklist at sign-off (§14).** The nine questions, with the answers Helix
-   already has filled in.
+1. ~~Ask for evidence (§13)~~: `requests`. Questions are chased after 2 hours and escalated after
+   4, and answers may carry a file. See the [Teams/email recipe](../guide/questions-by-teams-or-email.md).
+2. ~~Late exceptions~~: `case.late_items: follow_up`.
+3. ~~Structured output (§12)~~: `reasoning.sections`.
+4. ~~End-state validation (§11, §4 step 9)~~: `follow_through`.
+5. ~~Trade-level tool (§7)~~: `cats.trades`, `motif.trades`.
+6. ~~Category H report~~: *Learning from the work*.
+7. ~~Completion checklist (§14)~~: `review.checklist`.
+
+Each is a platform feature that any capability can use, not something built for FOBO alone.
+See [features by capability](../guide/features-by-capability.md).
+
+What remains is for people, not code:
+- Product Control confirms the parameters;
+- MB Rec and MOTIF provide the fields in the [data contract](mbrec-data-contract.md);
+- the controllers' decisions in Helix become the eval set ([runbook](../guide/real-model-evals.md)).
 
 ## Keeping the skill and Helix in step
 

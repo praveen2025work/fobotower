@@ -164,7 +164,7 @@ Then *Review and submit*. Another group owner approves.
 
 | Situation | How it is configured now | Not yet in Helix |
 |---|---|---|
-| **Timing difference** | `TIMING` check → category T → **MONITOR**; `AGED` check sends anything open 2+ COBs to a person; *Recurring items* shows a break that keeps coming back; the model reads `mbrec.break_history` | Closing a MONITOR break automatically when the next COB's feed shows it cleared (today the next run simply no longer has it) |
+| **Timing difference** | `TIMING` check → category T → **MONITOR**; `AGED` check sends anything open 2+ COBs to a person; *Recurring items* shows a break that keeps coming back; the model reads `mbrec.break_history`. **Follow-through** re-tests every MONITOR on the next COB: cleared shows on the earlier case, and one still open becomes `MONITOR_NOT_CLEARED` → K, for a person | — |
 | **Other sources** | Each source is a connector tool; add it to *Enrich* (joined onto every break) or to the model's tools (read when needed). A controller can attach a file to the case | A source with no MCP server needs one, onboarded once |
 | **Trader provides the info** | The controller writes it in the **tollgate note**, or **asks the desk from the case** (*Questions → Ask for evidence*). The group waits; the trader answers in Helix (or a Teams/email bot answers for them); the answer goes to the model. See the [walkthrough](fobo-capability-walkthrough.md) | — |
 
@@ -180,4 +180,4 @@ Then *Review and submit*. Another group owner approves.
 To bring changed files into a running deployment, run `python -m helix.config_sync`, then
 approve the drafts. New capabilities and groups arrive as version 1 drafts.
 
-For Rates, add a second group the same way, with the Rates books, thresholds and reviewers.
+Rates is the second group, configured the same way: `groups/break.investigation/fobo-rates.yaml`.

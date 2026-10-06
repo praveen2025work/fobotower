@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import clsx from "clsx";
 import { AlertTriangle, Check, Loader2, Pause } from "lucide-react";
 
@@ -18,7 +18,7 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
 
 export function Card({ title, aside, children, className }: { title?: ReactNode; aside?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <section className={clsx("min-w-0 rounded-xl border border-surface-200 bg-card", className)}>
+    <section className={clsx("hx-panel min-w-0 rounded-xl border border-surface-200 bg-card", className)}>
       {(title || aside) && (
         <header className="flex items-center justify-between gap-2 border-b border-surface-100 px-4 py-3">
           {title && <h2 className="text-sm font-semibold text-surface-800">{title}</h2>}
@@ -32,10 +32,41 @@ export function Card({ title, aside, children, className }: { title?: ReactNode;
 
 export function Loading({ what }: { what: string }) {
   return (
-    <p className="flex items-center gap-2 py-6 text-sm text-surface-500">
-      <Loader2 size={16} className="animate-spin" /> Loading {what}…
-    </p>
+    <div className="py-4" aria-busy="true">
+      <p className="flex items-center gap-2 text-sm text-surface-500">
+        <Loader2 size={16} className="animate-spin" /> Loading {what}…
+      </p>
+      <div className="mt-3 space-y-2" aria-hidden="true">
+        <div className="hx-skeleton h-3 w-11/12" />
+        <div className="hx-skeleton h-3 w-9/12" />
+        <div className="hx-skeleton h-3 w-10/12" />
+      </div>
+    </div>
   );
+}
+
+/** A number that counts up to its value when it first shows (instantly under reduced motion). */
+export function CountUp({ value, suffix = "" }: { value: number; suffix?: string }) {
+  const [shown, setShown] = useState(value);
+  useEffect(() => {
+    const still = import.meta.env.MODE === "test" || typeof window === "undefined" || !window.requestAnimationFrame
+      || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (still || !Number.isFinite(value) || value === 0) return setShown(value);
+    const start = performance.now();
+    const whole = Number.isInteger(value);
+    let frame = 0;
+    const tick = (t: number) => {
+      const k = Math.min(1, (t - start) / 900);
+      const eased = 1 - Math.pow(1 - k, 3);
+      const v = value * eased;
+      setShown(whole ? Math.round(v) : Math.round(v * 10) / 10);
+      if (k < 1) frame = requestAnimationFrame(tick);
+    };
+    setShown(0);
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [value]);
+  return <span className="tabular-nums">{shown.toLocaleString("en-GB")}{suffix}</span>;
 }
 
 export function ErrorState({ error }: { error: unknown }) {

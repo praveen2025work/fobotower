@@ -13,7 +13,7 @@ export default function Capabilities(): JSX.Element {
       {caps.isLoading && <Loading what="capabilities" />}
       {caps.error && <ErrorState error={caps.error} />}
       {caps.data?.length === 0 && <Empty>No capabilities for your roles.</Empty>}
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="hx-stagger grid gap-4 lg:grid-cols-2">
         {caps.data?.map((c) => (
           <Link
             key={c.id}

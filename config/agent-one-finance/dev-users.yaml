@@ -83,6 +83,12 @@ users:
     name: Owen (Control owner; attests the control)
     roles: [CONTROL_OWNER, CONTROL_TESTER, AOF_CONTROLS_OWNER]
     data_scopes: { entity: ["*"] }
+  dana:
+    name: Dana (Head of Finance Operations; demo view across every team)
+    roles: [FIN_REVIEWER, FIN_CONTROLLER, CASH_OPS, FOBO_CONTROLLER, FOBO_RATES_CONTROLLER, PAYMENTS_OPS, PAYMENTS_LEAD,
+            COMPLAINTS_LEAD, CONTROL_OWNER, AOF_FIN_VARCOMM_OWNER, AOF_CASH_RECON_OWNER, AOF_RECON_OWNER,
+            AOF_FOBO_RECON_OWNER, AOF_FOBO_RATES_OWNER, AOF_PAYMENTS_OWNER, AOF_COMPLAINTS_OWNER, AOF_CONTROLS_OWNER]
+    data_scopes: { entity: ["*"], book: ["*"] }
   pat:
     name: Pat (Agent One Finance platform support — switches, connectors; sees no case data)
     roles: [AOF_PLATFORM_ADMIN]

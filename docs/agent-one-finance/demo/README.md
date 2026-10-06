@@ -11,9 +11,34 @@ follow-through (an adjustment that did not clear stays open).
 that opens in any browser with no setup. It is read-only and uses recorded dev data. Send it
 to your team or open it after the video.
 
+The snapshot was refreshed on 2026-10-06 from the latest version. It is seen as Dana, a dev
+user who sees every team's work across all ten capabilities. It includes the steps v2 cases:
+
+- accruals with balanced journals and the authority matrix;
+- a complaints day at its send tollgate, with a drafted message and clocks;
+- a control test waiting on its three sample cases;
+- payments exceptions;
+- the FOBO break investigations.
+
+The console's motion is in the snapshot too:
+
+- pages arrive with a short transition, cards and table rows come in one after another, and
+  figures count up;
+- loading shows shimmer bars, and a progress line runs under the frosted top bar;
+- the current page glows in the sidebar, and work in progress has a live dot;
+- switching theme opens the new theme as a circle from the switch;
+- all motion stops when the viewer's system asks for reduced motion.
+
+To rebuild the snapshot:
+
+1. Run the API and `npm run dev`.
+2. Run `SNAPSHOT_USER=dana node scripts/capture-snapshot.mjs` (add `SNAPSHOT_CASES` for
+   extra cases).
+3. Run `npm run build:snapshot` in `apps/web`, and copy `dist-snapshot/agent-one-finance-snapshot.html` here.
+
 The narrated version below (2026-10-04) is kept for sending to people who will watch it alone.
 
-**Video:** [`aof-demo.mp4`](aof-demo.mp4), 3 min 06 s, 1280×720, with voice-over and
+**Video:** [`agent-one-finance-demo.mp4`](agent-one-finance-demo.mp4), 3 min 06 s, 1280×720, with voice-over and
 on-screen captions. It was recorded from the running app on 2026-10-04: the dev stack,
 dev data, and the deterministic stub model (no live model calls).
 

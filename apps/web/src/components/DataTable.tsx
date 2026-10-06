@@ -53,7 +53,7 @@ function DataTable<T extends Record<string, unknown>>({
   return (
     <div className="overflow-hidden rounded-xl border border-surface-200 bg-card">
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="hx-rows w-full text-sm">
           <thead>
             <tr className="border-b border-surface-200 bg-surface-50">
               {columns.map((col) => (

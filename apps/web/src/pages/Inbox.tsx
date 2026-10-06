@@ -62,7 +62,7 @@ export function InboxTable({ rows }: { rows: InboxRow[] }) {
   return (
     <>
     <div className="overflow-x-auto">
-      <table className="w-full text-left text-sm">
+      <table className="hx-rows w-full text-left text-sm">
         <thead className="text-xs text-surface-500">
           <tr>
             <th scope="col" className="px-2 py-2 font-medium">Needs</th>

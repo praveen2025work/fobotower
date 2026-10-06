@@ -36,6 +36,9 @@ const STATUS_STYLES: Record<string, string> = {
   write: "bg-orange-100 text-orange-700 border-orange-200",
 };
 
+// Work that is moving shows a live dot.
+const LIVE = /^(running|waiting_|paused_before_|awaiting_)/;
+
 function StatusBadge({ status, className }: StatusBadgeProps) {
   // A run waiting at a tollgate: "paused_before_reason" reads "tollgate: reason".
   const gate = status.startsWith("paused_before_") ? status.slice("paused_before_".length) : null;
@@ -50,6 +53,7 @@ function StatusBadge({ status, className }: StatusBadgeProps) {
         className,
       )}
     >
+      {LIVE.test(status) && <span className="hx-live mr-1.5" aria-hidden="true" />}
       {gate ? `tollgate: ${gate}` : status === "gate" ? "tollgate" : status.replace(/_/g, " ")}
     </span>
   );

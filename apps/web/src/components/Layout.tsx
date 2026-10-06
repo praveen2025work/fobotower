@@ -5,7 +5,8 @@
 // the Barclays light and dark themes (src/theme.ts).
 
 import { useEffect, useRef, useState } from "react";
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { useIsFetching } from "@tanstack/react-query";
 import clsx from "clsx";
 import {
   Activity,
@@ -82,6 +83,21 @@ function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
   const inbox = useInbox();
   const platform = usePlatform();
   const [theme, setTheme] = useTheme();
+  const location = useLocation();
+  const fetching = useIsFetching() > 0;
+  // The new theme opens as a circle from the switch, where view transitions exist.
+  const switchTheme = (e: React.MouseEvent) => {
+    const next = theme === "dark" ? "light" : "dark";
+    const doc = document as Document & { startViewTransition?: (cb: () => void) => unknown };
+    const still = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (!doc.startViewTransition || still) return setTheme(next);
+    document.documentElement.style.setProperty("--hx-x", `${e.clientX}px`);
+    document.documentElement.style.setProperty("--hx-y", `${e.clientY}px`);
+    doc.startViewTransition(() => {
+      document.documentElement.dataset.theme = next;
+      setTheme(next);
+    });
+  };
 
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
@@ -157,9 +173,9 @@ function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
                     onClick={() => setMobileOpen(false)}
                     className={({ isActive }) =>
                       clsx(
-                        "relative flex items-center rounded-lg transition-colors",
+                        "hx-nav-item flex items-center rounded-lg",
                         compact ? "justify-center p-2.5" : "gap-2.5 px-3 py-2 text-sm font-medium",
-                        isActive ? "bg-nav-active text-nav-active-fg" : "text-nav-fg hover:bg-nav-hover hover:text-white",
+                        isActive ? "hx-nav-on bg-nav-active text-nav-active-fg" : "text-nav-fg hover:bg-nav-hover hover:text-white",
                       )
                     }
                   >
@@ -206,7 +222,8 @@ function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="flex h-14 items-center justify-between gap-2 border-b border-surface-200 bg-card px-3 sm:px-4">
+        <header className="hx-topbar relative z-10 flex h-14 items-center justify-between gap-2 border-b border-surface-200 px-3 sm:px-4">
+          {fetching && <span className="hx-progress" aria-hidden="true" />}
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <button onClick={() => setMobileOpen(true)} className="rounded-lg p-2 hover:bg-surface-100 lg:hidden" aria-label="Open menu">
               <Menu size={18} className="text-surface-500" />
@@ -233,7 +250,7 @@ function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
             )}
             <NotificationBell enabled={!!user} />
             <button
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              onClick={switchTheme}
               className="rounded-lg p-2 text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-700"
               aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
               title={theme === "dark" ? "Barclays light" : "Barclays dark"}
@@ -258,7 +275,7 @@ function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
                 <ChevronDown size={14} className="shrink-0 text-surface-400" />
               </button>
               {userMenu && (
-                <div className="absolute right-0 top-full z-50 mt-1 w-80 max-w-[calc(100vw-1.5rem)] rounded-lg border border-surface-200 bg-card shadow-lg">
+                <div className="hx-pop absolute right-0 top-full z-50 mt-1 w-80 max-w-[calc(100vw-1.5rem)] rounded-lg border border-surface-200 bg-card shadow-lg">
                   <div className="border-b border-surface-100 px-3 py-2.5">
                     <p className="text-sm font-semibold text-surface-900">{who.name}</p>
                     {who.description && <p className="text-xs text-surface-500">{who.description}</p>}
@@ -311,7 +328,10 @@ function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
 
         <main className="scrollbar-hide min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-3 pb-24 sm:p-4 sm:pb-24 lg:p-6">
           <ErrorBoundary>
-            <Outlet />
+            {/* Keyed on the route, so each page arrives with a short transition. */}
+            <div key={location.pathname} className="hx-page">
+              <Outlet />
+            </div>
           </ErrorBoundary>
         </main>
       </div>

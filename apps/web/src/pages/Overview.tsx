@@ -6,7 +6,7 @@ import { useInbox, useMe, useOverview } from "../api/aof";
 import StatCard from "../components/StatCard";
 import StatusBadge from "../components/StatusBadge";
 import { urgency } from "../components/Urgency";
-import { Card, Empty, ErrorState, Loading } from "../components/ui";
+import { Card, CountUp, Empty, ErrorState, Loading } from "../components/ui";
 import { InboxTable } from "./Inbox";
 
 const PATH = ["Get the items", "Prepare", "Propose", "People decide", "Record", "Release"];
@@ -38,7 +38,7 @@ function OverviewHero({ waiting, review, release, escalated, capabilities }: {
       <div className="grid grid-cols-3 gap-2 lg:w-80">
         {tiles.map(([label, n]) => (
           <div key={label} className="hx-glass rounded-xl px-3 py-2.5">
-            <p className="text-2xl font-bold tabular-nums">{n ?? "–"}</p>
+            <p className="hx-gradient-text text-2xl font-bold tabular-nums">{n == null ? "–" : <CountUp value={n} />}</p>
             <p className="text-[11px] leading-tight text-nav-fg">{label}</p>
           </div>
         ))}
@@ -79,7 +79,7 @@ export default function Overview(): JSX.Element {
       {overview.error && <ErrorState error={overview.error} />}
       {overview.data && (
         <>
-          <div className="mb-5 grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-3 xl:grid-cols-6">
+          <div className="hx-stagger mb-5 grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-3 xl:grid-cols-6">
             {overview.data.hours_saved_30d && (
               <div title={overview.data.hours_saved_30d.basis}>
                 <StatCard icon={Clock} value={`${overview.data.hours_saved_30d.value} h`} label="Hours saved (30 days)" />
@@ -118,7 +118,7 @@ export default function Overview(): JSX.Element {
               {overview.data.capabilities.length === 0 ? (
                 <Empty>No capabilities for your roles.</Empty>
               ) : (
-                <ul className="space-y-3">
+                <ul className="hx-stagger space-y-3">
                   {overview.data.capabilities.map((c) => (
                     <li key={c.id}>
                       <Link to={`/capabilities/${encodeURIComponent(c.id)}`} className="hx-sheen group block rounded-lg border border-surface-200 p-3 hover:border-primary-300">

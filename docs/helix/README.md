@@ -288,3 +288,5 @@ notifications · parallel reasoning across groups · FOBO's validation tests (FO
 structured checks · moving FOBO's users onto the platform.
 
 **Design proposal:** [Helix steps v2: building blocks for banking and accounting work](design/step-catalogue-v2.md): the processes to cover, about thirty operations, the step catalogue v2, engine changes, controls and a phased plan.
+
+**Platform overview:** [Helix: one governed platform for case-based work across the bank](platform-overview.md): what every use case gets, the building blocks, the controls built in, 26 use cases by division (8 running) and how a team adopts it.

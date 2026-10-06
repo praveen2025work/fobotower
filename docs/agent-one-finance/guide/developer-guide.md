@@ -659,6 +659,7 @@ curl -X POST localhost:8300/api/capabilities/fin.accruals-review/cases \
 cd apps/backend && .venv/bin/python -m pytest -q          # backend (needs Postgres; test DB fobo_test)
 cd apps/backend && .venv/bin/python -m pytest -q tests/agent_one_finance
 cd apps/web && npx vitest run && npx tsc --noEmit -p .    # web
+cd apps/web && npm run check:styles                         # the console keeps this project's styles (migration/styles.md)
 cd apps/console && npx vitest run                         # FOBO console
 ```
 

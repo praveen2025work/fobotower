@@ -58,6 +58,7 @@ them by hand. Every migration has a working `downgrade`.
 | Example capabilities | stubs: `stub_connectors/banking.py`, `stub_connectors/finance.py` | — | `capabilities/fin-accruals.yaml`, `client-complaints.yaml`, `controls-operating-test.yaml`, `controls-sample-test.yaml`, `payments-exceptions.yaml`; office entries in `connectors.office.example.yaml` | `test_step_types_v2.py`, `test_examples.py` |
 | Platform overview and pitch page | — | `public/pitch/index.html` (served at `/pitch/`), `scripts/inline-pitch.mjs` | `platform-overview.md`, `pitch/agent-one-finance-pitch.html` | — |
 | Console graphics (modern CSS) | — | `index.css` (`hx-*` classes), `pages/Overview.tsx`, `components/Layout.tsx` | — | web tests |
+| Style check: this project's styles, enforced | — | `scripts/check-styles.mjs`, `theme/style-manifest.json`, `npm run check:styles` | `migration/styles.md` | runs on its own |
 | The rename | every file | every file | `renaming.md`, `migration/rename-map.json` | all |
 
 The FOBO console (`apps/console`) changed only in name (`src/aof/`, the route `/aof`). The
@@ -78,6 +79,22 @@ is moved by the `fobo-to-aof` skill instead.
 
 To list the settings the code reads, run `grep -rhoE 'AOF_[A-Z_]+' apps/backend/agent_one_finance | sort -u`.
 Compare it with the office's deployment files.
+
+## 3a. Styles
+
+The console's look is upstream's and must stay so. That covers the Barclays tokens, Tailwind 3,
+the single `src/index.css` with the `hx-*` graphics, the light and dark switch, and the fonts.
+`apps/web/theme/style-manifest.json` fingerprints the style files. `npm run check:styles` fails
+on any of these:
+
+- a style file that differs from upstream;
+- a hard-coded colour;
+- an extra stylesheet;
+- another UI library;
+- Tailwind 4;
+- an undefined `hx-*` class.
+
+[`styles.md`](styles.md) says how to style office screens with the tokens.
 
 ## 4. The office's LLM adapter
 

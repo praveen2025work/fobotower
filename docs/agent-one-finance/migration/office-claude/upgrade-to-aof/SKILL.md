@@ -30,6 +30,8 @@ Your job is to make the office repo match upstream and keep every office change,
 3. `docs/agent-one-finance/migration/rename-map.json`: the same names as data. Do not edit it.
    If it lacks a rule the office needs, add the rule to the office's own notes and apply it by hand.
 4. `apps/backend/scripts/aof_convert.py --help`: the converter.
+5. `docs/agent-one-finance/migration/styles.md`: the console's style system, and the rules for
+   keeping it. Upstream's styles are used everywhere; the office's are not.
 
 If you cannot see upstream (Phase 0), stop and ask the user how to get it.
 
@@ -59,7 +61,16 @@ If you cannot see upstream (Phase 0), stop and ask the user how to get it.
    entitlements; a proxy that sends both headers). Never leave old names in the code.
 7. **One phase per turn.** Finish the phase, run its check, report, and stop. Wait until the user
    approves the phase.
-8. **Commit each phase separately**, with a message that names the phase, on a branch (for example
+8. **Styles are upstream's.** The console (`apps/web`) uses this project's styles:
+   - the Barclays tokens in `theme/barclays.js`;
+   - Tailwind 3;
+   - the one stylesheet `src/index.css`, with its `hx-*` graphics;
+   - the theme switch.
+
+   Take those files byte for byte. On a conflict, upstream wins. Do not add stylesheets or UI
+   libraries, and do not hard-code colours. Office screens use the token classes.
+   `npm run check:styles` must pass (`styles.md`).
+9. **Commit each phase separately**, with a message that names the phase, on a branch (for example
    `upgrade/agent-one-finance`), never on the main branch. Do not push unless the user asks.
 
 ## Phase 0: Get upstream into the office repo
@@ -118,10 +129,17 @@ Write `UPGRADE_INVENTORY.md` with these sections.
    - the current Alembic head (`alembic current`);
    - any office-only migrations;
    - roughly how many open cases there are (they must carry on).
-5. **Route** (see Phase 3):
+5. **Styles.** List every office change to `apps/web` styling:
+   - edits to the files in `apps/web/theme/style-manifest.json`, or their old equivalents;
+   - extra `.css`/`.scss` files;
+   - UI or CSS libraries in `package.json`;
+   - hard-coded colours (`grep -rnE "#[0-9a-fA-F]{6}|bg-\[#" apps/web/src`).
+
+   Each one will be replaced by upstream's styles. Note which screens it affects.
+6. **Route** (see Phase 3):
    - **A**, if every office change is at an extension point;
    - **B**, if any engine file has office edits.
-6. **Open questions**, numbered.
+7. **Open questions**, numbered.
 
 Check: every section is filled in. Stop, show the route and the open questions.
 
@@ -185,6 +203,11 @@ git -C ../aof-base add -A && git -C ../aof-base commit -qm "baseline, renamed"  
 
    Office-only files in those folders stay. If the office changed an upstream doc, merge it
    like a configuration file (step 2).
+
+   This also takes upstream's styles whole: `theme/`, `tailwind.config.js`,
+   `postcss.config.js`, `src/index.css`, `src/theme.ts`, `index.html` and the pitch page.
+   Office screens under `apps/web/src` stay, but restyle them with the tokens until
+   `npm run check:styles` passes (`styles.md` rules 2–3).
 2. For each extension-point file, run a three-way merge (renamed baseline, office, upstream):
 
    ```bash
@@ -217,6 +240,11 @@ git -C ../aof-base add -A && git -C ../aof-base commit -qm "baseline, renamed"  
      belongs to (`whats-new.md` §2). Ask the user.
 3. For each office engine change from the inventory, check whether upstream now does the same
    thing. If it does, prefer upstream, and write that down.
+4. **Styles have no "both changed" case: upstream wins.** For any conflict in a file listed
+   in `apps/web/theme/style-manifest.json`, take upstream's file
+   (`git checkout upstream/main -- <file>`). Write the office's lost lines in
+   `UPGRADE_GAPS.md` as a request to make upstream. Then restyle any office component that
+   used office CSS with the token classes.
 
 Both routes:
 
@@ -229,6 +257,10 @@ Check:
 
 - `pytest -q` (backend), `npx vitest run` and `npx tsc --noEmit -p .` (web), and
   `npx vitest run` (console) are green;
+- `cd apps/web && npm run check:styles` prints `styles ok`;
+- `npm run dev`, then open Overview, a case, Configure and `/pitch/` in light and in dark. They
+  look like upstream's, with the hero banner, rings, gradient cards, Barclays colours and
+  Inter type;
 - `alembic heads` shows one head.
 
 Report the counts next to upstream's (`whats-new.md` §5).

@@ -14,6 +14,8 @@ What goes with them:
 
 - [`../whats-new.md`](../whats-new.md): everything that changed since 2026-10-04, with
   the migrations, features, files and office actions.
+- [`../styles.md`](../styles.md): the console's style system, and the rules for keeping it
+  (upstream's styles everywhere), checked by `npm run check:styles` in `apps/web`.
 - [`../rename-map.json`](../rename-map.json): the old → new names, as data.
 - `apps/backend/scripts/aof_convert.py`: applies the map to a repo (a dry run by default).
   It lists what is left for a person to decide, and running it twice changes nothing.
@@ -38,7 +40,8 @@ git fetch /path/aof.bundle 'refs/heads/*:refs/remotes/upstream/*'
 
 > Use the upgrade-to-aof skill. Upstream is `upstream/main` (fetched from the bundle). Start
 > with Phase 0 and stop after it. Work on the branch `upgrade/agent-one-finance`. Do not touch
-> any database or deployment.
+> any database or deployment. Keep this project's styles exactly (styles.md): no office CSS,
+> and `npm run check:styles` must pass.
 
 **FOBO:** use the prompt in [§9 of the change guide](../README.md#9-the-prompt-to-start-office-claude).
 

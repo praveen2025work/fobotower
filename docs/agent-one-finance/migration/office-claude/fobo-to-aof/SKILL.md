@@ -101,7 +101,9 @@ Check: every §2 row is filled in. Stop and show the open questions.
    - `apps/web/`;
    - `config/agent-one-finance/`.
 
-   Do not overwrite this repo's FOBO files.
+   Do not overwrite this repo's FOBO files. Take `apps/web` with its styles exactly as upstream
+   has them (`docs/agent-one-finance/migration/styles.md`). Do not restyle it with FOBO's or the
+   office's CSS.
 2. Give Agent One Finance its own database (`AOF_DATABASE_URL`). Run `alembic upgrade head`.
 3. Run with the defaults (`AOF_LLM_ADAPTER=stub`, dev users):
 
@@ -110,7 +112,12 @@ Check: every §2 row is filled in. Stop and show the open questions.
    uvicorn agent_one_finance.web.main:app --port 8300
    ```
 
-Check: tests green, and the API starts. Report the test counts.
+Check:
+
+- the tests are green and the API starts;
+- `cd apps/web && npm run check:styles` prints `styles ok`.
+
+Report the test counts.
 
 ## Phase 2 — Connectors
 

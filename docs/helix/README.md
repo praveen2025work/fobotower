@@ -286,3 +286,5 @@ Then, from [`office-platform-and-roadmap.md`](office-platform-and-roadmap.md): e
 shadow runs in Phoenix · scheduled and event-opened cases · evidence upload into a case ·
 notifications · parallel reasoning across groups · FOBO's validation tests (FO-1…BO-6) as
 structured checks · moving FOBO's users onto the platform.
+
+**Design proposal:** [Helix steps v2: building blocks for banking and accounting work](design/step-catalogue-v2.md): the processes to cover, about thirty operations, the step catalogue v2, engine changes, controls and a phased plan.

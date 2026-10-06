@@ -1,0 +1,745 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Helix for the Bank</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,500..800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a navy masthead with a live case card, then light working sections; the
+   use-case explorer is the centrepiece. Colours follow the Helix console's Barclays theme. */
+:root {
+  --paper: #f5f8fb;       /* page */
+  --card: #ffffff;        /* panels */
+  --ink: #0f2133;         /* text */
+  --muted: #46596b;       /* quiet text */
+  --line: #d8e2eb;        /* rules and borders */
+  --band: #00395d;        /* masthead navy */
+  --band-ink: #e6f1f8;
+  --band-muted: #9cc4dc;
+  --action: #007eb6;      /* Barclays action blue */
+  --cyan: #00aeef;        /* Barclays blue, highlights */
+  --tint: #e6f6fd;
+  --good: #15803d;
+  --warn: #a16207;
+  --code-bg: #06121f;
+  --code-ink: #dbe7f1;
+  --code-key: #7fd6f7;
+  /* step families */
+  --f-core: #61778c; --f-data: #0091cc; --f-acct: #1d4ed8; --f-assur: #0f766e;
+  --f-orch: #7c3aed; --f-acq: #b45309; --f-time: #be185d; --f-gate: #00395d;
+  --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #081521; --card: #0d1d2c; --ink: #ecf2f7; --muted: #a3b4c6; --line: #1f3549;
+    --band: #062338; --band-ink: #e6f1f8; --band-muted: #8fb8d2;
+    --action: #4cc6f4; --cyan: #33c1f4; --tint: #0a2a40; --good: #6fdc96; --warn: #f5d453;
+    --code-bg: #04101b; --code-ink: #dbe7f1; --code-key: #7fd6f7;
+    --f-core: #8da2b5; --f-data: #4cc6f4; --f-acct: #7aa2ff; --f-assur: #4fd1c5;
+    --f-orch: #b794f6; --f-acq: #f6ad55; --f-time: #f687b3; --f-gate: #7fd6f7;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #081521; --card: #0d1d2c; --ink: #ecf2f7; --muted: #a3b4c6; --line: #1f3549;
+  --band: #062338; --band-ink: #e6f1f8; --band-muted: #8fb8d2;
+  --action: #4cc6f4; --cyan: #33c1f4; --tint: #0a2a40; --good: #6fdc96; --warn: #f5d453;
+  --code-bg: #04101b; --code-ink: #dbe7f1; --code-key: #7fd6f7;
+  --f-core: #8da2b5; --f-data: #4cc6f4; --f-acct: #7aa2ff; --f-assur: #4fd1c5;
+  --f-orch: #b794f6; --f-acq: #f6ad55; --f-time: #f687b3; --f-gate: #7fd6f7;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.6 var(--body); }
+a { color: var(--action); }
+:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; border-radius: 4px; }
+h1, h2, h3 { font-family: var(--display); font-stretch: 112%; line-height: 1.12; text-wrap: balance; margin: 0; }
+h2 { font-size: clamp(1.6rem, 3.2vw, 2.3rem); font-weight: 750; letter-spacing: -0.01em; }
+h3 { font-size: 1.08rem; font-weight: 700; }
+p { margin: 0; }
+.wrap { max-width: 1120px; margin-inline: auto; padding-inline: 20px; }
+section { padding-block: 72px; }
+.eyebrow { font: 600 0.74rem/1 var(--body); letter-spacing: 0.14em; text-transform: uppercase; color: var(--action); }
+.lede { max-width: 62ch; color: var(--muted); font-size: 1.06rem; }
+.head { display: grid; gap: 14px; margin-bottom: 36px; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* ---------- masthead ---------- */
+.mast { background: var(--band); color: var(--band-ink); padding-block: 28px 64px; position: relative; overflow: hidden; }
+.mast::after { content: ""; position: absolute; inset: auto -10% -60% 40%; height: 120%; background: radial-gradient(closest-side, color-mix(in srgb, var(--cyan) 22%, transparent), transparent); pointer-events: none; }
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 56px; }
+.mark { display: flex; align-items: center; gap: 10px; font: 750 1.05rem/1 var(--display); }
+.mark b { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 8px; background: var(--cyan); color: var(--band); font-size: 1rem; }
+.topbar nav { display: flex; gap: 18px; flex-wrap: wrap; font-size: 0.9rem; }
+.topbar nav a { color: var(--band-muted); text-decoration: none; }
+.topbar nav a:hover { color: var(--band-ink); }
+.hero { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); gap: 48px; align-items: center; position: relative; z-index: 1; }
+.hero h1 { font-size: clamp(2.2rem, 5.2vw, 3.9rem); font-weight: 800; letter-spacing: -0.02em; }
+.hero h1 em { font-style: normal; color: var(--cyan); }
+.hero p.sub { margin-top: 20px; font-size: 1.12rem; color: var(--band-muted); max-width: 52ch; }
+.facts { display: flex; flex-wrap: wrap; gap: 28px 40px; margin-top: 36px; }
+.facts div { display: grid; gap: 2px; }
+.facts strong { font: 800 2rem/1 var(--display); color: var(--band-ink); font-variant-numeric: tabular-nums; }
+.facts span { font-size: 0.82rem; color: var(--band-muted); }
+
+/* the live case card */
+.casecard { background: var(--card); color: var(--ink); border-radius: 14px; box-shadow: 0 24px 60px -24px rgba(0,0,0,.55); overflow: hidden; font-size: 0.86rem; }
+.casecard .cc-top { display: flex; justify-content: space-between; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--tint) 60%, var(--card)); }
+.cc-top b { font-family: var(--display); font-weight: 700; }
+.cc-body { padding: 16px; display: grid; gap: 12px; }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; font-size: 0.74rem; font-weight: 600; border: 1px solid var(--line); white-space: nowrap; }
+.pill.good { color: var(--good); border-color: color-mix(in srgb, var(--good) 40%, transparent); }
+.pill.warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 45%, transparent); }
+.pill.blue { color: var(--action); border-color: color-mix(in srgb, var(--action) 40%, transparent); }
+.cc-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.journal { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.journal th { text-align: left; font-weight: 500; color: var(--muted); font-size: 0.74rem; padding: 4px 6px; border-bottom: 1px solid var(--line); }
+.journal td { padding: 5px 6px; border-bottom: 1px solid var(--line); }
+.journal td.r, .journal th.r { text-align: right; }
+.journal code { font-family: var(--mono); font-size: 0.82rem; }
+.cc-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.8rem; }
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; border-radius: 8px; background: var(--action); color: #fff; font-weight: 600; font-size: 0.82rem; border: 0; }
+:root[data-theme="dark"] .btn { color: #00263e; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .btn { color: #00263e; } }
+
+/* ---------- problem ---------- */
+.same { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--card); overflow: hidden; }
+.same li { list-style: none; padding: 20px 18px; border-right: 1px solid var(--line); display: grid; gap: 8px; align-content: start; }
+.same li:last-child { border-right: 0; }
+.same .k { font: 700 0.76rem/1 var(--mono); color: var(--action); }
+.same p { color: var(--muted); font-size: 0.92rem; }
+.same ul { margin: 0; padding: 0; }
+.ticker { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
+.ticker span { font-family: var(--mono); font-size: 0.8rem; padding: 4px 10px; border-radius: 6px; background: var(--card); border: 1px solid var(--line); color: var(--muted); }
+
+/* ---------- path of a case ---------- */
+.path { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; position: relative; }
+.stage { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 14px; display: grid; gap: 6px; align-content: start; position: relative; }
+.stage .n { font: 600 0.72rem/1 var(--mono); color: var(--muted); }
+.stage h3 { font-size: 1rem; }
+.stage p { font-size: 0.86rem; color: var(--muted); }
+.stage.decide { border-color: var(--action); box-shadow: inset 0 0 0 1px var(--action); background: color-mix(in srgb, var(--tint) 55%, var(--card)); }
+.stage + .stage::before { content: ""; position: absolute; left: -12px; top: 28px; width: 12px; height: 2px; background: var(--line); }
+.gateway { margin-top: 12px; border-radius: 12px; padding: 14px 18px; background: color-mix(in srgb, var(--band) 92%, var(--paper)); color: var(--band-ink); display: flex; flex-wrap: wrap; gap: 8px 22px; align-items: center; font-size: 0.9rem; }
+.gateway b { font-family: var(--display); font-weight: 700; }
+.gateway span { color: var(--band-muted); }
+.toll { margin-top: 14px; color: var(--muted); font-size: 0.92rem; max-width: 80ch; }
+
+/* ---------- explorer ---------- */
+.explorer { display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: 20px; align-items: start; }
+.filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; }
+.chip { font: 500 0.82rem/1 var(--body); padding: 8px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.chip .c { color: var(--muted); margin-left: 4px; font-variant-numeric: tabular-nums; }
+.chip[aria-pressed="true"] .c { color: inherit; opacity: .7; }
+.list { border: 1px solid var(--line); border-radius: 12px; background: var(--card); max-height: 640px; overflow: auto; }
+.uc { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; width: 100%; text-align: left; padding: 12px 14px; border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--ink); cursor: pointer; font: inherit; }
+.uc:last-child { border-bottom: 0; }
+.uc:hover { background: color-mix(in srgb, var(--tint) 45%, transparent); }
+.uc[aria-selected="true"] { background: var(--tint); box-shadow: inset 3px 0 0 var(--action); }
+.uc b { font-weight: 600; font-size: 0.95rem; }
+.uc small { grid-column: 1; color: var(--muted); font-size: 0.78rem; }
+.uc .run { grid-row: 1 / span 2; grid-column: 2; align-self: center; }
+.detail { border: 1px solid var(--line); border-radius: 12px; background: var(--card); padding: 24px; display: grid; gap: 22px; min-width: 0; }
+.detail > * { min-width: 0; }
+.detail .top .pill { white-space: normal; }
+.detail .top { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+.detail h3 { font-size: 1.5rem; font-weight: 750; }
+.detail .why { color: var(--muted); max-width: 70ch; }
+.label { font: 600 0.72rem/1 var(--body); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+.pipeline { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.step { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 7px; font-size: 0.82rem; border: 1px solid color-mix(in srgb, var(--fam) 45%, transparent); background: color-mix(in srgb, var(--fam) 10%, var(--card)); color: var(--ink); }
+.step i { width: 7px; height: 7px; border-radius: 2px; background: var(--fam); flex: none; }
+.step.person { border-style: dashed; }
+.arrow { color: var(--muted); font-size: 0.8rem; }
+.facts2 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.fact { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 4px; align-content: start; }
+.fact span { font-size: 0.74rem; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; font-weight: 600; }
+.fact b { font-weight: 500; font-size: 0.93rem; }
+.ctl { display: flex; flex-wrap: wrap; gap: 6px; }
+.ctl span { font-size: 0.8rem; padding: 4px 10px; border-radius: 6px; background: color-mix(in srgb, var(--good) 10%, var(--card)); color: var(--ink); border: 1px solid color-mix(in srgb, var(--good) 35%, transparent); }
+pre.cfg { margin: 0; background: var(--code-bg); color: var(--code-ink); border-radius: 10px; padding: 16px 18px; font: 400 0.8rem/1.55 var(--mono); overflow-x: auto; max-height: 360px; }
+pre.cfg .k { color: var(--code-key); }
+pre.cfg .c { color: #7f93a8; }
+.cfgnote { font-size: 0.82rem; color: var(--muted); margin-top: 8px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 18px; font-size: 0.8rem; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 9px; height: 9px; border-radius: 2px; background: var(--fam); }
+
+/* ---------- blocks ---------- */
+.blocks { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 14px; }
+.block { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px; display: grid; gap: 10px; align-content: start; border-top: 3px solid var(--fam); }
+.block p { color: var(--muted); font-size: 0.9rem; }
+.block .names { display: flex; flex-wrap: wrap; gap: 5px; }
+.block .names code { font: 400 0.76rem/1 var(--mono); padding: 4px 7px; border-radius: 5px; background: color-mix(in srgb, var(--fam) 10%, var(--card)); border: 1px solid color-mix(in srgb, var(--fam) 30%, transparent); }
+
+/* ---------- controls ---------- */
+.controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 40px; counter-reset: c; padding: 0; margin: 0; }
+.controls li { list-style: none; display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 4px 12px; padding: 16px 0; border-top: 1px solid var(--line); counter-increment: c; }
+.controls li::before { content: counter(c, decimal-leading-zero); font: 600 0.82rem/1.5 var(--mono); color: var(--action); grid-row: span 2; }
+.controls b { font-weight: 600; }
+.controls p { color: var(--muted); font-size: 0.92rem; }
+
+/* ---------- screens ---------- */
+.screens { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.screens figure { margin: 0; display: grid; gap: 10px; align-content: start; }
+.screens img { width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: cover; object-position: top left; border-radius: 10px; border: 1px solid var(--line); background: var(--card); }
+.screens figcaption { font-size: 0.88rem; color: var(--muted); }
+.screens figcaption b { color: var(--ink); font-weight: 600; display: block; }
+
+/* ---------- adopt ---------- */
+.adopt { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; padding: 0; margin: 0; counter-reset: a; }
+.adopt li { list-style: none; counter-increment: a; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 6px; align-content: start; }
+.adopt li::before { content: counter(a); font: 800 1.6rem/1 var(--display); color: var(--cyan); }
+.adopt p { color: var(--muted); font-size: 0.88rem; }
+.who { margin-top: 18px; color: var(--muted); font-size: 0.95rem; max-width: 80ch; }
+
+/* ---------- fit ---------- */
+.fit { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.fit > div { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 22px; display: grid; gap: 12px; align-content: start; }
+.fit ul { margin: 0; padding-left: 18px; display: grid; gap: 8px; color: var(--muted); font-size: 0.93rem; }
+.fit ul b { color: var(--ink); font-weight: 600; }
+
+/* ---------- close ---------- */
+.close { background: var(--band); color: var(--band-ink); }
+.close .wrap { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 40px; align-items: center; }
+.close h2 { color: var(--band-ink); }
+.close p { color: var(--band-muted); margin-top: 14px; max-width: 56ch; }
+.ask { display: grid; gap: 10px; padding: 0; margin: 0; }
+.ask li { list-style: none; padding: 12px 16px; border-radius: 10px; background: color-mix(in srgb, var(--band-ink) 8%, transparent); border: 1px solid color-mix(in srgb, var(--band-ink) 16%, transparent); }
+.ask b { color: var(--band-ink); }
+footer { padding-block: 22px; font-size: 0.8rem; color: var(--muted); }
+
+/* ---------- responsive ---------- */
+@media (max-width: 960px) {
+  .hero, .explorer, .close .wrap { grid-template-columns: minmax(0, 1fr); }
+  .path { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .stage:nth-child(4)::before { display: none; }
+  .adopt { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .screens { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .list { max-height: 320px; }
+}
+@media (max-width: 680px) {
+  section { padding-block: 52px; }
+  .same { grid-template-columns: minmax(0, 1fr); }
+  .same li { border-right: 0; border-bottom: 1px solid var(--line); }
+  .path, .controls, .fit, .screens, .adopt, .facts2 { grid-template-columns: minmax(0, 1fr); }
+  .stage + .stage::before { display: none; }
+  .detail { padding: 18px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .casecard { animation: rise .7s cubic-bezier(.2,.7,.2,1) both .1s; }
+  .approved { animation: tick .5s ease both 1.4s; }
+  @keyframes rise { from { transform: translateY(14px); } to { transform: none; } }
+  @keyframes tick { from { opacity: .35; } to { opacity: 1; } }
+}
+</style>
+</head>
+<body>
+
+<header class="mast">
+  <div class="wrap">
+    <div class="topbar">
+      <div class="mark"><b>H</b>Helix</div>
+      <nav aria-label="Sections">
+        <a href="#path">How a case runs</a>
+        <a href="#usecases">Use cases</a>
+        <a href="#blocks">Building blocks</a>
+        <a href="#controls">Controls</a>
+        <a href="#adopt">Adopt it</a>
+      </nav>
+    </div>
+    <div class="hero">
+      <div>
+        <h1>Every investigation and sign-off in the bank, on <em>one governed platform</em>.</h1>
+        <p class="sub">Helix gathers the data, prepares it and proposes what to do: rules first, then the model, then a person. People with the right authority decide. Only an approved outcome is ever written back. A new team gets this by configuration, not a new build.</p>
+        <div class="facts">
+          <div><strong>8</strong><span>capabilities running</span></div>
+          <div><strong>44</strong><span>building blocks</span></div>
+          <div><strong>26</strong><span>use cases mapped</span></div>
+          <div><strong>10</strong><span>controls built in</span></div>
+        </div>
+      </div>
+
+      <article class="casecard" aria-label="Example: a month-end accruals case awaiting a second approver">
+        <div class="cc-top">
+          <div><b>Month-end accruals</b><br><span style="color:var(--muted)">UK01 · period 2026-09</span></div>
+          <span class="pill warn">Awaiting review</span>
+        </div>
+        <div class="cc-body">
+          <div>
+            <div style="font-weight:600">Account 6100 · Accrue <span class="num">292,523.00</span> GBP</div>
+            <div style="color:var(--muted)">3 purchase order lines received but not invoiced</div>
+          </div>
+          <div class="cc-row">
+            <span class="pill blue">over 250k: fin reviewer · 2 different people</span>
+            <span class="pill">enhanced lane · one by one</span>
+          </div>
+          <table class="journal" aria-label="Proposed journal JE-57fc391f7e">
+            <thead><tr><th>Account</th><th class="r">Debit</th><th class="r">Credit</th></tr></thead>
+            <tbody>
+              <tr><td><code>6100</code> GRNI accrual</td><td class="r num">292,523.00</td><td class="r"></td></tr>
+              <tr><td><code>2150</code> GRNI accrual</td><td class="r"></td><td class="r num">292,523.00</td></tr>
+            </tbody>
+          </table>
+          <div class="cc-row"><span class="pill good">balanced</span><span class="pill good">period open</span><span class="pill good">accounts in chart</span></div>
+        </div>
+        <div class="cc-foot">
+          <span class="approved">1 of 2 approvals (bob) · rhea next</span>
+          <span class="btn">Approve</span>
+        </div>
+      </article>
+    </div>
+  </div>
+</header>
+
+<main>
+
+<section id="problem">
+  <div class="wrap">
+    <div class="head">
+      <span class="eyebrow">The problem</span>
+      <h2>Most control and operations work is the same job in different clothes.</h2>
+      <p class="lede">Each team rebuilds it by hand, in spreadsheets and email, with its own version of four-eyes, authority limits and audit. Every auditor checks it differently. A model can do the gathering and first reasoning, but on its own it brings ungrounded figures, unauthorised decisions and writes nobody approved.</p>
+    </div>
+    <ul class="same">
+      <li><span class="k">01 · arrive</span><h3>A list of items</h3><p>Breaks, exceptions, alerts, complaints, journals, samples.</p></li>
+      <li><span class="k">02 · gather</span><h3>Data from 3 to 6 systems</h3><p>Ledgers, trade stores, payment engines, CRM, documents.</p></li>
+      <li><span class="k">03 · explain</span><h3>Work out what happened</h3><p>Match, recompute, compare to history, read the evidence.</p></li>
+      <li><span class="k">04 · decide</span><h3>The right person decides</h3><p>Within their authority, with a second pair of eyes.</p></li>
+      <li><span class="k">05 · act</span><h3>Write back the outcome</h3><p>Post, repair, refund, notify, raise a ticket.</p></li>
+    </ul>
+    <div class="ticker" aria-label="Items Helix works today">
+      <span>FO vs BO break</span><span>bank vs ledger difference</span><span>P&amp;L variance</span><span>report line</span><span>payment exception</span><span>GRNI accrual</span><span>client complaint</span><span>control sample</span>
+    </div>
+  </div>
+</section>
+
+<section id="path" style="padding-top:0">
+  <div class="wrap">
+    <div class="head">
+      <span class="eyebrow">How a case runs</span>
+      <h2>Every capability follows the same governed path.</h2>
+      <p class="lede">A team describes its work as a capability: what a case is, where the items come from, the steps, who decides and what is written back. Helix runs it the same way every time.</p>
+    </div>
+    <div class="path">
+      <div class="stage"><span class="n">1</span><h3>Get the items</h3><p>Load from a system or match two; open by hand, on a schedule or on an event.</p></div>
+      <div class="stage"><span class="n">2</span><h3>Prepare</h3><p>Rates, limits, bands, clocks, samples, timelines: configurable steps.</p></div>
+      <div class="stage"><span class="n">3</span><h3>Propose</h3><p>Rules first, then the model with read-only tools, then a person. Every figure checked.</p></div>
+      <div class="stage decide"><span class="n">4</span><h3>People decide</h3><p>Authority tiers, reserved decisions, checklists, questions to other teams.</p></div>
+      <div class="stage"><span class="n">5</span><h3>Record</h3><p>Decisions kept and learned from; tickets raised; re-checked on the next run.</p></div>
+      <div class="stage"><span class="n">6</span><h3>Release, write back</h3><p>A second person releases; each write happens exactly once.</p></div>
+    </div>
+    <div class="gateway"><b>One gateway under every step</b><span>entitlements</span><span>data scope per user</span><span>masking before any model</span><span>an audit row per call</span></div>
+    <p class="toll">A tollgate can stop the run before any step for a named person to approve the work so far. Nothing reaches a system of record until a second person, who did not review the case, releases it.</p>
+  </div>
+</section>
+
+<section id="usecases" style="background:color-mix(in srgb, var(--tint) 40%, var(--paper))">
+  <div class="wrap">
+    <div class="head">
+      <span class="eyebrow">Use cases</span>
+      <h2>One platform, set up for each division's work.</h2>
+      <p class="lede">Pick a use case to see how it is assembled from the same blocks, who decides, what is written back and the controls it gets. Running ones show their real configuration.</p>
+    </div>
+    <div class="filters" id="filters" role="group" aria-label="Filter by division"></div>
+    <div class="explorer">
+      <div class="list" id="list" role="listbox" aria-label="Use cases"></div>
+      <article class="detail" id="detail" aria-live="polite"></article>
+    </div>
+    <div class="legend" id="legend" aria-label="Step families"></div>
+  </div>
+</section>
+
+<section id="blocks">
+  <div class="wrap">
+    <div class="head">
+      <span class="eyebrow">Building blocks</span>
+      <h2>44 blocks, no team-specific code.</h2>
+      <p class="lede">Thresholds are named policy values. Logic is expressions. Anything else is the team's own service, called through the gateway. A new step type is added once, through a small SDK, and every team can use it.</p>
+    </div>
+    <div class="blocks" id="blocklist"></div>
+  </div>
+</section>
+
+<section id="controls" style="padding-top:0">
+  <div class="wrap">
+    <div class="head">
+      <span class="eyebrow">Controls built in</span>
+      <h2>A team cannot configure these away.</h2>
+    </div>
+    <ol class="controls">
+      <li><b>People decide</b><p>The model proposes, a person decides. When nothing settles a group, it goes to a person, not a guess.</p></li>
+      <li><b>Authority</b><p>Tiers by amount, risk or verdict set who may approve and how many different people must. Held in Helix or read from the bank's delegated-authority system.</p></li>
+      <li><b>Reserved decisions</b><p>Credit, sanctions, AML, redress above a limit, payment release: only named roles decide, never in bulk. A model proposal there is withheld.</p></li>
+      <li><b>Segregation of duties</b><p>The opener may be barred from signing off. Whoever releases a write-back did not review the case.</p></li>
+      <li><b>No silent writes</b><p>Only tools marked as writes, only after approval, each write idempotent; the ledger's own check runs first.</p></li>
+      <li><b>Grounded figures</b><p>Every figure traced to the data. Values read from documents must appear in them; low-confidence or regulated values go to a person.</p></li>
+      <li><b>Nothing dropped</b><p>Items set aside stay on the case with the reason. Samples keep their seed.</p></li>
+      <li><b>Data protection</b><p>Entitlements and data scope per user, masking before any model sees a field, an audit row for every call.</p></li>
+      <li><b>Change control</b><p>Every configuration change checked as it is made and approved by a second owner. A case keeps the version it ran on.</p></li>
+      <li><b>Model risk</b><p>Eval sets and shadow runs before go-live, cost limits, off switches, instructions versioned and approved.</p></li>
+    </ol>
+  </div>
+</section>
+
+<section id="screens" style="padding-top:0">
+  <div class="wrap">
+    <div class="head">
+      <span class="eyebrow">The console</span>
+      <h2>What reviewers, owners and operations see.</h2>
+    </div>
+    <div class="screens">
+      <figure><img src="img/75-breaks-case-review.png" alt="A FOBO break case in review, with proposals, verdicts and evidence" loading="lazy"><figcaption><b>Review a case</b>Each group's proposal, the lines behind it and every data call it used.</figcaption></figure>
+      <figure><img src="img/74-breaks-case-tollgate.png" alt="A case stopped at a tollgate before the model runs" loading="lazy"><figcaption><b>Tollgates</b>A controller approves the classification before the model is asked anything.</figcaption></figure>
+      <figure><img src="img/30-capability-configure.png" alt="The Configure tab with the pipeline on the left and settings on the right" loading="lazy"><figcaption><b>Configure, no YAML</b>Steps in order, forms for each, every change checked as it is made.</figcaption></figure>
+      <figure><img src="img/31-capability-flow.png" alt="A capability's workflow diagram" loading="lazy"><figcaption><b>See the flow</b>The capability's steps, tollgates and gates, drawn from its configuration.</figcaption></figure>
+      <figure><img src="img/45-ask.png" alt="Asking questions about a case in plain words" loading="lazy"><figcaption><b>Ask about a case</b>Answers from the case's own data and read tools, every lookup audited.</figcaption></figure>
+      <figure><img src="img/50-operations.png" alt="The operations dashboard" loading="lazy"><figcaption><b>Operations</b>Runs, costs, schedules, off switches and evals across capabilities.</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<section id="adopt" style="background:color-mix(in srgb, var(--tint) 40%, var(--paper))">
+  <div class="wrap">
+    <div class="head">
+      <span class="eyebrow">Adopt it</span>
+      <h2>From a team's process to a live capability.</h2>
+      <p class="lede">A new use case needs configuration and, at most, a connector to each system it reads or writes. The platform team is needed only for a new connector or a new step type.</p>
+    </div>
+    <ol class="adopt">
+      <li><h3>Describe the work</h3><p>Answer guided questions, paste a requirements document, or start from a template.</p></li>
+      <li><h3>Connect the systems</h3><p>Each system is an MCP connector, onboarded once, tools marked read or write and scoped.</p></li>
+      <li><h3>Configure the steps</h3><p>Reviewers, authority, reserved decisions, tollgates, what is written back and who releases it.</p></li>
+      <li><h3>Approve the version</h3><p>A second owner approves. Until then nothing runs on it.</p></li>
+      <li><h3>Prove it</h3><p>Eval sets and shadow runs against past cases before go-live.</p></li>
+      <li><h3>Run it</h3><p>Cases open by hand, on a schedule or on another system's event.</p></li>
+      <li><h3>Improve it</h3><p>Recurring items, what nothing explained, judgement calls ready to become rules.</p></li>
+      <li><h3>Add team groups</h3><p>Other desks run the same capability with their own settings, within what it allows.</p></li>
+    </ol>
+  </div>
+</section>
+
+<section id="fit">
+  <div class="wrap">
+    <div class="head">
+      <span class="eyebrow">Fit</span>
+      <h2>Where Helix fits, and where it does not.</h2>
+    </div>
+    <div class="fit">
+      <div>
+        <h3>A strong fit</h3>
+        <ul>
+          <li><b>Work that arrives as a list of items</b>, each needing an investigation and an accountable decision.</li>
+          <li><b>Data spread over several systems</b> that someone gathers by hand today.</li>
+          <li><b>Controls that matter</b>: four-eyes, authority limits, evidence for audit.</li>
+          <li><b>Repeating work</b>, daily, monthly or per event, where yesterday's decisions inform today's.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Not what it is for</h3>
+        <ul>
+          <li><b>Not a system of record.</b> Ledgers, payment engines and KYC systems keep their data and controls.</li>
+          <li><b>Not an autonomous decision-maker.</b> It never clears a screening hit or releases a payment.</li>
+          <li><b>Not real-time.</b> Cases take seconds to minutes; in-flight checks belong in the transaction path.</li>
+          <li><b>Not forms and routing alone.</b> Work with no investigation is better served elsewhere.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="close" id="next">
+  <div class="wrap">
+    <div>
+      <span class="eyebrow" style="color:var(--cyan)">Next step</span>
+      <h2 style="margin-top:14px">Bring one process. Leave with a running capability.</h2>
+      <p>Pick a use case with a named owner and its systems in reach. The platform, the controls and the console are already there; what remains is the team's own configuration.</p>
+    </div>
+    <ol class="ask">
+      <li><b>The process</b>: the list of items, and what a decision on one looks like.</li>
+      <li><b>The owners</b>: who decides, who releases, and the authority limits.</li>
+      <li><b>The systems</b>: what is read, and what the outcome is written to.</li>
+      <li><b>The boundaries</b>: what risk and compliance reserve for named people.</li>
+    </ol>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">Helix · governed case work for the bank · capabilities and figures shown are from the running build on example data, October 2026.</div>
+</footer>
+
+<script>
+(() => {
+  const FAM = {
+    core:  { label: "Core", color: "var(--f-core)", says: "Get the items or match two systems, add context, run a playbook, propose, check, decide, record, write back.",
+             names: ["load", "match", "enrich", "resolve", "classify", "compare", "group", "reason", "draft", "validate", "review", "record", "publish"] },
+    data:  { label: "Data", color: "var(--f-data)", says: "Prepare the items: rates, limits, ageing, service-level bands, scope, the team's own scoring.",
+             names: ["dataset", "derive", "filter", "convert", "bucket", "dedupe", "aggregate", "transform"] },
+    acct:  { label: "Accounting", color: "var(--f-acct)", says: "Fees and interest checked against tariffs; accruals and reserves as balanced journals; posting after release.",
+             names: ["recompute", "schedule", "period_check", "propose_entries", "post"] },
+    assur: { label: "Assurance", color: "var(--f-assur)", says: "Flux review, anomalies, cross-report rules, reproducible samples, risk scores, owner sign-off.",
+             names: ["flux", "anomaly", "consistency", "sample", "score", "attest"] },
+    orch:  { label: "Orchestration", color: "var(--f-orch)", says: "Wait for a reply or confirmation; a child case per account, sample or client; outbound drafts; a PDF pack.",
+             names: ["await", "spawn", "compose", "report"] },
+    acq:   { label: "Acquisition", color: "var(--f-acq)", says: "Three-way and intercompany matching, workbooks from other teams, values read from contracts and statements.",
+             names: ["match_n", "intake", "extract"] },
+    time:  { label: "Time and parties", color: "var(--f-time)", says: "Service-level and regulatory clocks, one timeline across systems, earlier cases, candidate matches, approved outreach.",
+             names: ["clock", "timeline", "link", "screen", "outreach"] },
+    gate:  { label: "People and gates", color: "var(--f-gate)", says: "", names: [] },
+  };
+  // [label, family, needs a person first?]
+  const S = (l, f, p) => [l, f, !!p];
+  const GATES = [S("validate", "gate"), S("review", "gate", 1), S("record", "gate")];
+
+  const USE = [
+    { div: "Markets control", name: "FOBO break investigation", run: "break.investigation",
+      why: "Front-office vs back-office breaks from MB Rec, investigated per book and business date for the Prime and Rates desks.",
+      steps: [S("load breaks", "core"), S("enrich MOTIF", "core"), S("resolve book → desk", "core"), S("classify (playbook)", "core"), S("group", "core"), S("tollgate", "gate", 1), S("reason", "core"), S("draft", "core"), ...GATES],
+      decides: "Product control", writes: "Tickets to owning teams", ctl: ["tollgate before the model", "verdict guards", "follow-through next business day", "sign-off checklist"],
+      cfg: `<span class="k">id</span>: break.investigation
+<span class="k">steps</span>: [load, enrich, resolve, classify, group, reason, draft, validate, review, record]
+<span class="k">pause_before</span>: [reason, review]   <span class="c"># a controller approves the classification first</span>
+<span class="k">group_by</span>: [break_type]
+<span class="k">reasoning</span>: { <span class="k">reasoner</span>: llm }
+<span class="k">review</span>: { <span class="k">roles</span>: [FOBO_CONTROLLER] }
+<span class="c"># team groups: fobo-prime, fobo-rates — same capability, their own settings</span>` },
+    { div: "Markets control", name: "Independent price verification",
+      why: "Desk marks checked against several vendor prices; valuation reserves proposed where they fall outside tolerance.",
+      steps: [S("load positions", "core"), S("vendor prices ×3", "data"), S("median and spread", "data"), S("recompute vs desk mark", "acct"), S("classify tolerance", "core"), S("reason", "core"), S("journal entries", "acct"), ...GATES, S("post reserves", "acct", 1)],
+      decides: "Valuation control", writes: "Valuation reserves, posted after release", ctl: ["authority tiers", "balanced journals", "release before posting"] },
+    { div: "Markets control", name: "Limit breach investigation",
+      why: "Each breach explained against the limit and its history; a temporary excess approved within authority.",
+      steps: [S("load breaches", "core"), S("limits and exposure", "data"), S("change over periods", "assur"), S("reason", "core"), ...GATES],
+      decides: "Risk, by authority tier", writes: "Temporary excess decision", ctl: ["authority tiers", "follow-through"] },
+    { div: "Finance", name: "Reconciliation investigation", run: "recon.investigation",
+      why: "Bank statement against the ledger, matched by Helix, with write-offs within limit settled by rules.",
+      steps: [S("match bank ↔ ledger", "core"), S("enrich", "core"), S("resolve", "core"), S("classify", "core"), S("group", "core"), S("reason", "core"), S("draft", "core"), ...GATES],
+      decides: "Cash operations", writes: "Write-offs within limit", ctl: ["rules before the model", "never written off twice"],
+      cfg: `<span class="k">id</span>: recon.investigation
+<span class="k">steps</span>: [match, enrich, resolve, classify, group, reason, draft, validate, review, record]
+<span class="k">group_by</span>: [counterparty]
+<span class="k">reasoning</span>: { <span class="k">reasoner</span>: llm }
+<span class="k">review</span>: { <span class="k">roles</span>: [CASH_OPS] }
+<span class="k">follow_through</span>: ...   <span class="c"># an item decided yesterday is not written off twice</span>` },
+    { div: "Finance", name: "P&L variance commentary", run: "fin.variance-commentary",
+      why: "GL actuals against budget per account; the model drafts commentary in sections; it is published after a second person releases it.",
+      steps: [S("load GL", "core"), S("compare to budget", "core"), S("group", "core"), S("reason in sections", "core"), S("draft", "core"), ...GATES, S("publish", "core", 1)],
+      decides: "Finance reviewers", writes: "Commentary to the reporting pack", ctl: ["release by a second person", "every figure checked"],
+      cfg: `<span class="k">id</span>: fin.variance-commentary
+<span class="k">steps</span>: [load, compare, group, reason, draft, validate, review, record, publish]
+<span class="k">pause_before</span>: [review, publish]
+<span class="k">publish</span>:
+  <span class="k">tool</span>: reporting.publish_commentary
+  <span class="k">approver_roles</span>: [FIN_REVIEWER]   <span class="c"># never the person who reviewed</span>` },
+    { div: "Finance", name: "Month-end accruals", run: "fin.accruals",
+      why: "Goods received but not invoiced, accrued per account: the period checked, balanced journals proposed, approved within delegated authority, posted after release.",
+      steps: [S("load GRNI", "core"), S("period open?", "acct"), S("chart of accounts", "data"), S("delegated authority", "data"), S("accrual = received − invoiced", "data"), S("material only", "data"), S("group", "core"), S("reason", "core"), S("journal entries", "acct"), S("draft", "core"), ...GATES, S("post journals", "acct", 1)],
+      decides: "Reviewers by authority; a financial controller releases", writes: "Journals to the ledger", ctl: ["closed period stops the run", "two approvers over 250k", "ledger check before posting", "each journal once"],
+      cfg: `<span class="k">id</span>: fin.accruals
+<span class="k">steps</span>: [load, open_period, chart, authority, accrual, material, group, reason,
+        entries, draft, validate, review, record, post]
+<span class="k">pause_before</span>: [review, post]
+<span class="k">step_settings</span>:
+  <span class="k">open_period</span>: { <span class="k">type</span>: period_check, <span class="k">with</span>: { <span class="k">tool</span>: journals.period_status } }
+  <span class="k">authority</span>:   { <span class="k">type</span>: dataset, <span class="k">with</span>: { <span class="k">name</span>: authority, <span class="k">tool</span>: authority.delegated_authority } }
+  <span class="k">accrual</span>:     { <span class="k">type</span>: derive, <span class="k">with</span>: { <span class="k">fields</span>: { <span class="k">accrual</span>: "round(received_value - invoiced_value, 2)" } } }
+  <span class="k">material</span>:    { <span class="k">type</span>: filter, <span class="k">with</span>: { <span class="k">keep_when</span>: "accrual >= policy.materiality" } }
+  <span class="k">entries</span>:     { <span class="k">type</span>: propose_entries, <span class="k">with</span>: { <span class="k">chart</span>: chart, <span class="k">lines</span>: [debit {account}, credit 2150] } }
+  <span class="k">post</span>:        { <span class="k">type</span>: post, <span class="k">with</span>: { <span class="k">tool</span>: journals.post_journal, <span class="k">dry_run_tool</span>: journals.validate_journal,
+                 <span class="k">approver_roles</span>: [FIN_CONTROLLER] } }
+<span class="k">review</span>: { <span class="k">roles</span>: [FIN_PREPARER, FIN_REVIEWER], <span class="k">authority_dataset</span>: authority }` },
+    { div: "Finance", name: "Report validation", run: "report.validation",
+      why: "A reporting workbook matched to GL balances; differences explained; a PDF report written after release.",
+      steps: [S("match workbook ↔ GL", "core"), S("group", "core"), S("reason", "core"), S("draft", "core"), ...GATES, S("publish PDF", "core", 1)],
+      decides: "Financial reporting", writes: "A PDF report", ctl: ["release by a second person", "rounding rules"],
+      cfg: `<span class="k">id</span>: report.validation
+<span class="k">steps</span>: [match, group, reason, draft, validate, review, record, publish]
+<span class="k">publish</span>:
+  <span class="k">tool</span>: documents.render_pdf_report
+  <span class="k">per</span>: case
+  <span class="k">approver_roles</span>: [FIN_REVIEWER]` },
+    { div: "Finance", name: "Balance-sheet substantiation",
+      why: "Each account's balance explained and signed off by its owner, with a risk-ranked pack for the controller.",
+      steps: [S("load trial balance", "core"), S("prior periods", "data"), S("change over periods", "assur"), S("account risk", "assur"), S("child case per account", "orch"), S("wait for all", "orch"), S("owner attests", "assur", 1), ...GATES, S("report", "orch")],
+      decides: "Account owners; the controller", writes: "Sign-off pack", ctl: ["attestation with evidence", "reproducible roll-up"] },
+    { div: "Finance", name: "Intercompany matching",
+      why: "Both sides of intercompany balances matched across entities and currencies; elimination journals proposed.",
+      steps: [S("match entity A ↔ B", "acq"), S("currency", "data"), S("pairs", "data"), S("classify", "core"), S("reason", "core"), ...GATES, S("elimination journals", "acct", 1)],
+      decides: "Both entities' owners", writes: "Elimination journals", ctl: ["authority tiers", "balanced journals"] },
+    { div: "Finance", name: "Manual journal review",
+      why: "Journals scored for risk (out of hours, round amounts, unusual pairs) and sampled for review.",
+      steps: [S("load journals", "core"), S("risk score", "assur"), S("sample: all high, 10% medium", "assur"), S("reason", "core"), ...GATES],
+      decides: "Financial control", writes: "—", ctl: ["reproducible sample", "nothing dropped"] },
+    { div: "Finance", name: "Close calendar",
+      why: "A parent case per entity and period; close tasks as child cases; roll-up sign-off entity → region → group.",
+      steps: [S("parent per entity", "core"), S("child tasks", "orch"), S("wait for all", "orch"), S("roll-up", "data"), ...GATES, S("report", "orch")],
+      decides: "Entity, region, group", writes: "Close sign-off", ctl: ["sign-off cascade", "deadlines"] },
+    { div: "Procurement", name: "Three-way match",
+      why: "Purchase order, goods receipt and invoice matched; price and quantity variances explained.",
+      steps: [S("PO ↔ receipt ↔ invoice", "acq"), S("price and qty variance", "data"), S("classify", "core"), S("group", "core"), S("reason", "core"), ...GATES, S("publish block/release", "core", 1)],
+      decides: "Accounts payable", writes: "Block or release in purchasing", ctl: ["release by a second person"] },
+    { div: "Procurement", name: "Invoice capture",
+      why: "Invoices read from PDFs or supplier workbooks, every value found in the document, then matched to orders.",
+      steps: [S("read the invoice", "acq"), S("duplicates", "data"), S("match to orders", "core"), ...GATES, S("publish", "core", 1)],
+      decides: "Accounts payable", writes: "Invoice to purchasing", ctl: ["values must appear in the document", "low confidence → a person"] },
+    { div: "Payments", name: "Payment exceptions", run: "payments.exceptions",
+      why: "The day's payment exceptions prepared with generic data steps and the payments team's own risk service; Payments Operations decides.",
+      steps: [S("load exceptions", "core"), S("FX rates", "data"), S("duplicates", "data"), S("drop test payments", "data"), S("to GBP", "data"), S("age in hours", "data"), S("SLA band", "data"), S("team's risk score", "data"), S("group", "core"), S("reason", "core"), S("draft", "core"), ...GATES],
+      decides: "Payments operations", writes: "Repair instruction, released in the payments system", ctl: ["missing FX rate flagged, never assumed", "only needed fields sent to the team's service"],
+      cfg: `<span class="k">id</span>: payments.exceptions
+<span class="k">steps</span>: [load, fx, dedupe_refs, drop_tests, to_gbp, age, sla, risk, group, reason,
+        draft, validate, review, record]
+<span class="k">step_settings</span>:
+  <span class="k">fx</span>:          { <span class="k">type</span>: dataset,  <span class="k">with</span>: { <span class="k">name</span>: fx, <span class="k">tool</span>: refdata.fx_rates } }
+  <span class="k">dedupe_refs</span>: { <span class="k">type</span>: dedupe,   <span class="k">with</span>: { <span class="k">keys</span>: [payment_ref, amount] } }
+  <span class="k">drop_tests</span>:  { <span class="k">type</span>: filter,   <span class="k">with</span>: { <span class="k">keep_when</span>: "not is_test" } }
+  <span class="k">to_gbp</span>:      { <span class="k">type</span>: convert,  <span class="k">with</span>: { <span class="k">amounts</span>: [amount], <span class="k">to</span>: GBP, <span class="k">rates</span>: fx } }
+  <span class="k">sla</span>:         { <span class="k">type</span>: bucket,   <span class="k">with</span>: { <span class="k">field</span>: age_hours, <span class="k">as</span>: sla_band } }
+  <span class="k">risk</span>:        { <span class="k">type</span>: transform, <span class="k">with</span>: { <span class="k">tool</span>: payments.risk_score, <span class="k">returns</span>: fields } }
+<span class="k">review</span>: { <span class="k">roles</span>: [PAYMENTS_OPS] }` },
+    { div: "Payments", name: "Payment investigation",
+      why: "A customer's claim traced across gpi, nostro and messages, with a query to the other bank and a 24-hour clock.",
+      steps: [S("load claims", "core"), S("timeline", "time"), S("24 h clock", "time"), S("query the other bank", "time", 1), S("wait for reply", "orch"), S("reason", "core"), S("customer reply", "orch"), ...GATES],
+      decides: "Payments operations", writes: "Customer reply", ctl: ["outreach only after approval", "clock warnings"] },
+    { div: "Operations", name: "Failed settlement",
+      why: "Fails classified by cause (instructions, inventory, counterparty) against the market cut-off, with counterparty chasers.",
+      steps: [S("load fails", "core"), S("static data", "core"), S("classify cause", "core"), S("cut-off clock", "time"), S("chase counterparty", "time", 1), ...GATES],
+      decides: "Settlements", writes: "— (re-checked next day)", ctl: ["follow-through", "outreach only after approval"] },
+    { div: "Operations", name: "Nostro reconciliation",
+      why: "Statements against the ledger with ageing and risk bands; low-risk items in a lighter lane.",
+      steps: [S("match statement ↔ ledger", "core"), S("ageing bands", "data"), S("risk score", "assur"), S("reason", "core"), ...GATES],
+      decides: "Cash operations, by authority lane", writes: "Write-offs", ctl: ["authority lanes", "follow-through"] },
+    { div: "Client service", name: "Complaint handling", run: "client.complaints",
+      why: "Complaints triaged per day with the account's timeline, earlier complaints, the final-response clock and fees recomputed from the tariff.",
+      steps: [S("load complaints", "core"), S("account timeline", "time"), S("earlier complaints", "time"), S("8-week clock", "time"), S("fee per tariff", "acct"), S("watch list", "data"), S("screen names", "time"), S("group", "core"), S("reason", "core"), S("acknowledgement", "orch"), S("send after approval", "time", 1), S("draft", "core"), ...GATES],
+      decides: "Handler; the lead above the redress limit", writes: "Acknowledgements to clients", ctl: ["redress above the limit reserved", "screening candidates only", "clock warned before and on breach"],
+      cfg: `<span class="k">id</span>: client.complaints
+<span class="k">steps</span>: [load, events, related, sla, fee_check, watch, screen_names, group, reason,
+        ack, send_ack, draft, validate, review, record]
+<span class="k">pause_before</span>: [send_ack, review]
+<span class="k">step_settings</span>:
+  <span class="k">events</span>:    { <span class="k">type</span>: timeline, <span class="k">with</span>: { <span class="k">sources</span>: [client.account_events] } }
+  <span class="k">related</span>:   { <span class="k">type</span>: link,     <span class="k">with</span>: { <span class="k">match_on</span>: [client], <span class="k">lookback_days</span>: 365 } }
+  <span class="k">sla</span>:       { <span class="k">type</span>: clock,    <span class="k">with</span>: { <span class="k">clocks</span>: [{ <span class="k">id</span>: final_response, <span class="k">business_days</span>: 40 }] } }
+  <span class="k">fee_check</span>: { <span class="k">type</span>: recompute, <span class="k">with</span>: { <span class="k">formula</span>: fee_tariff, <span class="k">compare_to</span>: fee_charged } }
+  <span class="k">send_ack</span>:  { <span class="k">type</span>: outreach, <span class="k">with</span>: { <span class="k">tool</span>: channel.send_message, <span class="k">roles</span>: [COMPLAINTS_HANDLER] } }
+<span class="k">boundaries</span>:
+  - { <span class="k">when</span>: "total > policy.redress_limit", <span class="k">roles</span>: [COMPLAINTS_LEAD] }` },
+    { div: "Client service", name: "Fee and interest refunds",
+      why: "Charges recomputed from the tariff; differences explained; a client notice drafted for release.",
+      steps: [S("load charges", "core"), S("recompute from tariff", "acct"), S("classify", "core"), S("reason", "core"), S("client notice", "orch"), ...GATES, S("refund instruction", "core", 1)],
+      decides: "Service, by authority", writes: "Refund instruction", ctl: ["authority tiers", "release by a second person"] },
+    { div: "Lending", name: "Covenant monitoring",
+      why: "Financials read from the borrower's pack, ratios computed, breaches and near-breaches proposed for the credit officer.",
+      steps: [S("read borrower's pack", "acq"), S("ratios", "data"), S("classify breach", "core"), S("credit memo draft", "core"), ...GATES],
+      decides: "Credit officer (reserved)", writes: "Credit memo; re-checked next quarter", ctl: ["credit decisions reserved", "regulated extraction: every value checked"] },
+    { div: "Financial crime", name: "AML alert triage pack",
+      why: "An alert's transactions, related parties and screening candidates assembled; the model writes the narrative only.",
+      steps: [S("load alerts", "core"), S("transaction timeline", "time"), S("related parties", "time"), S("screening candidates", "time"), S("narrative", "core"), ...GATES],
+      decides: "Analyst (reserved)", writes: "—", ctl: ["close or escalate reserved for the analyst", "never clears a hit"] },
+    { div: "Financial crime", name: "KYC periodic review",
+      why: "One child case per client due; documents requested, read and checked for gaps and expiry.",
+      steps: [S("child case per client", "orch"), S("request documents", "time", 1), S("wait for documents", "orch"), S("read documents", "acq"), S("missing or expired", "core"), ...GATES, S("officer attests", "assur", 1)],
+      decides: "KYC officer (reserved)", writes: "Review outcome", ctl: ["reserved decision", "regulated extraction"] },
+    { div: "Controls", name: "Control operating test", run: "controls.operating-test",
+      why: "A control tested on a reproducible sample, one child case per sample, rolled up, attested by the control owner, with a report.",
+      steps: [S("population", "core"), S("sample", "assur"), S("child test per sample", "orch"), S("wait for all", "orch"), S("group", "core"), S("reason", "core"), S("draft", "core"), S("validate", "gate"), S("owner attests", "assur", 1), S("review", "gate", 1), S("record", "gate"), S("report", "orch")],
+      decides: "Testers; the control owner attests", writes: "Test report (PDF)", ctl: ["seed kept for the auditor", "attestation at a tollgate", "timeout to a person"],
+      cfg: `<span class="k">id</span>: controls.operating-test
+<span class="k">steps</span>: [load, pick, tests_open, tests, group, reason, draft, validate,
+        attest_owner, review, record, report]
+<span class="k">pause_before</span>: [attest_owner, review]
+<span class="k">step_settings</span>:
+  <span class="k">pick</span>:         { <span class="k">type</span>: sample, <span class="k">with</span>: { <span class="k">method</span>: random, <span class="k">size</span>: 3 } }
+  <span class="k">tests_open</span>:   { <span class="k">type</span>: spawn,  <span class="k">with</span>: { <span class="k">capability</span>: controls.sample-test } }
+  <span class="k">tests</span>:        { <span class="k">type</span>: await,  <span class="k">with</span>: { <span class="k">event</span>: children, <span class="k">timeout_hours</span>: 72 } }
+  <span class="k">attest_owner</span>: { <span class="k">type</span>: attest, <span class="k">with</span>: { <span class="k">roles</span>: [CONTROL_OWNER] } }
+  <span class="k">report</span>:       { <span class="k">type</span>: report }` },
+    { div: "Controls", name: "Regulatory report validation",
+      why: "Cross-report rules checked across data sets; each failing rule becomes an item; the report owner attests.",
+      steps: [S("reports and GL", "data"), S("consistency checks", "assur"), S("group", "core"), S("reason", "core"), S("owner attests", "assur", 1), ...GATES, S("report", "orch")],
+      decides: "Report owner", writes: "Attestation pack", ctl: ["attestation with evidence", "nothing dropped"] },
+    { div: "Technology risk", name: "User access review",
+      why: "One child case per manager; keep or revoke per entitlement; revocations released to the access system.",
+      steps: [S("load entitlements", "core"), S("child case per manager", "orch"), S("manager attests", "assur", 1), ...GATES, S("report", "orch")],
+      decides: "Managers", writes: "Revocations, released", ctl: ["attestation per line", "release by a second person"] },
+    { div: "Operational risk", name: "Loss event capture",
+      why: "Loss events taken from submitted workbooks, losses computed in one currency, classified and attested before the reporting deadline.",
+      steps: [S("file intake", "acq"), S("gross and net loss", "data"), S("currency", "data"), S("classify event type", "core"), S("reporting clock", "time"), S("owner attests", "assur", 1), ...GATES],
+      decides: "Business owner", writes: "Event record", ctl: ["rows that fail checks kept aside", "deadline warnings"] },
+  ];
+
+  const $ = (s) => document.querySelector(s);
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const divs = ["All", ...new Set(USE.map((u) => u.div))];
+  let div = "All";
+  let sel = USE.findIndex((u) => u.run === "fin.accruals");
+  try { const h = location.hash.slice(1); const i = USE.findIndex((u) => slug(u.name) === h); if (i >= 0) sel = i; } catch (e) { /* no hash */ }
+  function slug(t) { return t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""); }
+
+  function filters() {
+    $("#filters").innerHTML = divs.map((d) => {
+      const n = d === "All" ? USE.length : USE.filter((u) => u.div === d).length;
+      return `<button class="chip" type="button" aria-pressed="${d === div}" data-div="${esc(d)}">${esc(d)}<span class="c">${n}</span></button>`;
+    }).join("") + `<button class="chip" type="button" aria-pressed="${div === "Running"}" data-div="Running">Running today<span class="c">${USE.filter((u) => u.run).length}</span></button>`;
+  }
+  function list() {
+    const shown = USE.map((u, i) => [u, i]).filter(([u]) => div === "All" || u.div === div || (div === "Running" && u.run));
+    if (!shown.some(([, i]) => i === sel)) sel = shown[0][1];
+    $("#list").innerHTML = shown.map(([u, i]) =>
+      `<button class="uc" type="button" role="option" aria-selected="${i === sel}" data-i="${i}"><b>${esc(u.name)}</b><small>${esc(u.div)}</small>${u.run ? '<span class="pill good run">running</span>' : ""}</button>`).join("");
+  }
+  function detail() {
+    const u = USE[sel];
+    const used = [...new Set(u.steps.map((s) => s[1]))];
+    $("#detail").innerHTML = `
+      <div class="top"><div><div class="label" style="margin:0 0 6px">${esc(u.div)}</div><h3>${esc(u.name)}</h3></div>
+        ${u.run ? `<span class="pill good">Running · <code style="font-family:var(--mono)">${esc(u.run)}</code></span>` : '<span class="pill">Configuration only</span>'}</div>
+      <p class="why">${esc(u.why)}</p>
+      <div><div class="label">The pipeline</div><div class="pipeline">${u.steps.map((s, k) =>
+        `${k ? '<span class="arrow" aria-hidden="true">→</span>' : ""}<span class="step${s[2] ? " person" : ""}" style="--fam:${FAM[s[1]].color}" title="${esc(FAM[s[1]].label)}${s[2] ? " · a person approves first" : ""}"><i></i>${esc(s[0])}</span>`).join("")}</div>
+        <p class="cfgnote">${used.length} step families · dashed steps wait for a person first.</p></div>
+      <div class="facts2">
+        <div class="fact"><span>Who decides</span><b>${esc(u.decides)}</b></div>
+        <div class="fact"><span>Written back</span><b>${esc(u.writes)}</b></div>
+        <div class="fact"><span>Steps</span><b class="num">${u.steps.length}, all generic</b></div>
+      </div>
+      <div><div class="label">Controls it gets</div><div class="ctl">${u.ctl.map((c) => `<span>${esc(c)}</span>`).join("")}<span>audit of every data call</span><span>second-owner approval of changes</span></div></div>
+      ${u.cfg ? `<div><div class="label">Its configuration (excerpt)</div><pre class="cfg">${u.cfg}</pre><p class="cfgnote">From <code style="font-family:var(--mono)">config/helix/capabilities</code>; edited in the console's Configure forms.</p></div>`
+              : `<div><div class="label">To set it up</div><p class="cfgnote" style="margin:0">Connectors to the team's systems, named owners, the policy thresholds, and its reserved decisions agreed with risk and compliance. No new platform code.</p></div>`}`;
+  }
+  function render() { filters(); list(); detail(); }
+
+  $("#filters").addEventListener("click", (e) => { const b = e.target.closest("[data-div]"); if (!b) return; div = b.dataset.div; render(); });
+  $("#list").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-i]"); if (!b) return; sel = +b.dataset.i; list(); detail();
+    try { history.replaceState(null, "", "#" + slug(USE[sel].name)); } catch (err) { /* sandboxed */ }
+    if (window.matchMedia("(max-width: 960px)").matches) $("#detail").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+  $("#list").addEventListener("keydown", (e) => {
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+    const btns = [...document.querySelectorAll("#list .uc")]; const at = btns.indexOf(document.activeElement);
+    const next = btns[Math.max(0, Math.min(btns.length - 1, at + (e.key === "ArrowDown" ? 1 : -1)))];
+    if (next) { e.preventDefault(); next.focus(); next.click(); }
+  });
+
+  $("#legend").innerHTML = Object.values(FAM).map((f) => `<span style="--fam:${f.color}"><i></i>${esc(f.label)}</span>`).join("");
+  $("#blocklist").innerHTML = Object.entries(FAM).filter(([k]) => k !== "gate").map(([, f]) =>
+    `<div class="block" style="--fam:${f.color}"><h3>${esc(f.label)} <span style="color:var(--muted);font-weight:500" class="num">· ${f.names.length}</span></h3><p>${esc(f.says)}</p><div class="names">${f.names.map((n) => `<code>${esc(n)}</code>`).join("")}</div></div>`).join("");
+
+  render();
+})();
+</script>
+</body>
+</html>

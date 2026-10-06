@@ -24,6 +24,7 @@ import {
   Sun,
   Wand2,
   type LucideIcon,
+  Presentation,
 } from "lucide-react";
 
 import { currentUser, setCurrentUser } from "../api/client";
@@ -173,6 +174,22 @@ function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
               </div>
             </div>
           ))}
+          {/* The pitch page: a static page in public/pitch, opened beside the console. */}
+          <div className="px-3 pt-2">
+            <a
+              href="/pitch/"
+              target="_blank"
+              rel="noreferrer"
+              title={compact ? "About Helix" : undefined}
+              className={clsx(
+                "flex items-center rounded-lg text-nav-fg transition-colors hover:bg-nav-hover hover:text-white",
+                compact ? "justify-center p-2.5" : "gap-2.5 px-3 py-2 text-sm font-medium",
+              )}
+            >
+              <Presentation size={compact ? 18 : 16} />
+              {!compact && <span>About Helix</span>}
+            </a>
+          </div>
         </nav>
 
         <div className="hidden border-t border-nav-line lg:block">

@@ -291,4 +291,4 @@ structured checks · moving FOBO's users onto the platform.
 
 **Platform overview:** [Helix: one governed platform for case-based work across the bank](platform-overview.md): what every use case gets, the building blocks, the controls built in, 26 use cases by division (8 running) and how a team adopts it.
 
-**Pitch page:** `apps/web/public/pitch/index.html`, served by the console at `/pitch/` (sidebar: *About Helix*), or opened straight from disk: the platform in one page, with an explorer of 26 use cases and the real configuration of the eight running today.
+**Pitch page:** `apps/web/public/pitch/index.html`, served by the console at `/pitch/` (sidebar: *About Helix*). One self-contained file to open from disk or send: [`pitch/helix-pitch.html`](pitch/helix-pitch.html) (rebuild with `node apps/web/scripts/inline-pitch.mjs`). The page shows the platform in one page, with an explorer of 26 use cases and the real configuration of the eight running today.

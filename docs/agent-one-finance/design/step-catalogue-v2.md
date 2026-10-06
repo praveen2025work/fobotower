@@ -298,8 +298,8 @@ Each phase:
 
 ## 9. As built
 
-All six phases are built. The step types are in `aof/stepkit.py` (data) and
-`aof/steps_v2.py` (the rest). The engine changes are in `aof/workflow.py`, `runner.py`,
+All six phases are built. The step types are in `agent_one_finance/stepkit.py` (data) and
+`agent_one_finance/steps_v2.py` (the rest). The engine changes are in `agent_one_finance/workflow.py`, `runner.py`,
 `authority.py` and `timekeeping.py`. Each type has a form in *Configure → Configurable steps*.
 The developer guide §7b is the reference.
 

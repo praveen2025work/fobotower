@@ -239,7 +239,7 @@ class ClaudeAgentSdkAdapter:
             set_output(sp, out)
             for k, v in usage.items():
                 if v is not None:
-                    sp.set_attribute(f"agent_one_finance.llm.{k}", v)
+                    sp.set_attribute(f"aof.llm.{k}", v)
             return ReasonResult(status=out["status"], comment=out.get("comment", ""),
                                 reason=out.get("reason") or None, model=self.model, usage=usage,
                                 verdict=out.get("verdict") or None,

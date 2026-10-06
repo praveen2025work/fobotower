@@ -1,6 +1,6 @@
 """Steps v2, phases 2–6: generic step types for case-based work in Finance and beyond.
 
-Registered with the step SDK (aof/stepkit.py), configured under
+Registered with the step SDK (agent_one_finance/stepkit.py), configured under
 `step_settings`, checked with the manifest, run under the same gateway, audit
 and controls as every other step:
 
@@ -14,7 +14,7 @@ and controls as every other step:
 No type holds a team's logic: thresholds are policy, logic is expressions, and
 anything else is a team's own tool behind the gateway. Nothing a step removes
 is lost; nothing writes without a person's approval; the model never makes a
-decision a capability reserves for people (aof/authority.py).
+decision a capability reserves for people (agent_one_finance/authority.py).
 """
 
 import difflib

@@ -134,7 +134,7 @@ export interface CaseSummary {
   review_ready_at?: string | null;
 }
 
-/** Why a group needs more than a click (aof/review.py). */
+/** Why a group needs more than a click (agent_one_finance/review.py). */
 export type ReviewFlag = "confirmation" | "judgement" | "escalated" | "model";
 export type DueState = "on_time" | "due_soon" | "overdue" | null;
 

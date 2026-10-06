@@ -5,7 +5,7 @@
 # argument that carries the data scope, which the gateway checks against the
 # caller's entitlements on every call.
 #
-# These four are stubs that run in-process (aof/stub_connectors). In the
+# These four are stubs that run in-process (agent_one_finance/stub_connectors). In the
 # office, point an entry at the real connector:
 #
 #   gl:
@@ -219,7 +219,7 @@ connectors:
         scope: { arg: book, key: book }
 
   # An Agent One Finance-provided service, not a stub: reads PDF and Excel files and writes
-  # PDF reports (aof/mcp_services/documents.py). Files are kept per entity;
+  # PDF reports (agent_one_finance/mcp_services/documents.py). Files are kept per entity;
   # in the office, serve it over http next to the team share it reads.
   documents:
     name: Documents — PDF and Excel in, PDF reports out

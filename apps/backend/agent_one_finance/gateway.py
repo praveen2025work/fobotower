@@ -119,7 +119,7 @@ class CallContext:
     # write tools a released or person-approved step may call (post, outreach),
     # with write_approved_by naming who approved
     write_tools: frozenset[str] = frozenset()
-    # Data protection for this case (aof/governance.py). Built from the
+    # Data protection for this case (agent_one_finance/governance.py). Built from the
     # allowed tools when not given, so every call is protected by default.
     protector: Protector | None = None
 

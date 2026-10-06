@@ -365,5 +365,5 @@ def catalogue() -> list[dict]:
              "schema": t.config.model_json_schema(by_alias=True)} for t in TYPES.values()]
 
 
-# The step types of phases 2–6 register themselves (aof/steps_v2.py).
+# The step types of phases 2–6 register themselves (agent_one_finance/steps_v2.py).
 from agent_one_finance import steps_v2  # noqa: E402,F401

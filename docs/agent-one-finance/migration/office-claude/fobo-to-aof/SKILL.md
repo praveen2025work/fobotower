@@ -30,7 +30,7 @@ If any of these files is missing, stop. Ask the user to copy them in from
    must match FOBO. If something would change an answer, do not change it. Write it in
    `MIGRATION_GAPS.md` (what, where, the old behaviour, the options) and ask.
 2. **No FOBO code in the Agent One Finance engine.** FOBO is configuration: the group YAML, reference YAML
-   and connectors. Do not edit `aof/steps.py`, `workflow.py`, `manifest.py`, `gateway.py`
+   and connectors. Do not edit `agent_one_finance/steps.py`, `workflow.py`, `manifest.py`, `gateway.py`
    or the gates to fit a FOBO quirk. If the YAML cannot express a rule, that is a gap
    (rule 1). The only code you write is the LLM adapter's `_run` (§4.1 of the guide), plus
    connector or entitlement wiring if the office needs it.
@@ -158,7 +158,7 @@ Check: drafts approved, §5 tests and new tests green.
 
 ## Phase 4 — The model
 
-1. Start from `aof/llm_agent_sdk.py`. Replace only `_run` with Agent One's way of calling
+1. Start from `agent_one_finance/llm_agent_sdk.py`. Replace only `_run` with Agent One's way of calling
    the SDK (auth, routing, internal endpoint, budget). Keep the contract:
    `name` and `async reason(request, tools) -> ReasonResult`.
    - If Agent One only offers start/poll sessions, start one per group and await it inside

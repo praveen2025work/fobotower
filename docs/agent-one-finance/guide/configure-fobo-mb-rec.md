@@ -56,7 +56,7 @@ Two tools:
 - **`break_history(book, cob, instrument)`** tells a timing difference that clears from one
   that stays.
 
-In dev, both are served by a stub (`aof/stub_connectors/finance.py`).
+In dev, both are served by a stub (`agent_one_finance/stub_connectors/finance.py`).
 
 ## Step 2 — The capability: read the breaks, stop for a controller
 

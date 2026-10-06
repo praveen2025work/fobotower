@@ -485,7 +485,7 @@ class StepSettings(Strict):
     # `policy.<name>` and `count` (items so far). Absent = always.
     when: str | None = None
     label: str | None = None
-    # The step type's own settings (see aof/stepkit.py).
+    # The step type's own settings (see agent_one_finance/stepkit.py).
     with_: dict[str, Any] = Field(default_factory=dict, alias="with")
 
 

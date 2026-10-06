@@ -8,7 +8,7 @@ of these at startup — `setup_tracing()` is called once by the web app:
   PHOENIX_COLLECTOR_ENDPOINT=http://phoenix:6006  and `pip install arize-phoenix-otel`
 
 A tracing failure never fails a run: spans are best effort; audit rows are
-the record (aof/models.py).
+the record (agent_one_finance/models.py).
 """
 
 import logging

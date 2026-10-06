@@ -34,3 +34,11 @@ An office deployment that was set up under the old names changes the items below
 
 Old migration files keep their original names and contents: they are the history the new
 migration builds on.
+
+## Converting an office copy
+
+The names above are also in [`migration/rename-map.json`](migration/rename-map.json), and
+`apps/backend/scripts/aof_convert.py` applies them to any repo (a dry run unless you pass `--apply`).
+Office Claude Code has a skill for the whole upgrade:
+[`migration/office-claude/upgrade-to-aof`](migration/office-claude/upgrade-to-aof/SKILL.md).
+

@@ -1,0 +1,316 @@
+{
+  "about": "Helix -> Agent One Finance rename, as data. Read by apps/backend/scripts/aof_convert.py. Rules run in this order: moves, file names, literal text, then patterns. 'skip' paths are never touched; 'skip_text' files may be renamed but their contents are left alone. FOBO keeps its own names. A line containing 'aof-convert: keep' is left as it is.",
+  "moves": [
+    [
+      "apps/backend/helix",
+      "apps/backend/agent_one_finance"
+    ],
+    [
+      "apps/backend/tests/helix",
+      "apps/backend/tests/agent_one_finance"
+    ],
+    [
+      "apps/backend/seed_data/helix_documents",
+      "apps/backend/seed_data/aof_documents"
+    ],
+    [
+      "config/helix",
+      "config/agent-one-finance"
+    ],
+    [
+      "docs/helix",
+      "docs/agent-one-finance"
+    ],
+    [
+      "apps/console/src/helix",
+      "apps/console/src/aof"
+    ],
+    [
+      "apps/console/src/app/helix",
+      "apps/console/src/app/aof"
+    ],
+    [
+      "apps/web/src/api/helix.ts",
+      "apps/web/src/api/aof.ts"
+    ]
+  ],
+  "file_names": [
+    [
+      "helix_",
+      "aof_"
+    ],
+    [
+      "_helix",
+      "_aof"
+    ],
+    [
+      "helix-",
+      "agent-one-finance-"
+    ],
+    [
+      "-helix",
+      "-agent-one-finance"
+    ],
+    [
+      "Helix",
+      "Aof"
+    ]
+  ],
+  "literal": [
+    [
+      "apps/backend/helix",
+      "apps/backend/agent_one_finance"
+    ],
+    [
+      "tests/helix",
+      "tests/agent_one_finance"
+    ],
+    [
+      "tests.helix",
+      "tests.agent_one_finance"
+    ],
+    [
+      "config/helix",
+      "config/agent-one-finance"
+    ],
+    [
+      "docs/helix",
+      "docs/agent-one-finance"
+    ],
+    [
+      "src/helix/",
+      "src/aof/"
+    ],
+    [
+      "app/helix",
+      "app/aof"
+    ],
+    [
+      "api/helix",
+      "api/aof"
+    ],
+    [
+      "\"config\" / \"helix\"",
+      "\"config\" / \"agent-one-finance\""
+    ],
+    [
+      "\"docs\" / \"helix\"",
+      "\"docs\" / \"agent-one-finance\""
+    ],
+    [
+      "\"var\" / \"helix\"",
+      "\"var\" / \"agent-one-finance\""
+    ],
+    [
+      "parents[2] / \"helix\"",
+      "parents[2] / \"agent_one_finance\""
+    ],
+    [
+      "var/helix",
+      "var/agent-one-finance"
+    ],
+    [
+      "\"docs\", \"helix\"",
+      "\"docs\", \"agent-one-finance\""
+    ],
+    [
+      "\"config\", \"helix\"",
+      "\"config\", \"agent-one-finance\""
+    ],
+    [
+      "'docs', 'helix'",
+      "'docs', 'agent-one-finance'"
+    ],
+    [
+      "'config', 'helix'",
+      "'config', 'agent-one-finance'"
+    ],
+    [
+      "helix_office_smoke",
+      "aof_office_smoke"
+    ],
+    [
+      "fobo_helix_parity",
+      "fobo_aof_parity"
+    ],
+    [
+      "make_helix_documents",
+      "make_aof_documents"
+    ],
+    [
+      "fobo-on-helix",
+      "fobo-on-agent-one-finance"
+    ],
+    [
+      "skill-to-helix",
+      "skill-to-agent-one-finance"
+    ],
+    [
+      "helix-snapshot",
+      "agent-one-finance-snapshot"
+    ],
+    [
+      "helix-pitch",
+      "agent-one-finance-pitch"
+    ],
+    [
+      "helix-web",
+      "agent-one-finance-web"
+    ],
+    [
+      "helix_documents",
+      "aof_documents"
+    ],
+    [
+      "-helix-",
+      "-agent-one-finance-"
+    ],
+    [
+      "fobo-to-helix",
+      "fobo-to-aof"
+    ],
+    [
+      "X-Helix-",
+      "X-AOF-"
+    ],
+    [
+      "x-helix-",
+      "x-aof-"
+    ],
+    [
+      "HELIX_",
+      "AOF_"
+    ],
+    [
+      "helix-scheduler",
+      "aof-scheduler"
+    ],
+    [
+      "helix.internal.example",
+      "aof.internal.example"
+    ],
+    [
+      "mcp__helix__",
+      "mcp__aof__"
+    ],
+    [
+      "set_attribute(\"helix.",
+      "set_attribute(\"aof."
+    ],
+    [
+      "set_attribute(f\"helix.",
+      "set_attribute(f\"aof."
+    ],
+    [
+      "app=helix",
+      "app=aof"
+    ],
+    [
+      "\"helix:\"",
+      "\"aof:\""
+    ],
+    [
+      "f\"helix:",
+      "f\"aof:"
+    ],
+    [
+      "Helix for Finance",
+      "Agent One Finance"
+    ]
+  ],
+  "patterns": [
+    [
+      "\\bfrom helix\\b",
+      "from agent_one_finance"
+    ],
+    [
+      "\\bimport helix\\b",
+      "import agent_one_finance"
+    ],
+    [
+      "\\bhelix\\.(?=(?:{modules})\\b)",
+      "agent_one_finance."
+    ],
+    [
+      "(?<![A-Za-z0-9_/.-])helix/(?=(?:{modules})\\b)",
+      "agent_one_finance/"
+    ],
+    [
+      "\\bhelix\\.(?=[a-z_])",
+      "aof."
+    ],
+    [
+      "\"helix\\*\"",
+      "\"agent_one_finance*\""
+    ],
+    [
+      "(?<![A-Za-z0-9])Helix(?=[A-Za-z0-9_])",
+      "Aof"
+    ],
+    [
+      "(?<![A-Za-z0-9])Helix's\\b",
+      "Agent One Finance's"
+    ],
+    [
+      "(?<![A-Za-z0-9])Helix(?![A-Za-z0-9_])",
+      "Agent One Finance"
+    ],
+    [
+      "(?<![A-Za-z0-9])HELIX(?![A-Za-z0-9])",
+      "AOF"
+    ],
+    [
+      "(?<![A-Za-z0-9])helix(?![A-Za-z0-9])",
+      "aof"
+    ]
+  ],
+  "skip": [
+    "(^|/)\\.git/",
+    "(^|/)node_modules/",
+    "(^|/)\\.venv/",
+    "(^|/)__pycache__/",
+    "(^|/)dist/",
+    "(^|/)renaming\\.md$",
+    "rename-map\\.json$",
+    "aof_convert\\.py$",
+    "migrations/versions/",
+    "docs/agent-one-finance/migration/whats-new\\.md$",
+    "docs/agent-one-finance/migration/office-claude/"
+  ],
+  "settings": {
+    "note": "Same suffix, new prefix. Rename these in every environment, secret store and deployment file.",
+    "examples": [
+      [
+        "HELIX_DATABASE_URL",
+        "AOF_DATABASE_URL"
+      ],
+      [
+        "HELIX_LLM_ADAPTER",
+        "AOF_LLM_ADAPTER"
+      ],
+      [
+        "HELIX_ENTITLEMENT_URL",
+        "AOF_ENTITLEMENT_URL"
+      ],
+      [
+        "HELIX_PROXY_SECRET",
+        "AOF_PROXY_SECRET"
+      ],
+      [
+        "HELIX_EVENT_SECRET",
+        "AOF_EVENT_SECRET"
+      ]
+    ]
+  },
+  "outside_the_code": [
+    "Entitlement roles HELIX_*_OWNER and HELIX_PLATFORM_ADMIN become AOF_*_OWNER and AOF_PLATFORM_ADMIN; the entitlement lookup becomes ?app=aof.",
+    "Proxies, bots and webhooks send X-AOF-User, X-AOF-Event-Secret, X-AOF-Proxy-Secret and X-AOF-Webhook-Secret.",
+    "Database: alembic upgrade head runs e7f9a1b3c5d7, which renames helix_* tables to aof_* and re-keys workflow checkpoints helix:<case> to aof:<case>.",
+    "Phoenix dashboards and alerts filtering on helix.* span attributes now filter on aof.*.",
+    "Browser storage keys helix.user and helix.theme become aof.user and aof.theme: people choose their user and theme once more."
+  ],
+  "skip_text": [
+    "(^|/)package-lock\\.json$",
+    "\\.(png|jpe?g|gif|ico|pdf|xlsx|docx|pptx|woff2?|ttf|mp4|webm|zip|gz|pyc)$"
+  ]
+}

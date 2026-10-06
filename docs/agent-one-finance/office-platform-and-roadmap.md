@@ -48,7 +48,7 @@ It is deliberately thin today: decision → subject. The roadmap below widens it
 
 ## 3. New since the last round: documents
 
-The **documents** MCP service (`aof/mcp_services/documents.py`) is a real service, not a stub,
+The **documents** MCP service (`agent_one_finance/mcp_services/documents.py`) is a real service, not a stub,
 and is onboarded like any connector:
 
 | Tool | Access | What it does |

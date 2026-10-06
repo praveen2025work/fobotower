@@ -5,7 +5,7 @@ opening the same key twice returns the existing case rather than running it
 again; a failed or escalated case can be re-run, which opens attempt 2, 3…
 beside it and keeps the earlier attempts as they were. A run is pinned to the
 manifest active when it opened and to the caller's entitlements at that
-moment. Runs happen off the request path (aof/runner.py): every action
+moment. Runs happen off the request path (agent_one_finance/runner.py): every action
 here records what should happen, marks the case "running" and submits it.
 """
 

@@ -432,7 +432,7 @@ step_settings:
 The platform checks each step's settings against its schema and its expressions when the manifest
 is checked. It checks the order with what each step needs and produces, including named data sets:
 "`to_gbp` needs data set `fx`, produced by no earlier step". The tools a step calls are the only
-ones the gateway allows. New types are added through the step SDK (`aof/stepkit.py`): a config
+ones the gateway allows. New types are added through the step SDK (`agent_one_finance/stepkit.py`): a config
 schema, `needs`, `produces`, `tools`, `expressions` and a run function. The design and the next
 phases are in [`../design/step-catalogue-v2.md`](../design/step-catalogue-v2.md).
 
@@ -596,7 +596,7 @@ The graph is bitemporal: every edge has `valid_from` / `valid_to`.
 
 ## 13. Settings
 
-Every setting comes from the environment, read once in `aof/config.py`.
+Every setting comes from the environment, read once in `agent_one_finance/config.py`.
 
 | Variable | Default | Purpose |
 |---|---|---|
@@ -647,11 +647,11 @@ curl -X POST localhost:8300/api/capabilities/fin.accruals-review/cases \
 | A use case | A manifest (no code) |
 | A team on a shared capability | A group file (no code) |
 | A bank system | An MCP server + an entry in `connectors.yaml`; Agent One Finance code is unchanged |
-| An LLM connector | `AOF_LLM_ADAPTER=pkg.mod:obj`, an object with `name` and `async reason(request: ReasonRequest, tools)` (see `aof/llm.py`) |
+| An LLM connector | `AOF_LLM_ADAPTER=pkg.mod:obj`, an object with `name` and `async reason(request: ReasonRequest, tools)` (see `agent_one_finance/llm.py`) |
 | Tracing | `AOF_TRACING_SETUP=pkg.mod:fn`, called once at startup |
 | Entitlements | `AOF_ENTITLEMENT_URL` (or an adapter) returning roles and data scopes |
 | A template | A YAML file in `config/agent-one-finance/templates/` |
-| A new step type | Code: `aof/steps.py` + `STEPS` in `workflow.py` (declare needs/produces), with tests; the platform team owns it |
+| A new step type | Code: `agent_one_finance/steps.py` + `STEPS` in `workflow.py` (declare needs/produces), with tests; the platform team owns it |
 
 ## 16. Testing
 

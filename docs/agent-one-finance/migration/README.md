@@ -21,11 +21,16 @@ Control. It is never "fixed" quietly.
 
 **How to use this guide with office Claude Code:**
 
-1. Copy [`office-claude/SKILL.md`](office-claude/SKILL.md) into your office repo as
+1. Copy [`office-claude/fobo-to-aof/SKILL.md`](office-claude/fobo-to-aof/SKILL.md) into your office repo as
    `.claude/skills/fobo-to-aof/SKILL.md`.
 2. Copy this folder (`docs/agent-one-finance/migration/`) into the office repo too, so the skill can read it.
 3. Start a session with the prompt in [§9](#9-the-prompt-to-start-office-claude). Claude works
    one phase at a time and stops for your sign-off between phases.
+
+**Already have an office copy under the old name, Helix?** Upgrade it first with the <!-- aof-convert: keep -->
+[`upgrade-to-aof`](office-claude/upgrade-to-aof/SKILL.md) skill. It renames the copy, brings in
+everything in [`whats-new.md`](whats-new.md), and keeps the office's own changes. See
+[`office-claude/README.md`](office-claude/README.md) to choose.
 
 ---
 
@@ -110,7 +115,7 @@ Behaviour tests: `apps/backend/tests/agent_one_finance/test_fobo_playbook.py`. L
 
 | Agent One piece | Plug into Agent One Finance as |
 |---|---|
-| The Agent SDK wrapper (auth, model routing, gateway URL) | the body of `_run` in `aof/llm_agent_sdk.py`, or your own adapter selected with `AOF_LLM_ADAPTER=pkg.mod:obj` |
+| The Agent SDK wrapper (auth, model routing, gateway URL) | the body of `_run` in `agent_one_finance/llm_agent_sdk.py`, or your own adapter selected with `AOF_LLM_ADAPTER=pkg.mod:obj` |
 | CATS / MOTIF / ticketing MCP servers | entries in `config/agent-one-finance/connectors.yaml` (`transport: http`, `url`, `headers_env`). With ids `cats`, `motif` and `ticketing` the group file works unchanged. Otherwise, change the names in the group file to match (config only) |
 | RAG / data explorer servers | connectors too, if the skill needs them |
 | Phoenix setup | `AOF_TRACING_SETUP=pkg.mod:fn`, or just the endpoint |
@@ -153,7 +158,7 @@ class LlmAdapter(Protocol):
 # ReasonResult:  status proposed|escalated, comment, reason, verdict, model, usage
 ```
 
-**Do this.** Start from `aof/llm_agent_sdk.py`, which already implements the contract on the
+**Do this.** Start from `agent_one_finance/llm_agent_sdk.py`, which already implements the contract on the
 Agent SDK, and replace only `_run` with Agent One's way of calling the SDK (auth, model routing,
 internal endpoint). If Agent One exposes only a start/poll session service, write a thin adapter
 that starts a session for the group and awaits it. Do not reintroduce start/poll in the engine.

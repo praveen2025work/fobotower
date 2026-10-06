@@ -89,7 +89,7 @@ event-opened cases; `platform-ui` pages `PackAuthoring`, `Approvals`, `Audit`,
 `RunConsole` as UX references for the capability builder; the adapter
 **backends** (`fobo-backend`, `recon-engine-backend`, `pnl-lineage-backend`) as
 richer stub data — wrapped as real MCP servers like
-`aof/stub_connectors/finance.py`.
+`agent_one_finance/stub_connectors/finance.py`.
 
 ## 6. What not to take
 

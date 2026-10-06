@@ -3,7 +3,7 @@
   none   no model; anything the rules cannot settle escalates to a person
   stub   deterministic stand-in: reads evidence through the tools it is
          given and writes a comment citing only figures those tools returned
-  agent_sdk  the Claude Agent SDK (aof/llm_agent_sdk.py) — the office path
+  agent_sdk  the Claude Agent SDK (agent_one_finance/llm_agent_sdk.py) — the office path
   "module:attr"  your office LLM connector: an object (or zero-argument
          factory) with `name` and `async reason(request, tools)`
 

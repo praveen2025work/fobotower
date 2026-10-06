@@ -20,7 +20,8 @@ FOBO's behaviour on Agent One Finance — its playbook as configuration of the C
 [`fobo-on-agent-one-finance.md`](fobo-on-agent-one-finance.md).
 
 **Moving the office FOBO (on Agent One) onto Agent One Finance** — change guide, office Claude Code skill and
-parity script: [`migration/`](migration/README.md).
+parity script: [`migration/`](migration/README.md). **Upgrading an office copy still named Helix:** <!-- aof-convert: keep -->
+[`migration/office-claude/`](migration/office-claude/README.md) (skill, rename map, converter, what changed).
 
 **Executive demo video (3 min) and presenter notes:** [`demo/`](demo/README.md).
 
@@ -169,7 +170,7 @@ developers and run-the-bank, with what is reused, adapted, planned or replaced, 
 
 ## 2c. Documents — PDF and Excel in, PDF reports out
 
-`documents` is a connector Agent One Finance provides itself (`aof/mcp_services/documents.py`):
+`documents` is a connector Agent One Finance provides itself (`agent_one_finance/mcp_services/documents.py`):
 `list_documents`, `read_pdf`, `read_workbook` (read) and `render_pdf_report` (write — the
 publish step only, after a second person releases the case). Files are kept per entity:
 `AOF_DOCUMENTS_DIR/<entity>/` to read, `AOF_REPORTS_DIR/<entity>/` for reports.
@@ -185,7 +186,7 @@ Sample documents: `python scripts/make_aof_documents.py`.
 ### 3.1 LLM — Claude Agent SDK
 
 `AOF_LLM_ADAPTER=agent_sdk` (install `pip install -e ".[agent-sdk]"`). Per proposal group,
-`aof/llm_agent_sdk.py` runs one `claude_agent_sdk.query()`:
+`agent_one_finance/llm_agent_sdk.py` runs one `claude_agent_sdk.query()`:
 
 | Option | Value | Why |
 |---|---|---|
@@ -258,7 +259,7 @@ payloads; Agent One Finance's own spans carry the model's view only.
 
 | | |
 |---|---|
-| Case runs | off the request path (`aof/runner.py`); one run per case across instances (advisory lock); startup finishes runs left `running`; a pause is crossed only by its input (decisions, release) |
+| Case runs | off the request path (`agent_one_finance/runner.py`); one run per case across instances (advisory lock); startup finishes runs left `running`; a pause is crossed only by its input (decisions, release) |
 | Re-runs | a failed or escalated case → *Run again* → attempt 2 on today's configuration; earlier attempts kept |
 | Write-backs | idempotency key per write; a part-failed publish → *Retry write-back* sends only what did not land |
 | Reports | PDF reports in the shared database (`AOF_REPORTS_STORE=db`), served to anyone who can see the case |

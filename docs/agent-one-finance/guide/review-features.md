@@ -42,7 +42,7 @@ review:
   confirm: tick_and_comment                 # or: tick, none
 ```
 
-Every group carries flags, computed by `aof/review.py`:
+Every group carries flags, computed by `agent_one_finance/review.py`:
 
 | Flag | Meaning |
 |---|---|
@@ -91,7 +91,7 @@ case:
 ```
 
 - `due_at` is fixed when the case opens.
-- Every minute, the scheduler's leader runs `aof/deadlines.py`. It sends **due soon** to
+- Every minute, the scheduler's leader runs `agent_one_finance/deadlines.py`. It sends **due soon** to
   the reviewers, and **missed** to the reviewers and the owners.
 - Each reminder is sent once per case, in the bell and to the Teams webhook.
 - A case stops counting once it leaves review and release.
@@ -255,7 +255,7 @@ totals.
 
 | Area | Files |
 |---|---|
-| Backend | `aof/review.py`, `aof/escalation.py`, `aof/deadlines.py`, `aof/insights.py`, `aof/export.py`; `manifest.py` (`DueSpec`, `RecurringSpec`, `EscalationSpec`, `ExportSpec`, `review.*`, `group_label`, `side_names`, `amount_unit`) |
+| Backend | `agent_one_finance/review.py`, `agent_one_finance/escalation.py`, `agent_one_finance/deadlines.py`, `agent_one_finance/insights.py`, `agent_one_finance/export.py`; `manifest.py` (`DueSpec`, `RecurringSpec`, `EscalationSpec`, `ExportSpec`, `review.*`, `group_label`, `side_names`, `amount_unit`) |
 | Database | Migration `d224c0604a72`: `aof_ticket`, `aof_delegation`, case `due_at` / `due_notified` / `review_ready_at`, decision `confirmed` / `on_behalf_of` / `review_seconds` |
 | Web | `components/Urgency.tsx`, `components/DelegationPanel.tsx`, `components/orchestrator/` (the configuration editor), `components/capability/RecurringPanel.tsx`, plus the case workspace, inbox and overview pages |
 | Tests | `tests/agent_one_finance/test_review_features.py`, `src/pages/__tests__/Features.test.tsx`, `src/components/orchestrator/__tests__/` |

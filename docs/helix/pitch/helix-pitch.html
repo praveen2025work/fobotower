@@ -287,6 +287,83 @@ details.cfg .code { margin-top: 12px; }
 .fit .no li::before { content: "–"; color: var(--muted); }
 .fit b { color: var(--ink); font-weight: 600; }
 
+/* ---------- executive ---------- */
+.exec { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.exec > div { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px; display: grid; gap: 8px; align-content: start; box-shadow: var(--shadow); position: relative; overflow: hidden; }
+.exec > div::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 4px; background: linear-gradient(var(--cyan), var(--action)); }
+.exec .k { font: 600 0.72rem/1 var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--action); }
+.exec p { color: var(--muted); font-size: 0.93rem; }
+.exec b { color: var(--ink); }
+/* value calculator */
+.value { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 22px; align-items: start; }
+.calc { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 22px; display: grid; gap: 16px; box-shadow: var(--shadow); }
+.calc label { display: grid; gap: 6px; font-size: 0.88rem; color: var(--muted); }
+.calc label span { display: flex; justify-content: space-between; gap: 10px; }
+.calc label b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.calc input[type=range] { width: 100%; accent-color: var(--action); }
+.out { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 22px; display: grid; gap: 18px; box-shadow: var(--shadow); }
+.bars { display: grid; gap: 10px; }
+.bar { display: grid; grid-template-columns: 110px minmax(0, 1fr) auto; gap: 10px; align-items: center; font-size: 0.86rem; }
+.bar .vtrack { height: 14px; border-radius: 8px; background: var(--soft); overflow: hidden; }
+.bar .fill { height: 100%; border-radius: 8px; background: var(--f-core); transition: width .5s cubic-bezier(.2,.7,.2,1); }
+.bar.after .fill { background: linear-gradient(90deg, var(--action), var(--cyan)); }
+.bar b { font-variant-numeric: tabular-nums; }
+.kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.kpis div { border-radius: 12px; padding: 12px 14px; background: color-mix(in srgb, var(--tint) 70%, var(--card)); display: grid; gap: 2px; }
+.kpis strong { font: 800 1.6rem/1.1 var(--display); font-variant-numeric: tabular-nums; }
+.kpis span { font-size: 0.78rem; color: var(--muted); }
+.note { font-size: 0.82rem; color: var(--muted); }
+.beyond { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.beyond div { border: 1px dashed var(--line); border-radius: 12px; padding: 12px 14px; font-size: 0.88rem; color: var(--muted); }
+.beyond b { display: block; color: var(--ink); font-size: 0.92rem; margin-bottom: 2px; }
+/* architecture */
+.arch { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 26px; align-items: start; }
+.stack { display: grid; gap: 8px; }
+.layer { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 14px; align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; position: relative; }
+.layer .ln { font: 700 0.8rem/1.2 var(--display); color: var(--action); }
+.layer .parts { display: flex; flex-wrap: wrap; gap: 6px; }
+.layer .parts span { font-size: 0.8rem; padding: 4px 9px; border-radius: 7px; background: var(--soft); border: 1px solid var(--line); }
+.layer.gov { background: var(--band); border-color: var(--band); color: var(--band-ink); }
+.layer.gov .ln { color: var(--cyan); }
+.layer.gov .parts span { background: color-mix(in srgb, var(--band-ink) 10%, transparent); border-color: color-mix(in srgb, var(--band-ink) 18%, transparent); }
+.estate { margin-top: 10px; border: 2px dashed color-mix(in srgb, var(--action) 45%, transparent); border-radius: 16px; padding: 10px 14px; font-size: 0.84rem; color: var(--muted); text-align: center; }
+.faq { display: grid; gap: 10px; }
+.faq details { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.faq summary { cursor: pointer; font-weight: 600; list-style: none; display: flex; justify-content: space-between; gap: 12px; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after { content: "+"; color: var(--action); font-weight: 700; }
+.faq details[open] summary::after { content: "–"; }
+.faq p { color: var(--muted); margin-top: 8px; font-size: 0.92rem; }
+.proof { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 18px; }
+.proof div { border-radius: 12px; padding: 12px 14px; background: var(--card); border: 1px solid var(--line); }
+.proof strong { display: block; font: 800 1.4rem/1.1 var(--display); color: var(--action); font-variant-numeric: tabular-nums; }
+.proof span { font-size: 0.8rem; color: var(--muted); }
+/* rollout */
+.roll { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; position: relative; padding: 0; margin: 0; }
+.roll li { list-style: none; padding: 0 16px 0 0; display: grid; gap: 8px; align-content: start; position: relative; }
+.roll .dot { width: 18px; height: 18px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 0 5px color-mix(in srgb, var(--cyan) 22%, transparent); position: relative; z-index: 1; }
+.roll li::before { content: ""; position: absolute; top: 8px; left: 18px; right: 0; height: 2px; background: linear-gradient(90deg, var(--cyan), var(--line)); }
+.roll li:last-child::before { display: none; }
+.roll h3 { margin-top: 6px; }
+.roll p { color: var(--muted); font-size: 0.9rem; }
+.roll .gate { font-size: 0.78rem; font-weight: 600; color: var(--good); }
+.leaders { margin-top: 18px; display: grid; gap: 10px; padding: 0; }
+.leaders li { list-style: none; padding: 14px 16px; border-radius: 12px; background: color-mix(in srgb, var(--cyan) 14%, transparent); border: 1px solid color-mix(in srgb, var(--cyan) 35%, transparent); color: var(--band-muted); }
+.leaders b { color: var(--band-ink); }
+@media (max-width: 980px) {
+  .exec { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .value, .arch { grid-template-columns: minmax(0, 1fr); }
+  .roll { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 26px; }
+  .roll li:nth-child(2)::before { display: none; }
+  .proof { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .exec, .kpis, .beyond, .roll { grid-template-columns: minmax(0, 1fr); }
+  .roll li::before { display: none; }
+  .layer { grid-template-columns: minmax(0, 1fr); }
+  .bar { grid-template-columns: 84px minmax(0, 1fr) auto; }
+}
+
 /* ---------- close ---------- */
 .close { background: radial-gradient(900px 400px at 10% 0%, var(--band-2), transparent 60%), var(--band); color: var(--band-ink); }
 .close .wrap { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 44px; align-items: center; }
@@ -333,11 +410,14 @@ footer { padding-block: 24px; font-size: 0.8rem; color: var(--muted); }
     <div class="topbar">
       <div class="mark"><b>A1</b>Agent One Finance</div>
       <nav aria-label="Sections">
+        <a href="#summary">Summary</a>
+        <a href="#value">Value</a>
         <a href="#path">How it works</a>
         <a href="#story">End to end</a>
         <a href="#make">Make it work</a>
         <a href="#usecases">Use cases</a>
-        <a href="#screens">The console</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#rollout">Rollout</a>
       </nav>
     </div>
     <div class="hero">
@@ -393,7 +473,22 @@ footer { padding-block: 24px; font-size: 0.8rem; color: var(--muted); }
 
 <main>
 
-<section id="problem">
+<section id="summary">
+  <div class="wrap">
+    <div class="head reveal">
+      <span class="eyebrow">For the executive committee</span>
+      <h2>One page: what it is, why now, and what we ask.</h2>
+    </div>
+    <div class="exec">
+      <div class="reveal"><span class="k">The opportunity</span><h3>Judgement, not gathering</h3><p>Finance teams spend most of each break, rec, variance and accrual <b>gathering data from three to six systems</b> before any judgement starts. That time repeats every day and every close.</p></div>
+      <div class="reveal d1"><span class="k">What it does</span><h3>Prepares, proposes, proves</h3><p>Agent One Finance gathers and checks the data and proposes the outcome. <b>Named people decide within their authority</b>, and only approved outcomes reach the ledger.</p></div>
+      <div class="reveal d2"><span class="k">Why it is safe</span><h3>Controls in the platform</h3><p>Four-eyes, delegated authority, reserved decisions, release before write-back and a full audit trail are <b>built in once</b>, not rebuilt per team.</p></div>
+      <div class="reveal d3"><span class="k">The ask</span><h3>A governed pilot</h3><p>Sponsor a pilot with <b>FOBO for Prime and Rates</b> and two more Finance teams, run in shadow mode and measured against today before anyone relies on it.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="problem" class="alt">
   <div class="wrap">
     <div class="head reveal">
       <span class="eyebrow">The problem</span>
@@ -415,7 +510,7 @@ footer { padding-block: 24px; font-size: 0.8rem; color: var(--muted); }
   </div>
 </section>
 
-<section id="path" class="alt">
+<section id="path">
   <div class="wrap">
     <div class="head reveal">
       <span class="eyebrow">How it works</span>
@@ -433,6 +528,44 @@ footer { padding-block: 24px; font-size: 0.8rem; color: var(--muted); }
       <div class="stn"><span class="n">6</span><h3>Release</h3><p>A second person releases; each write exactly once.</p></div>
     </div>
     <div class="gateway reveal"><b>One gateway under every step</b><span>entitlements</span><span>data scope per user</span><span>masking before any model</span><span>an audit row per call</span></div>
+  </div>
+</section>
+
+<section id="value" class="alt">
+  <div class="wrap">
+    <div class="head reveal">
+      <span class="eyebrow">The value</span>
+      <h2>Model the time it gives back to your team.</h2>
+      <p class="lede">An illustrative model: move the sliders to your team's own figures. Once a capability runs, the console measures the real time spent on each decision, so the business case is replaced by evidence.</p>
+    </div>
+    <div class="value">
+      <div class="calc reveal" role="group" aria-label="Your team's figures">
+        <label for="v-items"><span>Items a month (breaks, lines, exceptions)<b id="o-items"></b></span><input id="v-items" type="range" min="200" max="20000" step="100" value="3000"></label>
+        <label for="v-mins"><span>Minutes per item today<b id="o-mins"></b></span><input id="v-mins" type="range" min="2" max="60" step="1" value="15"></label>
+        <label for="v-share"><span>Share of that time the platform prepares<b id="o-share"></b></span><input id="v-share" type="range" min="10" max="80" step="5" value="50"></label>
+        <label for="v-rate"><span>Loaded cost per hour (GBP)<b id="o-rate"></b></span><input id="v-rate" type="range" min="30" max="200" step="5" value="70"></label>
+        <p class="note">Assumptions, not results. The platform prepares data, checks figures and drafts the proposal; the decision time stays with people.</p>
+      </div>
+      <div class="out reveal d1" aria-live="polite">
+        <div class="bars">
+          <div class="bar"><span>Today</span><div class="vtrack"><div class="fill" id="b-today"></div></div><b id="h-today"></b></div>
+          <div class="bar after"><span>With the platform</span><div class="vtrack"><div class="fill" id="b-after"></div></div><b id="h-after"></b></div>
+        </div>
+        <div class="kpis">
+          <div><strong id="k-hours"></strong><span>hours a month back to judgement</span></div>
+          <div><strong id="k-fte"></strong><span>people's time, at 140 h a month</span></div>
+          <div><strong id="k-cost"></strong><span>GBP a year of effort redirected</span></div>
+        </div>
+        <div>
+          <div class="label">Beyond hours</div>
+          <div class="beyond">
+            <div><b>Fewer audit findings</b>Every figure traced, every decision evidenced, every write released by a second person.</div>
+            <div><b>Faster close</b>Breaks, accruals and recs prepared overnight or on the event, ready for review at the start of the day.</div>
+            <div><b>Knowledge kept</b>Approved explanations are reused, recurring items surface, and judgement calls become rules.</div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -518,7 +651,44 @@ curl -X POST localhost:8300/api/capabilities/fin.accruals/cases \
   </div>
 </section>
 
-<section id="usecases">
+<section id="architecture">
+  <div class="wrap">
+    <div class="head reveal">
+      <span class="eyebrow">For the CIO</span>
+      <h2>Built on open standards, inside the bank's estate.</h2>
+      <p class="lede">Five layers, each replaceable. The bank's systems stay the source of truth; the platform reads them through governed connectors and writes back only what people released.</p>
+    </div>
+    <div class="arch">
+      <div class="reveal">
+        <div class="stack" aria-label="Architecture layers">
+          <div class="layer"><span class="ln">People</span><div class="parts"><span>Web console</span><span>Teams and email notifications</span><span>REST API</span><span>Light and dark themes</span></div></div>
+          <div class="layer"><span class="ln">Orchestration</span><div class="parts"><span>Versioned capability configuration</span><span>LangGraph runs with checkpoints</span><span>Tollgates and waits</span><span>Schedules and events</span></div></div>
+          <div class="layer gov"><span class="ln">Governance</span><div class="parts"><span>Entitlements and data scope</span><span>Masking before any model</span><span>Audit of every call</span><span>Writes only after release</span><span>Cost limits, off switches</span></div></div>
+          <div class="layer"><span class="ln">Intelligence</span><div class="parts"><span>The bank's approved LLM, via an adapter</span><span>Or no model: rules and people</span><span>Eval sets and shadow runs</span><span>Tracing (Phoenix)</span></div></div>
+          <div class="layer"><span class="ln">Systems</span><div class="parts"><span>MCP connectors</span><span>Ledger, MB Rec, trade stores</span><span>Procurement, documents</span><span>PostgreSQL for cases and audit</span></div></div>
+        </div>
+        <div class="estate">Everything above runs inside the bank's infrastructure and reuses its entitlement service, LLM gateway and observability.</div>
+        <div class="proof">
+          <div><strong>740</strong><span>backend tests</span></div>
+          <div><strong>92</strong><span>console tests</span></div>
+          <div><strong>8</strong><span>capabilities on one platform</span></div>
+          <div><strong>44</strong><span>building blocks, configured not coded</span></div>
+        </div>
+      </div>
+      <div class="faq reveal d1">
+        <details open><summary>Where does our data go?</summary><p>Nowhere outside the bank. Connectors read the bank's systems inside its estate, cases and audit live in the bank's PostgreSQL, and the model sees only masked fields through the bank's approved LLM endpoint.</p></details>
+        <details><summary>Which model, and can we change it?</summary><p>The model sits behind an adapter: the bank's approved LLM today, another tomorrow, by a setting. A capability can also run with no model at all, with rules settling what they can and people the rest.</p></details>
+        <details><summary>What if the model is wrong?</summary><p>Rules run first. Every figure in a proposal is checked against the data before anyone sees it. People decide, decisions above authority are refused, reserved decisions are withheld from the model, and eval sets and shadow runs prove a capability before go-live.</p></details>
+        <details><summary>Can we switch it off?</summary><p>Yes, per capability and for the model, instantly. Cost limits cap spend. Work falls back to people with the data still prepared.</p></details>
+        <details><summary>How is it tested and audited?</summary><p>Over 800 automated tests run on every change. Every data call is audited, every case has an evidence pack and a step-by-step run history, and every configuration change is approved by a second owner.</p></details>
+        <details><summary>How does it scale to more teams?</summary><p>By configuration: 44 building blocks, team groups for desks with their own settings, and connectors onboarded once for every capability that needs them.</p></details>
+        <details><summary>Are we locked in?</summary><p>No. MCP for connectors, LangGraph for orchestration, PostgreSQL for state, React for the console, and capability configuration as versioned files the bank owns.</p></details>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="usecases" class="alt">
   <div class="wrap">
     <div class="head reveal">
       <span class="eyebrow">Use cases</span>
@@ -532,7 +702,7 @@ curl -X POST localhost:8300/api/capabilities/fin.accruals/cases \
   </div>
 </section>
 
-<section id="blocks" class="alt">
+<section id="blocks">
   <div class="wrap">
     <div class="head reveal">
       <span class="eyebrow">Building blocks</span>
@@ -543,7 +713,7 @@ curl -X POST localhost:8300/api/capabilities/fin.accruals/cases \
   </div>
 </section>
 
-<section id="controls">
+<section id="controls" class="alt">
   <div class="wrap">
     <div class="head reveal">
       <span class="eyebrow">Controls built in</span>
@@ -553,7 +723,7 @@ curl -X POST localhost:8300/api/capabilities/fin.accruals/cases \
   </div>
 </section>
 
-<section id="screens" class="alt">
+<section id="screens">
   <div class="wrap">
     <div class="head reveal">
       <span class="eyebrow">The console</span>
@@ -570,7 +740,7 @@ curl -X POST localhost:8300/api/capabilities/fin.accruals/cases \
   </div>
 </section>
 
-<section id="adopt">
+<section id="adopt" class="alt">
   <div class="wrap">
     <div class="head reveal">
       <span class="eyebrow">Adopt it</span>
@@ -586,6 +756,22 @@ curl -X POST localhost:8300/api/capabilities/fin.accruals/cases \
       <li class="reveal d1"><h3>Run it</h3><p>By hand, on a schedule or on another system's event.</p></li>
       <li class="reveal d2"><h3>Improve it</h3><p>Recurring items, the unexplained, judgement calls ready to become rules.</p></li>
       <li class="reveal d3"><h3>Add team groups</h3><p>Other desks run it with their own settings, within what it allows.</p></li>
+    </ol>
+  </div>
+</section>
+
+<section id="rollout">
+  <div class="wrap">
+    <div class="head reveal">
+      <span class="eyebrow">Rollout</span>
+      <h2>Prove it on FOBO, then scale across Finance.</h2>
+      <p class="lede">Each stage passes a gate before the next begins. No stage relies on the model until its proposals have been measured against today's work.</p>
+    </div>
+    <ol class="roll">
+      <li class="reveal"><span class="dot"></span><h3>1 · Shadow pilot</h3><p>FOBO for Prime and Rates runs beside today's process on the same books and dates.</p><span class="gate">Gate: eval set passes; controllers agree the proposals</span></li>
+      <li class="reveal d1"><span class="dot"></span><h3>2 · Go live</h3><p>Controllers work FOBO cases in the console; the platform measures time per decision.</p><span class="gate">Gate: Product Control signs off; model use approved</span></li>
+      <li class="reveal d2"><span class="dot"></span><h3>3 · Two more teams</h3><p>Month-end accruals and reconciliations on the same platform, by configuration.</p><span class="gate">Gate: connectors onboarded; owners named</span></li>
+      <li class="reveal d3"><span class="dot"></span><h3>4 · Across Finance</h3><p>Teams onboard their own capabilities; the platform team adds connectors and new step types.</p><span class="gate">Gate: measured hours and audit outcomes reviewed</span></li>
     </ol>
   </div>
 </section>
@@ -617,6 +803,11 @@ curl -X POST localhost:8300/api/capabilities/fin.accruals/cases \
       <span class="eyebrow">Next step</span>
       <h2 style="margin-top:14px">Bring one process. Leave with a running capability.</h2>
       <p>Pick a use case with a named owner and its systems in reach. The platform, the controls and the console are already there; what remains is the team's own configuration.</p>
+      <ul class="leaders">
+        <li><b>From leadership</b>: an executive sponsor, and the FOBO pilot with Prime and Rates as the first stage.</li>
+        <li><b>From technology</b>: the connectors to the ledger and MB Rec, and the bank's LLM endpoint for the pilot.</li>
+        <li><b>From risk</b>: model use approved under the model risk policy, and the reserved decisions agreed.</li>
+      </ul>
     </div>
     <ol class="ask reveal d1">
       <li><b>The process</b>: the list of items, and what a decision on one looks like.</li>
@@ -916,6 +1107,19 @@ curl -X POST localhost:8300/api/capabilities/fin.accruals/cases \
   }
   $("#zoom").addEventListener("click", zoom); $("#shot").addEventListener("click", zoom);
   shots();
+
+  // ---------- value model ----------
+  const fmt = (n) => Math.round(n).toLocaleString("en-GB");
+  function value() {
+    const items = +$("#v-items").value, mins = +$("#v-mins").value, share = +$("#v-share").value / 100, rate = +$("#v-rate").value;
+    const today = items * mins / 60, after = today * (1 - share), back = today - after;
+    $("#o-items").textContent = fmt(items); $("#o-mins").textContent = mins + " min"; $("#o-share").textContent = Math.round(share * 100) + "%"; $("#o-rate").textContent = "£" + rate;
+    $("#h-today").textContent = fmt(today) + " h"; $("#h-after").textContent = fmt(after) + " h";
+    $("#b-today").style.width = "100%"; $("#b-after").style.width = (100 * (1 - share)) + "%";
+    $("#k-hours").textContent = fmt(back); $("#k-fte").textContent = (back / 140).toFixed(1); $("#k-cost").textContent = "£" + fmt(back * rate * 12);
+  }
+  ["#v-items", "#v-mins", "#v-share", "#v-rate"].forEach((id) => $(id).addEventListener("input", value));
+  value();
 
   // ---------- motion on scroll ----------
   const count = (el) => {

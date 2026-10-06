@@ -668,6 +668,12 @@ export interface PendingDraft {
 export const useDrafts = () =>
   useQuery({ queryKey: ["drafts"], queryFn: () => api.get<PendingDraft[]>("/authoring/drafts") });
 
+export interface AuthoringModes { guided: boolean; templates: boolean; brd_model: boolean; brd_author: string; brd_note: string | null }
+export const useAuthoringModes = () =>
+  useQuery({ queryKey: ["authoring-modes"], queryFn: () => api.get<AuthoringModes>("/authoring/modes") });
+export const useGuidedDraft = () =>
+  useMutation({ mutationFn: (answers: Record<string, unknown>) => api.post<DraftResult>("/authoring/guided", answers) });
+
 export const useDraftFromBrd = () =>
   useMutation({ mutationFn: (brd: string) => api.post<DraftResult>("/authoring/draft", { brd }) });
 

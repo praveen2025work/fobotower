@@ -1,13 +1,18 @@
-// BRD → capability — aria-ai's pack authoring, on Helix: the model drafts a
-// manifest from the requirements, the platform's own validator judges it, the
+// Authoring, three ways in: answer a few questions (no model), describe the
+// work in a BRD (a model drafts it when one is connected), or start from a
+// template. Whichever way, the platform's own validator judges the draft, the
 // author fixes what it lists, and another owner approves before it goes live.
 
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { CheckCircle2, FileText, Sparkles, Upload } from "lucide-react";
+import clsx from "clsx";
+import { CheckCircle2, FileText, LayoutTemplate, ListChecks, Sparkles, Upload } from "lucide-react";
 
+import GuidedForm from "../components/authoring/GuidedForm";
 import {
   useApproveVersion,
+  useAuthoringModes,
+  useGuidedDraft,
   useDraftFromBrd,
   useDrafts,
   useImportBundle,
@@ -24,8 +29,12 @@ export default function Authoring(): JSX.Element {
   const draft = useDraftFromBrd();
   const submit = useSubmitDraft();
   const templates = useTemplates();
+  const guided = useGuidedDraft();
+  const modes = useAuthoringModes();
+  const [way, setWay] = useState<"guided" | "brd" | "template">("guided");
   const [fromTemplate, setFromTemplate] = useState<DraftResult | null>(null);
-  const result = fromTemplate ?? draft.data;
+  const [latest, setLatest] = useState<DraftResult | null>(null);
+  const result = fromTemplate ?? latest;
 
   const applyTemplate = (id: string) => {
     const t = templates.data?.find((x) => x.id === id);
@@ -38,56 +47,89 @@ export default function Authoring(): JSX.Element {
     submit.reset();
   };
 
-  const onDraft = () =>
-    draft.mutate(brd, {
-      onSuccess: (r) => {
-        setFromTemplate(null);
-        setYamlText(r.yaml);
-        submit.reset();
-      },
-    });
+  const show = (r: DraftResult) => {
+    setFromTemplate(null);
+    setLatest(r);
+    setYamlText(r.yaml);
+    submit.reset();
+  };
+  const onDraft = () => draft.mutate(brd, { onSuccess: show });
+  const onGuided = (answers: Record<string, unknown>) => guided.mutate(answers, { onSuccess: show });
+  const WAYS = [
+    { id: "guided", label: "Answer questions", icon: ListChecks, note: "no model needed" },
+    { id: "brd", label: "Describe it (BRD)", icon: Sparkles, note: modes.data?.brd_model ? "a model drafts it" : "no model connected" },
+    { id: "template", label: "Start from a template", icon: LayoutTemplate, note: "edit it after" },
+  ] as const;
 
   return (
     <div>
       <PageHeader
         title="Authoring"
-        subtitle="Describe the work in plain words. Helix drafts the capability; its validator checks it; another owner approves it."
+        subtitle="Answer a few questions, describe the work for the model, or start from a template. The platform checks it; another owner approves it."
       />
       <div className="grid gap-4 xl:grid-cols-2">
-        <Card title={<span className="flex items-center gap-2"><FileText size={14} /> Business requirements</span>}>
-          <label className="block text-xs font-medium text-surface-600">
-            BRD
-            <textarea
-              value={brd}
-              onChange={(e) => setBrd(e.target.value)}
-              rows={14}
-              placeholder="What is reviewed, from which systems, how it is grouped, what is material, who signs off, where approved results go…"
-              className="mt-1 block w-full rounded-lg border border-surface-300 px-3 py-2 text-sm font-normal focus:border-primary-400 focus:outline-none"
-            />
-          </label>
-          <button
-            onClick={onDraft}
-            disabled={draft.isPending || !brd.trim()}
-            className="mt-3 inline-flex items-center gap-2 rounded-lg bg-brand-accent px-4 py-2 text-sm font-medium text-brand-accent-fg hover:bg-brand-accent-strong disabled:opacity-50"
-          >
-            <Sparkles size={14} /> {draft.isPending ? "Drafting…" : "Draft capability"}
-          </button>
-          {draft.error && <div className="mt-3"><ErrorState error={draft.error} /></div>}
-          <label className="mt-4 block text-xs font-medium text-surface-600">
-            Or start from a template
-            <select aria-label="Template" defaultValue="" onChange={(e) => applyTemplate(e.target.value)}
-              className="mt-1 block w-full rounded-lg border border-surface-300 px-2 py-1.5 text-sm font-normal">
-              <option value="" disabled>Choose a template…</option>
-              {(templates.data ?? []).map((t) => <option key={t.id} value={t.id}>{t.name} — {t.description}</option>)}
-            </select>
-          </label>
+        <Card title={<span className="flex items-center gap-2"><FileText size={14} /> How do you want to start?</span>}>
+          <div role="tablist" aria-label="How to author" className="mb-3 grid grid-cols-3 gap-1 rounded-lg border border-surface-200 p-1">
+            {WAYS.map((w) => (
+              <button key={w.id} role="tab" aria-selected={way === w.id} onClick={() => setWay(w.id)}
+                className={clsx("rounded-md px-2 py-1.5 text-left text-xs", way === w.id ? "bg-primary-50 text-primary-800" : "text-surface-600 hover:bg-surface-50")}>
+                <span className="flex items-center gap-1 font-medium"><w.icon size={12} /> {w.label}</span>
+                <span className="text-[10px] text-surface-500">{w.note}</span>
+              </button>
+            ))}
+          </div>
+          {way === "guided" && (
+            <>
+              <GuidedForm onBuild={onGuided} pending={guided.isPending} />
+              {guided.error && <div className="mt-3"><ErrorState error={guided.error} /></div>}
+            </>
+          )}
+          {way === "brd" && (
+            <>
+              {modes.data?.brd_note && (
+                <p className="mb-2 rounded-lg bg-yellow-50 px-3 py-2 text-xs text-yellow-900">{modes.data.brd_note}</p>
+              )}
+              <label className="block text-xs font-medium text-surface-600">
+                BRD
+                <textarea
+                  value={brd}
+                  onChange={(e) => setBrd(e.target.value)}
+                  rows={14}
+                  placeholder="What is reviewed, from which systems, how it is grouped, what is material, who signs off, where approved results go…"
+                  className="mt-1 block w-full rounded-lg border border-surface-300 px-3 py-2 text-sm font-normal focus:border-primary-400 focus:outline-none"
+                />
+              </label>
+              <button
+                onClick={onDraft}
+                disabled={draft.isPending || !brd.trim()}
+                className="mt-3 inline-flex items-center gap-2 rounded-lg bg-brand-accent px-4 py-2 text-sm font-medium text-brand-accent-fg hover:bg-brand-accent-strong disabled:opacity-50"
+              >
+                <Sparkles size={14} /> {draft.isPending ? "Drafting…" : "Draft capability"}
+              </button>
+              {draft.error && <div className="mt-3"><ErrorState error={draft.error} /></div>}
+            </>
+          )}
+          {way === "template" && (
+            <label className="block text-xs font-medium text-surface-600">
+              Start from a template
+              <select aria-label="Template" defaultValue="" onChange={(e) => applyTemplate(e.target.value)}
+                className="mt-1 block w-full rounded-lg border border-surface-300 px-2 py-1.5 text-sm font-normal">
+                <option value="" disabled>Choose a template…</option>
+                {(templates.data ?? []).map((t) => <option key={t.id} value={t.id}>{t.name} — {t.description}</option>)}
+              </select>
+            </label>
+          )}
+          <p className="mt-4 text-xs text-surface-500">
+            Whichever way you start, the result is checked by the platform, can be edited here or in Configure, and goes live
+            only when another owner approves it.
+          </p>
         </Card>
 
         <Card
           title="Draft manifest"
           aside={result?.author && <span className="text-xs text-surface-500">drafted by {result.author}</span>}
         >
-          {!result && <Empty>Draft from a BRD to see the manifest here.</Empty>}
+          {!result && <Empty>Answer the questions, draft from a BRD, or pick a template to see the configuration here.</Empty>}
           {result && (
             <div className="space-y-3">
               {result.manifest && <WorkflowStepper steps={result.manifest.steps} pauseBefore={result.manifest.pause_before} />}

@@ -62,7 +62,7 @@ rita sees only her four RATES-LDN books.
 | **Inbox** | Every case waiting on *you*, across capabilities |
 | **Capabilities** | The catalogue; open one to see its cases, groups, configuration, flow, versions |
 | **Operations** | Health, runs, costs, the live tail of connector calls, off switches, schedules |
-| **Authoring** | Create a capability, from a BRD, a template or YAML; approve drafts |
+| **Authoring** | Create a capability by answering questions (no model), from a BRD (a model drafts), a template or YAML; approve drafts |
 | **Audit** | Every connector call, allowed or refused |
 | **Connectors** | The onboarded systems and their tools |
 
@@ -73,19 +73,25 @@ escalated. The moon icon switches between the Barclays light and dark themes.
 
 ## 4. Set up a capability
 
-You can start in any of three ways. All three end in a draft that **another owner
-approves**.
+You can start in any of these ways. Each one ends in a draft that **another owner approves**,
+checked by the same platform validator.
 
-| Start from | When |
-|---|---|
-| **BRD**: type the business requirement and click *Draft capability* | You know the process, not the YAML |
-| **Template**: attestation, commentary, reconciliation, report validation | It is close to an existing pattern |
-| **YAML**: paste a manifest, e.g. one from [`../examples/`](../examples/) | You already have it |
+| Start from | Needs a model? | When |
+|---|---|---|
+| **Answer questions** (the default tab) | No | You know the process; Helix asks what a case is, where items come from, whether to match two systems or investigate what another system found, what is material, how to group, who reviews, whether a model or a person settles what the rules cannot, a tollgate, who may be asked for evidence, a sign-off checklist and follow-through |
+| **Describe it (BRD)** | Yes, to draft properly | You have a written requirement. With a model connected (the office Agent SDK), it drafts a full configuration. Without one, the tab says so and only picks the nearest template |
+| **Template**: attestation, commentary, reconciliation, report validation | No | It is close to an existing pattern |
+| **YAML**: paste a manifest, e.g. one from [`../examples/`](../examples/) | No | You already have it |
+
+The tab you use is your choice. In a deployment with no model, *Answer questions* and
+templates do everything, and the capability can still run without a model: choose *a person
+(no model)* for what the rules cannot settle.
 
 ### Step 1: Draft (owner, e.g. carol)
 
 1. Open *Authoring*.
-2. Pick a template, or describe the work and click *Draft capability*.
+2. Answer the questions and click **Build the capability**, describe the work and click
+   *Draft capability*, or pick a template.
 
 The draft appears on the right with its workflow, a check result ("Passes every platform
 check", or a list of what to fix), and assumptions to confirm.
@@ -361,4 +367,4 @@ by any capability.
 | Stop a capability during an outage | *Operations → Off switches* → capability → reason → *Switch off* |
 | Set a threshold Product Control just confirmed | Group page → edit `policy.<name>.value` → submit → the other owner approves |
 | Add a new team to an existing capability | Add a group file (see the [developer guide](developer-guide.md#5-add-a-team-group)) |
-| Add a new kind of work | *Authoring* → template, BRD or YAML → submit → approve |
+| Add a new kind of work | *Authoring* → questions, BRD, template or YAML → submit → approve |

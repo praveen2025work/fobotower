@@ -20,6 +20,7 @@ it("drafts from a BRD, shows what to fix, and submits the edited manifest", asyn
     "POST /authoring/submit": { capability_id: "draft.x", version: 1 },
   });
   renderAt("/authoring", "/authoring", <Authoring />);
+  await userEvent.click(screen.getByRole("tab", { name: /Describe it/ }));
   await userEvent.type(screen.getByLabelText("BRD"), "Monthly variance commentary");
   await userEvent.click(screen.getByRole("button", { name: /Draft capability/ }));
 
@@ -45,4 +46,32 @@ it("lets a second owner approve a pending draft", async () => {
   await userEvent.click(await screen.findByRole("button", { name: "Approve" }));
   await waitFor(() => expect(calls.some((c) => c.method === "POST")).toBe(true));
   expect(await screen.findByText(/now live/)).toBeInTheDocument();
+});
+
+it("builds a capability from answers with no model, and says when no model is connected", async () => {
+  const calls = mockApi({
+    "GET /authoring/drafts": [],
+    "GET /authoring/modes": { guided: true, templates: true, brd_model: false, brd_author: "template",
+      brd_note: "No model is connected here: a BRD only picks the nearest template." },
+    "GET /platform": { steps: [], llm: "stub", entitlement: "dev-stub",
+      connectors: [{ id: "mbrec", name: "MB Rec", transport: "inproc", classification: "confidential",
+        tools: [{ name: "mbrec.breaks", description: "Open breaks", access: "read", scope: null }] }] },
+    "POST /authoring/guided": { yaml: "id: draft.equities-breaks\n", manifest: null, problems: [],
+      assumptions: ["No model: what the rules cannot settle goes straight to the reviewers."], author: "guided" },
+  });
+  renderAt("/authoring", "/authoring", <Authoring />);
+  expect(screen.getByRole("tab", { name: /Answer questions/ })).toHaveAttribute("aria-selected", "true");
+  await userEvent.type(screen.getByLabelText("Name"), "Equities breaks");
+  await userEvent.selectOptions(await screen.findByLabelText("Items come from"), "mbrec.breaks");
+  await userEvent.click(screen.getByLabelText("a person (no model)"));
+  await userEvent.type(screen.getByLabelText(/Sign-off checklist/), "Is the root cause evidenced?");
+  await userEvent.click(screen.getByRole("button", { name: /Build the capability/ }));
+  await waitFor(() => expect(calls.some((c) => c.path === "/authoring/guided")).toBe(true));
+  expect(calls.find((c) => c.path === "/authoring/guided")!.body).toMatchObject({
+    name: "Equities breaks", kind: "investigate", source_tool: "mbrec.breaks", decided_by: "person",
+    case_key: ["book", "cob"], checklist: ["Is the root cause evidenced?"] });
+  expect(await screen.findByText(/drafted by guided/)).toBeInTheDocument();
+
+  await userEvent.click(screen.getByRole("tab", { name: /Describe it/ }));
+  expect(await screen.findByText(/No model is connected here/)).toBeInTheDocument();
 });

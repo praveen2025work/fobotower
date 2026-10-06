@@ -215,9 +215,10 @@ const scenes = {
   },
   async s11(p, d, s) {
     await p.goto(`${W}/authoring`); await sleep(1800);
+    await p.getByRole("tab", { name: /Start from a template/ }).click(); await sleep(400);
     return async () => {
       await caption(p, s.caption);
-      const sel = p.locator("select").first();
+      const sel = p.getByLabel("Template");
       await sleep(d * 80); await highlight(p, sel); await sleep(1200);
       await sel.selectOption({ index: 3 }); await sleep(d * 250);
       await highlight(p, p.getByText(/Passes every platform check/));

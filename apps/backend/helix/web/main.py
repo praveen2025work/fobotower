@@ -609,6 +609,19 @@ async def authoring_draft(body: BrdIn, c: Caller = Depends(caller)) -> dict:
     return await authoring.draft_from_brd(body.brd, c)
 
 
+@app.get("/api/authoring/modes")
+async def authoring_modes(c: Caller = Depends(caller)) -> dict:
+    """Which ways of authoring are offered: guided (no model), templates, and
+    drafting from a BRD (a model when one is connected)."""
+    return authoring.available_modes()
+
+
+@app.post("/api/authoring/guided")
+async def authoring_guided(body: dict, c: Caller = Depends(caller)) -> dict:
+    """A guided form's answers → a draft manifest, judged. No model. Saves nothing."""
+    return await authoring.guided(body, c)
+
+
 class SubmitIn(BaseModel):
     yaml: str = Field(max_length=200_000)
     note: str = ""

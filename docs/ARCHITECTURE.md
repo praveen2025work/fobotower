@@ -1,5 +1,11 @@
 # Architecture
 
+> This repository is **Helix, the governed AI platform for Finance** (`apps/backend/helix`,
+> `apps/web`, `config/helix`). Its architecture is in the
+> [developer guide](helix/guide/developer-guide.md#1-architecture). This page maps the original
+> **FOBO investigation console** (`apps/backend/fobo`, `apps/console`), Helix's first use case,
+> which still runs beside it.
+
 A map of the repo: what each folder is, and who calls into it. For *why* the
 code is laid out this way, see
 [`docs/superpowers/specs/2026-09-26-codebase-naming-cleanup-design.md`](superpowers/specs/2026-09-26-codebase-naming-cleanup-design.md).

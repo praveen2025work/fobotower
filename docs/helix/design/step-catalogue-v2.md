@@ -1,7 +1,7 @@
-# Helix steps v2: building blocks for any banking use case
+# Helix steps v2: building blocks for any Finance use case
 
 **Date:** 2026-10-06 · **Status:** phases 1–6 built · **For:** Helix platform team,
-capability owners across the bank, architecture.
+capability owners across Finance (and teams beyond it), architecture.
 
 ## 1. Why
 
@@ -13,8 +13,8 @@ Helix today has 13 steps that run in a straight line over **one list of items**:
 - publish.
 
 That is enough for FOBO, cash recs, variance commentary and report validation. It is not enough
-for the rest of the bank. Helix is meant to serve **any** governed, case-based banking work, not
-only finance. Finance alone already needs:
+for the rest of Finance. Helix is the governed AI platform for Finance, and FOBO is one of its use
+cases. Finance alone already needs:
 - three-way matches;
 - accruals that must post balanced journals;
 - SOX testing on a sample;
@@ -49,7 +49,7 @@ This document does three things:
 | **Audit and requests** | auditor evidence requests, query responses | evidence collection, chasing, packs |
 | **Fees, billing and charges** | fee validation, commission checks, interest recalculation | recompute and compare, client impact |
 
-### 2.1 Beyond finance: the rest of the bank
+### 2.1 Beyond Finance: the same blocks elsewhere in the bank
 
 The same platform serves operations, risk, compliance, lending, treasury, client service and
 technology. Each family below is case-based work: something arrives, data is gathered and
@@ -188,7 +188,7 @@ one that exists today. Every step keeps the current contract:
 | ★ `report` | a document (PDF, Excel) for the pack or the auditor, from the case's record | `template`, `format`, `distribute_tool` |
 | ● follow-through, escalation, chasing | as today | as today |
 
-### 4.8 Time, context and parties (banking-wide)
+### 4.8 Time, context and parties (Finance and beyond)
 
 | Step | Does | Configuration |
 |---|---|---|

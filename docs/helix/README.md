@@ -1,10 +1,15 @@
 # Helix
 
-One platform that accounting groups onboard their AI-assisted work into as
-**configuration**: reconciliations, variance commentary, reviews. The Helix
-team onboards connectors (bank systems as MCP servers); each capability is a
+**Governed AI for Finance.** Finance teams onboard their AI-assisted case work
+into Helix as **configuration**: break investigation, reconciliations, variance
+commentary, accruals, report validation, control testing. The Helix team
+onboards connectors (the bank's systems as MCP servers); each capability is a
 versioned manifest over them, run by LangGraph, governed end to end, and
 worked in one console.
+
+**FOBO is one use case**: front-office vs back-office break investigation for
+Product Control, the first capability on the platform. The same building blocks
+run the other Finance use cases, and work beyond Finance too.
 
 aria-ai (EAIP) has been pivoted into Helix: its UI shell, its governance
 (masking, approval-gated actions) and its BRD-to-pack authoring live here
@@ -287,8 +292,8 @@ shadow runs in Phoenix · scheduled and event-opened cases · evidence upload in
 notifications · parallel reasoning across groups · FOBO's validation tests (FO-1…BO-6) as
 structured checks · moving FOBO's users onto the platform.
 
-**Design proposal:** [Helix steps v2: building blocks for banking and accounting work](design/step-catalogue-v2.md): the processes to cover, about thirty operations, the step catalogue v2, engine changes, controls and a phased plan.
+**Design proposal:** [Helix steps v2: building blocks for any Finance use case](design/step-catalogue-v2.md): the processes to cover, about thirty operations, the step catalogue v2, engine changes, controls and a phased plan.
 
-**Platform overview:** [Helix: one governed platform for case-based work across the bank](platform-overview.md): what every use case gets, the building blocks, the controls built in, 26 use cases by division (8 running) and how a team adopts it.
+**Platform overview:** [Helix: governed AI for Finance](platform-overview.md): what every use case gets, the building blocks, the controls built in, 26 use cases by division (8 running) and how a team adopts it.
 
 **Pitch page:** `apps/web/public/pitch/index.html`, served by the console at `/pitch/` (sidebar: *About Helix*). One self-contained file to open from disk or send: [`pitch/helix-pitch.html`](pitch/helix-pitch.html) (rebuild with `node apps/web/scripts/inline-pitch.mjs`). The page shows the platform in one page, with an explorer of 26 use cases and the real configuration of the eight running today.

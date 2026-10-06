@@ -133,7 +133,7 @@ function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
             {!compact && (
               <div>
                 <h1 className="text-base font-bold leading-none tracking-tight">Helix</h1>
-                <p className="mt-0.5 text-[10px] leading-none text-nav-muted">Capabilities, governed</p>
+                <p className="mt-0.5 text-[10px] leading-none text-nav-muted">Governed AI for Finance</p>
               </div>
             )}
           </div>

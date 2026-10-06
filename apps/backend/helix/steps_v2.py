@@ -1,4 +1,4 @@
-"""Steps v2, phases 2–6: generic step types for case-based work across the bank.
+"""Steps v2, phases 2–6: generic step types for case-based work in Finance and beyond.
 
 Registered with the step SDK (helix/stepkit.py), configured under
 `step_settings`, checked with the manifest, run under the same gateway, audit

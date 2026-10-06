@@ -1,26 +1,26 @@
-# Helix: one governed platform for case-based work across the bank
+# Helix: governed AI for Finance
 
 **Date:** 2026-10-06 · Shared version: [Claude Docs](https://claude.ai/code/artifact/05a731bc-1630-4127-9ace-757b27dd26ea) · Design detail: [step catalogue v2](design/step-catalogue-v2.md)
 
 ## Summary
 
-Helix gives every team in the bank one governed way to run case-based work. It pulls the data in, prepares it, and proposes what to do: rules first, then the model, then a person. Named people decide, and only an approved outcome is ever written back. A team gets this by **configuration, not code**.
+Helix gives every Finance team one governed way to run its case-based work: product control, financial control, financial reporting, treasury and accounts payable. FOBO is one use case: the first capability on the platform. It pulls the data in, prepares it, and proposes what to do: rules first, then the model, then a person. Named people decide, and only an approved outcome is ever written back. A team gets this by **configuration, not code**.
 
 Today's build:
 
 - **44 building blocks.** 13 core steps every case can use, plus 31 configurable step types in 6 families.
 - **Governance built in**: segregation of duties, the authority matrix, reserved decisions, release before write-back, audit, masking and retention.
-- **Eight capabilities running**, across five areas:
-  - front-to-back control: FOBO break investigation (Prime and Rates);
-  - finance: reconciliation, P&L variance commentary, report validation, month-end accruals;
-  - payments operations: payment exceptions;
-  - client service: complaint handling;
-  - controls testing: control operating test.
-- **18 further use cases** across the bank mapped onto the same blocks (section 6).
+- **Eight capabilities running**, seven of them in Finance:
+  - product control: FOBO break investigation (Prime and Rates);
+  - financial control: reconciliation, month-end accruals, control operating test;
+  - financial reporting: P&L variance commentary, report validation;
+  - treasury and payments operations: payment exceptions;
+  - beyond Finance, the same platform: complaint handling.
+- **18 further use cases** mapped onto the same blocks (section 6), most of them in Finance.
 
 ## The problem
 
-Much of the bank's control and operations work is the same job in different clothes:
+Much of Finance's control and operations work is the same job in different clothes:
 
 - a list of items arrives (breaks, exceptions, alerts, complaints, journals, samples);
 - someone gathers data from three to six systems;
@@ -99,38 +99,38 @@ These hold for every capability, whatever its steps. A team cannot configure the
 9. **Change control.** Every configuration change is checked as it is made and approved by a second owner. A case keeps the version it ran on.
 10. **Model risk.** Eval sets and shadow runs before go-live, cost limits, off switches, instructions versioned and approved.
 
-## Use cases by division
+## Use cases by Finance area
 
-Each row is built only from the blocks above. “Running” means a capability exists in Helix today; the others need configuration and connectors to the team's systems, no new platform code.
+Each row is built only from the blocks above. The last rows show the same platform beyond Finance. “Running” means a capability exists in Helix today; the others need configuration and connectors to the team's systems, no new platform code.
 
-| Division | Use case | Steps that carry it | Who decides | Written back |
+| Area | Use case | Steps that carry it | Who decides | Written back |
 | --- | --- | --- | --- | --- |
-| Markets control | FOBO break investigation (running) | load breaks, enrich, playbook, tollgate, reason, follow-through | Product control | Tickets to owning teams |
-| Markets control | Independent price verification | reference data ×3 vendors, computed fields, recompute vs desk mark, classify, journal entries | Valuation control | Valuation reserves (posted) |
-| Markets control | Limit breach investigation | reference data, change over periods, reason, authority tiers, follow-through | Risk, by authority | Temporary excess decision |
-| Finance | Reconciliation investigation (running) | match two systems, rules, reason, follow-through | Finance operations | Write-offs within limit |
-| Finance | P&L variance commentary (running) | compare to budget, reason in sections | Finance reviewers | Commentary to the reporting pack |
-| Finance | Month-end accruals (running) | period open?, chart and authority data, journal entries, post | Reviewers by authority; controller releases | Journals to the ledger |
-| Finance | Balance-sheet substantiation | change over periods, risk score, child case per account, attestation, report | Account owners | Sign-off pack |
-| Finance | Intercompany matching | match several systems, currency, roll-up, journal entries | Both entities' owners | Elimination journals |
-| Finance | Manual journal review | risk score, sample, reason | Financial control | — |
-| Finance | Report validation (running) | match workbook to GL, reason | Reporting | PDF report |
-| Procurement | Three-way match | match several systems (order, receipt, invoice), computed variances | Accounts payable | Block or release in purchasing |
-| Procurement | Invoice capture | file intake or read a document, duplicates, match | Accounts payable | Invoice to purchasing |
-| Payments | Payment exceptions (running) | rates, duplicates, filter, currency, age, service-level bands, team's risk score | Payments operations | Repair instruction (released) |
-| Payments | Payment investigation | timeline, 24 h clock, outreach to the other bank, wait for reply | Payments operations | Customer reply |
-| Operations | Failed settlement | enrich, classify cause, market cut-off clock, outreach | Settlements | — (re-checked next day) |
-| Operations | Nostro reconciliation | match, bands, risk score, authority lanes | Cash operations | Write-offs |
-| Client service | Complaint handling (running) | timeline, related complaints, 8-week clock, fee recompute, screening, acknowledgement after approval | Handler; lead above the limit | Messages to the client |
-| Client service | Fee and interest refunds | recompute from the tariff, draft client notice | Service, by authority | Refund instruction |
-| Lending | Covenant monitoring | read the borrower's pack, computed ratios, classify breach | Credit officer (reserved) | Credit memo; re-checked next quarter |
-| Financial crime | AML alert triage pack | timeline, related parties, screening candidates; model writes the narrative only | Analyst (reserved) | — |
-| Financial crime | KYC periodic review | child case per client, outreach for documents, read documents | KYC officer (reserved) | Review outcome |
-| Controls | Control operating test (running) | sample, child case per sample, wait for all, attestation, report | Testers; control owner attests | Test report |
-| Controls | Regulatory report validation | data sets, consistency checks, attestation, report | Report owner | Attestation pack |
-| Technology risk | User access review | child case per manager, attestation per line, report | Managers | Revocations (released) |
-| Operational risk | Loss event capture | file intake, computed losses, currency, reporting clock, attestation | Business owner | Event record |
-| Finance | Close calendar | parent case per entity, child tasks, wait for children, roll-up sign-off | Entity, region, group | Close sign-off |
+| Product control | FOBO break investigation (running) | load breaks, enrich, playbook, tollgate, reason, follow-through | Product control | Tickets to owning teams |
+| Product control | Independent price verification | reference data ×3 vendors, computed fields, recompute vs desk mark, classify, journal entries | Valuation control | Valuation reserves (posted) |
+| Product control | Limit breach investigation | reference data, change over periods, reason, authority tiers, follow-through | Risk, by authority | Temporary excess decision |
+| Financial control | Reconciliation investigation (running) | match two systems, rules, reason, follow-through | Finance operations | Write-offs within limit |
+| Financial control | Month-end accruals (running) | period open?, chart and authority data, journal entries, post | Reviewers by authority; controller releases | Journals to the ledger |
+| Financial control | Balance-sheet substantiation | change over periods, risk score, child case per account, attestation, report | Account owners | Sign-off pack |
+| Financial control | Intercompany matching | match several systems, currency, roll-up, journal entries | Both entities' owners | Elimination journals |
+| Financial control | Manual journal review | risk score, sample, reason | Financial control | — |
+| Financial control | Close calendar | parent case per entity, child tasks, wait for children, roll-up sign-off | Entity, region, group | Close sign-off |
+| Financial reporting | P&L variance commentary (running) | compare to budget, reason in sections | Finance reviewers | Commentary to the reporting pack |
+| Financial reporting | Report validation (running) | match workbook to GL, reason | Reporting | PDF report |
+| Finance controls | Control operating test (running) | sample, child case per sample, wait for all, attestation, report | Testers; control owner attests | Test report |
+| Finance controls | Regulatory report validation | data sets, consistency checks, attestation, report | Report owner | Attestation pack |
+| Treasury and payments | Payment exceptions (running) | rates, duplicates, filter, currency, age, service-level bands, team's risk score | Payments operations | Repair instruction (released) |
+| Treasury and payments | Payment investigation | timeline, 24 h clock, outreach to the other bank, wait for reply | Payments operations | Customer reply |
+| Treasury and payments | Nostro reconciliation | match, bands, risk score, authority lanes | Cash operations | Write-offs |
+| Accounts payable | Three-way match | match several systems (order, receipt, invoice), computed variances | Accounts payable | Block or release in purchasing |
+| Accounts payable | Invoice capture | file intake or read a document, duplicates, match | Accounts payable | Invoice to purchasing |
+| Beyond Finance: operations | Failed settlement | enrich, classify cause, market cut-off clock, outreach | Settlements | — (re-checked next day) |
+| Beyond Finance: client service | Complaint handling (running) | timeline, related complaints, 8-week clock, fee recompute, screening, acknowledgement after approval | Handler; lead above the limit | Messages to the client |
+| Beyond Finance: client service | Fee and interest refunds | recompute from the tariff, draft client notice | Service, by authority | Refund instruction |
+| Beyond Finance: lending | Covenant monitoring | read the borrower's pack, computed ratios, classify breach | Credit officer (reserved) | Credit memo; re-checked next quarter |
+| Beyond Finance: financial crime | AML alert triage pack | timeline, related parties, screening candidates; model writes the narrative only | Analyst (reserved) | — |
+| Beyond Finance: financial crime | KYC periodic review | child case per client, outreach for documents, read documents | KYC officer (reserved) | Review outcome |
+| Beyond Finance: technology risk | User access review | child case per manager, attestation per line, report | Managers | Revocations (released) |
+| Beyond Finance: operational risk | Loss event capture | file intake, computed losses, currency, reporting clock, attestation | Business owner | Event record |
 
 ## Running today
 
@@ -138,14 +138,14 @@ Eight capabilities run on the platform. They use stub connectors here, and have 
 
 | Capability | Area | What it shows |
 | --- | --- | --- |
-| Break investigation (FOBO) | Markets control | A full playbook (checks, categories, verdict table, guards); team groups for Prime and Rates; a tollgate before the model; follow-through on the next business day; tickets to owning teams |
-| Reconciliation investigation | Finance | Helix matches two systems itself; rules settle write-offs within limit, and nothing is written off twice |
-| P&L variance commentary | Finance | Commentary in sections, published to the reporting pack after a second person releases it |
-| Report validation | Finance | A workbook matched to GL balances; a PDF report written after release |
-| Payment exceptions | Payments | The first non-finance capability, built only from data steps; uses the payments team's own risk service |
-| Month-end accruals | Finance | A closed period stops the run; balanced journals; the bank's authority matrix with two approvers over 250k; posted after a controller releases |
-| Complaint handling | Client service | A timeline the model reads; related complaints; the 8-week clock; screening candidates; acknowledgements sent only after approval; redress above the limit reserved for the lead |
-| Control operating test | Controls | A reproducible sample; one child case per sample; the parent waits for them all; the control owner attests; a PDF report |
+| Break investigation (FOBO) | Product control | A full playbook (checks, categories, verdict table, guards); team groups for Prime and Rates; a tollgate before the model; follow-through on the next business day; tickets to owning teams |
+| Reconciliation investigation | Financial control | Helix matches two systems itself; rules settle write-offs within limit, and nothing is written off twice |
+| P&L variance commentary | Financial reporting | Commentary in sections, published to the reporting pack after a second person releases it |
+| Report validation | Financial reporting | A workbook matched to GL balances; a PDF report written after release |
+| Payment exceptions | Treasury and payments | The first non-finance capability, built only from data steps; uses the payments team's own risk service |
+| Month-end accruals | Financial control | A closed period stops the run; balanced journals; the bank's authority matrix with two approvers over 250k; posted after a controller releases |
+| Complaint handling | Beyond Finance | A timeline the model reads; related complaints; the 8-week clock; screening candidates; acknowledgements sent only after approval; redress above the limit reserved for the lead |
+| Control operating test | Finance controls | A reproducible sample; one child case per sample; the parent waits for them all; the control owner attests; a PDF report |
 
 ## How a team adopts it
 

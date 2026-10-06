@@ -41,7 +41,8 @@ async def lifespan(_app: FastAPI):
     await runner.drain()
 
 
-app = FastAPI(title="Helix API", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="Helix API", description="Governed AI for Finance: capabilities, cases, review and audit.",
+              version="0.1.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware, allow_origins=[settings().console_origin], allow_credentials=True,
     allow_methods=["*"], allow_headers=["*"],

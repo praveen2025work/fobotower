@@ -1,5 +1,5 @@
 {
-  "name": "FOBO Investigation Console",
+  "name": "Helix for Finance (with the FOBO console)",
   "user": "ubuntu",
   "install": "bash .cursor/install.sh",
   "start": "bash .cursor/start.sh",

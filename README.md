@@ -1,19 +1,38 @@
-# FOBO Investigation Console
+# Helix — governed AI for Finance
 
-An AI-assisted reconciliation investigation system. A controller opens a
-completed analysis, interrogates it in business language, pulls missing
+Helix is the platform Finance teams run their AI-assisted case work on: breaks,
+reconciliations, variance commentary, accruals, report validation, control
+testing. Each use case is a **capability**: configuration over the team's own
+systems (MCP connectors), run by LangGraph, governed end to end and worked in
+one console. Rules come first, then the model, then a person; named people
+decide within their authority; only approved outcomes are written back.
+
+**FOBO is one use case.** Front-office vs back-office break investigation for
+the Prime and Rates desks was the first capability, and the original FOBO
+investigation console still runs beside Helix (below). On Helix it is the
+`break.investigation` capability with its playbook as configuration.
+
+| Finance area | Running on Helix today |
+|---|---|
+| Product control | FOBO break investigation (Prime, Rates) |
+| Financial control | Reconciliation investigation, month-end accruals, control operating test |
+| Financial reporting | P&L variance commentary, report validation |
+| Treasury and payments operations | Payment exceptions |
+
+The same platform runs work beyond Finance too (complaint handling is the
+example in this repo).
+
+- **Start here:** [`docs/helix/README.md`](docs/helix/README.md) — what runs where, how to run it, the guides
+- **Platform overview:** [`docs/helix/platform-overview.md`](docs/helix/platform-overview.md) · **pitch page:** [`docs/helix/pitch/helix-pitch.html`](docs/helix/pitch/helix-pitch.html) (open in a browser)
+- **Run Helix locally:** API on :8300 (`uvicorn helix.web.main:app`), console on :5180 (`apps/web`, `npm run dev`); see the [developer guide](docs/helix/guide/developer-guide.md#3-run-it-locally)
+
+## Use case: the FOBO investigation console (original app)
+
+The first use case, built before the platform. A controller opens a completed
+reconciliation analysis, interrogates it in business language, pulls missing
 evidence from owning source systems, and records a governed decision with a
-replayable audit trail.
-
-Built to AgentOne component conventions but runs standalone. Migration into
-AgentOne is a separate, manual step.
-
-> **Helix platform (new).** This repo is becoming **Helix**: one platform that
-> accounting groups onboard capabilities into as configuration. The runnable
-> skeleton — API on :8300, console at `/helix`, two zero-code capabilities, and
-> the plug points for the office LLM, Phoenix, entitlements and connectors — is
-> described in [`docs/helix/README.md`](docs/helix/README.md). FOBO keeps running
-> unchanged beside it.
+replayable audit trail. Built to AgentOne component conventions but runs
+standalone.
 
 - **Learning guide:** [`docs/learning/agentic-systems-primer.html`](docs/learning/agentic-systems-primer.html) — LLMs, agents, MCP, LangGraph and knowledge graphs explained from first principles (open in a browser)
 - **Deployment:** [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — running it on a shared demo or UAT server
@@ -21,7 +40,8 @@ AgentOne is a separate, manual step.
 - **Design:** [`docs/superpowers/specs/2026-09-21-fobo-investigation-console-design.md`](docs/superpowers/specs/2026-09-21-fobo-investigation-console-design.md)
 - **Phase 1 plan:** [`docs/superpowers/plans/2026-09-21-fobo-phase-1-skeleton.md`](docs/superpowers/plans/2026-09-21-fobo-phase-1-skeleton.md)
 
-## Status
+
+### Status
 
 | Phase | Scope | State |
 |---|---|---|
@@ -30,21 +50,21 @@ AgentOne is a separate, manual step.
 | 3 | MCP tool groups, entitlement gate, chat drawer, rules R1–R7, `revise` | Not started |
 | 4 | MBR + Trade Store, file ingestion, paging, analytics, evals | Not started |
 
-## Prerequisites
+### Prerequisites
 
 - Docker (for Postgres 16 + pgvector)
 - Python 3.12 — the venv is already created at `apps/backend/.venv`
 - Node 20+ — console dependencies are already installed
 
-## Testing
+### Testing
 
-### 1. Start the database
+#### 1. Start the database
 
 ```bash
 docker compose up -d postgres
 ```
 
-### 2. Apply migrations
+#### 2. Apply migrations
 
 ```bash
 cd apps/backend && .venv/bin/alembic upgrade head
@@ -58,7 +78,7 @@ their state under the old `app.contracts.models` path; `fobo/contracts/models.py
 registers that name as a compatibility alias, so those older checkpoints
 still load with real typed objects — no reset of the dev database needed.
 
-### 3. Run the suite
+#### 3. Run the suite
 
 ```bash
 cd apps/backend && .venv/bin/python -m pytest -v
@@ -67,7 +87,7 @@ cd apps/backend && .venv/bin/python -m pytest -v
 388 tests. They are re-runnable: `tests/conftest.py` truncates every table
 before each test.
 
-### 4. See an investigation run
+#### 4. See an investigation run
 
 ```bash
 cd apps/backend && .venv/bin/python scripts/demo_investigation.py
@@ -77,7 +97,7 @@ Loads seed data, runs the workflow to the human interrupt, prints the drafted
 analysis and pattern groups exactly as a controller would see them, then
 resumes with per-group approvals and reports the recorded outcome.
 
-### 5. Run the whole thing
+#### 5. Run the whole thing
 
 Three terminals:
 
@@ -100,7 +120,7 @@ Then open **http://localhost:3100** for the Helix console, the finalized UI
 (Helix Pilot V1). (`/fobo` still works — it redirects to `/` for old
 bookmarks.)
 
-### Running on Windows
+#### Running on Windows
 
 Prerequisites: **Python 3.12**, **Node 20+**, **Git**, and a container runtime
 that runs `docker compose` (Docker Desktop with WSL 2, Rancher Desktop or
@@ -138,7 +158,7 @@ The CLIs, scripts and tests pick the right loop on their own
 (`fobo/__init__.py`). Everything else — tests, scripts, the reset command —
 works as above with `.venv\Scripts\` in place of `.venv/bin/`.
 
-### The Helix console
+#### The FOBO console
 
 Everything on screen is read from the API; the browser generates nothing.
 
@@ -165,7 +185,7 @@ and checkpoints; the next request reseeds:
 docker compose exec postgres psql -U fobo -d fobo -c "TRUNCATE session_message, source_call, controller_decision, pattern_group, evidence_item, analysis_version, investigation_session, break_embedding, break_event, edge, node, run, reconciliation, checkpoints, checkpoint_blobs, checkpoint_writes CASCADE"
 ```
 
-### 6. Console tests
+#### 6. Console tests
 
 ```bash
 cd apps/console && npm test
@@ -173,7 +193,7 @@ cd apps/console && npm test
 
 185 tests. No database needed — components are tested against props.
 
-### 7. End-to-end test
+#### 7. End-to-end test
 
 ```bash
 cd apps/console && npm run test:e2e
@@ -182,19 +202,19 @@ cd apps/console && npm run test:e2e
 Runs the workflow end-to-end test against a fresh `fobo_e2e` database on
 ports 8101/3101.
 
-### Starting completely clean
+#### Starting completely clean
 
 ```bash
 docker compose down -v && docker compose up -d postgres && sleep 8 && cd apps/backend && .venv/bin/alembic upgrade head && .venv/bin/python -m pytest -q
 ```
 
-### Recreating the venv
+#### Recreating the venv
 
 ```bash
 cd apps/backend && uv venv --python 3.12 && uv pip install -e ".[dev]"
 ```
 
-## What the tests actually prove
+### What the tests actually prove
 
 These are the ones worth reading, not just running.
 
@@ -210,7 +230,7 @@ These are the ones worth reading, not just running.
 | A failed priors lookup degrades and flags a gap — it does not fabricate | `test_steps_resolve_gather.py::test_gather_degrades_when_priors_are_unavailable` |
 | An approved run stamps breaks so they become tomorrow's priors | `test_checkpoint_resume.py::test_an_approved_run_writes_tomorrows_priors` |
 
-## The investigation playbook
+### The investigation playbook
 
 The rules the orchestrator applies live in one file Product Control owns:
 
@@ -237,7 +257,7 @@ post (R2).
 Thresholds start as `null`. Rule P1: until one is set, any POST that depends
 on it is flagged *requires controller confirmation*. Set a value and reload.
 
-## The investigation workflow
+### The investigation workflow
 
 How an investigation *executes* — which steps run, in what order, where it
 pauses for a person, and each step's settings — is a versioned, four-eyes
@@ -277,7 +297,7 @@ work is caught before a run starts.
 The **playbook** (`config/playbook/`) holds *what the rules are*; the
 **workflow** (`config/workflow/`) holds *how the run executes*.
 
-## Running without an LLM
+### Running without an LLM
 
 ```bash
 cd apps/backend && .venv/bin/python scripts/run_investigation.py
@@ -296,7 +316,7 @@ in the console's "Graph run" panel.
 | `session_service` | the Agent SDK session service |
 | `direct` | a direct Anthropic SDK call (local development) |
 
-## Running with the stub agent harness
+### Running with the stub agent harness
 
 `apps/backend/scripts/stub_harness.py` stands in for the bank's agent harness.
 It speaks the session contract
@@ -339,7 +359,7 @@ no shared one. Three workflow settings govern a session:
 Known limitation: investigations still start on the board's first read, so a
 long agent session holds that board request open until it finishes.
 
-## Known deviations from the mock
+### Known deviations from the mock
 
 Both mocks state *"14 breaks across 9 … books"*, but their own adjustment rows
 list twelve distinct books (`PRIME-MB-01`…`12`). The draft derives the count
@@ -357,7 +377,7 @@ source for yet, so the port shows what the backend actually has instead:
 - **Timestamps of new actions.** Decisions and questions carry the real clock
   (IST); the seeded business day is frozen at 03 Aug 2026.
 
-## Ports
+### Ports
 
 | Service | Port |
 |---|---|

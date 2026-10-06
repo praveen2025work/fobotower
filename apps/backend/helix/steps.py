@@ -48,6 +48,8 @@ class CaseState(TypedDict, total=False):
     gates_passed: list[str]        # tollgates a person passed, in order (helix_gate_decision)
     gate_notes: list[dict]         # what they wrote there: [{step, by, comment}] — context for the model
     published: list[dict]
+    datasets: dict[str, list[dict]]   # named data sets beside the items (dataset, aggregate steps)
+    skipped: list[str]                # steps whose `when` did not hold this run
     outcome: str | None
     escalation_reason: str | None
 
@@ -593,6 +595,8 @@ async def draft(state: CaseState) -> dict:
         d["exposure"] = round(sum(abs(_num(it.get(m.items.amount_field)))
                                   for it in state["items"] if it["item_id"] in in_ids), 2)
         d["unit"] = m.items.amount_unit
+    if state.get("skipped"):
+        d["skipped_steps"] = list(state["skipped"])    # steps whose `when` did not hold this run
     async with get_session() as s:
         (await s.get(Case, state["case_id"])).draft = d
         await s.commit()
@@ -623,7 +627,7 @@ async def grounded_figures(state: CaseState) -> set[float]:
     """Every figure the run has read: the case key, its items and groups, and
     every allowed tool result recorded for the case."""
     grounded: set[float] = set()
-    _numbers_in([state["case_key"], state["items"], state["groups"]], grounded)
+    _numbers_in([state["case_key"], state["items"], state["groups"], state.get("datasets") or {}], grounded)
     async with get_session() as s:
         results = (await s.execute(select(ToolCall.result).where(
             ToolCall.case_id == state["case_id"], ToolCall.allowed.is_(True),

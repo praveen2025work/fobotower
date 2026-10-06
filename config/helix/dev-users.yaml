@@ -51,13 +51,21 @@ users:
     name: Raj (FOBO Rates controller, all Rates books; CATS vs MOTIF Rates owner)
     roles: [FOBO_RATES_CONTROLLER, HELIX_FOBO_RATES_OWNER]
     data_scopes: { book: [RATES-LDN-01, RATES-LDN-02, RATES-LDN-03, RATES-LDN-04, RATES-NY-01, RATES-NY-02] }
+  paula:
+    name: Paula (Payments Operations lead; payment exceptions owner)
+    roles: [PAYMENTS_OPS, HELIX_PAYMENTS_OWNER]
+    data_scopes: { entity: ["*"] }
+  pete:
+    name: Pete (Payments Operations; payment exceptions owner)
+    roles: [PAYMENTS_OPS, HELIX_PAYMENTS_OWNER]
+    data_scopes: { entity: [UK01] }
   pat:
     name: Pat (Helix platform support — switches, connectors; sees no case data)
     roles: [HELIX_PLATFORM_ADMIN]
     data_scopes: {}
   helix-scheduler:
     name: Helix scheduler (service account — opens scheduled and event cases, never decides)
-    roles: [FIN_PREPARER, CASH_OPS, FOBO_CONTROLLER, FOBO_RATES_CONTROLLER]
+    roles: [FIN_PREPARER, CASH_OPS, FOBO_CONTROLLER, FOBO_RATES_CONTROLLER, PAYMENTS_OPS]
     data_scopes: { entity: ["*"], book: ["*"] }
   viewer:
     name: Viewer (no Helix roles)

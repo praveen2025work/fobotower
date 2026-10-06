@@ -1,0 +1,159 @@
+# Payment exceptions: returns, rejects and repairs, triaged each day per entity.
+#
+# The first capability outside finance, and built only from generic steps:
+#   load        the day's exceptions from the payments system
+#   fx          reference data: the day's FX rates (a named data set)
+#   dedupe_refs the same payment raised twice → set aside, kept on the case
+#   drop_tests  morning test payments → set aside with the reason
+#   to_gbp      amounts in GBP with the day's rates; a missing rate is flagged, never assumed
+#   age         hours since the exception arrived (derive)
+#   sla         service-level band: within 4h, 4–24h, over 24h (bucket)
+#   risk        the payments team's own risk score, from its own service (transform)
+#   group → reason → draft → validate → review → record
+# Payment release stays in the payments system: Helix proposes and evidences;
+# Payments Operations decides.
+
+id: payments.exceptions
+name: Payment exceptions
+description: Daily triage of payment returns, rejects and repairs per entity — duplicates and tests set aside, amounts in GBP, ageing against the service level, the team's risk score, a proposed action per reason, Payments Operations decides.
+
+owners:
+  people: [paula, pete]
+  role: HELIX_PAYMENTS_OWNER
+  four_eyes: true
+
+case:
+  label: Exceptions run
+  item_label: Exception
+  key: [entity, date]
+  subject: "{entity} · {date}"
+  scopes: { entity: entity }
+  opens_on: event
+  events: true
+  opens_as: helix-scheduler
+  late_items: follow_up
+  due: { from: date, business_days: 0, at: "17:00", warn_hours: 2 }
+
+items:
+  load: { tool: payments.exceptions, args: { entity: $case.entity, date: $case.date } }
+  id_field: exception_id
+  amount_field: amount_gbp
+  amount_unit: GBP
+  display: [exception_id, payment_ref, reason_code, beneficiary, currency, amount, amount_gbp, age_hours, sla_band, risk_score]
+
+policy:
+  high_risk_score: { value: 60 }
+
+steps: [load, fx, dedupe_refs, drop_tests, to_gbp, age, sla, risk, group, reason, draft, validate, review, record]
+
+step_settings:
+  fx:
+    type: dataset
+    label: The day's FX rates
+    with: { name: fx, tool: refdata.fx_rates, args: { date: $case.date } }
+  dedupe_refs:
+    type: dedupe
+    label: The same payment raised twice
+    with: { keys: [payment_ref, amount] }
+  drop_tests:
+    type: filter
+    label: Morning test payments
+    with: { keep_when: "not is_test", reason: test payment }
+  to_gbp:
+    type: convert
+    label: Amounts in GBP
+    with: { amounts: [amount], currency_field: currency, to: GBP, rates: fx, suffix: _gbp }
+  age:
+    type: derive
+    label: Hours since it arrived
+    with:
+      fields:
+        age_hours: "round(hours_between(received_at, case.date + 'T18:00:00'), 1)"
+  sla:
+    type: bucket
+    label: Service level
+    with:
+      field: age_hours
+      as: sla_band
+      bands:
+        - { label: within 4h, upto: 4 }
+        - { label: 4–24h, upto: 24 }
+        - { label: over 24h }
+  risk:
+    type: transform
+    label: The team's risk score
+    when: "count > 0"
+    with:
+      tool: payments.risk_score
+      args: { entity: $case.entity, date: $case.date }
+      send: [amount_gbp, reason_code, beneficiary_bank_bic, channel]
+      returns: fields
+
+group_by: [reason_code]
+group_label: "{reason_code}"
+
+rules:
+  - id: closed-account
+    when: reason_code == 'AC04'
+    then:
+      status: proposed
+      comment: "Return {count} payment(s) to the remitter: the beneficiary account is closed (AC04)."
+  - id: missing-address
+    when: reason_code == 'BE04'
+    then:
+      status: proposed
+      comment: "Repair {count} payment(s): request the creditor address from the remitter and resubmit (BE04)."
+
+reasoning:
+  reasoner: llm
+  output: verdict
+  tools: [payments.message_trail]
+  skill: |
+    You triage payment exceptions for Payments Operations. For each group of
+    exceptions with the same reason code, read the message trail and propose
+    the next action: repair and resubmit, return to the remitter, or query the
+    correspondent bank. Say what evidence supports it and cite only figures
+    from the tools or the exceptions. You never release, return or cancel a
+    payment: a person decides and the payments system executes.
+  sections:
+    - { id: action, label: Proposed action, required: true }
+    - { id: evidence, label: Evidence from the messages, required: true }
+    - { id: customer_impact, label: Customer impact }
+
+review:
+  roles: [PAYMENTS_OPS]
+  require_comment: [reject, escalated]
+  checklist:
+    - { id: no_release, label: "I confirm Helix released, returned or cancelled nothing; the action is mine to take in the payments system", required: true }
+
+requests:
+  targets:
+    - { id: investigations, name: "Payment investigations (correspondent queries)", roles: [PAYMENTS_INVESTIGATIONS] }
+  hold_decision: true
+  remind_after_hours: 2
+
+follow_through:
+  series: [entity]
+  order_by: date
+
+insights:
+  unexplained: { lookback_days: 30 }
+  automation_after: 5
+
+knowledge:
+  entities: [reason_code]
+
+retention:
+  days: 2555
+
+configurable:
+  - case.due
+  - policy.*
+  - rules
+  - reasoning.skill
+  - reasoning.tools
+  - review.roles
+  - review.checklist
+  - requests
+  - step_settings.risk
+  - step_settings.drop_tests

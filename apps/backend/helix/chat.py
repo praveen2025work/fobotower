@@ -138,7 +138,7 @@ async def history(case_id: str, caller: Caller) -> list[dict]:
     case, m = await _case(case_id, caller)
     config = {"configurable": {"thread_id": f"helix:{case_id}"}}
     async with checkpointer() as cp:
-        app = build_graph(m.steps, m.pause_before, cp)
+        app = build_graph(m.steps, m.pause_before, cp, m.step_types())
         snaps = [s async for s in app.aget_state_history(config)]
     snaps.reverse()
     out = []
@@ -178,7 +178,7 @@ async def state_at(case_id: str, checkpoint_id: str, caller: Caller) -> dict:
     case, m = await _case(case_id, caller)
     config = {"configurable": {"thread_id": f"helix:{case_id}", "checkpoint_id": checkpoint_id}}
     async with checkpointer() as cp:
-        snap = await build_graph(m.steps, m.pause_before, cp).aget_state(config)
+        snap = await build_graph(m.steps, m.pause_before, cp, m.step_types()).aget_state(config)
     if snap.created_at is None:
         raise LookupError(f"{case_id}@{checkpoint_id}")
     v = snap.values or {}

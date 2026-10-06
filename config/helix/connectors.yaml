@@ -74,6 +74,31 @@ connectors:
         idempotency_arg: idempotency_key   # a repeated write returns the first receipt
         scope: { arg: entity, key: entity }
 
+  refdata:
+    name: Reference data — FX rates (stub)
+    transport: inproc
+    target: helix.stub_connectors.banking:build_refdata
+    classification: internal
+    tools:
+      fx_rates:
+        description: End-of-day FX rates for a date (value of one unit in GBP)
+
+  payments:
+    name: Payments operations (stub)
+    transport: inproc
+    target: helix.stub_connectors.banking:build_payments
+    classification: confidential
+    tools:
+      exceptions:
+        description: Payment exceptions (returns, rejects, repairs) for an entity and date
+        scope: { arg: entity, key: entity }
+      message_trail:
+        description: SWIFT / ISO 20022 messages behind the day's exceptions
+        scope: { arg: entity, key: entity }
+      risk_score:
+        description: The payments team's own risk scoring service (0–100 and reasons per item)
+        scope: { arg: entity, key: entity }
+
   ticketing:
     name: Team ticket queues (stub)
     transport: inproc

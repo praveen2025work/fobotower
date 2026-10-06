@@ -1,7 +1,7 @@
-# Helix steps v2: designing the building blocks for banking and accounting work
+# Helix steps v2: building blocks for any banking use case
 
-**Date:** 2026-10-06 · **Status:** proposal for review · **For:** Helix platform team, capability
-owners, architecture.
+**Date:** 2026-10-06 · **Status:** phase 1 built; phases 2–6 proposed · **For:** Helix platform team,
+capability owners across the bank, architecture.
 
 ## 1. Why
 
@@ -13,7 +13,8 @@ Helix today has 13 steps that run in a straight line over **one list of items**:
 - publish.
 
 That is enough for FOBO, cash recs, variance commentary and report validation. It is not enough
-for the rest of a bank's finance and operations work:
+for the rest of the bank. Helix is meant to serve **any** governed, case-based banking work, not
+only finance. Finance alone already needs:
 - three-way matches;
 - accruals that must post balanced journals;
 - SOX testing on a sample;
@@ -48,13 +49,49 @@ This document does three things:
 | **Audit and requests** | auditor evidence requests, query responses | evidence collection, chasing, packs |
 | **Fees, billing and charges** | fee validation, commission checks, interest recalculation | recompute and compare, client impact |
 
+### 2.1 Beyond finance: the rest of the bank
+
+The same platform serves operations, risk, compliance, lending, treasury, client service and
+technology. Each family below is case-based work: something arrives, data is gathered and
+checked, a proposal is made, a person decides, the outcome is recorded and followed through.
+
+| Family | Processes | What makes them different |
+|---|---|---|
+| **Payments operations** | payment repairs, returns and recalls, investigations (MT199/camt.029 queries), nostro breaks, SWIFT gpi tracking, duplicate payment checks | service-level clocks in hours, counterparty correspondence, cut-offs, FX, payment release stays in the payment system |
+| **Trade and securities operations** | failed settlements, trade affirmation exceptions, corporate actions (elections, entitlements), static data breaks, custody reconciliations | events over several days, market cut-offs, claims, many systems per trade |
+| **Collateral and margin** | margin call disputes, collateral eligibility, CSA threshold checks | two-party disputes, daily calls, agreed vs disputed amounts |
+| **Lending operations** | loan servicing exceptions, covenant monitoring, drawdown checks, annual reviews (preparation), collateral revaluation | documents (facility agreements, financials), dates and covenants, credit officers decide |
+| **Client onboarding and KYC** | document collection, periodic reviews, data remediation, beneficial-ownership checks | documents and outreach to the client, refresh cycles; **Helix prepares, the KYC officer decides** |
+| **Financial crime operations** | AML alert triage packs, sanctions hit preparation, fraud case packs, SAR drafting support | strict decision boundary: **Helix assembles evidence and timelines; a person decides; nothing is auto-closed** |
+| **Credit and market risk** | limit breach investigation, VaR back-testing exceptions, model monitoring, counterparty exposure checks, stress test data checks | limits and approvals by authority, daily cycles, quantitative evidence |
+| **Operational risk and controls** | incident and loss event capture, RCSA, key risk indicators, issue and action tracking, SOX/controls testing | owners, due dates, evidence, sign-off cascades |
+| **Compliance** | trade and communications surveillance alert triage, conflicts checks, gifts and entertainment, regulatory change impact assessment, breach logs | text and voice evidence, policy references, regulatory deadlines |
+| **Treasury and liquidity** | cash forecasting variances, liquidity metric checks (LCR/NSFR data), intraday liquidity exceptions, FTP checks | intraday clocks, many entities, regulatory metrics |
+| **Client service** | complaints (with regulatory response deadlines), disputes and chargebacks, fee refunds, account servicing requests | client communication, statutory clocks, redress calculation, consistent outcomes |
+| **Wealth and markets conduct** | suitability reviews, best-execution monitoring, product governance reviews | sampling, policy rules, documentation |
+| **Technology and data** | user access reviews, change approvals, data quality issue triage, entitlement recertification, vendor risk reviews | attestation by owners, recertification cycles, evidence |
+| **HR and procurement (finance-adjacent)** | invoice capture, vendor onboarding checks, expense review | documents, three-way match, policy rules |
+
+**Decision boundaries.** Each capability declares what the model may propose and what only a
+person decides. In regulated decisions Helix prepares and evidences; a named person decides; the
+system of record executes. Those decisions include:
+- credit;
+- sanctions;
+- AML, SAR and fraud;
+- KYC acceptance;
+- payment release;
+- complaint redress above a limit;
+- trade surveillance escalation.
+
+These are enforced the same way FOBO's R2 guard is: in code, after the model.
+
 Out of scope for the model, by policy: anything where AI must not decide. That includes sanctions,
 AML and fraud decisions, credit decisions, and payment release. Helix can **prepare and evidence**
 these, but a person decides and existing controlled systems execute.
 
 ## 3. The operations they share
 
-Breaking the processes down gives about thirty operations in eight families. Most are generic:
+Breaking the processes down gives about forty operations in eleven families. Most are generic:
 one step type, configured differently per capability.
 
 | Family | Operations |
@@ -67,6 +104,9 @@ one step type, configured differently per capability.
 | **Propose** | journals (balanced), reclasses, write-offs, reserves, schedules over periods, reversals, tickets, communications to counterparties |
 | **Control** | tollgates, review, dual control, an authority matrix by amount and role, segregation of duties, attestation by an owner, evidence required, period open or closed |
 | **Act and follow** | write back (post, publish, send) after release, wait for an external event, re-check on the next run, chase, escalate, roll up sign-offs, start child cases, report |
+| **Time** | service-level and regulatory clocks (hours or business days, paused while waiting on a client), cut-offs, as-of dating, recertification cycles |
+| **Context** | a timeline of events across systems, linking related cases and entities (the same client, account or counterparty), prior outcomes for the same party |
+| **Parties** | correspondence with clients, counterparties and other teams; outreach and chasing; two-party disputes |
 
 ## 4. Step catalogue v2
 
@@ -148,6 +188,19 @@ one that exists today. Every step keeps the current contract:
 | ★ `report` | a document (PDF, Excel) for the pack or the auditor, from the case's record | `template`, `format`, `distribute_tool` |
 | ● follow-through, escalation, chasing | as today | as today |
 
+### 4.8 Time, context and parties (banking-wide)
+
+| Step | Does | Configuration |
+|---|---|---|
+| ★ `clock` | starts service-level or regulatory clocks per case or group (e.g. a complaint's 8-week final response, a payment investigation's 24 h, a breach report's 72 h), in business or calendar time, **paused while waiting on the client**; warns and escalates as each clock runs down | `clocks[{id, starts, due, calendar, pause_when, warn_before}]` |
+| ★ `timeline` | builds one ordered timeline of events from several systems (payments, emails, calls, trades, logins) for the reviewer and the model | `sources[{tool, time_field, label}]` |
+| ★ `link` | finds related cases and entities (same client, account, counterparty, ISIN) across capabilities through the knowledge graph, and shows prior outcomes | `on[]`, `lookback_days`, `capabilities[]` |
+| ★ `screen` | fuzzy name and identifier matching against a reference list (internal watch lists, counterparties, sanctioned-entity extracts supplied by the control function), producing **candidate hits only**; never clears or confirms a hit | `list: dataset`, `fields`, `threshold` |
+| ★ `outreach` | sends a request to a client or counterparty from an approved template through the bank's channel, then waits (with `await`) and chases; the answer becomes evidence | `template`, `channel_tool`, `chase_after_hours` |
+
+Every one of these is generic. A complaints team, a payments team and a KYC team configure the
+same `clock`, with different clocks.
+
 ## 5. Engine changes needed
 
 The catalogue needs six changes to how a capability's workflow is described and run. They are
@@ -160,6 +213,7 @@ listed in the order to do them.
 | E3 | **Conditional steps**: `when:` on a step, an expression over the case (`case.entity_type == 'branch'`, `count(items) > 0`) | one capability serving variants without copies | absent = always run |
 | E4 | **Lanes per group**: `route` sends each group down a lane (`auto`, `standard`, `enhanced`) chosen by score, amount or category; lanes differ in review, approval matrix and checklist | high-risk items get more control; low-risk get less friction | default: one lane |
 | E5 | **Waiting and child cases**: a case can wait (`await`) or wait for its children (`spawn`), with deadlines; dependencies between cases (close calendar) | close management, sign-off cascades, testing per sample | new states: `waiting`, `waiting_on_children` |
+| E7 | **Decision boundaries**: `boundaries: [{verdicts or actions, reserved_for: person, roles}]`, enforced in code after the model and at review (no "approve all"), shown on the case | regulated decisions (credit, sanctions, AML, KYC, release) must stay with named people | absent = today's rules |
 | E6 | **Step SDK for the platform team**: a step type is a class with a config schema, `needs` and `produces`, a run function, and an editor descriptor; it is tested by a shared harness | new types added safely, each one generic | today's steps become the first users |
 
 Branching stays declarative, through `when`, lanes and the playbook. There is no free-form flow
@@ -211,19 +265,30 @@ process.
 | **Close calendar** | a parent case per entity and period → ★`spawn` tasks with dependencies → ★`await` children → roll-up sign-off entity → region → group |
 | **Fee and interest validation** | `load` (charges) → ★`recompute` (from the tariff tool) → `classify` → `group` → `reason` → `review` → ★`compose` (client notice, released) → `publish` (refund instruction) |
 | **Invoice capture** | ★`intake` or ★`extract` (from PDFs, with low-confidence fields flagged) → ★`dedupe` → `match` (to purchase orders) → `review` → `publish` |
+| **Payment exceptions (returns, repairs)** | `load` (exceptions) → ★`dataset` (FX rates) → ★`convert` (to GBP) → ★`derive` (age in hours) → ★`bucket` (SLA band) → ★`dedupe` (duplicate submissions) → ★`filter` (test payments) → ★`transform` (the team's own risk score) → `group` (by reason code) → `reason` → `review` → `record` → `publish` (repair instruction, released). *Built in phase 1: `config/helix/capabilities/payments-exceptions.yaml`* |
+| **Payment investigation (customer claim)** | `load` → ★`timeline` (gpi, nostro, messages) → ★`clock` (24 h) → ★`outreach` (counterparty bank query) → ★`await` → `reason` → `review` → ★`compose` (customer reply) → `publish` |
+| **Failed settlement** | `load` (fails) → `enrich` (static data) → `classify` (cause: SSI, inventory, counterparty) → ★`clock` (market cut-off) → ★`outreach` (counterparty) → `review` → `record` → follow-through (settled next day?) |
+| **Complaint handling** | ★`intake` (complaint) → ★`timeline` (account events) → ★`link` (prior complaints) → ★`clock` (8 weeks, paused on client) → `reason` (proposed outcome and redress, ★`recompute`) → ★`approve` (redress authority matrix) → ★`compose` (final response) → `publish` |
+| **AML alert triage pack** | `load` (alerts) → ★`timeline` (transactions) → ★`link` (related parties, prior alerts) → ★`screen` (candidate hits) → `reason` (narrative only; **E7: close or escalate is reserved for the analyst**) → `review` → `record` |
+| **KYC periodic review** | ★`spawn` (one per client due) → ★`outreach` (documents) → ★`extract` (from documents) → `classify` (missing or expired) → `review` (KYC officer, reserved decision) → ★`attest` |
+| **Covenant monitoring** | ★`extract` (financials from the borrower's pack) → ★`derive` (ratios) → `classify` (breach, near-breach) → `reason` (credit memo draft) → `review` (credit officer, reserved) → `record` → follow-through (next quarter) |
+| **Limit breach investigation** | `load` (breaches) → ★`dataset` (limits, exposure history) → ★`flux` → `reason` → ★`approve` (temporary excess by authority) → `record` → follow-through |
+| **User access review** | `load` (entitlements) → ★`spawn` (one per manager) → ★`attest` (keep or revoke per line) → ★`report` → `publish` (revocations, released) |
+| **Operational loss event** | ★`intake` (event) → ★`derive` (gross/net loss, FX via ★`convert`) → `classify` (Basel event type) → ★`clock` (reporting deadline) → `review` → ★`attest` (business owner) → `record` |
 | **FOBO (today)** | `load` (MB Rec) → `enrich` → `resolve` → `classify` → `group` → tollgate → `reason` → `draft` → `validate` → `review` → `record` → follow-through |
 
-Every row uses only generic steps. Nothing in the catalogue is specific to one team.
+Every row uses only generic steps. Nothing in the catalogue is specific to one team or one division: finance, operations, risk, compliance, lending and client service configure the same building blocks.
 
 ## 8. Plan
 
 | Phase | Delivers | Unlocks |
 |---|---|---|
-| **1. Engine foundations** | E1 step instances, E2 named data sets, E3 conditional steps, E6 step SDK; ★`dataset`, `derive`, `filter`, `convert`, `bucket`, `aggregate`, `dedupe`, `transform` | most data preparation by configuration; teams plug in their own logic (`transform`) |
+| **1. Engine foundations** ✅ *built* | E1 step instances, E2 named data sets, E3 conditional steps, E6 step SDK; ★`dataset`, `derive`, `filter`, `convert`, `bucket`, `aggregate`, `dedupe`, `transform` | most data preparation by configuration; teams plug in their own logic (`transform`); first non-finance capability: payment exceptions |
 | **2. Accounting actions** | ★`propose_entries`, `schedule`, `period_check`, `approve` (authority matrix), `post` (dry run, then post), `recompute` | accruals, adjustments, reserves, write-offs end to end |
 | **3. Assurance** | ★`sample`, `score`, `anomaly`, `flux`, `consistency`, `attest`, E4 lanes | SOX testing, journal review, substantiation, report validation |
 | **4. Orchestration** | E5 `await`, `spawn`, dependencies; ★`report`, `compose` | close management, sign-off cascades, testing per sample, counterparty workflows |
 | **5. Acquisition** | ★`match_n`, `intake`, `extract` | three-way match, intercompany, invoice capture, document-heavy work |
+| **6. Time, context and parties** | ★`clock`, `timeline`, `link`, `screen`, `outreach`; E7 decision boundaries | payments and trade operations, complaints, KYC, financial-crime packs, lending |
 
 Each phase:
 - keeps today's capabilities running unchanged;

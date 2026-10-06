@@ -6,6 +6,7 @@ are produced earlier, every tool is an onboarded connector tool, every
 expression parses. A manifest with problems is never stored as active.
 """
 
+import re
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -435,6 +436,25 @@ class ExportSpec(Strict):
     columns: list[str] = Field(default_factory=list)
 
 
+class StepSettings(Strict):
+    """How one step of `steps` is set up, when it is not a core step with its
+    own section (load, match, enrich…) or when it should run only sometimes:
+
+        step_settings:
+          fx:  {type: dataset, with: {name: fx, tool: refdata.fx_rates, args: {date: $case.date}}}
+          age: {type: derive, when: "case.region == 'EU'", with: {fields: {...}}}
+    """
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    # The step type; default: the step's id (a core step).
+    type: str | None = None
+    # Run the step only when this holds: an expression over `case.<field>`,
+    # `policy.<name>` and `count` (items so far). Absent = always.
+    when: str | None = None
+    label: str | None = None
+    # The step type's own settings (see helix/stepkit.py).
+    with_: dict[str, Any] = Field(default_factory=dict, alias="with")
+
+
 class Manifest(Strict):
     id: str = Field(pattern=r"^[a-z0-9][a-z0-9.-]{1,62}$")
     name: str
@@ -446,6 +466,10 @@ class Manifest(Strict):
     compare: CompareSpec | None = None
     policy: dict[str, PolicyValue] = Field(default_factory=dict)
     steps: list[str]
+    # Settings per step id: the type and settings of configurable steps
+    # (dataset, derive, filter, convert, bucket, aggregate, dedupe, transform)
+    # and `when` on any step. A type may appear more than once under different ids.
+    step_settings: dict[str, StepSettings] = Field(default_factory=dict)
     pause_before: list[str] = Field(default_factory=lambda: ["review"])
     # Who passes each human stop other than review and publish, and what they check.
     # A stop without an entry here is passed by the reviewers.
@@ -480,8 +504,35 @@ class Manifest(Strict):
     def policy_values(self) -> dict[str, Any]:
         return {k: v.value for k, v in self.policy.items()}
 
+    def step_type(self, step_id: str) -> str:
+        st = self.step_settings.get(step_id)
+        return (st.type if st and st.type else step_id)
+
+    def step_types(self) -> dict[str, str]:
+        return {s: self.step_type(s) for s in self.steps}
+
+    def step_config(self, step_id: str):
+        """The validated settings of a configurable step (None for a core step)."""
+        from helix import stepkit
+        t = self.step_type(step_id)
+        if t not in stepkit.TYPES:
+            return None
+        return stepkit.parse(t, (self.step_settings.get(step_id) or StepSettings()).with_)
+
+    def data_step_tools(self) -> set[str]:
+        from helix import stepkit
+        out: set[str] = set()
+        for sid in self.steps:
+            t = self.step_type(sid)
+            if t in stepkit.TYPES:
+                try:
+                    out |= stepkit.TYPES[t].tools(self.step_config(sid))
+                except ValueError:
+                    pass
+        return out
+
     def tools_used(self) -> set[str]:
-        used = set(self.reasoning.tools)
+        used = set(self.reasoning.tools) | self.data_step_tools()
         if self.items.load:
             used.add(self.items.load.tool)
         if self.match:
@@ -527,7 +578,53 @@ def problems(m: Manifest) -> list[str]:
     from helix.gateway import registry
     from helix.workflow import order_problems
 
-    out = order_problems(m.steps, m.pause_before)
+    out = []
+    from helix import stepkit
+    from helix.workflow import STEPS as CORE
+    configs: dict[str, Any] = {}
+    for sid in m.steps:
+        if not re.fullmatch(r"[a-z][a-z0-9_]{0,40}", sid):
+            out.append(f"steps: `{sid}` — a step id is lower case letters, digits and _")
+    for sid, st in m.step_settings.items():
+        if sid not in m.steps:
+            out.append(f"step_settings.{sid}: `{sid}` is not in steps")
+            continue
+        t = m.step_type(sid)
+        if t in CORE:
+            if st.type and st.type != sid:
+                out.append(f"step_settings.{sid}: a core step keeps its own name (`{st.type}`)")
+            if st.with_:
+                out.append(f"step_settings.{sid}: `{t}` is set up in its own section, not under `with`")
+        elif t not in stepkit.TYPES:
+            out.append(f"step_settings.{sid}: unknown step type `{t}` "
+                       f"(configurable types: {', '.join(sorted(stepkit.TYPES))})")
+        else:
+            try:
+                configs[sid] = stepkit.parse(t, st.with_)
+            except ValueError as e:
+                errs = getattr(e, "errors", lambda: [])()
+                out += [f"step_settings.{sid}.with.{'.'.join(str(p) for p in err['loc'])}: {err['msg']}"
+                        for err in errs] or [f"step_settings.{sid}: {e}"]
+                continue
+            for name, src in stepkit.TYPES[t].expressions(configs[sid]):
+                try:
+                    rules.compile_expr(src)
+                except rules.ExpressionError as e:
+                    out.append(f"step_settings.{sid}.with.{name}: {e}")
+        if st.when:
+            try:
+                rules.compile_expr(st.when)
+            except rules.ExpressionError as e:
+                out.append(f"step_settings.{sid}.when: {e}")
+            if t in ("validate", "review", "record"):
+                out.append(f"step_settings.{sid}.when: the gate `{t}` always runs")
+    for sid in m.steps:
+        t = m.step_type(sid)
+        if t not in CORE and t not in stepkit.TYPES:
+            out.append(f"steps: `{sid}` is not a core step; give it a type under step_settings")
+    if out:
+        return out
+    out = order_problems(m.steps, m.pause_before, m.step_types(), configs)
 
     if "load" in m.steps and m.items.load is None:
         out.append("step `load` needs `items.load`")

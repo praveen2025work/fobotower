@@ -492,7 +492,7 @@ async def reinvestigate(case_id: str, group_id: str, note: str, idempotency_key:
     async def job():
         config = {"configurable": {"thread_id": f"helix:{case_id}"}}
         async with checkpointer() as cp:
-            app = build_graph(m.steps, m.pause_before, cp)
+            app = build_graph(m.steps, m.pause_before, cp, m.step_types())
             state = (await app.aget_state(config)).values
             g = next(x for x in state["groups"] if x["group_id"] == group_id)
             finding = await steps.reason_group(state, g, note, previous)
@@ -614,7 +614,7 @@ async def retry_publish(case_id: str, caller: Caller) -> dict:
     async def job():
         config = {"configurable": {"thread_id": f"helix:{case_id}"}}
         async with checkpointer() as cp:
-            state = (await build_graph(m.steps, m.pause_before, cp).aget_state(config)).values
+            state = (await build_graph(m.steps, m.pause_before, cp, m.step_types()).aget_state(config)).values
         _, failed = await steps.write_back(state, caller.user_id, done)
         await steps.set_publish_outcome(case_id, failed)
 
@@ -681,6 +681,16 @@ async def published_document(case_id: str, name: str, caller: Caller) -> tuple[s
     raise LookupError(f"{case_id}/{name}")
 
 
+async def _datasets(case_id: str) -> list[dict]:
+    from helix.models import CaseDataset
+    async with get_session() as s:
+        rows = (await s.execute(select(CaseDataset).where(CaseDataset.case_id == case_id)
+                                .order_by(CaseDataset.created_at))).scalars().all()
+    return [{"name": d.name, "step_id": d.step_id, "source": d.source, "row_count": d.row_count,
+             "columns": sorted({k for r in d.rows[:200] for k in r if k != "members"}),
+             "rows": d.rows[:100]} for d in rows]
+
+
 async def case_detail(case_id: str, caller: Caller) -> dict:
     async with get_session() as s:
         case = await s.get(Case, case_id)
@@ -723,6 +733,13 @@ async def case_detail(case_id: str, caller: Caller) -> dict:
         "follow_ups": await follow_ups(case),
         # What became of this case's decisions in the next run (follow_through).
         "follow_through": (await follow_through.for_case(case_id)) if m.follow_through else None,
+        # Named data sets the run read or built beside the items (dataset, aggregate steps).
+        "datasets": await _datasets(case_id),
+        # Items a step set aside (filter, dedupe, roll-up): still on the case, with the reason.
+        "excluded": [{"item_id": it.item_id, "by": it.payload.get("excluded_by"),
+                      "reason": it.payload.get("excluded_reason")}
+                     for it in items if it.payload.get("excluded_by")],
+        "step_labels": {sid: (st.label or m.step_type(sid)) for sid, st in m.step_settings.items()},
         "follow_through_spec": m.follow_through.model_dump() if m.follow_through else None,
         "requests": requests,
         "request_targets": [{"id": t.id, "name": t.name} for t in m.requests.targets],

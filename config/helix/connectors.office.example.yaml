@@ -103,3 +103,24 @@ connectors:
     classification: internal
     tools:
       create_ticket: { description: "Raise a ticket in a team's queue", access: write, idempotency_arg: idempotency_key }
+
+  # Beyond finance: payments operations and reference data (payments.exceptions capability).
+  refdata:
+    name: Reference data
+    transport: http
+    url: https://refdata-mcp.internal.example/mcp
+    headers_env: { Authorization: REFDATA_MCP_AUTHORIZATION }
+    classification: internal
+    tools:
+      fx_rates: { description: "End-of-day FX rates for a date" }
+
+  payments:
+    name: Payments operations
+    transport: http
+    url: https://payments-ops-mcp.internal.example/mcp
+    headers_env: { Authorization: PAYMENTS_MCP_AUTHORIZATION }
+    classification: confidential
+    tools:
+      exceptions:    { description: "Payment exceptions for an entity and date", scope: { arg: entity, key: entity } }
+      message_trail: { description: "ISO 20022 / SWIFT messages behind the exceptions", scope: { arg: entity, key: entity } }
+      risk_score:    { description: "The payments team's own risk scoring service", scope: { arg: entity, key: entity } }

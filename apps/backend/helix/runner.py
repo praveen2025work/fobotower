@@ -128,7 +128,7 @@ async def run_case(case_id: str, kind: str = "open", update: dict | None = None)
             trace_id = current_trace_id()
             try:
                 async with checkpointer() as cp:
-                    app = build_graph(m.steps, m.pause_before, cp)
+                    app = build_graph(m.steps, m.pause_before, cp, m.step_types())
                     snap = await app.aget_state(config)
                     started = snap.created_at is not None
                     paused_at = snap.next[0] if snap.next and snap.next[0] in m.pause_before else None

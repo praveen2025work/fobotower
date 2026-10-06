@@ -246,6 +246,23 @@ class InfoRequest(HelixBase):
     escalated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class CaseDataset(HelixBase):
+    """A named data set a case read or built beside its items (a `dataset` or
+    `aggregate` step): FX rates, a budget, limits, a roll-up. Kept with the
+    case so the reviewer and the auditor see exactly what the run used."""
+
+    __tablename__ = "helix_case_dataset"
+    case_id: Mapped[str] = mapped_column(
+        String(128), ForeignKey("helix_case.case_id", ondelete="CASCADE"), primary_key=True
+    )
+    name: Mapped[str] = mapped_column(String(64), primary_key=True)
+    step_id: Mapped[str] = mapped_column(String(64))
+    source: Mapped[str] = mapped_column(String(256))
+    rows: Mapped[list] = mapped_column(JSONB, default=list)
+    row_count: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class FollowThrough(HelixBase):
     """What became of a decided item in the next run of the same series
     (follow_through): cleared (gone) or still_open (still there)."""

@@ -9,7 +9,13 @@ functions) is refused when the manifest is validated, not at run time.
     abs(amount) >= policy.materiality
     account in ['7100', '7110'] and total < 0
     startswith(account, '61')
+    days_between(value_date, case.cob) > 30
+
+`case.<field>` reads the case key (e.g. the COB); dates are ISO strings
+(2026-09-30 or 2026-09-30T14:05:00Z).
 """
+
+from datetime import date, datetime
 
 import ast
 import operator
@@ -29,7 +35,31 @@ _FUNCS = {
     # values present on one side only, e.g. components or adjustments
     "symdiff": lambda a, b: sorted(set(a or []) ^ set(b or [])),
     "is_null": lambda v: v is None,
+    # dates (ISO strings or date/datetime values)
+    "days_between": lambda a, b: (_dt(b) - _dt(a)).total_seconds() / 86400,
+    "hours_between": lambda a, b: (_dt(b) - _dt(a)).total_seconds() / 3600,
+    "weekday": lambda a: _dt(a).isoweekday(),          # 1 = Monday … 7 = Sunday
+    # values
+    "coalesce": lambda *vs: next((v for v in vs if v is not None), None),
+    "ifelse": lambda cond, a, b: a if cond else b,
+    "lower": lambda s: str(s).lower(),
+    "upper": lambda s: str(s).upper(),
+    "int": int,
+    "sum": lambda xs: sum(x for x in (xs or []) if x is not None),
 }
+
+
+def _dt(v) -> datetime:
+    if isinstance(v, datetime):
+        return v if v.tzinfo else v.replace(tzinfo=None)
+    if isinstance(v, date):
+        return datetime(v.year, v.month, v.day)
+    s = str(v).strip().replace("Z", "+00:00")
+    d = datetime.fromisoformat(s if "T" in s or " " in s else s + "T00:00:00")
+    return d.replace(tzinfo=None)
+
+# Objects whose fields an expression may read with a dot.
+_DOTTED = ("policy", "case")
 
 
 class ExpressionError(ValueError):
@@ -44,9 +74,9 @@ def _check(node: ast.AST) -> None:
         if not isinstance(n, allowed):
             raise ExpressionError(f"`{type(n).__name__}` is not allowed")
         if isinstance(n, ast.Attribute) and not (
-            isinstance(n.value, ast.Name) and n.value.id == "policy"
+            isinstance(n.value, ast.Name) and n.value.id in _DOTTED
         ):
-            raise ExpressionError("only `policy.<name>` lookups are allowed")
+            raise ExpressionError("only `policy.<name>` and `case.<field>` lookups are allowed")
         if isinstance(n, ast.Call) and not (
             isinstance(n.func, ast.Name) and n.func.id in _FUNCS and not n.keywords
         ):
@@ -59,8 +89,9 @@ def names(source: str) -> tuple[set[str], set[str]]:
     tree = compile_expr(source)
     calls = {id(n.func) for n in ast.walk(tree) if isinstance(n, ast.Call)}
     fields = {n.id for n in ast.walk(tree)
-              if isinstance(n, ast.Name) and id(n) not in calls and n.id != "policy"}
-    policies = {n.attr for n in ast.walk(tree) if isinstance(n, ast.Attribute)}
+              if isinstance(n, ast.Name) and id(n) not in calls and n.id not in _DOTTED}
+    policies = {n.attr for n in ast.walk(tree)
+                if isinstance(n, ast.Attribute) and isinstance(n.value, ast.Name) and n.value.id == "policy"}
     return fields, policies
 
 
@@ -88,6 +119,11 @@ def _eval(n: ast.AST, env: dict) -> Any:
             if attr not in policy:
                 raise ExpressionError(f"unknown policy `{attr}`")
             return policy[attr]
+        case ast.Attribute(value=ast.Name(id="case"), attr=attr):
+            case = env.get("case", {})
+            if attr not in case:
+                raise ExpressionError(f"unknown case field `{attr}`")
+            return case[attr]
         case ast.List(elts=e) | ast.Tuple(elts=e):
             return [_eval(x, env) for x in e]
         case ast.UnaryOp(op=ast.Not(), operand=o):

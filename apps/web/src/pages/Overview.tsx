@@ -6,8 +6,59 @@ import { useInbox, useMe, useOverview } from "../api/helix";
 import StatCard from "../components/StatCard";
 import StatusBadge from "../components/StatusBadge";
 import { urgency } from "../components/Urgency";
-import { Card, Empty, ErrorState, Loading, PageHeader } from "../components/ui";
+import { Card, Empty, ErrorState, Loading } from "../components/ui";
 import { InboxTable } from "./Inbox";
+
+const PATH = ["Get the items", "Prepare", "Propose", "People decide", "Record", "Release"];
+
+/** The banner: what is waiting on me, the governed path every case takes, and counts. */
+function OverviewHero({ waiting, review, release, escalated, capabilities }: {
+  waiting: number; review?: number; release?: number; escalated?: number; capabilities?: number;
+}) {
+  const tiles: [string, number | undefined][] = [["to review", review], ["to release", release], ["escalated to people", escalated]];
+  return (
+    <section aria-label="Overview" className="hx-hero hx-rise mb-5 grid gap-5 p-5 sm:p-7 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+      <div className="min-w-0">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-nav-mark">Helix · Governed AI for Finance</p>
+        <h1 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">
+          {waiting ? `${waiting} ${waiting === 1 ? "case is" : "cases are"} waiting on you` : "Nothing is waiting on you"}
+        </h1>
+        <p className="mt-1.5 max-w-xl text-sm text-nav-fg">
+          Across {capabilities ?? 0} {capabilities === 1 ? "capability" : "capabilities"} you can use. Every case takes the same governed path:
+        </p>
+        <ol className="hx-path mt-4" aria-label="The governed path">
+          {PATH.map((step, i) => (
+            <li key={step} className="contents">
+              {i > 0 && <span className="hx-link" aria-hidden="true" />}
+              <span className={i === 3 ? "rounded-full bg-nav-mark px-2.5 py-1 text-[11px] font-semibold text-nav-bg" : "hx-glass rounded-full px-2.5 py-1 text-[11px] font-medium"}>{step}</span>
+            </li>
+          ))}
+        </ol>
+      </div>
+      <div className="grid grid-cols-3 gap-2 lg:w-80">
+        {tiles.map(([label, n]) => (
+          <div key={label} className="hx-glass rounded-xl px-3 py-2.5">
+            <p className="text-2xl font-bold tabular-nums">{n ?? "–"}</p>
+            <p className="text-[11px] leading-tight text-nav-fg">{label}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** Share of a capability's cases that are finished, as a small ring. */
+function DoneRing({ statuses }: { statuses: Record<string, number> }) {
+  const total = Object.values(statuses).reduce((a, b) => a + b, 0);
+  if (!total) return null;
+  const done = Math.round(((statuses.completed ?? 0) / total) * 100);
+  return (
+    <span className="hx-ring-wrap shrink-0" title={`${done}% of cases completed`}>
+      <span className="hx-ring" style={{ ["--hx-target" as string]: done, ["--hx-size" as string]: "2.6rem" }} />
+      <span className="hx-ring-label text-surface-700" style={{ fontSize: "0.58rem" }}>{done}%</span>
+    </span>
+  );
+}
 
 /** Home: what needs me, and how every capability I can see is doing. */
 export default function Overview(): JSX.Element {
@@ -21,7 +72,9 @@ export default function Overview(): JSX.Element {
 
   return (
     <div>
-      <PageHeader title="Overview" subtitle="Everything waiting on you, across every capability you can use." />
+      <OverviewHero waiting={(overview.data?.awaiting_my_review ?? 0) + (overview.data?.awaiting_my_release ?? 0)}
+        review={overview.data?.awaiting_my_review} release={overview.data?.awaiting_my_release}
+        escalated={overview.data?.escalated_groups} capabilities={overview.data?.capabilities.length} />
       {overview.isLoading && <Loading what="overview" />}
       {overview.error && <ErrorState error={overview.error} />}
       {overview.data && (
@@ -68,10 +121,11 @@ export default function Overview(): JSX.Element {
                 <ul className="space-y-3">
                   {overview.data.capabilities.map((c) => (
                     <li key={c.id}>
-                      <Link to={`/capabilities/${encodeURIComponent(c.id)}`} className="group block rounded-lg border border-surface-200 p-3 hover:border-primary-300">
+                      <Link to={`/capabilities/${encodeURIComponent(c.id)}`} className="hx-sheen group block rounded-lg border border-surface-200 p-3 hover:border-primary-300">
                         <div className="flex items-center gap-2">
                           <Layers size={14} className="text-accent-600" />
-                          <span className="text-sm font-semibold text-surface-800 group-hover:text-primary-700">{c.name}</span>
+                          <span className="min-w-0 flex-1 text-sm font-semibold text-surface-800 group-hover:text-primary-700">{c.name}</span>
+                          <DoneRing statuses={c.statuses} />
                         </div>
                         <div className="mt-2 flex flex-wrap gap-1.5">
                           {Object.entries(c.statuses).map(([status, n]) => (

@@ -23,12 +23,12 @@ function StatCard({ icon: Icon, value, label, trend, trendValue, className }: St
   return (
     <div
       className={clsx(
-        "flex items-center gap-3 rounded-xl border border-surface-200 bg-card p-3 shadow-sm transition-shadow hover:shadow-md sm:block sm:p-5",
+        "hx-card flex items-center gap-3 rounded-xl p-3 shadow-sm sm:block sm:p-5",
         className,
       )}
     >
       <div className="flex shrink-0 items-start justify-between">
-        <div className="rounded-lg bg-primary-50 p-2 sm:p-2.5">
+        <div className="hx-chip rounded-lg p-2 sm:p-2.5">
           <Icon size={18} className="text-primary-600" />
         </div>
         {trend && (

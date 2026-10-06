@@ -109,6 +109,7 @@ export default function CaseWorkspace(): JSX.Element {
           <ArrowLeft size={12} /> {c.capability_id}
         </Link>
         <div className="mt-1 flex flex-wrap items-center gap-3">
+          <DecidedRing c={c} />
           <h1 className="text-lg font-bold leading-tight tracking-tight text-surface-900 sm:text-2xl">{c.labels.case}: {c.subject}</h1>
           <StatusBadge status={c.status} />
           {c.outcome && c.outcome !== c.status && <StatusBadge status={c.outcome} />}
@@ -884,5 +885,20 @@ function ContextPanel({ c }: { c: CaseDetail }) {
         </dl>
       </div>
     </div>
+  );
+}
+
+/** How many of the case's groups are settled, as a ring beside the title. */
+function DecidedRing({ c }: { c: CaseDetail }) {
+  const total = c.groups.length;
+  if (!total) return null;
+  const settled = c.groups.filter((g) => g.decision && (g.approvals?.settled ?? true)).length;
+  const pct = Math.round((settled / total) * 100);
+  const color = pct === 100 ? "rgb(var(--c-green-600))" : "rgb(var(--c-primary-600))";
+  return (
+    <span className="hx-ring-wrap shrink-0" role="img" aria-label={`${settled} of ${total} groups decided`} title={`${settled} of ${total} groups decided`}>
+      <span className="hx-ring" style={{ ["--hx-target" as string]: pct, ["--hx-ring-color" as string]: color }} />
+      <span className="hx-ring-label text-surface-700">{settled}/{total}</span>
+    </span>
   );
 }

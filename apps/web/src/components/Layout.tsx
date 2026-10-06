@@ -129,7 +129,7 @@ function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
       >
         <div className={clsx("flex h-14 items-center border-b border-nav-line", compact ? "justify-center px-2" : "px-4")}>
           <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-nav-mark font-bold text-nav-bg">H</div>
+            <div className="hx-mark flex h-8 w-8 items-center justify-center rounded-lg font-bold text-nav-bg">H</div>
             {!compact && (
               <div>
                 <h1 className="text-base font-bold leading-none tracking-tight">Helix</h1>

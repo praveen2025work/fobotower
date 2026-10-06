@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Helix for the Bank</title>
+<title>Helix for Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,500..800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -342,8 +342,8 @@ footer { padding-block: 24px; font-size: 0.8rem; color: var(--muted); }
     </div>
     <div class="hero">
       <div>
-        <h1>Every investigation and sign-off in the bank, on <em>one governed platform</em>.</h1>
-        <p class="sub">Helix gathers the data, prepares it and proposes what to do: rules first, then the model, then a person. People with the right authority decide. Only an approved outcome is written back. A new team gets this by configuration, not a new build.</p>
+        <h1>Every investigation and sign-off in Finance, on <em>one governed platform</em>.</h1>
+        <p class="sub">Helix gathers the data, prepares it and proposes what to do: rules first, then the model, then a person. People with the right authority decide. Only an approved outcome is written back. A new Finance team gets this by configuration, not a new build. FOBO break investigation was the first use case; seven Finance capabilities run on it today.</p>
         <div class="cta">
           <a class="btn primary" href="#story">See one case end to end</a>
           <a class="btn ghost" href="#usecases">Browse 26 use cases</a>
@@ -356,11 +356,11 @@ footer { padding-block: 24px; font-size: 0.8rem; color: var(--muted); }
         </div>
       </div>
 
-      <svg class="flowart" viewBox="0 0 560 420" role="img" aria-label="The bank's systems feed Helix, which proposes; a person decides; only approved outcomes are written back">
+      <svg class="flowart" viewBox="0 0 560 420" role="img" aria-label="Finance's systems feed Helix, which proposes; a person decides; only approved outcomes are written back">
         <g class="node"><rect x="10" y="40" width="130" height="50" rx="12"/><text x="75" y="62" text-anchor="middle" font-size="13" font-weight="600">Ledger</text><text class="t2" x="75" y="79" text-anchor="middle" font-size="11">GL, journals</text></g>
-        <g class="node"><rect x="10" y="120" width="130" height="50" rx="12"/><text x="75" y="142" text-anchor="middle" font-size="13" font-weight="600">Payments</text><text class="t2" x="75" y="159" text-anchor="middle" font-size="11">exceptions, messages</text></g>
-        <g class="node"><rect x="10" y="200" width="130" height="50" rx="12"/><text x="75" y="222" text-anchor="middle" font-size="13" font-weight="600">Trade stores</text><text class="t2" x="75" y="239" text-anchor="middle" font-size="11">positions, breaks</text></g>
-        <g class="node"><rect x="10" y="280" width="130" height="50" rx="12"/><text x="75" y="302" text-anchor="middle" font-size="13" font-weight="600">Client service</text><text class="t2" x="75" y="319" text-anchor="middle" font-size="11">complaints, events</text></g>
+        <g class="node"><rect x="10" y="120" width="130" height="50" rx="12"/><text x="75" y="142" text-anchor="middle" font-size="13" font-weight="600">Reconciliations</text><text class="t2" x="75" y="159" text-anchor="middle" font-size="11">MB Rec, cash, sub-ledgers</text></g>
+        <g class="node"><rect x="10" y="200" width="130" height="50" rx="12"/><text x="75" y="222" text-anchor="middle" font-size="13" font-weight="600">Trade stores</text><text class="t2" x="75" y="239" text-anchor="middle" font-size="11">FO and BO positions</text></g>
+        <g class="node"><rect x="10" y="280" width="130" height="50" rx="12"/><text x="75" y="302" text-anchor="middle" font-size="13" font-weight="600">Procurement</text><text class="t2" x="75" y="319" text-anchor="middle" font-size="11">orders, receipts, invoices</text></g>
         <g class="node"><rect x="10" y="360" width="130" height="50" rx="12"/><text x="75" y="382" text-anchor="middle" font-size="13" font-weight="600">Documents</text><text class="t2" x="75" y="399" text-anchor="middle" font-size="11">PDFs, workbooks</text></g>
         <path class="wire" d="M140 65 C 190 65, 190 190, 225 205"/>
         <path class="wire" d="M140 145 C 185 145, 190 200, 225 210"/>
@@ -396,8 +396,8 @@ footer { padding-block: 24px; font-size: 0.8rem; color: var(--muted); }
   <div class="wrap">
     <div class="head reveal">
       <span class="eyebrow">The problem</span>
-      <h2>Most control and operations work is the same job in different clothes.</h2>
-      <p class="lede">A break, a payment exception, a complaint or a month-end accrual all follow the same five moves. Today each team runs them by hand, in spreadsheets and email.</p>
+      <h2>Most of Finance's control work is the same job in different clothes.</h2>
+      <p class="lede">A FOBO break, a cash rec difference, a P&amp;L variance or a month-end accrual all follow the same five moves. Today each team runs them by hand, in spreadsheets and email.</p>
     </div>
     <div class="same">
       <div class="reveal"><div class="ico"><svg viewBox="0 0 48 48" fill="none" stroke="var(--action)" stroke-width="2.4" stroke-linecap="round"><rect x="9" y="8" width="30" height="34" rx="4"/><path d="M15 17h18M15 24h18M15 31h11"/></svg></div><h3>A list arrives</h3><p>Breaks, exceptions, alerts, complaints, journals, samples.</p></div>
@@ -521,10 +521,10 @@ curl -X POST localhost:8300/api/capabilities/fin.accruals/cases \
   <div class="wrap">
     <div class="head reveal">
       <span class="eyebrow">Use cases</span>
-      <h2>One platform, set up for each division's work.</h2>
-      <p class="lede">Pick a division, then a use case, to see how it is built from the same blocks, who decides, what is written back and the controls it gets.</p>
+      <h2>One platform, set up for each Finance team's work.</h2>
+      <p class="lede">Pick a Finance area, then a use case, to see how it is built from the same blocks, who decides, what is written back and the controls it gets.</p>
     </div>
-    <div class="tabs" id="tabs" role="group" aria-label="Filter by division"></div>
+    <div class="tabs" id="tabs" role="group" aria-label="Filter by Finance area"></div>
     <div class="cards" id="cards"></div>
     <article class="detail" id="detail" aria-live="polite"></article>
     <div class="legend" id="legend" aria-label="Step families"></div>
@@ -629,7 +629,7 @@ curl -X POST localhost:8300/api/capabilities/fin.accruals/cases \
 </main>
 
 <footer>
-  <div class="wrap">Helix · governed case work for the bank · capabilities, screens and figures are from the running build on example data, October 2026.</div>
+  <div class="wrap">Helix · governed AI for Finance · capabilities, screens and figures are from the running build on example data, October 2026.</div>
 </footer>
 
 <script>
@@ -719,120 +719,120 @@ curl -X POST localhost:8300/api/capabilities/fin.accruals/cases \
   const GATES = [S("validate", "gate"), S("review", "gate", 1), S("record", "gate")];
   const K = (k) => `<span class="k">${k}</span>`;
   const USE = [
-    { div: "Markets control", name: "FOBO break investigation", run: "break.investigation",
-      why: "Front-office vs back-office breaks from MB Rec, investigated per book and business date for the Prime and Rates desks.",
+    { div: "Product control", name: "FOBO break investigation", run: "break.investigation",
+      why: "The first use case on Helix. Front-office vs back-office breaks from MB Rec, investigated per book and business date for the Prime and Rates desks.",
       steps: [S("load breaks", "core"), S("enrich MOTIF", "core"), S("resolve book → desk", "core"), S("classify (playbook)", "core"), S("group", "core"), S("tollgate", "gate", 1), S("reason", "core"), S("draft", "core"), ...GATES],
       decides: "Product control", writes: "Tickets to owning teams", ctl: ["tollgate before the model", "verdict guards", "follow-through next business day", "sign-off checklist"],
       cfg: `${K("steps")}: [load, enrich, resolve, classify, group, reason, draft, validate, review, record]\n${K("pause_before")}: [reason, review]   <span class="c"># a controller approves the classification first</span>\n${K("group_by")}: [break_type]\n${K("review")}: { ${K("roles")}: [FOBO_CONTROLLER] }\n<span class="c"># team groups fobo-prime and fobo-rates: same capability, their own settings</span>` },
-    { div: "Markets control", name: "Independent price verification",
+    { div: "Product control", name: "Independent price verification",
       why: "Desk marks checked against several vendor prices; valuation reserves proposed where they fall outside tolerance.",
       steps: [S("load positions", "core"), S("vendor prices ×3", "data"), S("median and spread", "data"), S("recompute vs desk mark", "acct"), S("classify tolerance", "core"), S("reason", "core"), S("journal entries", "acct"), ...GATES, S("post reserves", "acct", 1)],
       decides: "Valuation control", writes: "Valuation reserves, posted after release", ctl: ["authority tiers", "balanced journals", "release before posting"] },
-    { div: "Markets control", name: "Limit breach investigation",
+    { div: "Product control", name: "Limit breach investigation",
       why: "Each breach explained against the limit and its history; a temporary excess approved within authority.",
       steps: [S("load breaches", "core"), S("limits and exposure", "data"), S("change over periods", "assur"), S("reason", "core"), ...GATES],
       decides: "Risk, by authority tier", writes: "Temporary excess decision", ctl: ["authority tiers", "follow-through"] },
-    { div: "Finance", name: "Month-end accruals", run: "fin.accruals",
+    { div: "Financial control", name: "Month-end accruals", run: "fin.accruals",
       why: "Goods received but not invoiced, accrued per account: the period checked, balanced journals proposed, approved within delegated authority, posted after release. Walked through above.",
       steps: [S("load GRNI", "core"), S("period open?", "acct"), S("chart of accounts", "data"), S("delegated authority", "data"), S("accrual", "data"), S("material only", "data"), S("group", "core"), S("reason", "core"), S("journal entries", "acct"), S("draft", "core"), ...GATES, S("post journals", "acct", 1)],
       decides: "Reviewers by authority; a financial controller releases", writes: "Journals to the ledger", ctl: ["closed period stops the run", "two approvers over 250k", "ledger check before posting", "each journal once"],
       cfg: `${K("steps")}: [load, open_period, chart, authority, accrual, material, group, reason,\n        entries, draft, validate, review, record, post]\n${K("pause_before")}: [review, post]\n${K("step_settings")}:\n  ${K("open_period")}: { ${K("type")}: period_check, ${K("with")}: { ${K("tool")}: journals.period_status } }\n  ${K("authority")}: { ${K("type")}: dataset, ${K("with")}: { ${K("tool")}: authority.delegated_authority } }\n  ${K("accrual")}: { ${K("type")}: derive, ${K("with")}: { ${K("fields")}: { ${K("accrual")}: "round(received_value - invoiced_value, 2)" } } }\n  ${K("material")}: { ${K("type")}: filter, ${K("with")}: { ${K("keep_when")}: "accrual >= policy.materiality" } }\n  ${K("entries")}: { ${K("type")}: propose_entries, ${K("with")}: { ${K("chart")}: chart } }\n  ${K("post")}: { ${K("type")}: post, ${K("with")}: { ${K("tool")}: journals.post_journal, ${K("approver_roles")}: [FIN_CONTROLLER] } }\n${K("review")}: { ${K("roles")}: [FIN_PREPARER, FIN_REVIEWER], ${K("authority_dataset")}: authority }` },
-    { div: "Finance", name: "Reconciliation investigation", run: "recon.investigation",
+    { div: "Financial control", name: "Reconciliation investigation", run: "recon.investigation",
       why: "Bank statement against the ledger, matched by Helix, with write-offs within limit settled by rules.",
       steps: [S("match bank ↔ ledger", "core"), S("enrich", "core"), S("resolve", "core"), S("classify", "core"), S("group", "core"), S("reason", "core"), S("draft", "core"), ...GATES],
       decides: "Cash operations", writes: "Write-offs within limit", ctl: ["rules before the model", "never written off twice"],
       cfg: `${K("steps")}: [match, enrich, resolve, classify, group, reason, draft, validate, review, record]\n${K("group_by")}: [counterparty]\n${K("review")}: { ${K("roles")}: [CASH_OPS] }` },
-    { div: "Finance", name: "P&L variance commentary", run: "fin.variance-commentary",
+    { div: "Financial reporting", name: "P&L variance commentary", run: "fin.variance-commentary",
       why: "GL actuals against budget per account; the model drafts commentary in sections; published after a second person releases it.",
       steps: [S("load GL", "core"), S("compare to budget", "core"), S("group", "core"), S("reason in sections", "core"), S("draft", "core"), ...GATES, S("publish", "core", 1)],
       decides: "Finance reviewers", writes: "Commentary to the reporting pack", ctl: ["release by a second person", "every figure checked"],
       cfg: `${K("steps")}: [load, compare, group, reason, draft, validate, review, record, publish]\n${K("pause_before")}: [review, publish]\n${K("publish")}: { ${K("tool")}: reporting.publish_commentary, ${K("approver_roles")}: [FIN_REVIEWER] }` },
-    { div: "Finance", name: "Report validation", run: "report.validation",
+    { div: "Financial reporting", name: "Report validation", run: "report.validation",
       why: "A reporting workbook matched to GL balances; differences explained; a PDF report written after release.",
       steps: [S("match workbook ↔ GL", "core"), S("group", "core"), S("reason", "core"), S("draft", "core"), ...GATES, S("publish PDF", "core", 1)],
       decides: "Financial reporting", writes: "A PDF report", ctl: ["release by a second person"],
       cfg: `${K("steps")}: [match, group, reason, draft, validate, review, record, publish]\n${K("publish")}: { ${K("tool")}: documents.render_pdf_report, ${K("per")}: case }` },
-    { div: "Finance", name: "Balance-sheet substantiation",
+    { div: "Financial control", name: "Balance-sheet substantiation",
       why: "Each account's balance explained and signed off by its owner, with a risk-ranked pack for the controller.",
       steps: [S("load trial balance", "core"), S("prior periods", "data"), S("change over periods", "assur"), S("account risk", "assur"), S("child case per account", "orch"), S("wait for all", "orch"), S("owner attests", "assur", 1), ...GATES, S("report", "orch")],
       decides: "Account owners; the controller", writes: "Sign-off pack", ctl: ["attestation with evidence"] },
-    { div: "Finance", name: "Intercompany matching",
+    { div: "Financial control", name: "Intercompany matching",
       why: "Both sides of intercompany balances matched across entities and currencies; elimination journals proposed.",
       steps: [S("match entity A ↔ B", "acq"), S("currency", "data"), S("pairs", "data"), S("classify", "core"), S("reason", "core"), ...GATES, S("elimination journals", "acct", 1)],
       decides: "Both entities' owners", writes: "Elimination journals", ctl: ["authority tiers", "balanced journals"] },
-    { div: "Finance", name: "Manual journal review",
+    { div: "Financial control", name: "Manual journal review",
       why: "Journals scored for risk (out of hours, round amounts, unusual pairs) and sampled for review.",
       steps: [S("load journals", "core"), S("risk score", "assur"), S("sample", "assur"), S("reason", "core"), ...GATES],
       decides: "Financial control", writes: "—", ctl: ["reproducible sample"] },
-    { div: "Finance", name: "Close calendar",
+    { div: "Financial control", name: "Close calendar",
       why: "A parent case per entity and period; close tasks as child cases; roll-up sign-off entity → region → group.",
       steps: [S("parent per entity", "core"), S("child tasks", "orch"), S("wait for all", "orch"), S("roll-up", "data"), ...GATES, S("report", "orch")],
       decides: "Entity, region, group", writes: "Close sign-off", ctl: ["sign-off cascade", "deadlines"] },
-    { div: "Procurement", name: "Three-way match",
+    { div: "Accounts payable", name: "Three-way match",
       why: "Purchase order, goods receipt and invoice matched; price and quantity variances explained.",
       steps: [S("order ↔ receipt ↔ invoice", "acq"), S("price and qty variance", "data"), S("classify", "core"), S("reason", "core"), ...GATES, S("block or release", "core", 1)],
       decides: "Accounts payable", writes: "Block or release in purchasing", ctl: ["release by a second person"] },
-    { div: "Procurement", name: "Invoice capture",
+    { div: "Accounts payable", name: "Invoice capture",
       why: "Invoices read from PDFs or supplier workbooks, every value found in the document, then matched to orders.",
       steps: [S("read the invoice", "acq"), S("duplicates", "data"), S("match to orders", "core"), ...GATES, S("publish", "core", 1)],
       decides: "Accounts payable", writes: "Invoice to purchasing", ctl: ["values must appear in the document", "low confidence → a person"] },
-    { div: "Payments", name: "Payment exceptions", run: "payments.exceptions",
+    { div: "Treasury and payments", name: "Payment exceptions", run: "payments.exceptions",
       why: "The day's payment exceptions prepared with generic data steps and the payments team's own risk service.",
       steps: [S("load exceptions", "core"), S("FX rates", "data"), S("duplicates", "data"), S("drop tests", "data"), S("to GBP", "data"), S("age in hours", "data"), S("SLA band", "data"), S("team's risk score", "data"), S("group", "core"), S("reason", "core"), ...GATES],
       decides: "Payments operations", writes: "Repair instruction, in the payments system", ctl: ["missing FX rate flagged, never assumed", "only needed fields sent out"],
       cfg: `${K("steps")}: [load, fx, dedupe_refs, drop_tests, to_gbp, age, sla, risk, group, reason, draft, validate, review, record]\n${K("step_settings")}:\n  ${K("fx")}: { ${K("type")}: dataset, ${K("with")}: { ${K("tool")}: refdata.fx_rates } }\n  ${K("to_gbp")}: { ${K("type")}: convert, ${K("with")}: { ${K("to")}: GBP, ${K("rates")}: fx } }\n  ${K("risk")}: { ${K("type")}: transform, ${K("with")}: { ${K("tool")}: payments.risk_score } }` },
-    { div: "Payments", name: "Payment investigation",
+    { div: "Treasury and payments", name: "Payment investigation",
       why: "A customer's claim traced across gpi, nostro and messages, with a query to the other bank and a 24-hour clock.",
       steps: [S("load claims", "core"), S("timeline", "time"), S("24 h clock", "time"), S("query the other bank", "time", 1), S("wait for reply", "orch"), S("reason", "core"), S("customer reply", "orch"), ...GATES],
       decides: "Payments operations", writes: "Customer reply", ctl: ["outreach only after approval", "clock warnings"] },
-    { div: "Operations", name: "Failed settlement",
+    { div: "Beyond Finance", name: "Failed settlement",
       why: "Fails classified by cause against the market cut-off, with counterparty chasers.",
       steps: [S("load fails", "core"), S("static data", "core"), S("classify cause", "core"), S("cut-off clock", "time"), S("chase counterparty", "time", 1), ...GATES],
       decides: "Settlements", writes: "— (re-checked next day)", ctl: ["follow-through", "outreach only after approval"] },
-    { div: "Operations", name: "Nostro reconciliation",
+    { div: "Treasury and payments", name: "Nostro reconciliation",
       why: "Statements against the ledger with ageing and risk bands; low-risk items in a lighter lane.",
       steps: [S("match statement ↔ ledger", "core"), S("ageing bands", "data"), S("risk score", "assur"), S("reason", "core"), ...GATES],
       decides: "Cash operations, by lane", writes: "Write-offs", ctl: ["authority lanes", "follow-through"] },
-    { div: "Client service", name: "Complaint handling", run: "client.complaints",
+    { div: "Beyond Finance", name: "Complaint handling", run: "client.complaints",
       why: "Complaints with the account's timeline, earlier complaints, the 8-week final-response clock and fees recomputed from the tariff.",
       steps: [S("load complaints", "core"), S("account timeline", "time"), S("earlier complaints", "time"), S("8-week clock", "time"), S("fee per tariff", "acct"), S("screen names", "time"), S("group", "core"), S("reason", "core"), S("acknowledgement", "orch"), S("send after approval", "time", 1), ...GATES],
       decides: "Handler; the lead above the redress limit", writes: "Acknowledgements to clients", ctl: ["redress above the limit reserved", "screening candidates only", "clock warnings"],
       cfg: `${K("step_settings")}:\n  ${K("events")}: { ${K("type")}: timeline, ${K("with")}: { ${K("sources")}: [client.account_events] } }\n  ${K("related")}: { ${K("type")}: link, ${K("with")}: { ${K("match_on")}: [client], ${K("lookback_days")}: 365 } }\n  ${K("sla")}: { ${K("type")}: clock, ${K("with")}: { ${K("clocks")}: [{ ${K("id")}: final_response, ${K("business_days")}: 40 }] } }\n  ${K("send_ack")}: { ${K("type")}: outreach, ${K("with")}: { ${K("tool")}: channel.send_message } }\n${K("boundaries")}:\n  - { ${K("when")}: "total > policy.redress_limit", ${K("roles")}: [COMPLAINTS_LEAD] }` },
-    { div: "Client service", name: "Fee and interest refunds",
+    { div: "Beyond Finance", name: "Fee and interest refunds",
       why: "Charges recomputed from the tariff; differences explained; a client notice drafted for release.",
       steps: [S("load charges", "core"), S("recompute from tariff", "acct"), S("classify", "core"), S("reason", "core"), S("client notice", "orch"), ...GATES, S("refund instruction", "core", 1)],
       decides: "Service, by authority", writes: "Refund instruction", ctl: ["authority tiers", "release by a second person"] },
-    { div: "Lending", name: "Covenant monitoring",
+    { div: "Beyond Finance", name: "Covenant monitoring",
       why: "Financials read from the borrower's pack, ratios computed, breaches proposed for the credit officer.",
       steps: [S("read borrower's pack", "acq"), S("ratios", "data"), S("classify breach", "core"), S("credit memo draft", "core"), ...GATES],
       decides: "Credit officer (reserved)", writes: "Credit memo", ctl: ["credit decisions reserved", "regulated extraction"] },
-    { div: "Financial crime", name: "AML alert triage pack",
+    { div: "Beyond Finance", name: "AML alert triage pack",
       why: "An alert's transactions, related parties and screening candidates assembled; the model writes the narrative only.",
       steps: [S("load alerts", "core"), S("transaction timeline", "time"), S("related parties", "time"), S("screening candidates", "time"), S("narrative", "core"), ...GATES],
       decides: "Analyst (reserved)", writes: "—", ctl: ["close or escalate reserved", "never clears a hit"] },
-    { div: "Financial crime", name: "KYC periodic review",
+    { div: "Beyond Finance", name: "KYC periodic review",
       why: "One child case per client due; documents requested, read and checked for gaps and expiry.",
       steps: [S("child case per client", "orch"), S("request documents", "time", 1), S("wait for documents", "orch"), S("read documents", "acq"), S("missing or expired", "core"), ...GATES],
       decides: "KYC officer (reserved)", writes: "Review outcome", ctl: ["reserved decision", "regulated extraction"] },
-    { div: "Controls", name: "Control operating test", run: "controls.operating-test",
+    { div: "Finance controls", name: "Control operating test", run: "controls.operating-test",
       why: "A control tested on a reproducible sample, one child case per sample, attested by the control owner, with a report.",
       steps: [S("population", "core"), S("sample", "assur"), S("child test per sample", "orch"), S("wait for all", "orch"), S("group", "core"), S("reason", "core"), S("owner attests", "assur", 1), ...GATES, S("report", "orch")],
       decides: "Testers; the control owner attests", writes: "Test report (PDF)", ctl: ["seed kept for the auditor", "attestation at a tollgate"],
       cfg: `${K("step_settings")}:\n  ${K("pick")}: { ${K("type")}: sample, ${K("with")}: { ${K("method")}: random, ${K("size")}: 3 } }\n  ${K("tests_open")}: { ${K("type")}: spawn, ${K("with")}: { ${K("capability")}: controls.sample-test } }\n  ${K("tests")}: { ${K("type")}: await, ${K("with")}: { ${K("event")}: children, ${K("timeout_hours")}: 72 } }\n  ${K("attest_owner")}: { ${K("type")}: attest, ${K("with")}: { ${K("roles")}: [CONTROL_OWNER] } }` },
-    { div: "Controls", name: "Regulatory report validation",
+    { div: "Financial reporting", name: "Regulatory report validation",
       why: "Cross-report rules checked across data sets; each failing rule becomes an item; the report owner attests.",
       steps: [S("reports and GL", "data"), S("consistency checks", "assur"), S("group", "core"), S("reason", "core"), S("owner attests", "assur", 1), ...GATES, S("report", "orch")],
       decides: "Report owner", writes: "Attestation pack", ctl: ["attestation with evidence"] },
-    { div: "Technology risk", name: "User access review",
+    { div: "Beyond Finance", name: "User access review",
       why: "One child case per manager; keep or revoke per entitlement; revocations released to the access system.",
       steps: [S("load entitlements", "core"), S("child case per manager", "orch"), S("manager attests", "assur", 1), ...GATES, S("report", "orch")],
       decides: "Managers", writes: "Revocations, released", ctl: ["attestation per line"] },
-    { div: "Operational risk", name: "Loss event capture",
+    { div: "Beyond Finance", name: "Loss event capture",
       why: "Loss events from submitted workbooks, losses in one currency, classified and attested before the reporting deadline.",
       steps: [S("file intake", "acq"), S("gross and net loss", "data"), S("currency", "data"), S("classify event type", "core"), S("reporting clock", "time"), S("owner attests", "assur", 1), ...GATES],
       decides: "Business owner", writes: "Event record", ctl: ["failing rows kept aside", "deadline warnings"] },
   ];
-  const divs = ["Running today", ...new Set(USE.map((u) => u.div))];
+  const divs = ["Running today", "Product control", "Financial control", "Financial reporting", "Finance controls", "Treasury and payments", "Accounts payable", "Beyond Finance"];
   let div = "Running today";
   let sel = USE.findIndex((u) => u.run === "fin.accruals");
   const inDiv = (u, d = div) => (d === "Running today" ? !!u.run : u.div === d);

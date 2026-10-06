@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Helix for Finance</title>
+<title>Agent One Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,500..800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
 /* Layout: navy masthead with a live flow illustration; light working sections; a sticky
    walkthrough where one accruals case changes as you read; no inner scroll boxes anywhere.
-   Colours follow the Helix console's Barclays theme. */
+   Colours follow the Agent One Finance console's Barclays theme. */
 :root {
   --paper: #f4f7fa;
   --card: #ffffff;
@@ -92,7 +92,7 @@ section { padding-block: 88px; }
 .mast::before { content: ""; position: absolute; inset: 0; background-image: radial-gradient(color-mix(in srgb, var(--band-ink) 14%, transparent) 1px, transparent 1px); background-size: 22px 22px; -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,.6), transparent 80%); mask-image: linear-gradient(180deg, rgba(0,0,0,.6), transparent 80%); pointer-events: none; }
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 64px; position: relative; }
 .mark { display: flex; align-items: center; gap: 10px; font: 760 1.08rem/1 var(--display); }
-.mark b { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; background: var(--cyan); color: var(--band); }
+.mark b { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; background: var(--cyan); color: var(--band); font-size: 0.82rem; }
 .topbar nav { display: flex; gap: 6px 20px; flex-wrap: wrap; font-size: 0.9rem; }
 .topbar nav a { color: var(--band-muted); text-decoration: none; }
 .topbar nav a:hover { color: var(--band-ink); }
@@ -331,7 +331,7 @@ footer { padding-block: 24px; font-size: 0.8rem; color: var(--muted); }
 <header class="mast">
   <div class="wrap">
     <div class="topbar">
-      <div class="mark"><b>H</b>Helix</div>
+      <div class="mark"><b>A1</b>Agent One Finance</div>
       <nav aria-label="Sections">
         <a href="#path">How it works</a>
         <a href="#story">End to end</a>
@@ -343,7 +343,7 @@ footer { padding-block: 24px; font-size: 0.8rem; color: var(--muted); }
     <div class="hero">
       <div>
         <h1>Every investigation and sign-off in Finance, on <em>one governed platform</em>.</h1>
-        <p class="sub">Helix gathers the data, prepares it and proposes what to do: rules first, then the model, then a person. People with the right authority decide. Only an approved outcome is written back. A new Finance team gets this by configuration, not a new build. FOBO break investigation was the first use case; seven Finance capabilities run on it today.</p>
+        <p class="sub">Agent One Finance gathers the data, prepares it and proposes what to do: rules first, then the model, then a person. People with the right authority decide. Only an approved outcome is written back. A new Finance team gets this by configuration, not a new build. FOBO break investigation was the first use case; seven Finance capabilities run on it today.</p>
         <div class="cta">
           <a class="btn primary" href="#story">See one case end to end</a>
           <a class="btn ghost" href="#usecases">Browse 26 use cases</a>
@@ -356,11 +356,11 @@ footer { padding-block: 24px; font-size: 0.8rem; color: var(--muted); }
         </div>
       </div>
 
-      <svg class="flowart" viewBox="0 0 560 420" role="img" aria-label="Finance's systems feed Helix, which proposes; a person decides; only approved outcomes are written back">
+      <svg class="flowart" viewBox="0 0 560 420" role="img" aria-label="Finance's systems feed Agent One Finance, which proposes; a person decides; only approved outcomes are written back">
         <g class="node"><rect x="10" y="40" width="130" height="50" rx="12"/><text x="75" y="62" text-anchor="middle" font-size="13" font-weight="600">Ledger</text><text class="t2" x="75" y="79" text-anchor="middle" font-size="11">GL, journals</text></g>
-        <g class="node"><rect x="10" y="120" width="130" height="50" rx="12"/><text x="75" y="142" text-anchor="middle" font-size="13" font-weight="600">Reconciliations</text><text class="t2" x="75" y="159" text-anchor="middle" font-size="11">MB Rec, cash, sub-ledgers</text></g>
+        <g class="node"><rect x="10" y="120" width="130" height="50" rx="12"/><text x="75" y="142" text-anchor="middle" font-size="13" font-weight="600">Reconciliations</text><text class="t2" x="75" y="159" text-anchor="middle" font-size="11">MB Rec, cash recs</text></g>
         <g class="node"><rect x="10" y="200" width="130" height="50" rx="12"/><text x="75" y="222" text-anchor="middle" font-size="13" font-weight="600">Trade stores</text><text class="t2" x="75" y="239" text-anchor="middle" font-size="11">FO and BO positions</text></g>
-        <g class="node"><rect x="10" y="280" width="130" height="50" rx="12"/><text x="75" y="302" text-anchor="middle" font-size="13" font-weight="600">Procurement</text><text class="t2" x="75" y="319" text-anchor="middle" font-size="11">orders, receipts, invoices</text></g>
+        <g class="node"><rect x="10" y="280" width="130" height="50" rx="12"/><text x="75" y="302" text-anchor="middle" font-size="13" font-weight="600">Procurement</text><text class="t2" x="75" y="319" text-anchor="middle" font-size="11">orders, invoices</text></g>
         <g class="node"><rect x="10" y="360" width="130" height="50" rx="12"/><text x="75" y="382" text-anchor="middle" font-size="13" font-weight="600">Documents</text><text class="t2" x="75" y="399" text-anchor="middle" font-size="11">PDFs, workbooks</text></g>
         <path class="wire" d="M140 65 C 190 65, 190 190, 225 205"/>
         <path class="wire" d="M140 145 C 185 145, 190 200, 225 210"/>
@@ -370,10 +370,11 @@ footer { padding-block: 24px; font-size: 0.8rem; color: var(--muted); }
         <g class="core">
           <rect class="ring" x="225" y="160" width="130" height="120" rx="20"/>
           <rect x="225" y="160" width="130" height="120" rx="20"/>
-          <text x="290" y="200" text-anchor="middle" font-size="17" font-weight="700">Helix</text>
-          <text class="t2" x="290" y="222" text-anchor="middle" font-size="11">prepare · propose</text>
-          <text class="t2" x="290" y="238" text-anchor="middle" font-size="11">check every figure</text>
-          <text class="t2" x="290" y="254" text-anchor="middle" font-size="11">audit every call</text>
+          <text x="290" y="190" text-anchor="middle" font-size="15" font-weight="700">Agent One</text>
+          <text x="290" y="208" text-anchor="middle" font-size="15" font-weight="700">Finance</text>
+          <text class="t2" x="290" y="230" text-anchor="middle" font-size="11">prepare · propose</text>
+          <text class="t2" x="290" y="246" text-anchor="middle" font-size="11">check every figure</text>
+          <text class="t2" x="290" y="262" text-anchor="middle" font-size="11">audit every call</text>
         </g>
         <path class="wire" d="M355 220 L 400 220"/>
         <g class="person"><rect x="400" y="180" width="70" height="80" rx="14"/>
@@ -419,7 +420,7 @@ footer { padding-block: 24px; font-size: 0.8rem; color: var(--muted); }
     <div class="head reveal">
       <span class="eyebrow">How it works</span>
       <h2>Every capability follows the same governed path.</h2>
-      <p class="lede">A team describes its work as a capability: what a case is, where the items come from, the steps, who decides and what is written back. Helix runs it the same way every time.</p>
+      <p class="lede">A team describes its work as a capability: what a case is, where the items come from, the steps, who decides and what is written back. Agent One Finance runs it the same way every time.</p>
     </div>
     <div class="track" id="track">
       <div class="rail"><i></i></div>
@@ -445,7 +446,7 @@ footer { padding-block: 24px; font-size: 0.8rem; color: var(--muted); }
     <div class="story">
       <div class="stage" aria-hidden="true">
         <div class="console">
-          <div class="bar"><i></i><i></i><i></i><span>helix · cases · fin.accruals</span></div>
+          <div class="bar"><i></i><i></i><i></i><span>agent one finance · cases · fin.accruals</span></div>
           <div class="c-head"><div><b>Month-end accruals</b><br><span style="color:var(--muted);font-size:.82rem">UK01 · period 2026-09</span></div><span id="st-pill" class="pill blue">Running</span></div>
           <div class="c-body" id="st-body"></div>
           <div class="progress" id="st-prog"></div>
@@ -562,7 +563,7 @@ curl -X POST localhost:8300/api/capabilities/fin.accruals/cases \
     <div class="viewer">
       <div class="shots" id="shots" role="tablist" aria-label="Screens"></div>
       <div class="frame">
-        <div class="bar"><i></i><i></i><i></i><span id="shot-url">helix</span><button class="zoom" type="button" id="zoom">Full size ⤢</button></div>
+        <div class="bar"><i></i><i></i><i></i><span id="shot-url">agent one finance</span><button class="zoom" type="button" id="zoom">Full size ⤢</button></div>
         <img id="shot" alt="" width="1440" height="900">
       </div>
     </div>
@@ -593,7 +594,7 @@ curl -X POST localhost:8300/api/capabilities/fin.accruals/cases \
   <div class="wrap">
     <div class="head reveal">
       <span class="eyebrow">Fit</span>
-      <h2>Where Helix fits, and where it does not.</h2>
+      <h2>Where Agent One Finance fits, and where it does not.</h2>
     </div>
     <div class="fit">
       <div class="reveal"><h3>A strong fit</h3><ul>
@@ -629,7 +630,7 @@ curl -X POST localhost:8300/api/capabilities/fin.accruals/cases \
 </main>
 
 <footer>
-  <div class="wrap">Helix · governed AI for Finance · capabilities, screens and figures are from the running build on example data, October 2026.</div>
+  <div class="wrap">Agent One Finance · governed AI for Finance · capabilities, screens and figures are from the running build on example data, October 2026.</div>
 </footer>
 
 <script>
@@ -642,27 +643,27 @@ curl -X POST localhost:8300/api/capabilities/fin.accruals/cases \
   const P = (cls, t) => `<span class="pill ${cls}">${t}</span>`;
   const STORY = [
     { who: ["A", "#0f766e", "Alice, finance preparer"], title: "The run opens", uses: ["journals.grni"],
-      text: "Alice opens the September run for UK01, or a schedule opens it. Helix loads every purchase-order line received but not yet invoiced.",
+      text: "Alice opens the September run for UK01, or a schedule opens it. Agent One Finance loads every purchase-order line received but not yet invoiced.",
       pill: ["blue", "Running"],
       card: `<dl class="kv"><dt>Case</dt><dd>fin.accruals · UK01 · 2026-09</dd><dt>Opened by</dt><dd>alice</dd><dt>Items</dt><dd>purchase-order lines, received not invoiced</dd></dl><div class="row">${P("good", "load ✓")}</div>` },
-    { who: ["H", "#007eb6", "Helix"], title: "Is the period open?", uses: ["journals.period_status"],
+    { who: ["A1", "#007eb6", "Agent One Finance"], title: "Is the period open?", uses: ["journals.period_status"],
       text: "Before any work, the ledger is asked whether September is open for UK01. A closed period stops the run and sends it to a person.",
       pill: ["blue", "Running"],
       card: `<div class="row">${P("good", "period 2026-09 open")}</div><p style="color:var(--muted);font-size:.84rem">If it were closed: the case is escalated with reason PERIOD_CLOSED and nothing is proposed.</p>` },
-    { who: ["H", "#007eb6", "Helix"], title: "Reference data, kept on the case", uses: ["journals.chart_of_accounts", "authority.delegated_authority"],
+    { who: ["A1", "#007eb6", "Agent One Finance"], title: "Reference data, kept on the case", uses: ["journals.chart_of_accounts", "authority.delegated_authority"],
       text: "The chart of accounts and the bank's delegated-authority matrix are read as named data sets, visible to the reviewer and the auditor.",
       pill: ["blue", "Running"],
       card: `<table class="tbl"><thead><tr><th>Authority band</th><th>Approvers</th><th>Bulk</th></tr></thead><tbody><tr><td>up to 50k</td><td>1</td><td>yes</td></tr><tr><td>50k to 250k</td><td>1 reviewer</td><td>yes</td></tr><tr><td>over 250k</td><td>2 reviewers</td><td>no</td></tr></tbody></table>` },
-    { who: ["H", "#007eb6", "Helix"], title: "Compute, filter, group", uses: ["derive", "filter", "group"],
+    { who: ["A1", "#007eb6", "Agent One Finance"], title: "Compute, filter, group", uses: ["derive", "filter", "group"],
       text: "Accrual = received − invoiced, per line. Lines below the 5,000 GBP materiality threshold stay on the case, marked. The rest are grouped by account.",
       pill: ["blue", "Running"],
       card: `<table class="tbl"><thead><tr><th>Account</th><th class="r">Lines</th><th class="r">Accrual GBP</th></tr></thead><tbody><tr><td>6100</td><td class="r">3</td><td class="r">292,523.00</td></tr><tr><td>6200</td><td class="r">4</td><td class="r">244,055.80</td></tr><tr><td>6300</td><td class="r">1</td><td class="r">140,495.31</td></tr></tbody></table>` },
-    { who: ["H", "#007eb6", "Helix"], title: "Balanced journals, checked first", uses: ["propose_entries", "rules"],
+    { who: ["A1", "#007eb6", "Agent One Finance"], title: "Balanced journals, checked first", uses: ["propose_entries", "rules"],
       text: "A rule proposes the accrual and a journal per account: debit the expense account, credit 2150 accruals. Each is checked for balance and against the chart before anyone sees it.",
       pill: ["warn", "Awaiting review"],
       card: `<div style="font-weight:600">Account 6100 · journal JE-57fc391f7e</div><table class="tbl"><thead><tr><th>Account</th><th class="r">Debit</th><th class="r">Credit</th></tr></thead><tbody><tr><td>6100</td><td class="r">292,523.00</td><td></td></tr><tr><td>2150</td><td></td><td class="r">292,523.00</td></tr></tbody></table><div class="row">${P("good", "balanced")}${P("good", "accounts in chart")}</div>` },
     { who: ["A", "#0f766e", "Alice tries to approve 6100"], title: "Authority applies to every group", uses: ["review.authority_dataset"],
-      text: "6100 is over 250k: it needs two different reviewers, never in bulk. Alice is a preparer, so Helix refuses her approval and says why.",
+      text: "6100 is over 250k: it needs two different reviewers, never in bulk. Alice is a preparer, so Agent One Finance refuses her approval and says why.",
       pill: ["warn", "Awaiting review"],
       card: `<div class="row">${P("blue", "over 250k · fin reviewer · 2 people")}${P("", "one by one")}</div><div class="row">${P("bad", "alice: above your authority")}</div>` },
     { who: ["B", "#7c3aed", "Bob and Rhea, reviewers"], title: "Two different reviewers approve", uses: ["four eyes", "approvals"],
@@ -673,7 +674,7 @@ curl -X POST localhost:8300/api/capabilities/fin.accruals/cases \
       text: "Bob reviewed, so he cannot release. Fiona, who did not review, releases. The ledger's own check runs first, then each journal is posted once, whatever the retries.",
       pill: ["warn", "Awaiting release"],
       card: `<div class="row">${P("bad", "bob: you reviewed this case")}</div><div class="row">${P("good", "fiona releases")}${P("good", "ledger check passed")}</div>` },
-    { who: ["H", "#007eb6", "Helix"], title: "Posted, recorded, evidenced", uses: ["journals.post_journal", "audit"],
+    { who: ["A1", "#007eb6", "Agent One Finance"], title: "Posted, recorded, evidenced", uses: ["journals.post_journal", "audit"],
       text: "Three journals posted, each with its reference. The case keeps the data sets, every tool call, every decision and the configuration version it ran on.",
       pill: ["good", "Done · posted to the ledger"],
       card: `<table class="tbl"><thead><tr><th>Journal</th><th>Status</th></tr></thead><tbody><tr><td>JE-57fc391f7e</td><td>posted</td></tr><tr><td>JE-c1a1c76d67</td><td>posted</td></tr><tr><td>JE-2937d03788</td><td>posted</td></tr></tbody></table><div class="row">${P("good", "audit trail")}${P("good", "evidence pack")}</div>` },
@@ -720,7 +721,7 @@ curl -X POST localhost:8300/api/capabilities/fin.accruals/cases \
   const K = (k) => `<span class="k">${k}</span>`;
   const USE = [
     { div: "Product control", name: "FOBO break investigation", run: "break.investigation",
-      why: "The first use case on Helix. Front-office vs back-office breaks from MB Rec, investigated per book and business date for the Prime and Rates desks.",
+      why: "The first use case on Agent One Finance. Front-office vs back-office breaks from MB Rec, investigated per book and business date for the Prime and Rates desks.",
       steps: [S("load breaks", "core"), S("enrich MOTIF", "core"), S("resolve book → desk", "core"), S("classify (playbook)", "core"), S("group", "core"), S("tollgate", "gate", 1), S("reason", "core"), S("draft", "core"), ...GATES],
       decides: "Product control", writes: "Tickets to owning teams", ctl: ["tollgate before the model", "verdict guards", "follow-through next business day", "sign-off checklist"],
       cfg: `${K("steps")}: [load, enrich, resolve, classify, group, reason, draft, validate, review, record]\n${K("pause_before")}: [reason, review]   <span class="c"># a controller approves the classification first</span>\n${K("group_by")}: [break_type]\n${K("review")}: { ${K("roles")}: [FOBO_CONTROLLER] }\n<span class="c"># team groups fobo-prime and fobo-rates: same capability, their own settings</span>` },
@@ -738,7 +739,7 @@ curl -X POST localhost:8300/api/capabilities/fin.accruals/cases \
       decides: "Reviewers by authority; a financial controller releases", writes: "Journals to the ledger", ctl: ["closed period stops the run", "two approvers over 250k", "ledger check before posting", "each journal once"],
       cfg: `${K("steps")}: [load, open_period, chart, authority, accrual, material, group, reason,\n        entries, draft, validate, review, record, post]\n${K("pause_before")}: [review, post]\n${K("step_settings")}:\n  ${K("open_period")}: { ${K("type")}: period_check, ${K("with")}: { ${K("tool")}: journals.period_status } }\n  ${K("authority")}: { ${K("type")}: dataset, ${K("with")}: { ${K("tool")}: authority.delegated_authority } }\n  ${K("accrual")}: { ${K("type")}: derive, ${K("with")}: { ${K("fields")}: { ${K("accrual")}: "round(received_value - invoiced_value, 2)" } } }\n  ${K("material")}: { ${K("type")}: filter, ${K("with")}: { ${K("keep_when")}: "accrual >= policy.materiality" } }\n  ${K("entries")}: { ${K("type")}: propose_entries, ${K("with")}: { ${K("chart")}: chart } }\n  ${K("post")}: { ${K("type")}: post, ${K("with")}: { ${K("tool")}: journals.post_journal, ${K("approver_roles")}: [FIN_CONTROLLER] } }\n${K("review")}: { ${K("roles")}: [FIN_PREPARER, FIN_REVIEWER], ${K("authority_dataset")}: authority }` },
     { div: "Financial control", name: "Reconciliation investigation", run: "recon.investigation",
-      why: "Bank statement against the ledger, matched by Helix, with write-offs within limit settled by rules.",
+      why: "Bank statement against the ledger, matched by Agent One Finance, with write-offs within limit settled by rules.",
       steps: [S("match bank ↔ ledger", "core"), S("enrich", "core"), S("resolve", "core"), S("classify", "core"), S("group", "core"), S("reason", "core"), S("draft", "core"), ...GATES],
       decides: "Cash operations", writes: "Write-offs within limit", ctl: ["rules before the model", "never written off twice"],
       cfg: `${K("steps")}: [match, enrich, resolve, classify, group, reason, draft, validate, review, record]\n${K("group_by")}: [counterparty]\n${K("review")}: { ${K("roles")}: [CASH_OPS] }` },
@@ -877,7 +878,7 @@ curl -X POST localhost:8300/api/capabilities/fin.accruals/cases \
 
   const CTL = [
     ["People decide", "The model proposes, a person decides. When nothing settles a group, it goes to a person, not a guess.", '<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4.5 4.5-6.5 8-6.5s6.5 2 8 6.5"/>'],
-    ["Authority", "Tiers by amount, risk or verdict set who may approve and how many different people must. In Helix, or from the bank's system.", '<path d="M3 21h18M5 21V10M19 21V10M9 21V10M15 21V10M12 3l9 5H3z"/>'],
+    ["Authority", "Tiers by amount, risk or verdict set who may approve and how many different people must. In Agent One Finance, or from the bank's system.", '<path d="M3 21h18M5 21V10M19 21V10M9 21V10M15 21V10M12 3l9 5H3z"/>'],
     ["Reserved decisions", "Credit, sanctions, AML, redress above a limit, payment release: only named roles decide, never in bulk.", '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>'],
     ["Segregation of duties", "The opener may be barred from signing off. Whoever releases did not review.", '<circle cx="7" cy="8" r="3"/><circle cx="17" cy="8" r="3"/><path d="M2 20c1-3 3-5 5-5s4 2 5 5M12 20c1-3 3-5 5-5s4 2 5 5"/>'],
     ["No silent writes", "Only tools marked as writes, only after approval, each write idempotent; the ledger's own check first.", '<path d="M4 20h16M7 16l9-9 3 3-9 9H7z"/>'],
@@ -901,7 +902,7 @@ curl -X POST localhost:8300/api/capabilities/fin.accruals/cases \
   let shot = 0;
   function shots() {
     $("#shots").innerHTML = SHOTS.map((s, i) => `<button class="shot-tab" type="button" role="tab" aria-selected="${i === shot}" data-s="${i}"><b>${esc(s[1])}</b><span>${esc(s[2])}</span></button>`).join("");
-    $("#shot").src = SHOTS[shot][0]; $("#shot").alt = SHOTS[shot][1] + ": " + SHOTS[shot][2]; $("#shot-url").textContent = "helix / " + SHOTS[shot][3];
+    $("#shot").src = SHOTS[shot][0]; $("#shot").alt = SHOTS[shot][1] + ": " + SHOTS[shot][2]; $("#shot-url").textContent = "agent one finance / " + SHOTS[shot][3];
   }
   $("#shots").addEventListener("click", (e) => { const b = e.target.closest("[data-s]"); if (!b) return; shot = +b.dataset.s; shots(); });
   function zoom() {

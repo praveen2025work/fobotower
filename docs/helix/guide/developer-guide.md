@@ -214,7 +214,8 @@ Source of truth: `apps/backend/helix/manifest.py` (Pydantic; unknown keys are re
 | `match` | MatchSpec | — | two-sided reconciliation (instead of `items.load`) |
 | `compare` | CompareSpec | — | measure vs baseline → a variance field |
 | `policy` | {name: {value, unit?}} | {} | thresholds used in expressions as `policy.<name>`; `null` = not confirmed |
-| `steps` | list | required | see §7 |
+| `steps` | list of step ids | required | see §7; core steps by name, configurable steps by any id |
+| `step_settings` | {id: {type, when, label, with}} | {} | the type and settings of each configurable step (`dataset`, `derive`, `filter`, `convert`, `bucket`, `dedupe`, `aggregate`, `transform`), and `when` on any non-gate step (§7b) |
 | `pause_before` | list | `[review]` | the run waits for people before these steps |
 | `tollgates` | {step: {roles, check, stop_needs_comment}} | {} | who passes each stop other than review and publish, and what they check (§7a) |
 | `requests` | {targets: [{id, name, roles, users}], hold_decision, reinvestigate_on_answer, remind_after_hours, escalate_after_hours, allow_attachments} | no targets | who reviewers may ask for evidence; an open question holds its group; an answer (optionally with a file) goes to the model; unanswered ones are chased, then escalated |
@@ -393,6 +394,47 @@ Typical places:
 - before `reason`: check the matched data before any model spend;
 - before `group`: check the playbook's classification;
 - before `enrich`: check the match is complete.
+
+## 7b. Configurable steps (steps v2, phase 1)
+
+Besides the core steps, a capability adds **generic data steps** by configuration, as many as it
+needs and in any order, each under its own id:
+
+```yaml
+steps: [load, fx, dedupe_refs, drop_tests, to_gbp, age, sla, risk, group, reason, draft, validate, review, record]
+step_settings:
+  fx:          {type: dataset,  with: {name: fx, tool: refdata.fx_rates, args: {date: $case.date}}}
+  dedupe_refs: {type: dedupe,   with: {keys: [payment_ref, amount]}}
+  drop_tests:  {type: filter,   with: {keep_when: "not is_test", reason: test payment}}
+  to_gbp:      {type: convert,  with: {amounts: [amount], currency_field: currency, to: GBP, rates: fx}}
+  age:         {type: derive,   with: {fields: {age_hours: "hours_between(received_at, case.date + 'T18:00:00')"}}}
+  sla:         {type: bucket,   with: {field: age_hours, as: sla_band, bands: [{label: within 4h, upto: 4}, {label: over 4h}]}}
+  risk:        {type: transform, when: "count > 0", with: {tool: payments.risk_score, send: [amount_gbp, reason_code], returns: fields}}
+```
+
+| Type | Does | Settings |
+|---|---|---|
+| `dataset` | reads a **named data set** beside the items (rates, limits, budget, prior periods); kept on the case | `name`, `tool`, `args` |
+| `derive` | computed fields from expressions over the item, `case.<field>` and `policy`; a failure gives `None` and `derive_errors`, never a guess | `fields: {name: expression}` |
+| `filter` | keeps matching items; the others **stay on the case** with `excluded_by` and `excluded_reason` | `keep_when`, `reason` |
+| `convert` | currency conversion with a data set of rates; a missing rate sets `fx_missing`, never assumed | `amounts`, `currency_field`, `to`, `rates`, `suffix` |
+| `bucket` | bands (ageing, size, service level) | `field`, `as`, `bands[{label, upto}]` |
+| `dedupe` | duplicates by key fields, set aside (kept) or marked | `keys`, `drop` |
+| `aggregate` | roll-up with totals and counts, into the items or a data set | `by`, `sum`, `keep`, `into` |
+| `transform` | sends the items (only the fields in `send`) to a **team's own tool** through the gateway and uses what it returns | `tool`, `args`, `send`, `returns: fields\|items` |
+
+`when` on any step (not the gates): an expression over `case.<field>`, `policy.<name>` and `count`
+(items so far). A step that does not run is recorded in the case's draft (`skipped_steps`).
+
+The platform checks each step's settings against its schema and its expressions when the manifest
+is checked. It checks the order with what each step needs and produces, including named data sets:
+"`to_gbp` needs data set `fx`, produced by no earlier step". The tools a step calls are the only
+ones the gateway allows. New types are added through the step SDK (`helix/stepkit.py`): a config
+schema, `needs`, `produces`, `tools`, `expressions` and a run function. The design and the next
+phases are in [`../design/step-catalogue-v2.md`](../design/step-catalogue-v2.md).
+
+Expressions gained `case.<field>`, `days_between`, `hours_between`, `weekday`, `coalesce`,
+`ifelse`, `lower`, `upper`, `int` and `sum`.
 
 ## 8. Expressions
 

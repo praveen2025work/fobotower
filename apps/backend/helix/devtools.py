@@ -109,7 +109,18 @@ def flow(m: Manifest) -> dict:
     }
     people = {"review": list(m.review.roles), "publish": list(m.publish.approver_roles) if m.publish else []}
     from helix.workflow import GATES
-    nodes = [{"id": s, "gate": s in GATES, "pause": s in m.pause_before, "tools": tools.get(s, []),
+    from helix import stepkit
+    for sid in m.steps:               # configurable steps: their tools and settings, in words
+        t = m.step_type(sid)
+        if t in stepkit.TYPES:
+            cfg = m.step_config(sid)
+            tools[sid] = sorted(stepkit.TYPES[t].tools(cfg))
+            st = m.step_settings[sid]
+            notes[sid] = [stepkit.TYPES[t].label] + ([f"only when {st.when}"] if st.when else [])
+        elif sid in m.step_settings and m.step_settings[sid].when:
+            notes.setdefault(sid, []).append(f"only when {m.step_settings[sid].when}")
+    nodes = [{"id": s, "type": m.step_type(s), "label": (m.step_settings[s].label if s in m.step_settings else None),
+              "gate": s in GATES, "pause": s in m.pause_before, "tools": tools.get(s, []),
               "notes": notes.get(s, []), "people": people.get(s, [])} for s in m.steps]
     edges = [{"from": a, "to": b} for a, b in zip(m.steps, m.steps[1:])]
     return {"capability_id": m.id, "name": m.name, "nodes": nodes, "edges": edges,

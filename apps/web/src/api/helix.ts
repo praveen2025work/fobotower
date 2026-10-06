@@ -223,7 +223,7 @@ export interface ToolCall {
 }
 
 export interface CaseDetail extends CaseSummary {
-  draft: { headline: string } | null;
+  draft: { headline: string; skipped_steps?: string[] } | null;
   labels: { case: string; item: string };
   steps: string[];
   pause_before: string[];
@@ -295,6 +295,11 @@ export interface CaseDetail extends CaseSummary {
     items: { item_id: string; verdict: string | null; status: "cleared" | "still_open"; checked_in: string; checked_at: string }[];
   } | null;
   follow_through_spec?: { series: string[]; order_by: string; verdicts: string[] } | null;
+  /** Named data sets the run read or built beside the items (steps v2). */
+  datasets?: { name: string; step_id: string; source: string; row_count: number; columns: string[]; rows: Record<string, unknown>[] }[];
+  /** Items a step set aside (filter, duplicates, roll-up), with why. */
+  excluded?: { item_id: string; by: string; reason: string }[];
+  step_labels?: Record<string, string>;
 }
 
 /** A question to a desk, a trader or Operations, and its answer. */

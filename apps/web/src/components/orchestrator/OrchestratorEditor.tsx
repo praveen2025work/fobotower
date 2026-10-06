@@ -17,6 +17,7 @@ import { ErrorState } from "../ui";
 import { Field, type Ctx } from "./fields";
 import { allowed, changedPaths, get, groupSet, preview, setPath, type Json } from "./paths";
 import { STAGES, STEP_ORDER, stageOf, type Stage } from "./stages";
+import PrepareSteps, { dataSteps } from "./PrepareSteps";
 
 type Mode = { kind: "capability" } | { kind: "group"; config: GroupConfig; configurable: string[] };
 
@@ -33,17 +34,26 @@ const stepsOf = (m: Json) => (get(m, "steps") as string[]) ?? [];
 const pausesOf = (m: Json) => (get(m, "pause_before") as string[]) ?? [];
 
 /** The field paths a stage edits, to tell which stages hold changes. */
-const stagePaths = (s: Stage) => s.fields.map((f) => f.path).concat(s.step ? [`tollgates.${s.step}`] : []);
+const stagePaths = (s: Stage) => s.custom === "prepare" ? ["step_settings"]
+  : s.fields.map((f) => f.path).concat(s.step ? [`tollgates.${s.step}`] : []);
 
 function isOn(m: Json, s: Stage): boolean {
   if (s.id === "source") return true;
+  if (s.custom === "prepare") return dataSteps(m).length > 0;
   return !s.step || stepsOf(m).includes(s.step);
 }
 
+/** Switch a core step on or off, keeping configurable steps where they are. */
+export function withCoreStep(steps: string[], step: string, on: boolean): string[] {
+  if (!on) return steps.filter((x) => x !== step);
+  if (steps.includes(step)) return steps;
+  const rank = STEP_ORDER.indexOf(step);
+  const after = steps.findIndex((x) => STEP_ORDER.includes(x) && STEP_ORDER.indexOf(x) > rank);
+  return after < 0 ? [...steps, step] : [...steps.slice(0, after), step, ...steps.slice(after)];
+}
+
 function switchStep(m: Json, s: Stage, on: boolean): Json {
-  const want = new Set(stepsOf(m));
-  if (on) want.add(s.step!); else want.delete(s.step!);
-  let out = setPath(m, "steps", STEP_ORDER.filter((x) => want.has(x)));
+  let out = setPath(m, "steps", withCoreStep(stepsOf(m), s.step!, on));
   if (on) out = s.onEnable ? s.onEnable(out) : out;
   else {
     out = setTollgate(out, s.step!, false);
@@ -268,7 +278,9 @@ export default function OrchestratorEditor({ capabilityId, manifest, mode, canEd
             </ul>
           )}
 
-          {isOn(working, stage) ? (
+          {stage.custom === "prepare" ? (
+            <PrepareSteps ctx={ctx} setWorking={setWorking} stepsLocked={stepLocked} />
+          ) : isOn(working, stage) ? (
             stage.fields.length === 0 ? (
               <p className="mt-4 text-sm text-surface-500">Nothing to set: this gate works the same for every capability.</p>
             ) : stage.fields.some((f) => !f.when || f.when(working)) ? (

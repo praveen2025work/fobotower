@@ -24,6 +24,8 @@ export interface Stage {
   owns: RegExp;
   /** Shown only to a capability's own owners (never a group's to set). */
   capabilityOnly?: boolean;
+  /** Rendered by its own component instead of fields (e.g. the data steps). */
+  custom?: "prepare";
 }
 
 const keyFields = (m: Json): Opt[] => ((get(m, "case.key") as string[]) ?? []).map((k) => ({ value: k }));
@@ -102,6 +104,13 @@ export const STAGES: Stage[] = [
       { kind: "list", path: "items.display", label: "Columns shown to reviewers" },
       { kind: "expr", path: "items.in_scope", label: "In scope when", help: "Items outside this are kept but not worked, e.g. abs(difference) >= policy.materiality_threshold." },
     ],
+  },
+  {
+    id: "prepare", custom: "prepare",
+    title: "Prepare the data",
+    says: "Generic data steps, in order: reference data, computed fields, filters, currency, bands, duplicates, roll-ups, or the team's own tool. Each can run only when something holds.",
+    owns: /^step_settings|is not a core step|step type/,
+    fields: [],
   },
   {
     id: "compare", step: "compare", optional: true,

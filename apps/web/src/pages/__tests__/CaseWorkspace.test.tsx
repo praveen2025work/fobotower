@@ -449,3 +449,21 @@ describe("Sections, checklist and follow-through", () => {
     expect(screen.getByRole("link", { name: "reopened" })).toHaveAttribute("href", "/cases/fin.c2");
   });
 });
+
+describe("Data steps on the case", () => {
+  it("shows the data sets used, what was set aside and why, and skipped steps", async () => {
+    mockApi({ "GET /cases/fin.c1": detail({
+      draft: { headline: "14 of 16 in scope", skipped_steps: ["risk"] },
+      datasets: [{ name: "fx", step_id: "fx", source: "refdata.fx_rates", row_count: 2, columns: ["currency", "rate"],
+        rows: [{ currency: "USD", rate: 0.79 }, { currency: "EUR", rate: 0.86 }] }],
+      excluded: [{ item_id: "PX-99", by: "drop_tests", reason: "test payment" }],
+      step_labels: { drop_tests: "Morning test payments", risk: "The team's risk score" },
+    }) });
+    open();
+    expect(await screen.findByText("1 set aside")).toBeInTheDocument();
+    expect(screen.getByText(/Morning test payments: test payment/)).toBeInTheDocument();
+    expect(screen.getByText(/Skipped this run: The team's risk score/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /fx/ }));
+    expect(screen.getByText("0.79")).toBeInTheDocument();
+  });
+});

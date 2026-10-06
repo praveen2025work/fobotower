@@ -87,6 +87,20 @@ The tab you use is your choice. In a deployment with no model, *Answer questions
 templates do everything, and the capability can still run without a model: choose *a person
 (no model)* for what the rules cannot settle.
 
+**Preparing the data.** In *Configure → Prepare the data*, add generic steps in the order the work
+needs them:
+- reference data (FX rates, limits);
+- computed fields;
+- filters;
+- currency conversion;
+- bands (ageing, service level);
+- duplicates;
+- roll-ups;
+- your team's own tool.
+
+Each step can run only when a condition holds. Items a step sets aside stay on the case with the
+reason, and the case shows the data sets it used.
+
 ### Step 1: Draft (owner, e.g. carol)
 
 1. Open *Authoring*.

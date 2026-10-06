@@ -132,3 +132,28 @@ describe("groupSet", () => {
     });
   });
 });
+
+describe("Prepare the data (configurable steps)", () => {
+  it("adds a data step after the item source, sets it up, and keeps it when a core step is switched", async () => {
+    const calls = mockApi({
+      "GET /platform": platform,
+      "POST /capabilities/recon.investigation/check": { ok: true, problems: [] },
+      "POST /authoring/submit": { capability_id: "recon.investigation", version: 9 },
+    });
+    renderAt("/", "/", <OrchestratorEditor capabilityId="recon.investigation" manifest={manifest} mode={{ kind: "capability" }} canEdit />);
+    await userEvent.click(await screen.findByRole("button", { name: /Prepare the data/ }));
+    await userEvent.selectOptions(screen.getByLabelText("Step type to add"), "filter");
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+    const step = screen.getByRole("region", { name: "Step filter_1" });
+    await userEvent.type(within(step).getByLabelText(/Keep items when/), "not is_test");
+    // switching a core step off and on keeps the data step where it is
+    await userEvent.click(screen.getByRole("button", { name: /Enrich/ }));
+    await userEvent.click(screen.getByRole("checkbox", { name: /This step runs/ }));
+    await userEvent.click(screen.getByRole("checkbox", { name: /This step runs/ }));
+    await waitFor(() => expect(calls.some((c) => c.path.endsWith("/check") && JSON.stringify(c.body).includes("not is_test"))).toBe(true));
+    const last = [...calls].reverse().find((c) => c.path.endsWith("/check"))!.body as { manifest: Record<string, unknown> };
+    expect(last.manifest.steps).toEqual(["match", "filter_1", "enrich", "group", "reason", "draft", "validate", "review", "record"]);
+    expect((last.manifest.step_settings as Record<string, { type: string; with: { keep_when: string } }>).filter_1)
+      .toMatchObject({ type: "filter", with: { keep_when: "not is_test" } });
+  });
+});

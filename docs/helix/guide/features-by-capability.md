@@ -20,6 +20,7 @@ feature, so a new team can see its options.
 | Feature | Setting | FOBO Prime / Rates | Cash | Variance | Report validation |
 |---|---|---|---|---|---|
 | Item source | `items.load` / `match` | MB Rec's breaks (no re-matching) | Helix matches bank to ledger | GL balances vs budget (`compare`) | Helix matches the report workbook to GL balances |
+| **Data steps** (steps v2) | `step_settings` | — | — | — | — |
 | Join more data | `enrich` | MOTIF snapshots per instrument | — | — | — |
 | Reference lookups | `resolve` | book → desk → escalation team, as of the COB | — | — | — |
 | Playbook (checks, tests, categories, verdict table, guards) | `playbook` | the controllers' skill: R5, §8 scenarios, timing, end state, C1–C6, FO-1…BO-6, R2 | — (rules) | — (rules) | — |
@@ -65,3 +66,15 @@ feature, so a new team can see its options.
 A team group may set a feature only if the capability lists it under `configurable`. For
 *Break investigation* and *Reconciliation investigation*, these are listed: `follow_through`,
 `reasoning.sections`, `review.checklist`, `requests` and `insights`.
+
+## Payment exceptions: the first non-finance capability
+
+*Payment exceptions* (`payments.exceptions`) is built only from generic data steps:
+1. the day's FX rates as a data set;
+2. duplicates and test payments set aside, kept on the case with the reason;
+3. amounts converted to GBP, with a missing rate flagged;
+4. hours since arrival, banded against the service level;
+5. the payments team's own risk score, from its own service (`transform`);
+6. rules for closed accounts (AC04) and missing addresses (BE04), with the model for the rest.
+
+Payments Operations decides, and payment release stays in the payments system.

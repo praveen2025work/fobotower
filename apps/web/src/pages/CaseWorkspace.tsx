@@ -51,6 +51,7 @@ import CaseChat from "../components/case/CaseChat";
 import EvidencePanel from "../components/case/EvidencePanel";
 import RequestsPanel from "../components/case/RequestsPanel";
 import FollowThroughPanel from "../components/case/FollowThroughPanel";
+import DataSetsPanel from "../components/case/DataSetsPanel";
 import { ChecklistAnswers, SignOffChecklist, checklistComplete } from "../components/case/SignOffChecklist";
 import CaseHistory from "../components/case/CaseHistory";
 import StatusBadge from "../components/StatusBadge";
@@ -855,6 +856,8 @@ function ContextPanel({ c }: { c: CaseDetail }) {
       <RequestsPanel c={c} />
 
       <FollowThroughPanel c={c} />
+
+      <DataSetsPanel c={c} />
 
       <EvidencePanel c={c} canUpload={c.can_decide || c.status === "awaiting_review"} />
 

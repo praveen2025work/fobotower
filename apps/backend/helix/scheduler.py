@@ -174,5 +174,10 @@ async def run_forever() -> None:
                 from helix import asks
                 for request_id, kind in await asks.chase(at):
                     log.info("question %s %s", request_id, kind)
+                from helix import timekeeping
+                for case_id, kind in await timekeeping.check_waits(at):
+                    log.info("case %s %s", case_id, kind)
+                for case_id, clock, kind in await timekeeping.check_clocks(at):
+                    log.info("case %s clock %s %s", case_id, clock, kind)
         except Exception:
             log.exception("scheduler tick failed")

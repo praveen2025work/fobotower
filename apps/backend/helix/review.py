@@ -46,7 +46,13 @@ def flags(finding: dict | None) -> list[str]:
 
 def bulk_blockers(m: Manifest, finding: dict | None) -> list[str]:
     """Why "Approve all" must leave this group for one-by-one review (empty: it may not)."""
-    return [f for f in flags(finding) if f in m.review.bulk_exclude]
+    f = finding or {}
+    out = [x for x in flags(finding) if x in m.review.bulk_exclude]
+    if f.get("reserved"):
+        out.append("reserved")
+    if (f.get("authority") or {}).get("bulk") is False:
+        out.append("authority")
+    return out
 
 
 def confirmation_problem(m: Manifest, finding: dict | None, action: str, confirmed: bool,

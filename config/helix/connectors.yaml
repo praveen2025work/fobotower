@@ -99,6 +99,69 @@ connectors:
         description: The payments team's own risk scoring service (0–100 and reasons per item)
         scope: { arg: entity, key: entity }
 
+  journals:
+    name: General ledger — periods, accounts, journals (stub)
+    transport: inproc
+    target: helix.stub_connectors.banking:build_ledger
+    classification: confidential
+    tools:
+      period_status: { description: "Whether the accounting period is open for an entity", scope: { arg: entity, key: entity } }
+      chart_of_accounts: { description: "The entity's postable accounts", scope: { arg: entity, key: entity } }
+      grni: { description: "Goods received not invoiced at period end", scope: { arg: entity, key: entity } }
+      validate_journal: { description: "The ledger's own check of a journal (a dry run)", scope: { arg: entity, key: entity } }
+      post_journal:
+        description: Post a journal to the ledger
+        access: write              # the post step only, after a second person releases it
+        idempotency_arg: idempotency_key
+        scope: { arg: entity, key: entity }
+
+  authority:
+    name: Delegated authority (stub)
+    transport: inproc
+    target: helix.stub_connectors.banking:build_authority
+    classification: internal
+    tools:
+      delegated_authority: { description: "Who may approve how much, per entity", scope: { arg: entity, key: entity } }
+
+  channel:
+    name: Client and counterparty messaging (stub)
+    transport: inproc
+    target: helix.stub_connectors.banking:build_channel
+    classification: confidential
+    tools:
+      send_message:
+        description: Send a message to a client or counterparty
+        access: write              # an outreach step only, after a person approves sending
+        idempotency_arg: idempotency_key
+
+  client:
+    name: Client service — complaints, account events, watch list (stub)
+    transport: inproc
+    target: helix.stub_connectors.banking:build_client
+    classification: confidential
+    tools:
+      complaints: { description: "Complaints received for an entity on a date", scope: { arg: entity, key: entity } }
+      account_events: { description: "Account events around a date", scope: { arg: entity, key: entity } }
+      watch_list: { description: "The team's internal watch list" }
+
+  procurement:
+    name: Procurement — purchase orders, receipts, invoices (stub)
+    transport: inproc
+    target: helix.stub_connectors.banking:build_procurement
+    classification: internal
+    tools:
+      purchase_orders: { description: "Purchase order lines for a period", scope: { arg: entity, key: entity } }
+      goods_receipts: { description: "Goods receipts against purchase order lines", scope: { arg: entity, key: entity } }
+      invoices: { description: "Supplier invoices against purchase order lines", scope: { arg: entity, key: entity } }
+
+  controls:
+    name: Controls testing evidence (stub)
+    transport: inproc
+    target: helix.stub_connectors.banking:build_controls
+    classification: internal
+    tools:
+      evidence: { description: "Test attributes for one sampled item", scope: { arg: entity, key: entity } }
+
   ticketing:
     name: Team ticket queues (stub)
     transport: inproc

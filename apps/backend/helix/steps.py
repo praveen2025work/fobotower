@@ -50,6 +50,9 @@ class CaseState(TypedDict, total=False):
     published: list[dict]
     datasets: dict[str, list[dict]]   # named data sets beside the items (dataset, aggregate steps)
     skipped: list[str]                # steps whose `when` did not hold this run
+    events: dict[str, dict]           # what each `await` step received (an event, child outcomes, a timeout)
+    spawned: bool                     # a `spawn` step opened child cases
+    model_context: list[dict]         # data sets the model sees when it investigates (e.g. a timeline)
     outcome: str | None
     escalation_reason: str | None
 
@@ -430,6 +433,9 @@ async def reason_group(state: CaseState, g: dict, note: str | None = None,
                 notes=[guard.scrub(text, [g["group_key"], *members]) for text in [
                     *(f"{n['by']} (tollgate before {n['step']}): {n['comment']}"
                       for n in state.get("gate_notes", []) if n.get("comment")),
+                    *(f"context · {c['name']}: " + "; ".join(
+                        ", ".join(f"{k}={v}" for k, v in r.items() if v not in (None, "")) for r in c["rows"][:40])
+                      for c in state.get("model_context", [])),
                     *await asks.answers_for(state["case_id"], g["group_id"])]],
                 previous_finding=guard.scrub(guard.protect(previous), [g["group_key"], *members])
                 if previous else None,
@@ -453,6 +459,8 @@ async def reason_group(state: CaseState, g: dict, note: str | None = None,
             except Exception as e:  # the model must never fail the run silently
                 finding = {"status": ESCALATED, "decided_by": f"llm:{adapter.name}",
                            "comment": "", "reason": f"REASONER_ERROR: {type(e).__name__}: {e}"}
+        from helix import authority
+        finding = authority.apply(m, {**g, "items_view": members}, finding, state.get("datasets") or {})
         sp.set_attribute("helix.decided_by", finding["decided_by"])
         sp.set_attribute("helix.status", finding["status"])
     return finding

@@ -42,7 +42,7 @@ async def test_overview_and_audit_are_scoped(api):
     await _open(api, "alice", VARIANCE, {"entity": "UK01", "period": "2026-09"})
     alice = (await api.get("/api/overview", headers=api.as_user("alice"))).json()
     assert alice["awaiting_my_review"] == 1 and alice["open_cases"] == 1
-    assert [c["id"] for c in alice["capabilities"]] == [VARIANCE, "report.validation"]
+    assert [c["id"] for c in alice["capabilities"]] == ["fin.accruals", VARIANCE, "report.validation"]
     assert alice["tool_calls_24h"] > 0
 
     events = (await api.get("/api/audit", headers=api.as_user("alice"))).json()

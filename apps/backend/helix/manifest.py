@@ -362,6 +362,34 @@ class FollowThroughSpec(Strict):
     verdicts: list[str] = Field(default_factory=list)
 
 
+class AuthorityTier(Strict):
+    """One row of an authority matrix: for groups it matches (first match
+    wins), who may approve, how many different people, the review lane, and
+    whether "Approve all" may include them."""
+    # Expression over a group: total, count, its key fields, verdict, category,
+    # side, risk_band, policy. Absent = every group (a last, catch-all row).
+    when: str | None = None
+    label: str = ""
+    roles: list[str] = Field(default_factory=list)   # empty = the reviewers
+    approvals: int = Field(default=1, ge=1, le=5)
+    lane: str = "standard"
+    bulk: bool = True
+
+
+class Boundary(Strict):
+    """A decision reserved for named people (E7): credit, sanctions, AML,
+    KYC acceptance, payment release, redress above a limit… Enforced in code
+    after the model and at review."""
+    # The verdicts (or statuses) it covers, e.g. [CLOSE_ALERT, ACCEPT_CLIENT].
+    verdicts: list[str] = Field(default_factory=list)
+    # …or an expression over a group (as in the authority matrix).
+    when: str | None = None
+    roles: list[str] = Field(min_length=1)          # only these may decide it
+    # The model may not propose it: its proposal becomes ESCALATE, for a person.
+    model_may_propose: bool = False
+    reason: str = ""
+
+
 class ReviewSpec(Strict):
     roles: list[str]                   # who may decide
     approve_by: Literal["group"] = "group"
@@ -390,6 +418,12 @@ class ReviewSpec(Strict):
     allow_delegation: bool = False
     # Questions a reviewer answers before approving a group (sign-off checklist).
     checklist: list[ChecklistItem] = Field(default_factory=list)
+    # Authority matrix (and review lanes): who may approve which groups, and how
+    # many people. In this configuration, or read from the bank's delegated-
+    # authority system as a data set (`authority_dataset`: rows with min_amount,
+    # max_amount, roles, approvals, lane; a `dataset` step reads it).
+    authority: list[AuthorityTier] = Field(default_factory=list)
+    authority_dataset: str | None = None
 
 
 class RecurringSpec(Strict):
@@ -496,6 +530,8 @@ class Manifest(Strict):
     escalation: EscalationSpec | None = None
     # Re-check decisions in the next run of the same series.
     follow_through: FollowThroughSpec | None = None
+    # Decisions reserved for named people (credit, sanctions, AML, KYC, release…).
+    boundaries: list[Boundary] = Field(default_factory=list)
     export: ExportSpec = Field(default_factory=ExportSpec)
     # What a group (a team's configuration of this capability, e.g. one rec group)
     # may set: dotted paths; "x.*" = anything under x. Owners stay the capability's.
@@ -507,6 +543,26 @@ class Manifest(Strict):
     def step_type(self, step_id: str) -> str:
         st = self.step_settings.get(step_id)
         return (st.type if st and st.type else step_id)
+
+    def waits(self) -> list[str]:
+        """Steps the run waits before for an event or child cases (`await`)."""
+        return [s for s in self.steps if self.step_type(s) == "await"]
+
+    def pauses(self) -> list[str]:
+        return list(dict.fromkeys([*self.pause_before, *self.waits()]))
+
+    def release_step(self) -> str | None:
+        """The step that writes the decided outcome after a second person's release."""
+        return next((s for s in self.steps if self.step_type(s) in ("publish", "post")), None)
+
+    def release_roles(self) -> list[str]:
+        r = self.release_step()
+        if r is None:
+            return []
+        if r == "publish" and self.publish:
+            return list(self.publish.approver_roles)
+        cfg = self.step_config(r)
+        return list(getattr(cfg, "approver_roles", []) or [])
 
     def step_types(self) -> dict[str, str]:
         return {s: self.step_type(s) for s in self.steps}
@@ -545,19 +601,40 @@ class Manifest(Strict):
         return used
 
     def write_tools(self) -> set[str]:
-        return ({self.publish.tool} if self.publish else set()) | (
+        from helix import stepkit
+        out = ({self.publish.tool} if self.publish else set()) | (
             {self.escalation.tool} if self.escalation else set())
+        for sid in self.steps:
+            t = self.step_type(sid)
+            if t in stepkit.TYPES and (writes := stepkit.TYPES[t].extra.get("writes")):
+                try:
+                    out |= writes(self.step_config(sid))
+                except ValueError:
+                    pass
+        return out
 
     def read_tools(self) -> set[str]:
         return self.tools_used() - self.write_tools()
 
     def visible_to_roles(self) -> set[str]:
         return (set(self.review.roles) | ({self.owners.role} if self.owners.role else set())
-                | {r for g in self.tollgates.values() for r in g.roles})
+                | {r for g in self.tollgates.values() for r in g.roles}
+                | {r for s in self.pause_before for r in self.gate(s).roles}
+                | set(self.release_roles())
+                | {r for t in self.review.authority for r in t.roles}
+                | {r for b in self.boundaries for r in b.roles})
 
     def gate(self, step: str) -> TollgateSpec:
-        """The tollgate before `step` (the reviewers pass it unless it names others)."""
+        """The tollgate before `step` (the reviewers pass it unless it names others;
+        an attestation or outreach step names its own people and what they check)."""
         g = self.tollgates.get(step) or TollgateSpec()
+        try:
+            cfg = self.step_config(step) if step in self.steps else None
+        except ValueError:
+            cfg = None
+        if cfg is not None and getattr(cfg, "roles", None) and self.step_type(step) in ("attest", "outreach"):
+            check = getattr(cfg, "statement", None) or g.check or "Approve sending the drafted messages"
+            return g.model_copy(update={"roles": g.roles or list(cfg.roles), "check": check})
         return g if g.roles else g.model_copy(update={"roles": list(self.review.roles)})
 
 
@@ -566,6 +643,8 @@ def _expressions(m: Manifest) -> list[tuple[str, str | None]]:
     return [("items.in_scope", m.items.in_scope),
             *[(f"rules[{r.id}].when", r.when) for r in m.rules],
             ("review.dual_review_when", m.review.dual_review_when),
+            *[(f"review.authority[{i}].when", t.when) for i, t in enumerate(m.review.authority)],
+            *[(f"boundaries[{i}].when", b.when) for i, b in enumerate(m.boundaries)],
             ("escalation.when", m.escalation.when if m.escalation else None),
             *[(f"playbook.checks[{c.id}].when", c.when) for c in (m.playbook.checks if m.playbook else [])],
             *[(f"playbook.guards[{g.verdict}].when", g.when) for g in (m.playbook.guards if m.playbook else [])],
@@ -624,7 +703,28 @@ def problems(m: Manifest) -> list[str]:
             out.append(f"steps: `{sid}` is not a core step; give it a type under step_settings")
     if out:
         return out
-    out = order_problems(m.steps, m.pause_before, m.step_types(), configs)
+    from helix.gateway import registry as _registry
+    reg_ = _registry()
+    for sid, cfg in configs.items():
+        st = stepkit.TYPES[m.step_type(sid)]
+        writes = st.extra.get("writes", lambda c: set())(cfg)
+        for tool in sorted(st.tools(cfg)):
+            found = reg_.tool(tool)
+            if found is None:
+                continue        # reported below as not onboarded
+            if tool in writes and found[2].access != "write":
+                out.append(f"step_settings.{sid}: `{tool}` is not a write tool")
+            elif tool not in writes and found[2].access == "write":
+                out.append(f"step_settings.{sid}: `{tool}` writes to a bank system; this step only reads")
+        if st.extra.get("person") and sid not in m.pause_before:
+            out.append(f"pause_before: `{sid}` needs a person first — add it to pause_before (its tollgate)")
+        if m.step_type(sid) == "spawn":
+            later = m.steps[m.steps.index(sid) + 1:]
+            if not any(m.step_type(x) == "await" and getattr(configs.get(x), "event", "") == "children" for x in later):
+                out.append(f"`{sid}` opens child cases: add a later `await` step with event `children`")
+            if cfg.capability == m.id and not cfg.team_group:
+                pass
+    out += order_problems(m.steps, m.pause_before, m.step_types(), configs)
 
     if "load" in m.steps and m.items.load is None:
         out.append("step `load` needs `items.load`")

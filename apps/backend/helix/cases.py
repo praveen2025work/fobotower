@@ -152,7 +152,7 @@ async def _latest_attempt(s, root: str) -> Case | None:
 
 
 async def open_case(capability_id: str, case_key: dict, caller: Caller,
-                    team_group: str | None = None, late: bool = False) -> str:
+                    team_group: str | None = None, late: bool = False, parent: str | None = None) -> str:
     """Open a case and start its run. Opening a key that already has a case
     returns its latest attempt — unless this is a later notification (`late`)
     and the capability takes late items (`case.late_items: follow_up`): then a
@@ -176,8 +176,9 @@ async def open_case(capability_id: str, case_key: dict, caller: Caller,
             await s.commit()
             await runner.submit(follow.case_id, "open")
             return follow.case_id
-        s.add(_new_case(root, root, 1, capability_id, version, team_group, group_version,
-                        m, key, caller))
+        new = _new_case(root, root, 1, capability_id, version, team_group, group_version, m, key, caller)
+        new.parent_case_id = parent        # a child case opened by a `spawn` step
+        s.add(new)
         try:
             await s.commit()
         except IntegrityError:  # opened concurrently by someone else
@@ -195,6 +196,31 @@ async def _not_switched_off(capability_id: str, team_group: str | None) -> None:
 
 
 RERUNNABLE = ("failed", "escalated", "stopped")
+
+
+async def deliver_event(case_id: str, step: str, payload: dict, caller: Caller | None) -> dict:
+    """An event for a case waiting at an `await` step: from a system (the
+    route checked its event secret; caller is None) or from a person the step
+    names (or a reviewer). The run continues with it."""
+    async with get_session() as s:
+        case = await s.get(Case, case_id)
+    if case is None:
+        raise LookupError(case_id)
+    m = await _pinned(case)
+    if caller is not None:
+        if not may_see_case(caller, m, case.case_key):
+            raise LookupError(case_id)
+        cfg = m.step_config(step) if step in m.steps else None
+        roles = list(getattr(cfg, "roles", []) or []) or list(m.review.roles)
+        if not caller.has_any_role(roles):
+            raise PermissionError(f"delivering this event needs one of: {', '.join(roles)}")
+    if case.status != f"waiting_{step}":
+        raise CaseError(f"case is {case.status}, not waiting at `{step}`")
+    if (getattr(m.step_config(step), "event", "") == "children"):
+        raise CaseError("this step waits for its child cases; it continues when they finish")
+    await runner.deliver(case_id, step, {**payload, "by": caller.user_id if caller else "system"})
+    async with get_session() as s:
+        return {"status": (await s.get(Case, case_id)).status}
 GATE_PREFIX = "paused_before_"
 
 
@@ -341,8 +367,10 @@ def _settle(m: Manifest, g: ProposalGroup, decisions: list[Decision],
                 "decided_by": d.decided_by, "decided_at": d.decided_at.isoformat()}
     approvals = sorted((d for d in latest.values() if d.action == "approve"),
                        key=lambda d: d.decided_at)
+    from helix import authority
     needed = 2 if (m.review.dual_review_when and rules.evaluate(
         m.review.dual_review_when, _group_env(m, g, items))) else 1
+    needed = max(needed, authority.approvals_needed(g.finding))
     # Different people, counted both ways: whoever clicked, and whom they acted for.
     people = min(len({d.decided_by for d in approvals}),
                  len({d.on_behalf_of or d.decided_by for d in approvals}))
@@ -396,6 +424,9 @@ async def decide(case_id: str, group_id: str, action: str, comment: str | None,
             raise CaseError("this group was escalated: approving it needs your explanation")
         if why := review.confirmation_problem(m, group.finding, action, confirmed, comment):
             raise CaseError(why)
+        from helix import authority
+        if why := authority.may_decide(group.finding, caller):
+            raise PermissionError(why)
         from helix import checklist as sign_off
         try:
             answers = sign_off.answered(m, action, checklist)
@@ -452,7 +483,8 @@ async def bulk_decide(case_id: str, group_ids: list[str], action: str, comment: 
 _pinned = runner.pinned
 
 _FLAG_WORDS = {"confirmation": "the verdict needs your confirmation",
-               "judgement": "a judgement call", "escalated": "escalated", "model": "proposed by the model"}
+               "judgement": "a judgement call", "escalated": "escalated", "model": "proposed by the model",
+               "reserved": "a decision reserved for named people", "authority": "its authority tier needs one-by-one review"}
 
 
 async def reinvestigate(case_id: str, group_id: str, note: str, idempotency_key: str,
@@ -565,9 +597,9 @@ async def approve_publish(case_id: str, idempotency_key: str, caller: Caller) ->
             if existing.idempotency_key == idempotency_key:
                 return {"replayed": True, "status": case.status}
             raise CaseError("write-back was already released")
-        if m.publish is None or case.status != "awaiting_publish":
+        if m.release_step() is None or case.status != "awaiting_publish":
             raise CaseError(f"case is {case.status}, not awaiting publish")
-        if not caller.has_any_role(m.publish.approver_roles):
+        if not caller.has_any_role(m.release_roles()):
             raise PermissionError(f"{caller.user_id} may not release write-back")
         if caller.user_id in await _deciders(s, case_id):
             raise PermissionError("four-eyes: a reviewer of this case cannot release its write-back")
@@ -681,6 +713,27 @@ async def published_document(case_id: str, name: str, caller: Caller) -> tuple[s
     raise LookupError(f"{case_id}/{name}")
 
 
+async def _reports(case_id: str) -> list[dict]:
+    """Reports a `report` step kept with the case (its PDF), newest last."""
+    from helix.models import Document
+    async with get_session() as s:
+        rows = (await s.execute(select(Document.name, Document.sha256, Document.created_at, func.length(Document.content))
+                                .where(Document.case_id == case_id, Document.kind == "report")
+                                .order_by(Document.created_at))).all()
+    return [{"name": n, "tool": "report", "pages": None, "bytes": size, "sha256": sha, "written_at": at,
+             "url": f"/api/cases/{case_id}/documents/{n}"} for n, sha, at, size in rows]
+
+
+async def case_report(case_id: str, name: str, caller: Caller) -> tuple[bytes, str] | None:
+    """A report a `report` step kept with the case, if the caller may see the case."""
+    from helix.models import Document
+    await case_detail(case_id, caller)                    # LookupError if not visible
+    async with get_session() as s:
+        row = (await s.execute(select(Document).where(Document.case_id == case_id, Document.kind == "report",
+                                                      Document.name == name))).scalar_one_or_none()
+    return (row.content, row.content_type) if row else None
+
+
 async def _datasets(case_id: str) -> list[dict]:
     from helix.models import CaseDataset
     async with get_session() as s:
@@ -781,7 +834,7 @@ async def case_detail(case_id: str, caller: Caller) -> dict:
                         "denied_reason": c.denied_reason, "row_count": c.row_count,
                         "error": c.error, "latency_ms": c.latency_ms, "called_at": c.called_at,
                         "result": c.result} for c in calls],
-        "documents": _documents(case_id, calls),
+        "documents": _documents(case_id, calls) + await _reports(case_id),
         "evidence": evidence_rows,
         "can_decide": (may_decide and case.status == "awaiting_review"
                        and (m.review.opener_may_decide
@@ -801,13 +854,13 @@ async def case_detail(case_id: str, caller: Caller) -> dict:
                    "bulk_exclude": m.review.bulk_exclude, "confirm": m.review.confirm,
                    "allow_delegation": m.review.allow_delegation,
                    "checklist": [q.model_dump() for q in m.review.checklist]},
-        "publish": ({"tool": m.publish.tool, "approver_roles": m.publish.approver_roles,
-                     "per": m.publish.per,
+        "publish": ({"tool": m.publish.tool if m.publish else m.release_step(), "approver_roles": m.release_roles(),
+                     "per": m.publish.per if m.publish else "case",
                      "can_release": (case.status == "awaiting_publish"
-                                     and caller.has_any_role(m.publish.approver_roles)
+                                     and caller.has_any_role(m.release_roles())
                                      and caller.user_id not in {d.decided_by for d in decisions}),
                      "released": ({"by": release.approved_by, "at": release.approved_at} if release else None)}
-                    if m.publish else None),
+                    if m.release_step() else None),
         # Who the case waits on, and — when it is not this caller — why not, in plain words.
         "waiting_on": _waiting_on(case, m, caller, decisions, may_decide, on_behalf_of),
         "tollgates": [{"step": st, "roles": m.gate(st).roles, "check": m.gate(st).check}
@@ -832,12 +885,12 @@ def _waiting_on(case: Case, m: Manifest, caller: Caller, decisions: list[Decisio
         elif not m.review.opener_may_decide and case.opened_by in (caller.user_id, on_behalf_of):
             why_not = "you opened this case, and its capability needs someone else to sign it off"
         return {"step": "review", "roles": list(m.review.roles), "you": why_not is None, "why_not": why_not}
-    if case.status == "awaiting_publish" and m.publish:
+    if case.status == "awaiting_publish" and m.release_step():
         why_not = None
-        if not caller.has_any_role(m.publish.approver_roles):
-            why_not = f"releasing needs one of: {', '.join(m.publish.approver_roles)}"
+        if not caller.has_any_role(m.release_roles()):
+            why_not = f"releasing needs one of: {', '.join(m.release_roles())}"
         elif caller.user_id in deciders:
             why_not = "you reviewed this case; a second person who did not review it releases it"
-        return {"step": "release", "roles": list(m.publish.approver_roles), "you": why_not is None,
+        return {"step": "release", "roles": list(m.release_roles()), "you": why_not is None,
                 "why_not": why_not, "reviewed_by": sorted(deciders)}
     return None

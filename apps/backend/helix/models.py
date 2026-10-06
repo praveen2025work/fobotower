@@ -96,8 +96,9 @@ class Case(HelixBase):
     manifest: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     case_key: Mapped[dict] = mapped_column(JSONB)
     subject: Mapped[str] = mapped_column(String(256))
-    # running | awaiting_review | awaiting_publish | completed | escalated | failed
-    status: Mapped[str] = mapped_column(String(24))
+    # running | awaiting_review | awaiting_publish | paused_before_<step> |
+    # waiting_<step> | completed | escalated | failed | stopped
+    status: Mapped[str] = mapped_column(String(64))
     outcome: Mapped[str | None] = mapped_column(String(24), nullable=True)
     draft: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -132,6 +133,12 @@ class Case(HelixBase):
     updated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=True
     )
+    # A child case opened by a `spawn` step: its parent, which waits for its children.
+    parent_case_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    # When the run started waiting at an `await` step (for its timeout).
+    waiting_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Clocks (a `clock` step): {clock_id: {due_at, warned, breached}} — each notice sent once.
+    clock_state: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
 
 class CaseItem(HelixBase):

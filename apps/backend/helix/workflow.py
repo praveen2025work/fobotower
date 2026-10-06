@@ -54,6 +54,12 @@ STEPS: dict[str, Step] = {s.name: s for s in [
 ]}
 
 GATES = ("validate", "review", "record")
+# Steps that write the decided outcome to a bank system, after a second person releases it.
+RELEASE_TYPES = ("publish", "post")
+# Step types allowed after `record`.
+AFTER_RECORD = ("publish", "post", "report")
+# Step types the run waits before for something other than a person (an event, child cases).
+WAIT_TYPES = ("await",)
 INITIAL = _s("case_id", "capability_id", "manifest_version", "manifest", "case_key", "caller")
 ON_RESUME = _s("decisions", "publish_approval")
 
@@ -97,12 +103,25 @@ def order_problems(order: list[str], pause_before: list[str], types: dict[str, s
         order.index("validate") < order.index("review") < order.index("record")
     ):
         out.append("gates must run in the order validate → review → record")
-    tail = ["record", "publish"] if "publish" in order else ["record"]
-    if "review" in order and order[-len(tail):] != tail:
-        out.append("`record` must be the last step" if tail == ["record"]
-                   else "`publish` must come right after `record`, last")
-    if "publish" in order and "publish" not in pause_before:
-        out.append("the run must pause before `publish` for a second approval")
+    # After `record` only actions on the decided outcome may run: one release
+    # step (publish, or post for journals) — always after a second person's
+    # release — and reports.
+    kind = lambda n: types.get(n, n)  # noqa: E731
+    releases = [n for n in order if kind(n) in RELEASE_TYPES]
+    if len(releases) > 1:
+        out.append("one write-back step only (publish or post)")
+    if "record" in order:
+        after = order[order.index("record") + 1:]
+        for n in releases:
+            if order.index(n) < order.index("record"):
+                out.append(f"`{n}` must come right after `record`, last" if n == "publish"
+                           else f"`{n}` must come after `record`")
+        bad = [n for n in after if kind(n) not in AFTER_RECORD]
+        if bad:
+            out.append(f"after `record` only write-back and report steps may run (not {', '.join(bad)})")
+    for n in releases:
+        if n not in pause_before:
+            out.append(f"the run must pause before `{n}` for a second approval")
     if "review" not in pause_before:
         out.append("the run must pause before `review`")
     out += [f"pause_before: unknown step `{n}`" for n in pause_before if n not in order]
@@ -156,7 +175,7 @@ def build_graph(order: list[str], pause_before: list[str], checkpointer, types: 
     for current, following in zip(order, order[1:] + [None]):
         if following is None:
             g.add_edge(current, END)
-        elif current in ("review", "record", "publish"):
+        elif current in ("review", "record") or types.get(current, current) in AFTER_RECORD:
             g.add_edge(current, following)
         else:
             g.add_conditional_edges(
@@ -165,7 +184,8 @@ def build_graph(order: list[str], pause_before: list[str], checkpointer, types: 
                 {following: following, "escalate": "escalate"},
             )
     g.add_edge("escalate", END)
-    return g.compile(checkpointer=checkpointer, interrupt_before=list(pause_before))
+    waits = [n for n in order if types.get(n, n) in WAIT_TYPES]
+    return g.compile(checkpointer=checkpointer, interrupt_before=list(dict.fromkeys([*pause_before, *waits])))
 
 
 @asynccontextmanager

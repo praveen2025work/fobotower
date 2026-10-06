@@ -1,0 +1,74 @@
+# A control's operating-effectiveness test — steps v2 phases 3 and 4:
+#   load          the population (the period's payment exceptions handled under the control)
+#   sample        a reproducible random sample (the seed is kept for the auditor)
+#   spawn         one child case per sampled item (controls.sample-test), tested and signed off there
+#   tests         the run waits until every child case has finished, then rolls their outcomes up
+#   attest_owner  the control owner attests, at a tollgate, before review
+#   report        the test's report, kept with the case
+
+id: controls.operating-test
+name: Control operating test
+description: A control's operating-effectiveness test — a reproducible sample, one child test case per sampled item, outcomes rolled up, the control owner's attestation and a report.
+
+owners:
+  people: [tess, owen]
+  role: HELIX_CONTROLS_OWNER
+  four_eyes: true
+
+case:
+  label: Control test
+  item_label: Sampled item
+  key: [entity, date]
+  subject: "Payments exceptions control · {entity} · {date}"
+  scopes: { entity: entity }
+
+items:
+  load: { tool: payments.exceptions, args: { entity: $case.entity, date: $case.date } }
+  id_field: exception_id
+  display: [exception_id, reason_code, amount, currency, sampled, child_status]
+
+steps: [load, pick, tests_open, tests, group, reason, draft, validate, attest_owner, review, record, report]
+pause_before: [attest_owner, review]
+
+step_settings:
+  pick:
+    type: sample
+    label: Sample
+    with: { method: random, size: 3 }
+  tests_open:
+    type: spawn
+    label: One test per sample
+    with:
+      capability: controls.sample-test
+      key: { entity: $case.entity, date: $case.date, item_ref: $item.exception_id }
+  tests:
+    type: await
+    label: All sample tests finished
+    with: { event: children, timeout_hours: 72, on_timeout: escalate }
+  attest_owner:
+    type: attest
+    label: Control owner attests
+    with:
+      statement: "I confirm the control operated effectively for the period, subject to the exceptions noted."
+      roles: [CONTROL_OWNER]
+  report:
+    type: report
+    label: Test report
+    with: { name: control-test-report }
+
+group_by: [child_status]
+group_label: "Sample tests {child_status}"
+
+rules:
+  - id: all-tested
+    when: child_status == 'completed'
+    then: { status: proposed, comment: "{count} sample test(s) completed and signed off." }
+
+reasoning:
+  reasoner: none
+
+review:
+  roles: [CONTROL_TESTER]
+
+retention:
+  days: 2555

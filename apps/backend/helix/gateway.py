@@ -116,6 +116,9 @@ class CallContext:
     write_approved_by: str | None = None
     # the one write tool the record step may call for escalation tickets
     escalation_tool: str | None = None
+    # write tools a released or person-approved step may call (post, outreach),
+    # with write_approved_by naming who approved
+    write_tools: frozenset[str] = frozenset()
     # Data protection for this case (helix/governance.py). Built from the
     # allowed tools when not given, so every call is protected by default.
     protector: Protector | None = None
@@ -195,7 +198,8 @@ async def call(ctx: CallContext, qualified_tool: str, arguments: dict,
             denied = f"{qualified_tool} is not allowed for capability {ctx.capability_id}"
         elif found[2].access == "write" and (for_model or not ctx.write_approved_by or not (
                 ctx.requested_by == "publish"
-                or (ctx.requested_by == "escalate" and qualified_tool == ctx.escalation_tool))):
+                or (ctx.requested_by == "escalate" and qualified_tool == ctx.escalation_tool)
+                or qualified_tool in ctx.write_tools)):
             denied = (f"{qualified_tool} writes to a bank system: only the publish step may "
                       "call it, after a second person approves (or the record step, for the "
                       "capability's escalation tickets, after review)")

@@ -84,8 +84,8 @@ def _my_action(c: Case, m: Manifest, caller: Caller, deciders: set[str]) -> str 
         return "review"
     if (step := gate_step(c.status)) and caller.has_any_role(m.gate(step).roles):
         return "gate"
-    if (c.status == "awaiting_publish" and m.publish
-            and caller.has_any_role(m.publish.approver_roles) and caller.user_id not in deciders):
+    if (c.status == "awaiting_publish" and m.release_step()
+            and caller.has_any_role(m.release_roles()) and caller.user_id not in deciders):
         return "release"
     return None
 

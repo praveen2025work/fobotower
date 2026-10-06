@@ -68,16 +68,22 @@ async def case_lock(case_id: str):
             await conn.commit()
 
 
-async def _status_after_run(app, case_id: str) -> str:
+async def _status_after_run(app, case_id: str, m: Manifest | None = None) -> str:
     snapshot = await app.aget_state(_config(case_id))
+    release = m.release_step() if m else "publish"
+    waits = m.waits() if m else []
     async with get_session() as s:
         case = await s.get(Case, case_id)
         if "review" in snapshot.next:
             case.status = "awaiting_review"
             if case.review_ready_at is None:           # the start of measured review time
                 case.review_ready_at = func.now()
-        elif "publish" in snapshot.next:
+        elif release and release in snapshot.next:
             case.status = "awaiting_publish"
+        elif snapshot.next and snapshot.next[0] in waits:
+            if not case.status.startswith("waiting_"):
+                case.waiting_since = func.now()
+            case.status = f"waiting_{snapshot.next[0]}"
         elif snapshot.next:
             case.status = f"paused_before_{snapshot.next[0]}"
         elif case.status == "running":     # ended without a step setting the outcome
@@ -106,6 +112,24 @@ async def fail(case_id: str, e: BaseException) -> None:
 # pause is a tollgate, crossed only when a person passes it.
 _CROSSES = {"review": {"decisions"}, "publish": {"publish_approval"}}
 _GATE = {"gates_passed", "gate_notes"}
+TERMINAL = ("completed", "failed", "stopped", "escalated")
+
+
+def _crosses(m: Manifest, step: str) -> set[str]:
+    if step == m.release_step():
+        return {"publish_approval"}
+    if step in m.waits():
+        return {"events"}
+    return _CROSSES.get(step, _GATE)
+
+
+async def children_done(case_id: str) -> dict | None:
+    """The outcome of a case's child cases, once every one has finished; else None."""
+    async with get_session() as s:
+        kids = (await s.execute(select(Case).where(Case.parent_case_id == case_id))).scalars().all()
+    if not kids or any(k.status not in TERMINAL for k in kids):
+        return None
+    return {k.case_id: {"status": k.status, "outcome": k.outcome, "subject": k.subject} for k in kids}
 
 _SPANS = {"open": "case.run", "resume": "review.resume", "publish": "publish.release",
           "recover": "case.recover"}
@@ -131,11 +155,11 @@ async def run_case(case_id: str, kind: str = "open", update: dict | None = None)
                     app = build_graph(m.steps, m.pause_before, cp, m.step_types())
                     snap = await app.aget_state(config)
                     started = snap.created_at is not None
-                    paused_at = snap.next[0] if snap.next and snap.next[0] in m.pause_before else None
-                    if paused_at and (not update or not set(update) <= _CROSSES.get(paused_at, _GATE)):
+                    paused_at = snap.next[0] if snap.next and snap.next[0] in m.pauses() else None
+                    if paused_at and (not update or not set(update) <= _crosses(m, paused_at)):
                         # A pause is crossed only with what it waits for — never by
                         # a bare resume (a recovery must not skip a person's sign-off).
-                        return await _status_after_run(app, case_id)
+                        return await _status_after_run(app, case_id, m)
                     if update:
                         await app.aupdate_state(config, update)
                     await app.ainvoke(None if started else initial_state(case, m), config)
@@ -146,14 +170,27 @@ async def run_case(case_id: str, kind: str = "open", update: dict | None = None)
                         await app.aupdate_state(config, {"decisions": []})
                         await app.ainvoke(None, config)
                     after = await app.aget_state(config)
-                    if after.next and after.next[0] == "publish" and not any(
+                    while after.next and after.next[0] in m.waits():
+                        # Waiting for child cases that have all finished already:
+                        # cross at once with their outcomes.
+                        cfg = m.step_config(after.next[0])
+                        done = await children_done(case_id) if getattr(cfg, "event", "") == "children" else None
+                        if done is None:
+                            break
+                        events = dict((after.values or {}).get("events") or {})
+                        events[after.next[0]] = {"children": done}
+                        await app.aupdate_state(config, {"events": events})
+                        await app.ainvoke(None, config)
+                        after = await app.aget_state(config)
+                    release = m.release_step()
+                    if after.next and after.next[0] == release and not any(
                             d.get("action") == "approve" for d in (after.values or {}).get("decisions", [])):
                         # Nothing approved means nothing to write: no one is asked to
                         # release an empty write-back; publish runs and writes nothing.
                         await app.aupdate_state(config, {"publish_approval": {
                             "approved_by": None, "approved_at": now_iso(), "nothing_to_write": True}})
                         await app.ainvoke(None, config)
-                    status = await _status_after_run(app, case_id)
+                    status = await _status_after_run(app, case_id, m)
                     values = (await app.aget_state(config)).values or {}
                     if values.get("follow_up_of") and not values.get("items"):
                         status = await _nothing_new(case_id)
@@ -163,6 +200,7 @@ async def run_case(case_id: str, kind: str = "open", update: dict | None = None)
                 status = "failed"
         if status == "failed":
             await _announce(case_id)
+            await _wake_parent(case_id)
             return status
         if trace_id and kind == "open":
             async with get_session() as s:
@@ -170,7 +208,44 @@ async def run_case(case_id: str, kind: str = "open", update: dict | None = None)
                 row.trace_id = row.trace_id or trace_id
                 await s.commit()
     await _announce(case_id)
+    await _wake_parent(case_id)
     return status
+
+
+async def _wake_parent(case_id: str) -> None:
+    """A child case finished: when all its siblings have too and the parent is
+    waiting for them, the parent continues with their outcomes."""
+    async with get_session() as s:
+        case = await s.get(Case, case_id)
+        parent = await s.get(Case, case.parent_case_id) if case and case.parent_case_id else None
+    if parent is None or case.status not in TERMINAL or not parent.status.startswith("waiting_"):
+        return
+    done = await children_done(parent.case_id)
+    if done is None:
+        return
+    step = parent.status[len("waiting_"):]
+    m = await pinned(parent)
+    if getattr(m.step_config(step), "event", "") != "children":
+        return
+    await deliver(parent.case_id, step, {"children": done})
+
+
+async def deliver(case_id: str, step: str, payload: dict) -> None:
+    """An event for a case waiting at an `await` step: it continues with it."""
+    async with case_lock(case_id):
+        async with checkpointer() as cp:
+            async with get_session() as s:
+                case = await s.get(Case, case_id)
+            m = await pinned(case)
+            app = build_graph(m.steps, m.pause_before, cp, m.step_types())
+            values = (await app.aget_state(_config(case_id))).values or {}
+        events = dict(values.get("events") or {})
+        events[step] = payload
+        async with get_session() as s:
+            row = await s.get(Case, case_id)
+            row.status, row.waiting_since = "running", None
+            await s.commit()
+    await submit(case_id, "event", {"events": events})
 
 
 async def _announce(case_id: str) -> None:

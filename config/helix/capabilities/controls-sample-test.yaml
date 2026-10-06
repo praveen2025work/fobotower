@@ -1,0 +1,44 @@
+# One sampled item's control test (a child case of controls.operating-test):
+# the test attributes, each performed and evidenced or not; a tester signs off.
+
+id: controls.sample-test
+name: Control test — one sample
+description: One sampled item's control test, opened by the operating-effectiveness test; each attribute performed and evidenced, signed off by a tester.
+
+owners:
+  people: [tess, owen]
+  role: HELIX_CONTROLS_OWNER
+  four_eyes: true
+
+case:
+  label: Sample test
+  item_label: Attribute
+  key: [entity, date, item_ref]
+  subject: "{item_ref} · {date}"
+  scopes: { entity: entity }
+
+items:
+  load: { tool: controls.evidence, args: { entity: $case.entity, date: $case.date, item_ref: $case.item_ref } }
+  id_field: attribute
+  display: [attribute, performed, evidence]
+
+steps: [load, group, reason, draft, validate, review, record]
+group_by: [performed]
+group_label: "Performed: {performed}"
+
+rules:
+  - id: performed
+    when: performed == 'True'
+    then: { status: proposed, comment: "{count} attribute(s) performed and evidenced." }
+  - id: not-performed
+    when: performed == 'False'
+    then: { status: escalated, comment: "{count} attribute(s) not performed: a test exception.", reason: TEST_EXCEPTION }
+
+reasoning:
+  reasoner: none
+
+review:
+  roles: [CONTROL_TESTER]
+
+retention:
+  days: 2555

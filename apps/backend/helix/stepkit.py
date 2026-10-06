@@ -363,3 +363,7 @@ def parse(type_name: str, raw: dict) -> Any:
 def catalogue() -> list[dict]:
     return [{"name": t.name, "label": t.label, "says": t.says, "configurable": True,
              "schema": t.config.model_json_schema(by_alias=True)} for t in TYPES.values()]
+
+
+# The step types of phases 2–6 register themselves (helix/steps_v2.py).
+from helix import steps_v2  # noqa: E402,F401

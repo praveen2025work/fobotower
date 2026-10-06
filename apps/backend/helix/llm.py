@@ -70,6 +70,16 @@ class AskRequest:
 
 
 @dataclass(frozen=True)
+class ExtractRequest:
+    """Fields to read from a document's text (an `extract` step). The answer
+    for each field is {value, quote, confidence}; the quote must be the
+    document's own words — the step checks it is, and sends anything else to a person."""
+    case_id: str
+    text: str
+    fields: list[dict]         # [{name, hint, required}]
+
+
+@dataclass(frozen=True)
 class AskResult:
     answer: str
     model: str | None = None
@@ -157,11 +167,25 @@ class StubLlm:
             comment += f" Similar to a prior approved explanation: \"{prior}\""
         if request.reviewer_note:
             comment += f" Re-checked as the reviewer asked: \"{request.reviewer_note}\"."
-        if request.notes:
-            comment += f" Took into account {len(request.notes)} note(s) from the tollgate."
+        context = [n for n in request.notes if n.startswith("context · ")]
+        notes = [n for n in request.notes if not n.startswith("context · ")]
+        if notes:
+            comment += f" Took into account {len(notes)} note(s) from the tollgate."
+        if context:
+            comment += " Read " + ", ".join(n[10:].split(":", 1)[0] for n in context) + "."
         sections = {s["id"]: _stub_section(s, request, comment, seen, prior) for s in request.sections}
         return ReasonResult(status="proposed", comment=comment, model="stub", sections=sections)
 
+
+    async def extract(self, request: "ExtractRequest") -> dict:
+        """The stub reads `name: value` lines only (a real model reads prose)."""
+        out = {}
+        for f in request.fields:
+            label = f.get("hint") or f["name"].replace("_", " ")
+            m = re.search(rf"(?im)^\s*{re.escape(label)}\s*[:=]\s*(.+?)\s*$", request.text)
+            if m:
+                out[f["name"]] = {"value": m.group(1), "quote": m.group(0).strip(), "confidence": 0.8}
+        return out
 
     async def ask(self, request, tools):
         from helix.gateway import tool_schema

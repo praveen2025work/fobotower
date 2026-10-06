@@ -78,7 +78,7 @@ async def case_changed(case_id: str) -> None:
         "awaiting_review": ("review_needed", f"{what} needs your review",
                             (case.draft or {}).get("headline", ""), m.review.roles, []),
         "awaiting_publish": ("release_needed", f"{what} needs a second person to release it",
-                             f"Reviewed by {', '.join(deciders)}", m.publish.approver_roles if m.publish else [], []),
+                             f"Reviewed by {', '.join(deciders)}", m.release_roles(), []),
         "completed": ("published" if case.outcome == "published" else "completed",
                       f"{what} {'published' if case.outcome == 'published' else 'completed'}",
                       "", [], [case.opened_by, *deciders]),

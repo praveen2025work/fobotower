@@ -420,6 +420,21 @@ async def answer_request_with_file(request_id: str, request: Request, answer: st
     return await asks.answer(request_id, answer, await caller(request), file=upload)
 
 
+@app.post("/api/cases/{case_id}/events/{step}")
+@_errors
+async def case_event(case_id: str, step: str, body: dict, request: Request) -> dict:
+    """An event a waiting case continues with (a reply, a confirmation, a file
+    received): from a system with the event secret, or from a person."""
+    sent = request.headers.get("X-Helix-Event-Secret")
+    payload = body.get("payload", body) if isinstance(body, dict) else {}
+    if sent is not None:
+        secret = settings().event_secret
+        if not secret or not hmac.compare_digest(sent.encode(), secret.encode()):
+            raise HTTPException(401, "bad event secret")
+        return await cases.deliver_event(case_id, step, payload, None)
+    return await cases.deliver_event(case_id, step, payload, await caller(request))
+
+
 @app.post("/api/requests/{request_id}/cancel")
 @_errors
 async def cancel_request(request_id: str, c: Caller = Depends(caller)) -> dict:
@@ -583,6 +598,8 @@ async def case_document(case_id: str, name: str, c: Caller = Depends(caller)) ->
     """A report this case published (e.g. its PDF), for people who can see the case."""
     from helix.mcp_services.documents import DocumentError, load_report
 
+    if kept := await cases.case_report(case_id, name, c):
+        return Response(kept[0], media_type=kept[1], headers={"Content-Disposition": f'attachment; filename="{name}"'})
     scope, name = await cases.published_document(case_id, name, c)
     try:
         content, content_type = await load_report(scope, name)

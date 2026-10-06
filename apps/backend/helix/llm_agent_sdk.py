@@ -291,6 +291,32 @@ async def _ask(self: "ClaudeAgentSdkAdapter", request, tools):
 
 ClaudeAgentSdkAdapter.ask = _ask
 
+EXTRACT_RULES = """
+You read fields from one document for a governed banking workflow. For each
+field give the value, the exact quote from the document it comes from (copied
+character for character), and your confidence from 0 to 1. If the document
+does not state it, leave the field out. Never infer or calculate a value.
+Reply with the structured result only.
+""".strip()
+
+
+async def _extract(self: "ClaudeAgentSdkAdapter", request) -> dict:
+    field = {"type": "object", "properties": {"value": {"type": "string"}, "quote": {"type": "string"},
+                                              "confidence": {"type": "number", "minimum": 0, "maximum": 1}},
+             "required": ["value", "quote", "confidence"], "additionalProperties": False}
+    schema = {"type": "object", "additionalProperties": False,
+              "properties": {f["name"]: {**field, "description": f.get("hint", "")} for f in request.fields}}
+    options = ClaudeAgentOptions(system_prompt=EXTRACT_RULES, tools=[], strict_mcp_config=True,
+                                 permission_mode="dontAsk", max_turns=2, model=self.model, effort="low",
+                                 output_format={"type": "json_schema", "schema": schema})
+    with span("llm.agent_sdk.extract", kind=AGENT, case_id=request.case_id, model=self.model) as sp:
+        out = _parse_any(await self._run(json.dumps({"fields": request.fields, "document": request.text}), options))
+        set_output(sp, out)
+        return {k: v for k, v in out.items() if isinstance(v, dict)}
+
+
+ClaudeAgentSdkAdapter.extract = _extract
+
 JUDGE_SCHEMA = {"type": "object", "properties": {"score": {"type": "number", "minimum": 0, "maximum": 1},
                                                  "reason": {"type": "string"}},
                 "required": ["score"], "additionalProperties": False}

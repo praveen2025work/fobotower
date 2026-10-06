@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import clsx from "clsx";
 import { CalendarClock, Power } from "lucide-react";
 
-import { useCapabilities, usePlatform, useSchedules, useSetSwitch, useSwitches } from "../../api/helix";
+import { useCapabilities, usePlatform, useSchedules, useSetSwitch, useSwitches } from "../../api/aof";
 import { ErrorState, formatTime } from "../ui";
 
 export function SwitchesPanel() {

@@ -4,7 +4,7 @@
 import clsx from "clsx";
 import { Clock } from "lucide-react";
 
-import type { DueState } from "../api/helix";
+import type { DueState } from "../api/aof";
 import { formatTime } from "./ui";
 
 export function relativeTo(at: string): string {

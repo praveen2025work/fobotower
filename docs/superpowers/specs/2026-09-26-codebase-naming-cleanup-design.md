@@ -7,9 +7,9 @@
 A developer opening this repo should know what each folder is for from its
 name. Today they can't: the backend has two sibling packages called `api/` and
 `app/`; "graph" means both the knowledge graph and the LangGraph workflow;
-`helix`, `recon`, `cases` and `fixtures` are codenames or misleading words; and
+`aof`, `recon`, `cases` and `fixtures` are codenames or misleading words; and
 the console carries a retired UI (`components/fobo`, served at `/classic`)
-beside the current one (`components/helix`, served at `/` **and** `/fobo`).
+beside the current one (`components/aof`, served at `/` **and** `/fobo`).
 
 The user asked to **keep only the code that is needed** and to **rename every
 module with a name that says what it does**, including the API paths.
@@ -62,7 +62,7 @@ apps/backend/                         (was apps/api — the FastAPI service)
       dependencies.py                                                 (was deps.py)
       investigations.py               open / run / read an investigation (was cases.py)
       routes/
-        console.py                    board, rec detail, chat, decisions (was routes/helix.py + decisions logic)
+        console.py                    board, rec detail, chat, decisions (was routes/aof.py + decisions logic)
         investigations.py             run one, trace                  (was routes/recs.py + sessions.py)
         workflow_config.py            versions, drafts, graph         (was routes/workflow.py)
     investigation/                    the LangGraph investigation    (was app/workflow/)
@@ -73,7 +73,7 @@ apps/backend/                         (was apps/api — the FastAPI service)
     knowledge_graph/                  books, desks, lineage (bitemporal) (was app/graph/)
       queries/ (was graph/queries/), repository.py, ontology.py, entitlement.py, errors.py
     cause_checks/                     C1–C6 cause checks              (was app/recon/)
-    console_views/                    what the console shows          (was app/helix/)
+    console_views/                    what the console shows          (was app/aof/)
     reports/                          analytics, execution trace      (was app/queries/)
     reasoning/, playbook/, grounding/, db/, contracts/   (unchanged names)
   seed_data/                          demo scenario loaded on first request (was fixtures/)
@@ -81,8 +81,8 @@ apps/backend/                         (was apps/api — the FastAPI service)
 apps/console/src/
   app/page.js                         the console, at "/"
   app/fobo/page.js                    redirects to "/"  (old bookmarks)
-  components/                         (was components/helix/, flattened)
-    ConsoleApp.jsx (was HelixApp.jsx), board/, adjustments/, session/, workflow/, drawers/, mcp/, ui/, data/, lib/
+  components/                         (was components/aof/, flattened)
+    ConsoleApp.jsx (was AofApp.jsx), board/, adjustments/, session/, workflow/, drawers/, mcp/, ui/, data/, lib/
   lib/ (apiClient, uuid), styles/
 docs/ARCHITECTURE.md                  one entry per folder: what it is, who uses it
 ```
@@ -96,10 +96,10 @@ The Python distribution becomes `fobo-backend`; `pyproject.toml` packages
 
 | Old | New |
 |---|---|
-| `GET /api/helix/board` | `GET /api/board` |
-| `GET /api/helix/recs/{id}` | `GET /api/recs/{id}` (the console's rec view) — *amended during review:* removed instead; nothing in the console called it (`fetchRec` was only mocked in a test), and `GET /api/board` already returns the same per-rec view |
-| `POST /api/helix/recs/{id}/messages` | `POST /api/recs/{id}/messages` |
-| `POST /api/helix/recs/{id}/decisions` | `POST /api/recs/{id}/decisions` (the console's decision; the classic body shape is dropped) |
+| `GET /api/aof/board` | `GET /api/board` |
+| `GET /api/aof/recs/{id}` | `GET /api/recs/{id}` (the console's rec view) — *amended during review:* removed instead; nothing in the console called it (`fetchRec` was only mocked in a test), and `GET /api/board` already returns the same per-rec view |
+| `POST /api/aof/recs/{id}/messages` | `POST /api/recs/{id}/messages` |
+| `POST /api/aof/recs/{id}/decisions` | `POST /api/recs/{id}/decisions` (the console's decision; the classic body shape is dropped) |
 | `GET /api/recs/{id}` (classic detail; also used to *start* a run) | `POST /api/recs/{id}/investigate` — runs the investigation if it has not run, returns `{session_id, status, workflow_version}` |
 | `GET /api/recs/{id}/trace` | unchanged |
 | `POST /api/sessions/{id}/investigate`, `GET /api/sessions/{id}` | removed (use `POST /api/recs/{id}/investigate`) |
@@ -107,7 +107,7 @@ The Python distribution becomes `fobo-backend`; `pyproject.toml` packages
 
 Renamed functions: `open_case` → `open_investigation`, `read_case` →
 `read_investigation`, `ensure_fixtures` → `ensure_seed_data`,
-`session_id_for` stays. The `helixApi.js` client becomes `consoleApi.js`.
+`session_id_for` stays. The `aofApi.js` client becomes `consoleApi.js`.
 
 ## 6. Verification
 

@@ -5,7 +5,7 @@
 import { useState } from "react";
 import { Database } from "lucide-react";
 
-import { useDataContract } from "../../api/helix";
+import { useDataContract } from "../../api/aof";
 import { Card, ErrorState, Loading } from "../ui";
 
 export default function DataContractPanel({ capabilityId, teamGroup }: { capabilityId: string; teamGroup?: string }) {

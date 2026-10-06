@@ -7,7 +7,7 @@ import { Link } from "react-router-dom";
 import clsx from "clsx";
 import { AlarmClock, GitFork, Lock, Mail, ShieldCheck } from "lucide-react";
 
-import type { CaseDetail, Group } from "../../api/helix";
+import type { CaseDetail, Group } from "../../api/aof";
 import StatusBadge from "../StatusBadge";
 import { formatTime, formatValue } from "../ui";
 

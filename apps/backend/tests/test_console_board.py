@@ -125,8 +125,8 @@ async def test_the_analysis_turn_carries_the_investigations_calls(client):
     prime = _rec(await _board(client), "R-1055")
     tools = [f"{c['server']}.{c['tool']}" for c in prime["calls"]]
     assert tools == [
-        "mbrec.get_breaks", "mbrec.get_break_legs", "helix.kg_lineage",
-        "helix.similar_breaks", "helix.grounding_check",
+        "mbrec.get_breaks", "mbrec.get_break_legs", "aof.kg_lineage",
+        "aof.similar_breaks", "aof.grounding_check",
     ]
     grounding = prime["calls"][-1]
     assert grounding["summary"] == "1 not traced"
@@ -138,7 +138,7 @@ async def test_a_cleared_session_reads_back_its_breaks_once(client):
     await _board(client)
     rates = _rec(await _board(client), "R-1042")
     assert [f"{c['server']}.{c['tool']}" for c in rates["calls"]] == [
-        "mbrec.get_breaks", "helix.grounding_check",
+        "mbrec.get_breaks", "aof.grounding_check",
     ]
 
 

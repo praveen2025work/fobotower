@@ -5,7 +5,7 @@ import { useRef, useState } from "react";
 import { FileArchive, Paperclip, Upload } from "lucide-react";
 
 import { download } from "../../api/client";
-import { useUploadEvidence, type CaseDetail } from "../../api/helix";
+import { useUploadEvidence, type CaseDetail } from "../../api/aof";
 import { ErrorState, formatTime } from "../ui";
 
 export default function EvidencePanel({ c, canUpload }: { c: CaseDetail; canUpload: boolean }) {

@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 
 export type Theme = "light" | "dark";
 
-const KEY = "helix.theme";
+const KEY = "aof.theme";
 
 export function storedTheme(): Theme | null {
   try {

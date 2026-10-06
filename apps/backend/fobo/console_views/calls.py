@@ -132,7 +132,7 @@ class SessionTools:
         ]
         failed = sum(1 for a in adjs if not a["grounded"])
         await self._record(
-            "Agent One Finance", "helix.grounding_check",
+            "Agent One Finance", "aof.grounding_check",
             {"sessionId": self._session_id, "adjIds": [a["id"] for a in adjs]},
             rows, f"{len(adjs) - failed}/{len(adjs)} figures traced", started,
         )
@@ -140,6 +140,6 @@ class SessionTools:
     async def session_state(self, rows: list[dict]) -> None:
         started = time.perf_counter()
         await self._record(
-            "Agent One Finance", "helix.get_session_state", {"sessionId": self._session_id},
+            "Agent One Finance", "aof.get_session_state", {"sessionId": self._session_id},
             rows, f"{len(rows)} patterns", started,
         )

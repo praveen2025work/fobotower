@@ -5,7 +5,7 @@
 import clsx from "clsx";
 import { Pause, ShieldCheck, Users, Wrench } from "lucide-react";
 
-import { useFlow } from "../../api/helix";
+import { useFlow } from "../../api/aof";
 import { ErrorState, Loading } from "../ui";
 
 export default function FlowDiagram({ capabilityId, teamGroup }: { capabilityId: string; teamGroup?: string | null }) {

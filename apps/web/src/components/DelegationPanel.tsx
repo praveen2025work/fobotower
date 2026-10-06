@@ -5,7 +5,7 @@
 import { useState } from "react";
 import { UserCheck } from "lucide-react";
 
-import { useDelegate, useDelegations, useDevUsers, useEndDelegation } from "../api/helix";
+import { useDelegate, useDelegations, useDevUsers, useEndDelegation } from "../api/aof";
 import { ErrorState, formatTime } from "./ui";
 
 function inDays(n: number): string {

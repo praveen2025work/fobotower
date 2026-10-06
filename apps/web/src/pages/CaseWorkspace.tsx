@@ -45,7 +45,7 @@ import {
   type Group,
   type ReviewFlag,
   type ToolCall,
-} from "../api/helix";
+} from "../api/aof";
 import { ActionCard, EscalationCard, ReleaseSummary } from "../components/case/CaseActions";
 import CaseChat from "../components/case/CaseChat";
 import EvidencePanel from "../components/case/EvidencePanel";
@@ -61,7 +61,7 @@ import { Empty, ErrorState, Loading, WorkflowStepper, currentStep, formatTime, f
 
 // Set in the office to link a case to its Phoenix trace, e.g.
 // https://phoenix.internal/projects/<project>/traces/{traceId}
-const TRACE_URL = import.meta.env.VITE_HELIX_TRACE_URL as string | undefined;
+const TRACE_URL = import.meta.env.VITE_AOF_TRACE_URL as string | undefined;
 
 const decidedLabel = (action: string) => (action === "approve" ? "approved" : "rejected");
 

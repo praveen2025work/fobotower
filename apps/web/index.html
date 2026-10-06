@@ -12,7 +12,7 @@
       // Apply the saved theme (light by default) before the first paint — see src/theme.ts.
       (function () {
         var t = null;
-        try { t = localStorage.getItem("helix.theme"); } catch (e) {}
+        try { t = localStorage.getItem("aof.theme"); } catch (e) {}
         if (t !== "light" && t !== "dark") t = "light";
         document.documentElement.dataset.theme = t;
       })();

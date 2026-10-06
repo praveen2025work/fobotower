@@ -18,7 +18,7 @@ describe("Barclays themes", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Switch to dark theme" }));
     expect(document.documentElement.dataset.theme).toBe("dark");
-    expect(localStorage.getItem("helix.theme")).toBe("dark");
+    expect(localStorage.getItem("aof.theme")).toBe("dark");
 
     fireEvent.click(screen.getByRole("button", { name: "Switch to light theme" }));
     expect(document.documentElement.dataset.theme).toBe("light");
@@ -36,7 +36,7 @@ describe("Barclays themes", () => {
   });
 
   it("opens in the saved theme", () => {
-    localStorage.setItem("helix.theme", "dark");
+    localStorage.setItem("aof.theme", "dark");
     renderAt("/", "/", <Layout onUserChange={() => {}} />);
     expect(document.documentElement.dataset.theme).toBe("dark");
     expect(screen.getByRole("button", { name: "Switch to light theme" })).toBeInTheDocument();

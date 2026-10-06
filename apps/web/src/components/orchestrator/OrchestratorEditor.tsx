@@ -12,7 +12,7 @@ import clsx from "clsx";
 import { stringify } from "yaml";
 import { AlertTriangle, CheckCircle2, Hand, Loader2, Lock, Power, Send, Undo2 } from "lucide-react";
 
-import { useConfigCheck, useDraftGroup, usePlatform, useSubmitDraft, type GroupConfig } from "../../api/helix";
+import { useConfigCheck, useDraftGroup, usePlatform, useSubmitDraft, type GroupConfig } from "../../api/aof";
 import { ErrorState } from "../ui";
 import { Field, type Ctx } from "./fields";
 import { allowed, changedPaths, get, groupSet, preview, setPath, type Json } from "./paths";

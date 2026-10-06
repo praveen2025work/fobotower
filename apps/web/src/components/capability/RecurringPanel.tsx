@@ -4,7 +4,7 @@
 import { Link } from "react-router-dom";
 import { Repeat } from "lucide-react";
 
-import { useRecurring } from "../../api/helix";
+import { useRecurring } from "../../api/aof";
 import { Card, Empty, ErrorState, Loading } from "../ui";
 
 export default function RecurringPanel({ capabilityId, teamGroup }: { capabilityId: string; teamGroup?: string }) {

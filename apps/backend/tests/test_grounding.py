@@ -79,14 +79,14 @@ async def test_gather_records_one_call_per_retrieval():
         assert n >= 4, f"expected breaks, lineage, priors and movements; got {n}"
 
 
-async def test_gather_records_the_mcp_servers_helix_reads_from():
+async def test_gather_records_the_mcp_servers_aof_reads_from():
     async with get_session() as s:
         st = await _prepare(s)
         st |= await resolve(st, session=s)
         await gather(st, session=s)
         await s.commit()
         apps = {r["application"] for r in await calls_for(s, SID)}
-        assert {"MBRec", "HelixKG"} <= apps
+        assert {"MBRec", "AofKG"} <= apps
 
 
 async def test_a_failed_retrieval_is_recorded_as_failed_not_omitted():

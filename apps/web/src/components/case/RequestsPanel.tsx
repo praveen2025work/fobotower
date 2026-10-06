@@ -6,7 +6,7 @@
 import { useState } from "react";
 import { MessageCircleQuestion, Send, X } from "lucide-react";
 
-import { useAskForEvidence, useCancelRequest, type CaseDetail } from "../../api/helix";
+import { useAskForEvidence, useCancelRequest, type CaseDetail } from "../../api/aof";
 import { download } from "../../api/client";
 import StatusBadge from "../StatusBadge";
 import { ErrorState, formatTime } from "../ui";

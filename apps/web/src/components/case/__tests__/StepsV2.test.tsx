@@ -1,7 +1,7 @@
 import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import type { CaseDetail, Group } from "../../../api/helix";
+import type { CaseDetail, Group } from "../../../api/aof";
 import { renderAt } from "../../../test/render";
 import { CaseLinks, GroupSteps } from "../StepsV2";
 

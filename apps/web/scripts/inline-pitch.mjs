@@ -1,13 +1,13 @@
 // Folds the pitch page (public/pitch/index.html) and its screenshots into one
 // HTML file that opens straight from disk or an email attachment:
-//   node scripts/inline-pitch.mjs  →  docs/helix/pitch/helix-pitch.html
+//   node scripts/inline-pitch.mjs  →  docs/agent-one-finance/pitch/agent-one-finance-pitch.html
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const web = join(dirname(fileURLToPath(import.meta.url)), "..");
 const src = join(web, "public", "pitch");
-const out = join(web, "..", "..", "docs", "helix", "pitch", "helix-pitch.html");
+const out = join(web, "..", "..", "docs", "agent-one-finance", "pitch", "agent-one-finance-pitch.html");
 
 const html = readFileSync(join(src, "index.html"), "utf8")
   .replace(/(["'])img\/([\w.-]+\.png)\1/g, (_, q, name) =>

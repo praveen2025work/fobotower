@@ -17,7 +17,7 @@ const json = (status: number, body: unknown) =>
 
 export function installSnapshot(snap: Snapshot, apiBase = "/api"): void {
   try {
-    localStorage.setItem("helix.user", snap.user);
+    localStorage.setItem("aof.user", snap.user);
   } catch {
     /* storage unavailable: the app falls back to its default user */
   }

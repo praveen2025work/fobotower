@@ -1,5 +1,5 @@
 // Folds the snapshot build (dist-snapshot/snapshot.html + its one script and one
-// stylesheet) into a single self-contained file: dist-snapshot/helix-snapshot.html.
+// stylesheet) into a single self-contained file: dist-snapshot/agent-one-finance-snapshot.html.
 // A module script loaded by URL is blocked when a page is opened from disk
 // (file://); inline, it runs anywhere, with no server and no network.
 import fs from "fs";
@@ -15,6 +15,6 @@ html = html.replace(/<script type="module"[^>]*src="([^"]+)"[^>]*><\/script>/g,
   (_, src) => `<script type="module">\n${asset(src).replace(/<\/script/gi, "<\\/script")}\n</script>`);
 if (/src="\.\/assets|href="\.\/assets/.test(html)) throw new Error("an asset was not inlined");
 
-const out = new URL("helix-snapshot.html", dir);
+const out = new URL("agent-one-finance-snapshot.html", dir);
 fs.writeFileSync(out, html);
 console.log(`single-file snapshot: ${out.pathname} (${(html.length / 1024).toFixed(0)} KB)`);

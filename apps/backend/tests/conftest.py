@@ -16,7 +16,7 @@ TEST_DATABASE_URL = os.getenv(
 )
 os.environ["FOBO_DATABASE_URL"] = TEST_DATABASE_URL
 # Agent One Finance case runs finish before the call returns, unless a test asks otherwise.
-os.environ.setdefault("HELIX_RUN_MODE", "inline")
+os.environ.setdefault("AOF_RUN_MODE", "inline")
 
 import asyncpg  # noqa: E402
 import pytest  # noqa: E402

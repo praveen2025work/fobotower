@@ -1,0 +1,80 @@
+# FOBO on Agent One Finance
+
+**Date:** 2026-10-04. The FOBO investigation console (`apps/backend/fobo`, `apps/console`)
+is unchanged and keeps running. This page shows how the same behaviour is expressed on
+Agent One Finance — as configuration of the shared reconciliation capability — so FOBO can move onto the
+platform when the team is ready, and other rec groups get the same machinery.
+
+**Where it lives:**
+
+| What | Where |
+|---|---|
+| The FOBO rec groups (CATS vs MOTIF) | Prime: `config/agent-one-finance/groups/recon.investigation/cats-motif.yaml` · Rates: `cats-motif-rates.yaml` |
+| FOBO's reference lineage (books → desks → teams) | `config/agent-one-finance/knowledge/fobo-reference.yaml` |
+| Behaviour tests | `apps/backend/tests/agent_one_finance/test_fobo_playbook.py` |
+| Worked examples (Prime vs Rates) | [`examples.md`](examples.md) |
+
+**In the office, the breaks come from MB Rec,** which has already reconciled CATS to MOTIF.
+That setup is *Break investigation* with the `fobo-prime` group: it reads MB Rec's open breaks
+(`load`), adds timing checks and a tollgate for the desk's input, and never re-matches. See
+[Configure it: FOBO on MB Rec's breaks](guide/configure-fobo-mb-rec.md). The run below is the
+matching variant (`recon.investigation`), for where Agent One Finance itself must match the two
+systems. Its playbook is the same.
+
+**How a FOBO run goes on Agent One Finance (matching variant):**
+
+```
+match (CATS vs MOTIF) → enrich (break snapshots) → resolve (book → desk → team, as of the COB)
+→ classify (C1–C6, all run, negatives kept) → group (category × side)
+→ reason (verdict table | model + SME) → draft → validate (grounding) → review → record
+```
+
+## Parity
+
+Status: **Same** = the same rule, now as Agent One Finance configuration ·
+**Different** = the same purpose, reached another way · **Not yet**.
+
+| FOBO | On Agent One Finance | Status |
+|---|---|---|
+| Playbook YAML (`config/playbook/fobo-cats-vs-motif.yaml`), owned by Product Control | `playbook:` in the rec group — versioned, four-eyes approved by the group's owners | **Same** |
+| Six cause checks C1–C6 over dated snapshots; all run, negatives kept | `classify` step: `playbook.checks` over `motif.break_snapshots` joined by `enrich`; every result kept on the item | **Same** |
+| Controller wording per cause (`cause_checks/reasons.py`) | `checks[].reason` | **Same** |
+| Categories A–H, deterministic or judgement, with escalation team | `playbook.categories` (`determinism`, `escalate_to`) | **Same** |
+| Default verdict by category × side | `playbook.verdicts` — deterministic categories with a proven side are settled by the table (`decided_by: playbook`) | **Same** |
+| R2: an FO-origin cause never posts (enforced in code) | `playbook.guards` evaluated in code after the table *and* after the model | **Same** |
+| R2: side UNKNOWN is not deterministic | unproven side → the model, marked `sme_review` | **Same** |
+| P1: null threshold ⇒ "requires controller confirmation" | `policy` values left `null` + `playbook.verdict_policy` | **Same** |
+| G/H → ESCALATE whichever side | a table that agrees for every side applies when the side is unknown | **Same** |
+| Bitemporal lineage, `as_of` on every read (PRIME-MB-05 moved desk) | `resolve` step over the knowledge graph, `knowledge.as_of: cob` | **Same** |
+| Priors from prior resolutions, 180-day lookback | approved decisions in the knowledge graph; same subject first, then shared entities (instrument, book); `knowledge.priors_lookback_days: 180` | **Same** |
+| Pattern groups | `group_by: [category, side]` | **Same** |
+| Reasoner: none / session_service / direct | `AOF_LLM_ADAPTER`: none / agent_sdk / stub (or your module) | **Different** — the Agent SDK in-process; no separate session service |
+| Agent reads breaks over a per-session MCP endpoint | the model's tools are served in-process and every call goes through the Agent One Finance gateway (allow-list, scope, audit, protection); a booking-events specialist runs as an Agent SDK subagent with the same tools | **Different** |
+| Grounding: every figure traces to a computed delta | `validate` gate: every figure traces to the run's data or tool results | **Same** |
+| Idempotent controller decisions per pattern | idempotent decisions per group; bulk decide; required comments | **Same** |
+| Reject-and-redraft cycles (`max_review_cycles`) | "Investigate again" with a reviewer note (`review.max_reinvestigations`) | **Different** |
+| Workflow versions, draft → four-eyes approval, a run keeps its version | capability + group versions; each case keeps the exact merged manifest it ran on; `config_sync` for file changes | **Same** |
+| A rec's investigation runs once, then replays its checkpoint | a case runs once per key (re-run makes attempt 2), off the request path; LangGraph checkpoints | **Same** |
+| Chat drawer (ask about a rec) | "Ask about this case" — grounded, audited, protected | **Same** |
+| Execution trace from checkpoints | "Run history" — each step, its time, the state "as it was" | **Same** |
+| Board per COB, notification bell | Inbox and case lists per group; the bell (and Teams via webhook) for review needed, release needed, published, failed, escalated | **Same** |
+| Hours-saved tile (breaks → patterns × 12 min, basis shown) | Overview "Hours saved (30 days)" — items grouped into decisions × the capability's declared manual minutes, with its basis | **Same** |
+| Validation tests FO-1…FO-8, BO-1…BO-6 with evidence | `playbook.tests`: every test on every break — pass, fail, or not run (evidence missing, or threshold unset under P1); blocking failures (FO-1/2/4/7) hold a POST; FO-3 failing needs FO-6 | **Same** |
+| FO-6 findings A/B/C | `playbook.findings`: a finding that indicates a category explains a break no cause check did | **Same** |
+| A rec opens when its run lands (11:00 run, COB) | scheduled cases (`30 6 * * 1-5`, yesterday's COB per book) and events from MOTIF's feed (`POST /api/events`) | **Same** |
+| Controller confirms a POST made under an unset threshold | `review.confirm: tick_and_comment`; "Approve all" leaves such verdicts out (`review.bulk_exclude`) | **Same** (stricter: enforced by the server) |
+| Rec deadline (11:00 run) | `case.due: {from: cob, business_days: 1, at: "11:00"}` — due-soon and missed reminders | **Same** |
+| Fix upstream goes to the owning team | `escalation` raises a ticket for `escalate_to` after the controller decides | **Different** (FOBO named the owner; Agent One Finance also raises the ticket) |
+| `rank` step (order candidate causes) | the first positive check in playbook order is the cause | **Different** |
+
+## Changing FOBO's rules on Agent One Finance
+
+1. As a CATS vs MOTIF owner (frank, gina), open *Capabilities → Reconciliation investigation →
+   Groups → CATS vs MOTIF*.
+2. Edit the YAML — e.g. set `policy.materiality_threshold.value` once Product Control confirms
+   it — and submit.
+3. The other owner approves it.
+4. New runs use the new version; past runs keep theirs.
+
+To change a file in the repo and bring it into a running deployment:
+`python -m agent_one_finance.config_sync`, then approve the drafts.

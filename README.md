@@ -22,9 +22,10 @@ investigation console still runs beside Agent One Finance (below). On Agent One 
 The same platform runs work beyond Finance too (complaint handling is the
 example in this repo).
 
-- **Start here:** [`docs/helix/README.md`](docs/helix/README.md) — what runs where, how to run it, the guides
-- **Platform overview:** [`docs/helix/platform-overview.md`](docs/helix/platform-overview.md) · **pitch page:** [`docs/helix/pitch/helix-pitch.html`](docs/helix/pitch/helix-pitch.html) (open in a browser)
-- **Run Agent One Finance locally:** API on :8300 (`uvicorn helix.web.main:app`), console on :5180 (`apps/web`, `npm run dev`); see the [developer guide](docs/helix/guide/developer-guide.md#3-run-it-locally)
+- **Renamed from Helix:** [`docs/agent-one-finance/renaming.md`](docs/agent-one-finance/renaming.md) — the old → new names for an office deployment
+- **Start here:** [`docs/agent-one-finance/README.md`](docs/agent-one-finance/README.md) — what runs where, how to run it, the guides
+- **Platform overview:** [`docs/agent-one-finance/platform-overview.md`](docs/agent-one-finance/platform-overview.md) · **pitch page:** [`docs/agent-one-finance/pitch/agent-one-finance-pitch.html`](docs/agent-one-finance/pitch/agent-one-finance-pitch.html) (open in a browser)
+- **Run Agent One Finance locally:** API on :8300 (`uvicorn agent_one_finance.web.main:app`), console on :5180 (`apps/web`, `npm run dev`); see the [developer guide](docs/agent-one-finance/guide/developer-guide.md#3-run-it-locally)
 
 ## Use case: the FOBO investigation console (original app)
 

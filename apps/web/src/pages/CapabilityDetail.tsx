@@ -5,7 +5,7 @@ import { Play } from "lucide-react";
 
 import { Users } from "lucide-react";
 
-import { useCapabilities, useCapability, useCases, useGroups, useOpenCase, type Manifest, type TeamGroup } from "../api/helix";
+import { useCapabilities, useCapability, useCases, useGroups, useOpenCase, type Manifest, type TeamGroup } from "../api/aof";
 import EvalsPanel from "../components/capability/EvalsPanel";
 import RecurringPanel from "../components/capability/RecurringPanel";
 import LearningPanel from "../components/capability/LearningPanel";

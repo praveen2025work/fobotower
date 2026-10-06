@@ -9,7 +9,7 @@ import { ArrowLeft, Save, Users } from "lucide-react";
 import { parse, stringify } from "yaml";
 
 import { currentUser } from "../api/client";
-import { useApproveGroup, useDraftGroup, useGroup, type GroupConfig } from "../api/helix";
+import { useApproveGroup, useDraftGroup, useGroup, type GroupConfig } from "../api/aof";
 import FlowDiagram from "../components/capability/FlowDiagram";
 import RecurringPanel from "../components/capability/RecurringPanel";
 import LearningPanel from "../components/capability/LearningPanel";

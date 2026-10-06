@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 import clsx from "clsx";
 import { Bell } from "lucide-react";
 
-import { useMarkRead, useNotifications } from "../api/helix";
+import { useMarkRead, useNotifications } from "../api/aof";
 import { formatTime } from "./ui";
 
 export default function NotificationBell({ enabled = true }: { enabled?: boolean }) {

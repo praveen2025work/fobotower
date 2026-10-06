@@ -67,6 +67,6 @@ async def test_a_rec_without_breaks_is_409(client):
     assert r.status_code == 409
 
 
-async def test_the_old_helix_prefixed_board_path_is_gone(client):
-    r = await client.get("/api/helix/board")
+async def test_the_old_aof_prefixed_board_path_is_gone(client):
+    r = await client.get("/api/aof/board")
     assert r.status_code == 404

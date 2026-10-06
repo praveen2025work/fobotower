@@ -49,7 +49,7 @@ async def _lookbacks(session_id: str) -> list[str]:
         params = await s.scalars(
             select(SourceCall.validated_parameters).where(
                 SourceCall.investigation_session_id == session_id,
-                SourceCall.tool_name == "helix.similar_breaks",
+                SourceCall.tool_name == "aof.similar_breaks",
             ))
         return [p["lookback"] for p in params]
 

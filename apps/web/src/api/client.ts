@@ -2,8 +2,8 @@
 // sets it and this module sends nothing; in development the user switcher
 // picks a fixture user. Roles and data scopes are always the server's call.
 
-export const API_BASE = import.meta.env.VITE_HELIX_API ?? "/api";
-const USER_KEY = "helix.user";
+export const API_BASE = import.meta.env.VITE_AOF_API ?? "/api";
+const USER_KEY = "aof.user";
 let memoryUser: string | null = null;
 
 export function currentUser(): string | null {
@@ -40,7 +40,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   const res = await fetch(`${API_BASE}${path}`, {
     method,
     headers: {
-      ...(user ? { "X-Helix-User": user } : {}),
+      ...(user ? { "X-AOF-User": user } : {}),
       ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -65,7 +65,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 /** POST a multipart form (file uploads) with the identity header. */
 export async function upload<T>(path: string, form: FormData): Promise<T> {
   const user = currentUser();
-  const res = await fetch(`${API_BASE}${path}`, { method: "POST", body: form, headers: user ? { "X-Helix-User": user } : {} });
+  const res = await fetch(`${API_BASE}${path}`, { method: "POST", body: form, headers: user ? { "X-AOF-User": user } : {} });
   if (res.ok) return (await res.json()) as T;
   let message = `upload failed (${res.status})`;
   try {
@@ -80,7 +80,7 @@ export async function upload<T>(path: string, form: FormData): Promise<T> {
 /** Fetch a file the API serves (it needs the identity header too) and save it. */
 export async function download(path: string, filename: string): Promise<void> {
   const user = currentUser();
-  const res = await fetch(`${API_BASE}${path}`, { headers: user ? { "X-Helix-User": user } : {} });
+  const res = await fetch(`${API_BASE}${path}`, { headers: user ? { "X-AOF-User": user } : {} });
   if (!res.ok) throw new ApiError(`download failed (${res.status})`, res.status);
   const url = URL.createObjectURL(await res.blob());
   const a = Object.assign(document.createElement("a"), { href: url, download: filename });

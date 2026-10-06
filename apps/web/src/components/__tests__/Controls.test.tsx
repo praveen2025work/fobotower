@@ -9,7 +9,7 @@ import EvidencePanel from "../case/EvidencePanel";
 import FlowDiagram from "../capability/FlowDiagram";
 import EvalsPanel from "../capability/EvalsPanel";
 import VersionsPanel from "../capability/VersionsPanel";
-import type { CaseDetail } from "../../api/helix";
+import type { CaseDetail } from "../../api/aof";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -45,10 +45,10 @@ describe("run-the-bank controls", () => {
   });
 
   it("lists schedules with their next run", async () => {
-    mockApi({ "GET /schedules": [{ capability_id: "recon.investigation", team_group: "cats-motif", schedule: "30 6 * * 1-5", next_run: "2026-10-05T06:30:00Z", opens_as: "helix-scheduler", keys: [{}, {}], timezone: "UTC" }] });
+    mockApi({ "GET /schedules": [{ capability_id: "recon.investigation", team_group: "cats-motif", schedule: "30 6 * * 1-5", next_run: "2026-10-05T06:30:00Z", opens_as: "aof-scheduler", keys: [{}, {}], timezone: "UTC" }] });
     renderAt("/", "/", <SchedulesPanel />);
     expect(await screen.findByText("30 6 * * 1-5")).toBeInTheDocument();
-    expect(screen.getByText(/2 case\(s\) each run, as helix-scheduler/)).toBeInTheDocument();
+    expect(screen.getByText(/2 case\(s\) each run, as aof-scheduler/)).toBeInTheDocument();
   });
 });
 

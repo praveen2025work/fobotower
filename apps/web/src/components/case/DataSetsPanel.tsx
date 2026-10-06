@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { Database } from "lucide-react";
 
-import type { CaseDetail } from "../../api/helix";
+import type { CaseDetail } from "../../api/aof";
 import { formatValue } from "../ui";
 
 export default function DataSetsPanel({ c }: { c: CaseDetail }) {

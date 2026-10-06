@@ -64,7 +64,7 @@ export const STAGES: Stage[] = [
         { value: "ignore", label: "Nothing new: the existing case is the answer" },
         { value: "follow_up", label: "Open a follow-up case with only the new items" }],
         help: "e.g. MB Rec notifies late exceptions for a book and COB already being worked. A signed-off case is never changed." },
-      { kind: "text", path: "case.opens_as", label: "Scheduled and event cases run as", placeholder: "helix-scheduler", help: "A service user with the roles and data scopes those cases need." },
+      { kind: "text", path: "case.opens_as", label: "Scheduled and event cases run as", placeholder: "aof-scheduler", help: "A service user with the roles and data scopes those cases need." },
       { kind: "object", path: "case.due", label: "Deadline", toggle: "Cases have a deadline", empty: { from: "opened", business_days: 1, hours: 0, at: null, warn_hours: 2 },
         fields: [
           { kind: "select", path: "from", label: "Counted from", options: (m) => [{ value: "opened", label: "when it opened" }, ...keyFields(m)] },
@@ -141,7 +141,7 @@ export const STAGES: Stage[] = [
     owns: /^resolve|knowledge\.(reference|as_of)|`resolve`/,
     clears: [{ path: "resolve", value: [] }],
     fields: [
-      { kind: "text", path: "knowledge.reference", label: "Reference data", placeholder: "fobo-reference", help: "The reference file (config/helix/knowledge/<name>.yaml)." },
+      { kind: "text", path: "knowledge.reference", label: "Reference data", placeholder: "fobo-reference", help: "The reference file (config/agent-one-finance/knowledge/<name>.yaml)." },
       { kind: "select", path: "knowledge.as_of", label: "Read as of", options: keyFields, nullable: true },
       { kind: "rows", path: "resolve", label: "Lookups", addLabel: "Add a lookup", newRow: { node: "", path: [], as: "", take: "name" },
         columns: [{ key: "node", label: "Start at", wide: true }, { key: "path", label: "Follow", kind: "list" }, { key: "as", label: "Store as" }, { key: "take", label: "Take" }] },

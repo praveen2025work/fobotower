@@ -22,7 +22,7 @@ from fobo.investigation.state import InvestigationState
 EXPECTED_CHECKS = 6
 
 MBREC = "MBRec"
-KG = "HelixKG"
+KG = "AofKG"
 
 # Defaults stand in for the CATS and MOTIF adapters, which arrive in Phase 3.
 SNAPSHOT_DEFAULTS = {
@@ -166,7 +166,7 @@ async def gather(state: InvestigationState, *, session) -> dict:
             lineage_errors.append(f"{bid}: {exc}")
     await recorder.record(
         application=KG,
-        tool="helix.kg_lineage",
+        tool="aof.kg_lineage",
         params=_workspace(state) | {"edge": "BELONGS_TO", "asOf": str(as_of)},
         row_count=len(lineage_rows) if lineage_rows else None,
         summary=(
@@ -203,7 +203,7 @@ async def gather(state: InvestigationState, *, session) -> dict:
             prior_errors.append(f"{bid}: {exc}")
     await recorder.record(
         application=KG,
-        tool="helix.similar_breaks",
+        tool="aof.similar_breaks",
         params=_workspace(state) | {"lookback": f"{cfg.priors_lookback_days}d"},
         row_count=len(prior_rows) if prior_rows else None,
         summary=(

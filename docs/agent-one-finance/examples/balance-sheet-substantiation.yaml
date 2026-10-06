@@ -1,0 +1,42 @@
+# Example — a capability: balance sheet substantiation. Each balance is
+# checked against the support the account owner filed (PDF / workbook in the
+# documents service); unsupported balances are escalated; the substantiation
+# pack is published as a PDF after a second person releases it.
+# Runs on onboarded connectors (gl, documents).
+id: fin.bs-substantiation
+name: Balance sheet substantiation
+description: Every material balance matched to its filed support; unsupported balances escalated; a signed substantiation pack published.
+owners: { people: [carol], role: AOF_FIN_VARCOMM_OWNER, four_eyes: true }
+case:
+  label: Substantiation
+  item_label: Balance
+  key: [entity, period]
+  subject: "{entity} balance sheet · {period}"
+  scopes: { entity: entity }
+items:
+  load: { tool: gl.balances, args: { entity: $case.entity, period: $case.period } }
+  id_field: line_id
+  amount_field: actual
+  display: [account, account_name, cost_centre, actual]
+  in_scope: abs(actual) >= policy.materiality
+policy:
+  materiality: { value: 100000, unit: GBP }
+steps: [load, group, reason, draft, validate, review, record, publish]
+pause_before: [review, publish]
+group_by: [account]
+reasoning:
+  reasoner: llm
+  tools: [documents.list_documents, documents.read_pdf, documents.read_workbook]
+  skill: |
+    For each account, find the support the owner filed for this period (list the
+    documents, then read them) and say whether it substantiates the balance: same
+    figure, same date, signed off. If no document supports it, escalate and say what
+    is missing. Cite only figures from the documents or the balances.
+review: { roles: [FIN_REVIEWER] }
+publish:
+  tool: documents.render_pdf_report
+  per: case
+  args: { entity: $case.entity, name: $case_id, title: Balance sheet substantiation, subtitle: $subject,
+          sections: $approved, sign_off: $sign_off }
+  approver_roles: [FIN_REVIEWER]
+retention: { days: 2555 }

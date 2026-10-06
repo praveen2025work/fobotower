@@ -1,7 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-// The Agent One Finance API (uvicorn helix.web.main:app --port 8300) serves /api.
+// The Agent One Finance API (uvicorn agent_one_finance.web.main:app --port 8300) serves /api.
 // `vite build --mode snapshot` builds the read-only snapshot (snapshot.html +
 // recorded data, relative paths) into dist-snapshot/ — see src/snapshot/.
 // It is one script and one stylesheet (no lazy chunks), so
@@ -22,7 +22,7 @@ export default defineConfig(({ mode }) => ({
     port: 5180,
     proxy: {
       "/api": {
-        target: process.env.HELIX_API_URL ?? "http://localhost:8300",
+        target: process.env.AOF_API_URL ?? "http://localhost:8300",
         changeOrigin: true,
       },
     },

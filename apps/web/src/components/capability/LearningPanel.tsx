@@ -6,7 +6,7 @@
 import { Link } from "react-router-dom";
 import { Lightbulb } from "lucide-react";
 
-import { useLearning } from "../../api/helix";
+import { useLearning } from "../../api/aof";
 import { Card, ErrorState, Loading } from "../ui";
 
 export default function LearningPanel({ capabilityId, teamGroup }: { capabilityId: string; teamGroup?: string }) {

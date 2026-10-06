@@ -1,6 +1,6 @@
 import { Cable, Lock } from "lucide-react";
 
-import { usePlatform } from "../api/helix";
+import { usePlatform } from "../api/aof";
 import StatusBadge from "../components/StatusBadge";
 import { Card, ErrorState, Loading, PageHeader } from "../components/ui";
 

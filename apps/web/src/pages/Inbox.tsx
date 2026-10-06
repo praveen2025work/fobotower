@@ -4,7 +4,7 @@ import clsx from "clsx";
 import { UserCheck } from "lucide-react";
 
 import { currentUser } from "../api/client";
-import { useInbox, type InboxRow } from "../api/helix";
+import { useInbox, type InboxRow } from "../api/aof";
 import DelegationPanel from "../components/DelegationPanel";
 import QuestionsForYou from "../components/QuestionsForYou";
 import { useIsPhone } from "../hooks/useIsPhone";

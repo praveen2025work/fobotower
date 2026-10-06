@@ -41,7 +41,7 @@ async def test_naming_an_adjustment_explains_it_and_records_the_lookup(client):
     assert agent["blocks"][0]["text"].startswith("B-9 on PRIME-MB-11")
     assert any(b["type"] == "risk" for b in agent["blocks"])
     tools = [f"{c['server']}.{c['tool']}" for c in agent["calls"]]
-    assert tools == ["mbrec.get_break_legs", "helix.grounding_check"]
+    assert tools == ["mbrec.get_break_legs", "aof.grounding_check"]
 
 
 async def test_the_conversation_survives_a_reload(client):

@@ -5,7 +5,7 @@
 import { useState } from "react";
 import { AlertTriangle, Bot, Loader2, Send, User } from "lucide-react";
 
-import { useAsk, useMessages, type CaseMessage } from "../../api/helix";
+import { useAsk, useMessages, type CaseMessage } from "../../api/aof";
 import { ErrorState, formatTime } from "../ui";
 
 function Bubble({ m }: { m: CaseMessage }) {

@@ -2,7 +2,7 @@
 // already knows next to it, answered yes / no / n/a before approving.
 
 import clsx from "clsx";
-import type { ChecklistAnswer, ChecklistQuestion } from "../../api/helix";
+import type { ChecklistAnswer, ChecklistQuestion } from "../../api/aof";
 
 const CHOICES = ["yes", "no", "n/a"] as const;
 

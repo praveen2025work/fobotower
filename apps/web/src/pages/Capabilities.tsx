@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Layers, ShieldCheck } from "lucide-react";
 
-import { useCapabilities } from "../api/helix";
+import { useCapabilities } from "../api/aof";
 import { Empty, ErrorState, Loading, PageHeader, WorkflowStepper } from "../components/ui";
 
 /** The catalogue: every capability the user's roles allow — each one configuration only. */

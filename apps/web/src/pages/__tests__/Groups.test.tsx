@@ -2,7 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, expect, it, vi } from "vitest";
 
-import type { Manifest, TeamGroup } from "../../api/helix";
+import type { Manifest, TeamGroup } from "../../api/aof";
 import { mockApi, renderAt } from "../../test/render";
 import CapabilityDetail from "../CapabilityDetail";
 import GroupDetail from "../GroupDetail";
@@ -11,7 +11,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 const manifest = {
   id: "recon.investigation", name: "Reconciliation investigation", description: "Match two systems.",
-  owners: { people: ["erin"], role: "HELIX_RECON_OWNER", four_eyes: true },
+  owners: { people: ["erin"], role: "AOF_RECON_OWNER", four_eyes: true },
   case: { label: "Rec run", item_label: "Break", key: ["entity", "date"], subject: null, scopes: { entity: "entity" }, opens_on: "manual" },
   items: { load: null, id_field: "ref", amount_field: "difference", display: [], in_scope: null },
   steps: ["match", "group", "reason", "draft", "validate", "review", "record"], pause_before: ["review"],

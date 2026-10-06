@@ -243,7 +243,7 @@ and validates inbound events against the schema at runtime in development.
 
 ### 5.4 MCP servers (`mcp_servers/`)
 
-Six FastMCP servers, one per tool group: `helix_session`, `mbr`, `motif`, `cats`,
+Six FastMCP servers, one per tool group: `aof_session`, `mbr`, `motif`, `cats`,
 `tradestore`, `crosssource`. Each runs as its own process in compose.
 
 ### 5.5 Recon engine stand-in (`app/recon`)
@@ -550,7 +550,7 @@ request independently governed, owned and audited from a CATS request.
 
 | Group | Tools |
 |---|---|
-| **Agent One Finance session** (no adapter) | `helix_get_analysis_context`, `helix_get_evidence_item`, `helix_get_investigation_history` |
+| **Agent One Finance session** (no adapter) | `aof_get_analysis_context`, `aof_get_evidence_item`, `aof_get_investigation_history` |
 | **MBR** | `mbr_summarise_breaks`, `mbr_search_breaks`, `mbr_get_break_details` |
 | **MOTIF** | `motif_summarise_exceptions`, `motif_search_exceptions`, `motif_get_exception_details`, `motif_get_record_history` |
 | **CATS** | `cats_get_book_values`, `cats_get_trade_values`, `cats_get_record_history` |

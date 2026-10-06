@@ -1,8 +1,8 @@
 # Architecture
 
-> This repository is **Agent One Finance, the governed AI platform for Finance** (`apps/backend/helix`,
-> `apps/web`, `config/helix`). Its architecture is in the
-> [developer guide](helix/guide/developer-guide.md#1-architecture). This page maps the original
+> This repository is **Agent One Finance, the governed AI platform for Finance** (`apps/backend/agent_one_finance`,
+> `apps/web`, `config/agent-one-finance`). Its architecture is in the
+> [developer guide](aof/guide/developer-guide.md#1-architecture). This page maps the original
 > **FOBO investigation console** (`apps/backend/fobo`, `apps/console`), Agent One Finance's first use case,
 > which still runs beside it.
 

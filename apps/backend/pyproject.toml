@@ -31,7 +31,7 @@ dependencies = [
 dev = ["pytest>=8.3", "pytest-asyncio>=0.24", "anyio>=4.4", "opentelemetry-sdk>=1.27", "claude-agent-sdk>=0.2.163"]
 # Office: Phoenix tracing (PHOENIX_COLLECTOR_ENDPOINT); not needed to run Agent One Finance.
 phoenix = ["arize-phoenix-otel>=0.6"]
-# The office LLM path: HELIX_LLM_ADAPTER=agent_sdk.
+# The office LLM path: AOF_LLM_ADAPTER=agent_sdk.
 agent-sdk = ["claude-agent-sdk>=0.2.163"]
 
 [tool.pytest.ini_options]
@@ -45,4 +45,4 @@ pythonpath = ["."]
 testpaths = ["tests"]
 
 [tool.setuptools.packages.find]
-include = ["fobo*", "seed_data*", "helix*"]
+include = ["fobo*", "seed_data*", "agent_one_finance*"]

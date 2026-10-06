@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 
 import { currentUser, setCurrentUser } from "../api/client";
-import { useDevUsers, useInbox, useMe, usePlatform } from "../api/helix";
+import { useDevUsers, useInbox, useMe, usePlatform } from "../api/aof";
 import { useTheme } from "../theme";
 import ErrorBoundary from "./ErrorBoundary";
 import NotificationBell from "./NotificationBell";
@@ -53,7 +53,7 @@ function initials(name: string): string {
 }
 
 // The sidebar starts collapsed (icons only); a person's choice is remembered.
-const COLLAPSED_KEY = "helix.nav.collapsed";
+const COLLAPSED_KEY = "aof.nav.collapsed";
 
 function readCollapsed(): boolean {
   try {

@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { AlertTriangle, Ban, Bot, Clock, Inbox, Layers, Send, Timer } from "lucide-react";
 
 import { currentUser } from "../api/client";
-import { useInbox, useMe, useOverview } from "../api/helix";
+import { useInbox, useMe, useOverview } from "../api/aof";
 import StatCard from "../components/StatCard";
 import StatusBadge from "../components/StatusBadge";
 import { urgency } from "../components/Urgency";

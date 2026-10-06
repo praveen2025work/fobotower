@@ -639,12 +639,12 @@ footer { padding-block: 24px; font-size: 0.8rem; color: var(--muted); }
 <pre class="code"><span class="c"># the platform, with example data</span>
 docker compose up -d postgres
 cd apps/backend &amp;&amp; .venv/bin/alembic upgrade head
-.venv/bin/uvicorn helix.web.main:app --port 8300
+.venv/bin/uvicorn agent_one_finance.web.main:app --port 8300
 cd ../web &amp;&amp; npm run dev      <span class="c"># http://localhost:5180</span>
 
 <span class="c"># open the September accruals run as alice</span>
 curl -X POST localhost:8300/api/capabilities/fin.accruals/cases \
-  -H 'X-Helix-User: alice' -H 'Content-Type: application/json' \
+  -H 'X-AOF-User: alice' -H 'Content-Type: application/json' \
   -d '{"case_key": {"entity": "UK01", "period": "2026-09"}}'</pre>
       </div>
     </div>

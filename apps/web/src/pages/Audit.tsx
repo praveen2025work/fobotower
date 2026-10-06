@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
-import { useAudit, useCapabilities, type AuditEvent } from "../api/helix";
+import { useAudit, useCapabilities, type AuditEvent } from "../api/aof";
 import StatusBadge from "../components/StatusBadge";
 import { Card, Empty, ErrorState, Loading, PageHeader, formatTime } from "../components/ui";
 

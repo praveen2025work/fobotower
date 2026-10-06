@@ -7,7 +7,7 @@ import clsx from "clsx";
 import { CircleDot, Hourglass, Play, Square, Users } from "lucide-react";
 
 import { api } from "../../api/client";
-import { useHistory, type HistoryEntry } from "../../api/helix";
+import { useHistory, type HistoryEntry } from "../../api/aof";
 import { Empty, ErrorState, Loading, formatTime } from "../ui";
 
 const ICON = { start: Play, step: CircleDot, people: Users, waiting: Hourglass, end: Square } as const;

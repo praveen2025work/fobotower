@@ -2,7 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { CaseDetail, Group } from "../../api/helix";
+import type { CaseDetail, Group } from "../../api/aof";
 import { mockApi, renderAt } from "../../test/render";
 import CaseWorkspace from "../CaseWorkspace";
 

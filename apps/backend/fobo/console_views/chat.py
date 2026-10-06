@@ -180,7 +180,7 @@ def _chase(rec, cob: str) -> list[dict]:
         {"type": "pre", "text": (
             f"Subject: {rec['name']} — {plural(len(waiting), 'break')} need confirmation "
             f"(COB {cob})\n\n{lines}\n\nPlease confirm before EOD sign-off so these can be "
-            f"adjusted or cleared.\nHelix session {rec['sessionId']}")},
+            f"adjusted or cleared.\nAof session {rec['sessionId']}")},
     ]
 
 

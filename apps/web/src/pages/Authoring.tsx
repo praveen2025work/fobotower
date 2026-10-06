@@ -19,7 +19,7 @@ import {
   useSubmitDraft,
   useTemplates,
   type DraftResult,
-} from "../api/helix";
+} from "../api/aof";
 import { Card, Empty, ErrorState, Loading, PageHeader, WorkflowStepper, formatTime } from "../components/ui";
 
 export default function Authoring(): JSX.Element {

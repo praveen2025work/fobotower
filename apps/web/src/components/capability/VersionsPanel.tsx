@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Download } from "lucide-react";
 
 import { api } from "../../api/client";
-import { useDiff, type CapabilityVersion } from "../../api/helix";
+import { useDiff, type CapabilityVersion } from "../../api/aof";
 import StatusBadge from "../StatusBadge";
 import { formatTime } from "../ui";
 
@@ -24,7 +24,7 @@ export default function VersionsPanel({ capabilityId, versions, group }: {
       `/capabilities/${encodeURIComponent(capabilityId)}/versions/${v}/export${group ? `?group=${encodeURIComponent(group)}` : ""}`,
     );
     const url = URL.createObjectURL(new Blob([JSON.stringify(bundle, null, 2)], { type: "application/json" }));
-    Object.assign(document.createElement("a"), { href: url, download: `${capabilityId}${group ? `-${group}` : ""}-v${v}.helix.json` }).click();
+    Object.assign(document.createElement("a"), { href: url, download: `${capabilityId}${group ? `-${group}` : ""}-v${v}.aof.json` }).click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 

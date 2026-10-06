@@ -1,17 +1,17 @@
 // Records the API responses behind the main screens into a snapshot file, so
 // a read-only copy of the app (npm run build:snapshot) can be opened anywhere
 // without the API. Run against a live stack: node scripts/capture-snapshot.mjs
-//   HELIX_WEB (http://localhost:5180), SNAPSHOT_USER (frank), PLAYWRIGHT (module path),
+//   AOF_WEB (http://localhost:5180), SNAPSHOT_USER (frank), PLAYWRIGHT (module path),
 //   SNAPSHOT_CASES (extra case ids to include)
 import fs from "fs";
 const { chromium } = await import(process.env.PLAYWRIGHT ?? "playwright");
-const WEB = process.env.HELIX_WEB ?? "http://localhost:5180";
+const WEB = process.env.AOF_WEB ?? "http://localhost:5180";
 const USER = process.env.SNAPSHOT_USER ?? "frank";
 const OUT = new URL("../src/snapshot/data.json", import.meta.url);
 
 const b = await chromium.launch({ executablePath: process.env.CHROMIUM });
 const p = await b.newPage({ viewport: { width: 1440, height: 900 } });
-await p.addInitScript((u) => localStorage.setItem("helix.user", u), USER);
+await p.addInitScript((u) => localStorage.setItem("aof.user", u), USER);
 const data = {};
 p.on("response", async (r) => {
   const u = new URL(r.url());
@@ -27,7 +27,7 @@ const visit = async (path, tabs = []) => {
     await p.waitForTimeout(900);
   }
 };
-const api = async (path) => (await (await fetch(`http://localhost:8300${path}`, { headers: { "X-Helix-User": USER } })).json());
+const api = async (path) => (await (await fetch(`http://localhost:8300${path}`, { headers: { "X-AOF-User": USER } })).json());
 
 await visit("/");
 await visit("/inbox");

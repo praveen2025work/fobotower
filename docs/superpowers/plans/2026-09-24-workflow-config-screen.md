@@ -43,7 +43,7 @@
 | `api/auth.py` (modify) | Caller `ContextVar`, dev callers, dev-caller middleware |
 | `api/main.py` (modify) | Install middleware, `VersionError` handler, workflow router, configurable CORS origins |
 | `api/routes/workflow.py` (create) | `/api/workflow` endpoints |
-| `api/routes/helix.py` (modify) | Board lists `devCallers` in dev; chat reads the reasoner from the active version |
+| `api/routes/aof.py` (modify) | Board lists `devCallers` in dev; chat reads the reasoner from the active version |
 | `api/cases.py`, `api/routes/decisions.py`, `api/routes/sessions.py` (modify) | Read checkpoints through `graph_for_session` |
 | `app/db/models_workflow.py` (create) | `WorkflowVersion` model |
 | `app/db/models_session.py` (modify) | `InvestigationSession.workflow_version` column |
@@ -68,23 +68,23 @@
 | File | Responsibility |
 |---|---|
 | `src/lib/apiClient.js` (modify) | Dev caller header, `ApiError` with structured errors, `getText` |
-| `src/components/helix/data/workflowApi.js` (create) | Every call the Workflow tab makes |
-| `src/components/helix/workflow/workflowModel.js` (create) | Pure helpers: chips, edits, diff lines |
-| `src/components/helix/workflow/StepCard.jsx` (create) | One step card |
-| `src/components/helix/workflow/WorkflowGraph.jsx` (create) | The graph, view or edit mode |
-| `src/components/helix/workflow/StepPanel.jsx` (create) | Step side panel |
-| `src/components/helix/workflow/SettingsForm.jsx` (create) | Settings inputs from the schema |
-| `src/components/helix/workflow/DraftEditor.jsx` (create) | Edit state, validation, save |
-| `src/components/helix/workflow/ErrorList.jsx` (create) | An `ApiError`'s message and list |
-| `src/components/helix/workflow/WorkflowDialog.jsx` (create) | Confirm dialog |
-| `src/components/helix/workflow/VersionList.jsx` (create) | History with status chips |
-| `src/components/helix/workflow/VersionDetail.jsx` (create) | Diff, approve, reject, redraft |
-| `src/components/helix/workflow/YamlUpload.jsx` (create) | Upload drawer |
-| `src/components/helix/workflow/ActiveStrip.jsx` (create) | Active version strip |
-| `src/components/helix/workflow/WorkflowView.jsx` (create) | Tab container |
-| `src/components/helix/workflow/DevCallerSwitch.jsx` (create) | Header switcher |
-| `src/components/helix/workflow/__fixtures__/workflow.json` (create) | Generated `/api/workflow` response |
-| `src/components/helix/HelixApp.jsx` (modify) | Workflow tab, dev caller switch |
+| `src/components/aof/data/workflowApi.js` (create) | Every call the Workflow tab makes |
+| `src/components/aof/workflow/workflowModel.js` (create) | Pure helpers: chips, edits, diff lines |
+| `src/components/aof/workflow/StepCard.jsx` (create) | One step card |
+| `src/components/aof/workflow/WorkflowGraph.jsx` (create) | The graph, view or edit mode |
+| `src/components/aof/workflow/StepPanel.jsx` (create) | Step side panel |
+| `src/components/aof/workflow/SettingsForm.jsx` (create) | Settings inputs from the schema |
+| `src/components/aof/workflow/DraftEditor.jsx` (create) | Edit state, validation, save |
+| `src/components/aof/workflow/ErrorList.jsx` (create) | An `ApiError`'s message and list |
+| `src/components/aof/workflow/WorkflowDialog.jsx` (create) | Confirm dialog |
+| `src/components/aof/workflow/VersionList.jsx` (create) | History with status chips |
+| `src/components/aof/workflow/VersionDetail.jsx` (create) | Diff, approve, reject, redraft |
+| `src/components/aof/workflow/YamlUpload.jsx` (create) | Upload drawer |
+| `src/components/aof/workflow/ActiveStrip.jsx` (create) | Active version strip |
+| `src/components/aof/workflow/WorkflowView.jsx` (create) | Tab container |
+| `src/components/aof/workflow/DevCallerSwitch.jsx` (create) | Header switcher |
+| `src/components/aof/workflow/__fixtures__/workflow.json` (create) | Generated `/api/workflow` response |
+| `src/components/aof/AofApp.jsx` (modify) | Workflow tab, dev caller switch |
 | `src/components/fobo/execution/WorkflowTrace.jsx` (modify) | "workflow vN" instead of the file name |
 | `next.config.mjs` (modify) | `NEXT_DIST_DIR` for the e2e server |
 | `playwright.config.js`, `e2e/reset-db.mjs`, `e2e/workflow.spec.js` (create) | End-to-end test |
@@ -96,7 +96,7 @@
 **Files:**
 - Modify: `apps/api/api/auth.py`
 - Modify: `apps/api/api/main.py`
-- Modify: `apps/api/api/routes/helix.py` (the `board` handler)
+- Modify: `apps/api/api/routes/aof.py` (the `board` handler)
 - Test: `apps/api/tests/test_dev_caller.py`
 
 **Interfaces:**
@@ -178,11 +178,11 @@ async def test_the_board_names_the_caller_and_lists_dev_callers_only_in_dev(monk
     async with AsyncClient(transport=ASGITransport(app=create_app()),
                            base_url="http://test", timeout=120) as c:
         monkeypatch.setenv("FOBO_ENV", "dev")
-        board = (await c.get("/api/helix/board", headers={"X-Dev-Caller": "asha"})).json()
+        board = (await c.get("/api/aof/board", headers={"X-Dev-Caller": "asha"})).json()
         assert board["caller"]["id"] == "asha"
         assert [d["id"] for d in board["devCallers"]] == ["praveen", "asha"]
         monkeypatch.delenv("FOBO_ENV")
-        assert "devCallers" not in (await c.get("/api/helix/board")).json()
+        assert "devCallers" not in (await c.get("/api/aof/board")).json()
 ```
 
 - [ ] **Step 2: Run to verify they fail**
@@ -284,7 +284,7 @@ In `apps/api/api/main.py`, add `from api.auth import dev_caller_middleware` to t
 
 - [ ] **Step 5: List dev callers on the board**
 
-In `apps/api/api/routes/helix.py`, import `dev_callers` alongside `current_caller` (`from api.auth import current_caller, dev_callers`) and change the `board` handler's return into:
+In `apps/api/api/routes/aof.py`, import `dev_callers` alongside `current_caller` (`from api.auth import current_caller, dev_callers`) and change the `board` handler's return into:
 
 ```python
         body = {
@@ -309,7 +309,7 @@ Run: `cd apps/api && .venv/bin/python -m pytest tests/test_dev_caller.py -q` →
 - [ ] **Step 7: Commit**
 
 ```bash
-git add apps/api/api/auth.py apps/api/api/main.py apps/api/api/routes/helix.py apps/api/tests/test_dev_caller.py
+git add apps/api/api/auth.py apps/api/api/main.py apps/api/api/routes/aof.py apps/api/tests/test_dev_caller.py
 git commit -m "feat: dev caller switch, so a second person can approve
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
@@ -1662,7 +1662,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 - Modify: `apps/api/app/workflow/session.py`
 - Modify: `apps/api/app/workflow/state.py`
 - Modify: `apps/api/app/queries/trace.py`
-- Modify: `apps/api/api/cases.py`, `apps/api/api/routes/decisions.py` (the `build_graph(...).aget_state` read, ~line 74), `apps/api/api/routes/sessions.py` (`load_snapshot`), `apps/api/api/routes/helix.py` (`ask`)
+- Modify: `apps/api/api/cases.py`, `apps/api/api/routes/decisions.py` (the `build_graph(...).aget_state` read, ~line 74), `apps/api/api/routes/sessions.py` (`load_snapshot`), `apps/api/api/routes/aof.py` (`ask`)
 - Modify: `config/workflow/fobo-investigation.yaml` (header comment only)
 - Test: `apps/api/tests/test_workflow_pinning.py`
 
@@ -1723,7 +1723,7 @@ async def _lookbacks(session_id: str) -> list[str]:
         params = await s.scalars(
             select(SourceCall.validated_parameters).where(
                 SourceCall.investigation_session_id == session_id,
-                SourceCall.tool_name == "helix.similar_breaks",
+                SourceCall.tool_name == "aof.similar_breaks",
             ))
         return [p["lookback"] for p in params]
 
@@ -1984,7 +1984,7 @@ async def load_snapshot(session_id: str):
 
 (import `graph_for_session, run_investigation`; drop `build_graph` if unused).
 
-`apps/api/api/routes/helix.py` — in `ask`, replace `reasoner=settings().reason.reasoner,` with a read of the active version:
+`apps/api/api/routes/aof.py` — in `ask`, replace `reasoner=settings().reason.reasoner,` with a read of the active version:
 
 ```python
         active = await versions.active(s)
@@ -2653,8 +2653,8 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 **Files:**
 - Modify: `apps/console/src/lib/apiClient.js`
-- Create: `apps/console/src/components/helix/data/workflowApi.js`
-- Test: `apps/console/src/lib/apiClient.test.js`, `apps/console/src/components/helix/data/workflowApi.test.js`
+- Create: `apps/console/src/components/aof/data/workflowApi.js`
+- Test: `apps/console/src/lib/apiClient.test.js`, `apps/console/src/components/aof/data/workflowApi.test.js`
 
 **Interfaces:**
 - Produces: `apiClient` exports `get(path)`, `getText(path)`, `post(path, body, extraHeaders)`, `ApiError` (`message`, `status`, `errors: string[]`), `DEV_CALLER_KEY = 'fobo.devCaller'`, `devCaller(): string|null`, `setDevCaller(id|null)`, `API_BASE`. `workflowApi` exports `fetchWorkflow()`, `fetchVersions()`, `fetchVersion(n)`, `fetchRebased(n)`, `validateWorkflow(config)`, `saveDraft({config, note, basedOn})`, `uploadYaml({yaml, note})`, `approveVersion(n, key)`, `rejectVersion(n, reason)`, `downloadYaml(n)`.
@@ -2746,7 +2746,7 @@ describe('apiClient', () => {
 });
 ```
 
-Create `apps/console/src/components/helix/data/workflowApi.test.js`:
+Create `apps/console/src/components/aof/data/workflowApi.test.js`:
 
 ```js
 import { beforeEach, expect, it, vi } from 'vitest';
@@ -2786,7 +2786,7 @@ it('uploads YAML text with its note', async () => {
 
 - [ ] **Step 2: Run to verify they fail**
 
-Run: `cd apps/console && npx vitest run src/lib/apiClient.test.js src/components/helix/data/workflowApi.test.js`
+Run: `cd apps/console && npx vitest run src/lib/apiClient.test.js src/components/aof/data/workflowApi.test.js`
 Expected: FAIL — `ApiError` / `setDevCaller` not exported; `workflowApi` missing.
 
 - [ ] **Step 3: Implement the client**
@@ -2890,7 +2890,7 @@ export async function post(path, body, extraHeaders = {}) {
 
 - [ ] **Step 4: Implement the workflow calls**
 
-Create `apps/console/src/components/helix/data/workflowApi.js`:
+Create `apps/console/src/components/aof/data/workflowApi.js`:
 
 ```js
 import { get, getText, post } from '@/lib/apiClient';
@@ -2937,7 +2937,7 @@ Run: `cd apps/console && npx vitest run` → all pass (55 existing + new).
 - [ ] **Step 6: Commit**
 
 ```bash
-git add apps/console/src/lib apps/console/src/components/helix/data/workflowApi.js apps/console/src/components/helix/data/workflowApi.test.js
+git add apps/console/src/lib apps/console/src/components/aof/data/workflowApi.js apps/console/src/components/aof/data/workflowApi.test.js
 git commit -m "feat: console API client sends the dev caller and keeps structured errors
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
@@ -2948,11 +2948,11 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ### Task 10: Workflow graph (view mode) and step panel
 
 **Files:**
-- Create: `apps/console/src/components/helix/workflow/__fixtures__/workflow.json` (generated)
-- Create: `apps/console/src/components/helix/workflow/workflowModel.js`
-- Create: `apps/console/src/components/helix/workflow/StepCard.jsx`
-- Create: `apps/console/src/components/helix/workflow/WorkflowGraph.jsx`
-- Create: `apps/console/src/components/helix/workflow/StepPanel.jsx`
+- Create: `apps/console/src/components/aof/workflow/__fixtures__/workflow.json` (generated)
+- Create: `apps/console/src/components/aof/workflow/workflowModel.js`
+- Create: `apps/console/src/components/aof/workflow/StepCard.jsx`
+- Create: `apps/console/src/components/aof/workflow/WorkflowGraph.jsx`
+- Create: `apps/console/src/components/aof/workflow/StepPanel.jsx`
 - Test: `workflowModel.test.js`, `WorkflowGraph.test.jsx`, `StepPanel.test.jsx` in the same folder
 
 **Interfaces:**
@@ -2968,8 +2968,8 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 Run from the repo root:
 
 ```bash
-mkdir -p apps/console/src/components/helix/workflow/__fixtures__
-cd apps/api && .venv/bin/python - <<'EOF' > ../console/src/components/helix/workflow/__fixtures__/workflow.json
+mkdir -p apps/console/src/components/aof/workflow/__fixtures__
+cd apps/api && .venv/bin/python - <<'EOF' > ../console/src/components/aof/workflow/__fixtures__/workflow.json
 import json
 from app.workflow.config import REASONERS, dump_config, read_workflow, settings_schema
 from app.workflow.registry import catalogue
@@ -2995,7 +2995,7 @@ Expected: a JSON file whose `steps` has 9 entries and whose `active.config.steps
 
 - [ ] **Step 2: Write the failing tests**
 
-Create `apps/console/src/components/helix/workflow/workflowModel.test.js`:
+Create `apps/console/src/components/aof/workflow/workflowModel.test.js`:
 
 ```js
 import { describe, expect, it } from 'vitest';
@@ -3086,7 +3086,7 @@ describe('workflowModel', () => {
 });
 ```
 
-Create `apps/console/src/components/helix/workflow/WorkflowGraph.test.jsx`:
+Create `apps/console/src/components/aof/workflow/WorkflowGraph.test.jsx`:
 
 ```jsx
 import { render, screen, within } from '@testing-library/react';
@@ -3170,7 +3170,7 @@ describe('WorkflowGraph', () => {
 });
 ```
 
-Create `apps/console/src/components/helix/workflow/StepPanel.test.jsx`:
+Create `apps/console/src/components/aof/workflow/StepPanel.test.jsx`:
 
 ```jsx
 import { render, screen } from '@testing-library/react';
@@ -3211,12 +3211,12 @@ it('says why a locked step cannot be removed', () => {
 
 - [ ] **Step 3: Run to verify they fail**
 
-Run: `cd apps/console && npx vitest run src/components/helix/workflow`
+Run: `cd apps/console && npx vitest run src/components/aof/workflow`
 Expected: FAIL — modules not found.
 
 - [ ] **Step 4: Implement the model helpers**
 
-Create `apps/console/src/components/helix/workflow/workflowModel.js`:
+Create `apps/console/src/components/aof/workflow/workflowModel.js`:
 
 ```js
 /** Pure helpers for the Workflow tab. Nothing here changes its inputs. */
@@ -3351,7 +3351,7 @@ export const when = (iso) =>
 
 - [ ] **Step 5: Implement the card**
 
-Create `apps/console/src/components/helix/workflow/StepCard.jsx`:
+Create `apps/console/src/components/aof/workflow/StepCard.jsx`:
 
 ```jsx
 import { ChevronLeft, ChevronRight, CornerDownRight, Lock, Minus } from 'lucide-react';
@@ -3489,7 +3489,7 @@ export function StepCard({
 
 - [ ] **Step 6: Implement the graph**
 
-Create `apps/console/src/components/helix/workflow/WorkflowGraph.jsx`:
+Create `apps/console/src/components/aof/workflow/WorkflowGraph.jsx`:
 
 ```jsx
 import { ArrowRight, CirclePause } from 'lucide-react';
@@ -3608,7 +3608,7 @@ export function WorkflowGraph({
 
 - [ ] **Step 7: Implement the step panel**
 
-Create `apps/console/src/components/helix/workflow/StepPanel.jsx`:
+Create `apps/console/src/components/aof/workflow/StepPanel.jsx`:
 
 ```jsx
 import { mono } from '../lib/format';
@@ -3712,7 +3712,7 @@ Run: `cd apps/console && npx vitest run` → all pass.
 - [ ] **Step 9: Commit**
 
 ```bash
-git add apps/console/src/components/helix/workflow
+git add apps/console/src/components/aof/workflow
 git commit -m "feat: workflow graph with who-decides tags, pause points and step panel
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
@@ -3723,10 +3723,10 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ### Task 11: Draft editor with live validation
 
 **Files:**
-- Create: `apps/console/src/components/helix/workflow/SettingsForm.jsx`
-- Create: `apps/console/src/components/helix/workflow/ErrorList.jsx`
-- Create: `apps/console/src/components/helix/workflow/DraftEditor.jsx`
-- Test: `apps/console/src/components/helix/workflow/DraftEditor.test.jsx`
+- Create: `apps/console/src/components/aof/workflow/SettingsForm.jsx`
+- Create: `apps/console/src/components/aof/workflow/ErrorList.jsx`
+- Create: `apps/console/src/components/aof/workflow/DraftEditor.jsx`
+- Test: `apps/console/src/components/aof/workflow/DraftEditor.test.jsx`
 
 **Interfaces:**
 - Consumes: `validateWorkflow`, `saveDraft` (Task 9); `WorkflowGraph`, `StepPanel`, `workflowModel` helpers (Task 10).
@@ -3734,7 +3734,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 - [ ] **Step 1: Write the failing tests**
 
-Create `apps/console/src/components/helix/workflow/DraftEditor.test.jsx`:
+Create `apps/console/src/components/aof/workflow/DraftEditor.test.jsx`:
 
 ```jsx
 import { render, screen, waitFor, within } from '@testing-library/react';
@@ -3858,12 +3858,12 @@ describe('DraftEditor', () => {
 
 - [ ] **Step 2: Run to verify they fail**
 
-Run: `cd apps/console && npx vitest run src/components/helix/workflow/DraftEditor.test.jsx`
+Run: `cd apps/console && npx vitest run src/components/aof/workflow/DraftEditor.test.jsx`
 Expected: FAIL — module not found.
 
 - [ ] **Step 3: Implement the settings form**
 
-Create `apps/console/src/components/helix/workflow/SettingsForm.jsx`:
+Create `apps/console/src/components/aof/workflow/SettingsForm.jsx`:
 
 ```jsx
 import { useState } from 'react';
@@ -3980,7 +3980,7 @@ export function SettingsForm({ config, schema, onChange }) {
 
 - [ ] **Step 4: Implement the error list**
 
-Create `apps/console/src/components/helix/workflow/ErrorList.jsx`:
+Create `apps/console/src/components/aof/workflow/ErrorList.jsx`:
 
 ```jsx
 /** An API failure: the server's message, then every problem it listed. */
@@ -4007,7 +4007,7 @@ export function ErrorList({ error }) {
 
 - [ ] **Step 5: Implement the editor**
 
-Create `apps/console/src/components/helix/workflow/DraftEditor.jsx`:
+Create `apps/console/src/components/aof/workflow/DraftEditor.jsx`:
 
 ```jsx
 import { useEffect, useState } from 'react';
@@ -4149,7 +4149,7 @@ Run: `cd apps/console && npx vitest run` → all pass.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add apps/console/src/components/helix/workflow
+git add apps/console/src/components/aof/workflow
 git commit -m "feat: workflow draft editor with live server validation
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
@@ -4160,10 +4160,10 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ### Task 12: Versions — history, diff, approve, reject, redraft, upload
 
 **Files:**
-- Create: `apps/console/src/components/helix/workflow/WorkflowDialog.jsx`
-- Create: `apps/console/src/components/helix/workflow/VersionList.jsx`
-- Create: `apps/console/src/components/helix/workflow/VersionDetail.jsx`
-- Create: `apps/console/src/components/helix/workflow/YamlUpload.jsx`
+- Create: `apps/console/src/components/aof/workflow/WorkflowDialog.jsx`
+- Create: `apps/console/src/components/aof/workflow/VersionList.jsx`
+- Create: `apps/console/src/components/aof/workflow/VersionDetail.jsx`
+- Create: `apps/console/src/components/aof/workflow/YamlUpload.jsx`
 - Test: `VersionDetail.test.jsx`, `VersionList.test.jsx`, `YamlUpload.test.jsx` in the same folder
 
 **Interfaces:**
@@ -4172,7 +4172,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 - [ ] **Step 1: Write the failing tests**
 
-Create `apps/console/src/components/helix/workflow/VersionList.test.jsx`:
+Create `apps/console/src/components/aof/workflow/VersionList.test.jsx`:
 
 ```jsx
 import { render, screen } from '@testing-library/react';
@@ -4200,7 +4200,7 @@ it('lists every version with its status, and selects one', async () => {
 });
 ```
 
-Create `apps/console/src/components/helix/workflow/VersionDetail.test.jsx`:
+Create `apps/console/src/components/aof/workflow/VersionDetail.test.jsx`:
 
 ```jsx
 import { render, screen, within } from '@testing-library/react';
@@ -4314,7 +4314,7 @@ describe('VersionDetail', () => {
 });
 ```
 
-Create `apps/console/src/components/helix/workflow/YamlUpload.test.jsx`:
+Create `apps/console/src/components/aof/workflow/YamlUpload.test.jsx`:
 
 ```jsx
 import { render, screen } from '@testing-library/react';
@@ -4359,12 +4359,12 @@ it('shows the server’s line-numbered problems', async () => {
 
 - [ ] **Step 2: Run to verify they fail**
 
-Run: `cd apps/console && npx vitest run src/components/helix/workflow`
+Run: `cd apps/console && npx vitest run src/components/aof/workflow`
 Expected: FAIL — modules not found.
 
 - [ ] **Step 3: Implement the dialog**
 
-Create `apps/console/src/components/helix/workflow/WorkflowDialog.jsx`:
+Create `apps/console/src/components/aof/workflow/WorkflowDialog.jsx`:
 
 ```jsx
 import { useEffect } from 'react';
@@ -4425,7 +4425,7 @@ export function Check({ checked, onChange, children }) {
 
 - [ ] **Step 4: Implement the list**
 
-Create `apps/console/src/components/helix/workflow/VersionList.jsx`:
+Create `apps/console/src/components/aof/workflow/VersionList.jsx`:
 
 ```jsx
 import { Chip } from './StepCard';
@@ -4470,7 +4470,7 @@ export function VersionList({ versions, selected, onSelect }) {
 
 - [ ] **Step 5: Implement the detail**
 
-Create `apps/console/src/components/helix/workflow/VersionDetail.jsx`:
+Create `apps/console/src/components/aof/workflow/VersionDetail.jsx`:
 
 ```jsx
 import { useEffect, useState } from 'react';
@@ -4644,7 +4644,7 @@ export function VersionDetail({ number, caller, onChanged, onRedraft }) {
 
 - [ ] **Step 6: Implement the upload drawer**
 
-Create `apps/console/src/components/helix/workflow/YamlUpload.jsx`:
+Create `apps/console/src/components/aof/workflow/YamlUpload.jsx`:
 
 ```jsx
 import { useState } from 'react';
@@ -4705,7 +4705,7 @@ Run: `cd apps/console && npx vitest run` → all pass.
 - [ ] **Step 8: Commit**
 
 ```bash
-git add apps/console/src/components/helix/workflow
+git add apps/console/src/components/aof/workflow
 git commit -m "feat: workflow versions — diff, four-eyes approve, reject, redraft, YAML upload
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
@@ -4716,12 +4716,12 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ### Task 13: The Workflow tab in Agent One Finance
 
 **Files:**
-- Create: `apps/console/src/components/helix/workflow/ActiveStrip.jsx`
-- Create: `apps/console/src/components/helix/workflow/DevCallerSwitch.jsx`
-- Create: `apps/console/src/components/helix/workflow/WorkflowView.jsx`
-- Modify: `apps/console/src/components/helix/HelixApp.jsx`
+- Create: `apps/console/src/components/aof/workflow/ActiveStrip.jsx`
+- Create: `apps/console/src/components/aof/workflow/DevCallerSwitch.jsx`
+- Create: `apps/console/src/components/aof/workflow/WorkflowView.jsx`
+- Modify: `apps/console/src/components/aof/AofApp.jsx`
 - Modify: `apps/console/src/components/fobo/execution/WorkflowTrace.jsx:33-39`
-- Test: `apps/console/src/components/helix/workflow/WorkflowView.test.jsx`; extend `apps/console/src/components/helix/HelixApp.test.jsx`
+- Test: `apps/console/src/components/aof/workflow/WorkflowView.test.jsx`; extend `apps/console/src/components/aof/AofApp.test.jsx`
 
 **Interfaces:**
 - Consumes: everything from Tasks 9–12; `setDevCaller` (Task 9); board field `devCallers` (Task 1).
@@ -4729,7 +4729,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 - [ ] **Step 1: Write the failing tests**
 
-Create `apps/console/src/components/helix/workflow/WorkflowView.test.jsx`:
+Create `apps/console/src/components/aof/workflow/WorkflowView.test.jsx`:
 
 ```jsx
 import { render, screen } from '@testing-library/react';
@@ -4813,7 +4813,7 @@ describe('WorkflowView', () => {
 });
 ```
 
-In `apps/console/src/components/helix/HelixApp.test.jsx`, add the mock for the workflow API next to the existing `vi.mock('./data/helixApi', ...)`:
+In `apps/console/src/components/aof/AofApp.test.jsx`, add the mock for the workflow API next to the existing `vi.mock('./data/aofApi', ...)`:
 
 ```jsx
 vi.mock('./data/workflowApi', () => ({
@@ -4830,7 +4830,7 @@ vi.mock('./data/workflowApi', () => ({
 }));
 ```
 
-with `import workflowFixture from './workflow/__fixtures__/workflow.json';` at the top, and add these tests inside the `describe('HelixApp', ...)` block:
+with `import workflowFixture from './workflow/__fixtures__/workflow.json';` at the top, and add these tests inside the `describe('AofApp', ...)` block:
 
 ```jsx
   it('opens the Workflow tab', async () => {
@@ -4861,12 +4861,12 @@ with `import workflowFixture from './workflow/__fixtures__/workflow.json';` at t
 
 - [ ] **Step 2: Run to verify they fail**
 
-Run: `cd apps/console && npx vitest run src/components/helix`
-Expected: FAIL — `WorkflowView` missing; HelixApp has no Workflow tab.
+Run: `cd apps/console && npx vitest run src/components/aof`
+Expected: FAIL — `WorkflowView` missing; AofApp has no Workflow tab.
 
 - [ ] **Step 3: Implement the strip and the switch**
 
-Create `apps/console/src/components/helix/workflow/ActiveStrip.jsx`:
+Create `apps/console/src/components/aof/workflow/ActiveStrip.jsx`:
 
 ```jsx
 import { downloadYaml } from '../data/workflowApi';
@@ -4925,7 +4925,7 @@ export function ActiveStrip({ overview, canDraft, onNewDraft, onUpload, onShowDr
 }
 ```
 
-Create `apps/console/src/components/helix/workflow/DevCallerSwitch.jsx`:
+Create `apps/console/src/components/aof/workflow/DevCallerSwitch.jsx`:
 
 ```jsx
 import { setDevCaller } from '@/lib/apiClient';
@@ -4959,7 +4959,7 @@ export function DevCallerSwitch({ callers, current, onSwitch }) {
 
 - [ ] **Step 4: Implement the view**
 
-Create `apps/console/src/components/helix/workflow/WorkflowView.jsx`:
+Create `apps/console/src/components/aof/workflow/WorkflowView.jsx`:
 
 ```jsx
 import { useCallback, useEffect, useState } from 'react';
@@ -5101,7 +5101,7 @@ export function WorkflowView({ callerKey }) {
 
 - [ ] **Step 5: Add the tab and the switch to Agent One Finance**
 
-In `apps/console/src/components/helix/HelixApp.jsx`:
+In `apps/console/src/components/aof/AofApp.jsx`:
 
 1. Imports: change the lucide import to `import { CalendarDays as Calendar, Gauge, Workflow as WorkflowIcon } from 'lucide-react';` and add `import { DevCallerSwitch } from './workflow/DevCallerSwitch';` and `import { WorkflowView } from './workflow/WorkflowView';`.
 2. State: add `const [devCallers, setDevCallers] = useState([]);` after `const [caller, setCaller] = useState(null);`.

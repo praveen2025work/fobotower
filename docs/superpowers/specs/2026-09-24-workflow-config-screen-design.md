@@ -227,7 +227,7 @@ is specific to adjustments and cannot be reused as is).
 
 ### 5.1 Files
 
-`apps/console/src/components/helix/workflow/`:
+`apps/console/src/components/aof/workflow/`:
 
 | File | Role |
 |---|---|

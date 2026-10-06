@@ -3,7 +3,7 @@
 
 import { Link } from "react-router-dom";
 import { CheckCircle2, RotateCw } from "lucide-react";
-import type { CaseDetail } from "../../api/helix";
+import type { CaseDetail } from "../../api/aof";
 
 export default function FollowThroughPanel({ c }: { c: CaseDetail }) {
   const spec = c.follow_through_spec;

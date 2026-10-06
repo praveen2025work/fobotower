@@ -5,7 +5,7 @@
 import { useState } from "react";
 import { ListChecks } from "lucide-react";
 
-import { usePlatform, type DraftResult } from "../../api/helix";
+import { usePlatform, type DraftResult } from "../../api/aof";
 
 const KINDS = [
   { value: "investigate", label: "Investigate what another system found", help: "e.g. MB Rec's breaks: no matching, Agent One Finance explains each one" },

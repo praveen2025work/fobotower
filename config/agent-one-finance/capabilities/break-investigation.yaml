@@ -1,0 +1,102 @@
+# Investigate breaks another system has already reconciled.
+#
+# Use this when the matching is done upstream — FOBO's breaks come from MB Rec,
+# which has already reconciled CATS to MOTIF — and what is left is the manual
+# part: why each break exists, whether it is a timing difference that will
+# clear, what other sources say, and who must fix it. The first step is `load`
+# (read the open breaks), never `match`. Compare recon-investigation.yaml, for
+# teams whose two systems Agent One Finance must match itself.
+#
+# The capability owns the shape of the work and its gates; each team group
+# (config/agent-one-finance/groups/break.investigation/) sets its source, playbook, tools,
+# instructions, tollgates' checks and reviewers.
+
+id: break.investigation
+name: Break investigation
+description: Investigate breaks a reconciliation system has already found — explain each, settle what the playbook can, check timing and other sources, a controller signs off.
+
+owners:
+  people: [erin]
+  role: AOF_RECON_OWNER
+  four_eyes: true
+
+case:
+  label: Break run
+  item_label: Break
+  key: [book, cob]
+  subject: "{book} · COB {cob}"
+  scopes: { book: book }
+
+items:
+  load: { tool: mbrec.breaks, args: { book: $case.book, cob: $case.cob } }
+  id_field: instrument
+  amount_field: difference
+  display: [instrument, desk, break_type, age_days, cats_amount, motif_amount, difference]
+
+# Read the reconciled breaks → join more data → reference lookups → playbook →
+# group → rules, then the model → draft → gates. A controller approves the
+# breaks and the playbook's classification before the model is asked anything.
+steps: [load, enrich, resolve, classify, group, reason, draft, validate, review, record]
+pause_before: [reason, review]
+tollgates:
+  reason:
+    check: Are these today's open breaks from MB Rec, and is the playbook's classification right? Anything the desk has told you goes in the note.
+
+group_by: [break_type]
+
+reasoning:
+  reasoner: llm
+  output: verdict
+  tools: [mbrec.break_history]
+  skill: |
+    You investigate breaks a reconciliation system has already found. Use the
+    tools to find why each group of breaks exists and what should happen next.
+    Cite only figures from the tools or the breaks.
+
+knowledge:
+  entities: [instrument, book]
+
+review:
+  roles: [FOBO_CONTROLLER]
+  require_comment: [reject, escalated]
+
+retention:
+  days: 2555
+
+# What a team group may set. The workflow, its tollgates and gates stay here.
+configurable:
+  - case.label
+  - case.item_label
+  - case.subject
+  - case.opens_on
+  - case.schedule
+  - case.schedule_keys
+  - case.events
+  - case.opens_as
+  - case.due
+  - case.late_items
+  - follow_through
+  - items
+  - policy.*
+  - rules
+  - group_by
+  - group_label
+  - reasoning.skill
+  - reasoning.tools
+  - reasoning.specialists
+  - reasoning.sections
+  - review.roles
+  - review.require_comment
+  - review.dual_review_when
+  - review.bulk_exclude
+  - review.confirm
+  - review.allow_delegation
+  - review.checklist
+  - requests
+  - insights
+  - export
+  - escalation
+  - knowledge
+  - resolve
+  - enrich
+  - playbook

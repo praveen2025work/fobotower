@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import type { InboxRow } from "../../api/helix";
+import type { InboxRow } from "../../api/aof";
 import { mockApi, renderAt } from "../../test/render";
 import InboxPage from "../Inbox";
 
@@ -15,7 +15,7 @@ const row = (id: string, extra: Partial<InboxRow> = {}): InboxRow => ({
   status: "awaiting_review",
   team_group: "cats-motif",
   opened_at: "2026-10-01T06:30:00Z",
-  opened_by: "helix-scheduler",
+  opened_by: "aof-scheduler",
   groups: 2,
   proposed: 2,
   escalated: 0,

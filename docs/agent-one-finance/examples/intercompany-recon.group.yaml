@@ -1,0 +1,49 @@
+# Example — a third rec group of the shared reconciliation capability:
+# intercompany. Entity A's receivable from B is matched to B's payable to A.
+# Same engine as CATS vs MOTIF and cash; this team only sets its sources,
+# keys, tolerance, rules, instructions and reviewers.
+#
+# Needs: an intercompany connector serving `ic.receivables` and `ic.payables`
+# (one entry in config/agent-one-finance/connectors.yaml), and the role IC_ACCOUNTANT.
+# Install: config/agent-one-finance/groups/recon.investigation/intercompany.yaml, then
+# python -m agent_one_finance.config_sync (or it seeds on a fresh database).
+group: intercompany
+name: Intercompany — receivable vs payable
+description: Each entity pair's intercompany receivable matched to the counterpart's payable; differences explained and settled or escalated to the counterpart's accountant.
+owners: { people: [], role: AOF_IC_OWNER, four_eyes: true }
+set:
+  case:
+    label: IC pair
+    item_label: IC difference
+    key: [entity, counterparty_entity, period]
+    subject: "{entity} ↔ {counterparty_entity} · {period}"
+    scopes: { entity: entity }
+  items:
+    id_field: item_id
+    amount_field: difference
+    display: [invoice_ref, currency, receivable_amount, payable_amount, difference, break_type]
+  match:
+    left:  { tool: ic.receivables, args: { entity: $case.entity, counterparty: $case.counterparty_entity, period: $case.period } }
+    right: { tool: ic.payables,    args: { entity: $case.counterparty_entity, counterparty: $case.entity, period: $case.period } }
+    keys: [invoice_ref]
+    amount_field: amount
+    tolerance: 1.0
+    left_label: receivable
+    right_label: payable
+  policy:
+    fx_tolerance: { value: 50, unit: GBP }
+  group_by: [break_type, currency]
+  rules:
+    - id: fx-rounding
+      when: abs(total) <= policy.fx_tolerance
+      then: { status: proposed, comment: "IC difference of {total} in {currency} is FX rounding, within tolerance; settle at month-end rate." }
+    - id: missing-payable
+      when: break_type == 'missing_payable'
+      then: { status: escalated, comment: "", reason: "Counterparty has not booked the payable: chase the counterpart's accountant." }
+  reasoning:
+    tools: [ic.payables]
+    skill: |
+      You reconcile intercompany balances. For each difference, say whether it is
+      timing (booked in different periods), FX (different rates), or a missing or
+      duplicated invoice, and what each side should book. Cite only tool figures.
+  review: { roles: [IC_ACCOUNTANT] }

@@ -10,8 +10,8 @@ const src = join(web, "public", "pitch");
 const out = join(web, "..", "..", "docs", "helix", "pitch", "helix-pitch.html");
 
 const html = readFileSync(join(src, "index.html"), "utf8")
-  .replace(/src="img\/([^"]+\.png)"/g, (_, name) =>
-    `src="data:image/png;base64,${readFileSync(join(src, "img", name)).toString("base64")}"`);
+  .replace(/(["'])img\/([\w.-]+\.png)\1/g, (_, q, name) =>
+    `${q}data:image/png;base64,${readFileSync(join(src, "img", name)).toString("base64")}${q}`);
 mkdirSync(dirname(out), { recursive: true });
 writeFileSync(out, html);
 console.log(`wrote ${out} (${Math.round(html.length / 1024)} KB)`);

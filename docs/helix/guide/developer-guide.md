@@ -215,7 +215,8 @@ Source of truth: `apps/backend/helix/manifest.py` (Pydantic; unknown keys are re
 | `compare` | CompareSpec | — | measure vs baseline → a variance field |
 | `policy` | {name: {value, unit?}} | {} | thresholds used in expressions as `policy.<name>`; `null` = not confirmed |
 | `steps` | list of step ids | required | see §7; core steps by name, configurable steps by any id |
-| `step_settings` | {id: {type, when, label, with}} | {} | the type and settings of each configurable step (`dataset`, `derive`, `filter`, `convert`, `bucket`, `dedupe`, `aggregate`, `transform`), and `when` on any non-gate step (§7b) |
+| `step_settings` | {id: {type, when, label, with}} | {} | the type and settings of each configurable step (31 types, §7b), and `when` on any non-gate step |
+| `boundaries` | list | [] | decisions reserved for named people (§7b) |
 | `pause_before` | list | `[review]` | the run waits for people before these steps |
 | `tollgates` | {step: {roles, check, stop_needs_comment}} | {} | who passes each stop other than review and publish, and what they check (§7a) |
 | `requests` | {targets: [{id, name, roles, users}], hold_decision, reinvestigate_on_answer, remind_after_hours, escalate_after_hours, allow_attachments} | no targets | who reviewers may ask for evidence; an open question holds its group; an answer (optionally with a file) goes to the model; unanswered ones are chased, then escalated |
@@ -298,6 +299,8 @@ Tool arguments can use `$case.<field>`, `$case_id` and `$subject`.
 | `require_comment` | reject, escalated | when a comment is mandatory |
 | `opener_may_decide` | true | maker-checker when false |
 | `dual_review_when` | — | expression: true → two approvers |
+| `authority` | [] | tiers: `when`, `label`, `roles`, `approvals` (1–5), `lane`, `bulk` (§7b) |
+| `authority_dataset` | — | a data set read from the bank's delegated-authority system, used instead of `authority` |
 | `max_reinvestigations` | 2 | "Investigate again" limit (0–10) |
 
 ### publish (write-back)
@@ -395,7 +398,7 @@ Typical places:
 - before `group`: check the playbook's classification;
 - before `enrich`: check the match is complete.
 
-## 7b. Configurable steps (steps v2, phase 1)
+## 7b. Configurable steps (steps v2)
 
 Besides the core steps, a capability adds **generic data steps** by configuration, as many as it
 needs and in any order, each under its own id:
@@ -435,6 +438,79 @@ phases are in [`../design/step-catalogue-v2.md`](../design/step-catalogue-v2.md)
 
 Expressions gained `case.<field>`, `days_between`, `hours_between`, `weekday`, `coalesce`,
 `ifelse`, `lower`, `upper`, `int` and `sum`.
+
+### The other families (phases 2–6)
+
+| Family | Type | Does | Settings |
+|---|---|---|---|
+| Accounting | `recompute` | recalculates a figure (fee, interest, accrual) by formula or a team's tool and compares it with what was booked; `<as>_ok` is `None` when it cannot tell | `formula` or `tool`, `compare_to`, `as`, `tolerance` |
+| | `schedule` | spreads each item's amount over periods into a data set (the last period takes the rounding) | `amount`, `periods`, `start`, `into` |
+| | `period_check` | stops the run (escalated, `PERIOD_CLOSED`) if the period is not open | `tool`, `args`, `status_field`, `open_values` |
+| | `propose_entries` | balanced journals per group, checked against a chart-of-accounts data set; an unbalanced entry escalates the group (`ENTRY_INVALID`) | `when`, `lines[{account, side, amount, narrative}]`, `period`, `chart`, `into` |
+| | `post` | after `record`: posts the **approved** journals, the ledger's own check (`dry_run_tool`) first, each once (idempotency key); outcome `posted` or `post_failed` | `tool` (write), `dry_run_tool`, `args`, `approver_roles` |
+| Assurance | `flux` | change, % change and z-score of each item against its own history (a data set) | `history`, `key`, `value`, `history_value`, `prefix` |
+| | `anomaly` | flags items far from their history (z-score threshold) | as `flux`, plus `threshold` |
+| | `consistency` | totals across items and data sets; each failing check becomes an item | `checks[{id, left, right, tolerance, message}]` |
+| | `sample` | reproducible sample (seed kept): random, largest, by value; stratified; some always in; the rest kept, marked | `method`, `size` or `percent`, `field`, `stratify_by`, `always_include_when` |
+| | `score` | weighted factors → score, reasons and band | `factors[{when, weight, label}]`, `as`, `bands` |
+| | `attest` | an owner certifies a statement at the tollgate before it; who, when, evidence, expiry kept (`attestations`) | `statement`, `roles`, `evidence_required`, `valid_for_days` |
+| Orchestration | `await` | the run waits (status `waiting_<step>`) for an event or for its child cases; times out to a person or carries on | `event` (`children` for child cases), `timeout_hours`, `on_timeout`, `roles` |
+| | `spawn` | one child case per item in another capability (`parent_case_id`) | `capability`, `team_group`, `key`, `max_children` |
+| | `compose` | drafts each group's message for the reviewer (never sent by itself) | `when`, `to`, `subject`, `body` |
+| | `report` | after `record`: the case's PDF report, kept with the case (`documents`) | `name` |
+| Acquisition | `match_n` | matches 2–6 systems by key, many-to-one sums; keeps what does not agree (`amount_break`, `missing_<system>`) | `sources[{label, tool, args, amount_field}]`, `keys`, `tolerance` |
+| | `intake` | a workbook into items by column map; failing rows kept aside with `intake_problems` | `tool`, `columns`, `id_field`, `required`, `numbers` |
+| | `extract` | fields from a document: patterns, then the model (`extract` on the adapter); a value must appear in its quote and the quote in the document; below `accept_confidence`, or every value when `regulated`, goes to a person | `tool`, `fields[{name, hint, required, pattern}]`, `accept_confidence`, `regulated` |
+| Time and parties | `clock` | service-level or regulatory clocks per item (hours or business days, paused hours); warned before and on breach (scheduler) | `clocks[{id, label, starts, hours or business_days, warn_before_hours, pause_hours_field}]` |
+| | `timeline` | one ordered timeline from several systems; the model reads it (`for_model`) | `sources[{tool, args, time_field, label}]`, `into` |
+| | `link` | earlier cases on the same client/account/counterparty, in any capability | `match_on`, `lookback_days`, `capabilities`, `limit` |
+| | `screen` | fuzzy name matching against a list data set: **candidates only**, never cleared by Helix | `list`, `fields`, `list_field`, `threshold` |
+| | `outreach` | sends each drafted message through a write tool after a person approves at the tollgate before it | `tool` (write), `roles`, `when` |
+
+**Rules the platform checks.**
+- Only `publish` or `post` (one of them) and `report` may follow `record`; the run must pause
+  before the write-back step for a second person.
+- `attest` and `outreach` need a person first: their id must be in `pause_before` (their
+  tollgate, passed by their `roles`).
+- A `spawn` needs a later `await` with `event: children`.
+- A step that writes may only name `access: write` tools; any other step may only read.
+- `await` steps pause the run by themselves.
+
+**Waiting and events.**
+- A case at an `await` step has status `waiting_<step>` and `waiting_since`.
+- A system delivers the event with `POST /api/cases/{id}/events/{step}`, sending
+  `X-Helix-Event-Secret` and a body of `{payload: {...}}`.
+- A person with the step's `roles` can deliver it from the case page.
+- The scheduler continues a wait past `timeout_hours` with `{timed_out: true}`.
+- For `event: children` the run continues on its own once every child case has finished, and the
+  children's outcomes land on the items as `child_status` and `child_outcome`.
+
+### Authority and decision boundaries (E7)
+
+```yaml
+review:
+  roles: [FIN_PREPARER, FIN_REVIEWER]
+  authority_dataset: authority        # rows from the bank's delegated-authority system: min_amount, max_amount, roles, approvals, lane, bulk
+  authority:                          # …or tiers in configuration (first that holds applies)
+    - { when: "total >= 1000000", label: large, roles: [FIN_CONTROLLER], approvals: 2, lane: enhanced, bulk: false }
+    - { label: standard }
+boundaries:
+  - when: "total > policy.redress_limit"     # or verdicts: [RETURN]
+    roles: [COMPLAINTS_LEAD]
+    model_may_propose: false
+    reason: redress above the handler's limit
+```
+
+- **Authority tiers** are applied to every group's proposal (`finding.authority`).
+  - A person without the tier's roles is refused ("above your authority").
+  - The group needs `approvals` *different* people.
+  - With `bulk: false` it is left out of "Approve all".
+  - The case shows `approvals: {needed, by, settled}` per group.
+- **Boundaries** reserve a decision for named roles (`finding.reserved`).
+  - Nobody else may decide it, and it is never decided in bulk.
+  - If the model proposed it and `model_may_propose` is false, the proposal is withheld
+    (`withheld_proposal`) and the group goes to a person (`RESERVED: …`).
+- Who may see a case widens to the release, tier, boundary and tollgate roles.
 
 ## 8. Expressions
 
@@ -552,7 +628,7 @@ All routes are under `/api` and are identified by the identity header.
 | Capabilities | `GET /capabilities`, `GET /capabilities/{id}`, `POST /capabilities/{id}/versions`, `POST /capabilities/{id}/versions/{v}/approve`, `GET …/versions/{a}/diff/{b}`, `GET …/versions/{v}/export`, `GET …/flow`, `POST …/instructions`, `POST /cases/{id}/gates/{step}` (pass or stop at a tollgate), `POST /cases/{id}/requests` (ask for evidence), `GET /requests` (questions for me), `POST /requests/{rid}/answer` (an addressee, or a bot with the event secret and `answered_by`), `POST /requests/{rid}/answer-with-file` (multipart: answer, file, answered_by), `POST /requests/{rid}/cancel`, `GET /capabilities/{id}/contract?team_group=` (data needed, parameters to confirm), `GET …/learning` (unexplained items, rule candidates), `GET …/recurring`, `POST …/check` (a manifest or group config, checked without storing: `{ok, problems}`) |
 | Groups | `GET /capabilities/{id}/groups`, `GET …/groups/{g}`, `POST …/groups`, `POST …/groups/{g}/versions/{v}/approve`, `GET …/groups/{g}/versions/{a}/diff/{b}` |
 | Authoring | `GET /authoring/modes` (which ways are offered), `POST /authoring/guided` (answers → manifest, no model), `POST /authoring/draft` (BRD → manifest; a model, or the nearest template without one), `POST /authoring/submit`, `GET /authoring/drafts`, `GET /authoring/templates`, `POST /promotion/import` |
-| Cases | `GET/POST /capabilities/{id}/cases`, `GET /cases/{id}`, `POST /cases/{id}/decisions` (with `checklist` answers when the capability has a sign-off checklist), `POST …/decisions/bulk`, `POST …/groups/{g}/reinvestigate`, `POST …/rerun`, `POST …/publish`, `POST …/publish/retry`, `GET …/documents/{name}`, `POST …/legal-hold` |
+| Cases | `GET/POST /capabilities/{id}/cases`, `GET /cases/{id}`, `POST /cases/{id}/decisions` (with `checklist` answers when the capability has a sign-off checklist), `POST …/decisions/bulk`, `POST …/groups/{g}/reinvestigate`, `POST …/rerun`, `POST …/publish`, `POST …/publish/retry`, `GET …/documents/{name}` (published, or kept by a `report` step), `POST …/legal-hold`, `POST …/events/{step}` (the event a waiting case continues with: a system with the event secret, or a person with the step's roles) |
 | Evidence and chat | `POST /cases/{id}/evidence`, `GET …/evidence/{name}`, `GET …/evidence-pack`, `GET …/messages`, `POST …/ask`, `GET …/history`, `GET …/history/{checkpoint}` |
 | Operations | `GET /notifications`, `POST /notifications/read`, `POST /events`, `GET /schedules`, `GET/POST /switches`, `POST /capabilities/{id}/evals`, `GET …/evals`, `GET /evals/{run}`, `POST /entitlements/invalidate` |
 

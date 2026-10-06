@@ -133,7 +133,7 @@ describe("groupSet", () => {
   });
 });
 
-describe("Prepare the data (configurable steps)", () => {
+describe("Configurable steps", () => {
   it("adds a data step after the item source, sets it up, and keeps it when a core step is switched", async () => {
     const calls = mockApi({
       "GET /platform": platform,
@@ -141,7 +141,7 @@ describe("Prepare the data (configurable steps)", () => {
       "POST /authoring/submit": { capability_id: "recon.investigation", version: 9 },
     });
     renderAt("/", "/", <OrchestratorEditor capabilityId="recon.investigation" manifest={manifest} mode={{ kind: "capability" }} canEdit />);
-    await userEvent.click(await screen.findByRole("button", { name: /Prepare the data/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /Configurable steps/ }));
     await userEvent.selectOptions(screen.getByLabelText("Step type to add"), "filter");
     await userEvent.click(screen.getByRole("button", { name: "Add" }));
     const step = screen.getByRole("region", { name: "Step filter_1" });
@@ -155,5 +155,24 @@ describe("Prepare the data (configurable steps)", () => {
     expect(last.manifest.steps).toEqual(["match", "filter_1", "enrich", "group", "reason", "draft", "validate", "review", "record"]);
     expect((last.manifest.step_settings as Record<string, { type: string; with: { keep_when: string } }>).filter_1)
       .toMatchObject({ type: "filter", with: { keep_when: "not is_test" } });
+  });
+
+  it("puts group steps after the reason, write-back after record, and a person before those that need one", async () => {
+    const calls = mockApi({
+      "GET /platform": platform,
+      "POST /capabilities/recon.investigation/check": { ok: true, problems: [] },
+    });
+    renderAt("/", "/", <OrchestratorEditor capabilityId="recon.investigation" manifest={manifest} mode={{ kind: "capability" }} canEdit />);
+    await userEvent.click(await screen.findByRole("button", { name: /Configurable steps/ }));
+    for (const t of ["compose", "outreach", "report"]) {
+      await userEvent.selectOptions(screen.getByLabelText("Step type to add"), t);
+      await userEvent.click(screen.getByRole("button", { name: "Add" }));
+    }
+    expect(within(screen.getByRole("region", { name: "Step outreach_1" })).getByText("a person approves first")).toBeTruthy();
+    await userEvent.type(within(screen.getByRole("region", { name: "Step compose_1" })).getByLabelText("Subject"), "Your payment");
+    await waitFor(() => expect(calls.some((c) => c.path.endsWith("/check") && JSON.stringify(c.body).includes("Your payment"))).toBe(true));
+    const last = [...calls].reverse().find((c) => c.path.endsWith("/check"))!.body as { manifest: Record<string, unknown> };
+    expect(last.manifest.steps).toEqual(["match", "enrich", "group", "reason", "compose_1", "outreach_1", "draft", "validate", "review", "record", "report_1"]);
+    expect(last.manifest.pause_before).toContain("outreach_1");
   });
 });

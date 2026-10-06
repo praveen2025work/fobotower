@@ -277,6 +277,38 @@ async def guided(a: dict, caller: Caller) -> dict[str, Any]:
         m["policy"] = {"materiality": {"value": None, "unit": a.get("unit") or None}}
         assumptions.append("Materiality is left unset until it is confirmed; nothing is filtered by it yet.")
 
+    # steps v2: a few common building blocks, asked in plain words
+    m["step_settings"] = {}
+    if a.get("sample_size"):
+        steps.append("pick")
+        m["step_settings"]["pick"] = {"type": "sample", "label": "Sample",
+                                      "with": {"method": "random", "size": int(a["sample_size"])}}
+        assumptions.append(f"A random sample of {int(a['sample_size'])} is reviewed; the rest stay on the case, marked.")
+    if a.get("clock_hours"):
+        steps.append("sla")
+        m["step_settings"]["sla"] = {"type": "clock", "label": "Service level", "with": {"clocks": [{
+            "id": "sla", "label": f"Service level ({a['clock_hours']} h)", "starts": (a.get("clock_starts") or "case_opened"),
+            "hours": float(a["clock_hours"]), "warn_before_hours": max(1.0, float(a["clock_hours"]) / 4)}]}}
+    if a.get("authority_tool"):
+        steps.append("authority")
+        m["step_settings"]["authority"] = {"type": "dataset", "label": "Delegated authority", "with": {
+            "name": "authority", "tool": a["authority_tool"], "args": await _args_for(a["authority_tool"], key)}}
+        m["review"]["authority_dataset"] = "authority"
+    elif a.get("two_approvers_over") not in (None, "") and m["items"].get("amount_field"):
+        m["review"]["authority"] = [
+            {"when": f"abs(total) >= {float(a['two_approvers_over'])}", "label": "two approvers",
+             "approvals": 2, "lane": "enhanced", "bulk": False},
+            {"label": "standard"}]
+    reserved = [r for r in (a.get("reserved_roles") or []) if r]
+    if reserved:
+        m["boundaries"] = [{"when": (a.get("reserved_when") or "").strip() or None, "roles": reserved,
+                            "model_may_propose": False, "reason": a.get("reserved_reason") or "a decision reserved for named people"}]
+        if not (a.get("reserved_when") or "").strip():
+            m["boundaries"][0]["when"] = "true"
+            assumptions.append(f"Every decision is reserved for {', '.join(reserved)}; narrow it with a condition in Configure.")
+    if not m["step_settings"]:
+        del m["step_settings"]
+
     steps.append("group")
     m["group_by"] = [g for g in (a.get("group_by") or []) if g]
     steps += ["reason", "draft", "validate", "review", "record"]

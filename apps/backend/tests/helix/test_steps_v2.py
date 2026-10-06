@@ -307,3 +307,23 @@ async def test_authority_tiers_in_configuration_and_a_boundary_the_model_may_not
                                  checklist=[{"id": q["id"], "answer": "yes"} for q in case["review"]["checklist"]])
             assert lead.status_code == 201, lead.text
     assert any(g["group_key"].get("reason_code") == "AC04" for g in case["groups"])
+
+
+async def test_the_case_shows_what_it_waits_for_its_children_clocks_and_approvals(api):
+    case = await _open(api, CONTROLS, {"entity": "UK01", "date": "2026-10-11"}, "tess")
+    w = case["waiting_on"]
+    assert (w["step"], w["event"], w["wait"], w["label"], w["you"]) == ("event", "children", "tests", "All sample tests finished", False)
+    assert w["timeout_hours"] == 72 and "child case" in w["why_not"]
+    assert len(case["children"]) == 3 and all(k["capability_id"] == "controls.sample-test" for k in case["children"])
+    child = (await api.get(f"/api/cases/{case['children'][0]['case_id']}", headers=api.as_user("tess"))).json()
+    assert child["parent_case_id"] == case["case_id"]
+
+    c = await _open(api, COMPLAINTS, {"entity": "UK01", "date": "2026-10-12"}, "carla")
+    assert [k["id"] for k in c["clocks"]] == ["final_response"] and c["clocks"][0]["label"].startswith("Final response")
+
+    a = await _open(api, ACCRUALS, {"entity": "UK01", "period": "2026-10"}, "alice")
+    big = next(g for g in a["groups"] if g["finding"]["authority"]["approvals"] == 2)
+    assert big["approvals"] == {"needed": 2, "by": [], "settled": False}
+    res = await _decide(api, a["case_id"], big["group_id"], "bob")
+    g = next(x for x in res.json()["case"]["groups"] if x["group_id"] == big["group_id"])
+    assert g["approvals"] == {"needed": 2, "by": ["bob"], "settled": False}

@@ -124,3 +124,77 @@ connectors:
       exceptions:    { description: "Payment exceptions for an entity and date", scope: { arg: entity, key: entity } }
       message_trail: { description: "ISO 20022 / SWIFT messages behind the exceptions", scope: { arg: entity, key: entity } }
       risk_score:    { description: "The payments team's own risk scoring service", scope: { arg: entity, key: entity } }
+
+  # Steps v2: accounting actions, assurance, orchestration, parties
+  # (fin.accruals, client.complaints, controls.operating-test). Each system
+  # stays the source; Helix reads it, and writes only where a person approved.
+  journals:
+    name: General ledger — periods, accounts, journals
+    transport: http
+    url: https://ledger-mcp.internal.example/mcp
+    headers_env: { Authorization: LEDGER_MCP_AUTHORIZATION }
+    classification: confidential
+    tools:
+      period_status:     { description: "Whether the accounting period is open for an entity", scope: { arg: entity, key: entity } }
+      chart_of_accounts: { description: "The entity's postable accounts", scope: { arg: entity, key: entity } }
+      grni:              { description: "Goods received not invoiced at period end", scope: { arg: entity, key: entity } }
+      validate_journal:  { description: "The ledger's own check of a journal (a dry run)", scope: { arg: entity, key: entity } }
+      post_journal:
+        description: Post a journal to the ledger
+        access: write                    # the post step only, after a second person releases it
+        idempotency_arg: idempotency_key # each journal once, however often retried
+        scope: { arg: entity, key: entity }
+
+  authority:
+    name: Delegated authority
+    transport: http
+    url: https://doa-mcp.internal.example/mcp
+    headers_env: { Authorization: DOA_MCP_AUTHORIZATION }
+    classification: internal
+    tools:
+      # rows: min_amount, max_amount, roles, approvals, lane, bulk — read as a data set
+      # (review.authority_dataset), so the bank's matrix stays the source of truth
+      delegated_authority: { description: "Who may approve how much, per entity", scope: { arg: entity, key: entity } }
+
+  channel:
+    name: Client and counterparty messaging
+    transport: http
+    url: https://messaging-mcp.internal.example/mcp
+    headers_env: { Authorization: MESSAGING_MCP_AUTHORIZATION }
+    classification: confidential
+    tools:
+      send_message:
+        description: Send a message to a client or counterparty (secure mail, portal, SWIFT MT199)
+        access: write                    # an outreach step only, after a person approves sending
+        idempotency_arg: idempotency_key
+
+  client:
+    name: Client service — complaints, account events, watch list
+    transport: http
+    url: https://client-service-mcp.internal.example/mcp
+    headers_env: { Authorization: CLIENT_MCP_AUTHORIZATION }
+    classification: confidential
+    tools:
+      complaints:     { description: "Complaints received for an entity on a date", scope: { arg: entity, key: entity } }
+      account_events: { description: "Account events around a date", scope: { arg: entity, key: entity } }
+      watch_list:     { description: "The team's internal watch list (supplied by the control function)" }
+
+  procurement:
+    name: Procurement — purchase orders, receipts, invoices
+    transport: http
+    url: https://procurement-mcp.internal.example/mcp
+    headers_env: { Authorization: PROCUREMENT_MCP_AUTHORIZATION }
+    classification: internal
+    tools:
+      purchase_orders: { description: "Purchase order lines for a period", scope: { arg: entity, key: entity } }
+      goods_receipts:  { description: "Goods receipts against purchase order lines", scope: { arg: entity, key: entity } }
+      invoices:        { description: "Supplier invoices against purchase order lines", scope: { arg: entity, key: entity } }
+
+  controls:
+    name: Controls testing evidence
+    transport: http
+    url: https://controls-mcp.internal.example/mcp
+    headers_env: { Authorization: CONTROLS_MCP_AUTHORIZATION }
+    classification: internal
+    tools:
+      evidence: { description: "Test attributes for one sampled item", scope: { arg: entity, key: entity } }

@@ -58,3 +58,28 @@ async def test_what_is_missing_comes_back_as_problems_not_errors(api):
     out = await _guided(api, {"name": "x", "kind": "reconcile", "left_tool": "bank.statement"})
     assert "a reconciliation needs both systems' tools" in out["problems"]
     assert any("YOUR_REVIEWER_ROLE" in a for a in out["assumptions"])
+
+
+async def test_answers_add_sampling_clocks_authority_and_reserved_decisions(api):
+    out = await _guided(api, {
+        "name": "Payment repairs", "kind": "review", "case_key": ["entity", "date"], "scope_field": "entity",
+        "source_tool": "payments.exceptions", "id_field": "exception_id", "amount_field": "amount",
+        "group_by": ["reason_code"], "reviewer_roles": ["PAYMENTS_OPS"], "decided_by": "person",
+        "sample_size": 10, "clock_hours": 24, "clock_starts": "received_at", "two_approvers_over": 1000000,
+        "reserved_roles": ["PAYMENTS_LEAD"], "reserved_when": "reason_code == 'AC04'", "reserved_reason": "returning funds"})
+    assert out["problems"] == [], out["problems"]
+    m = out["manifest"]
+    assert m["steps"][:3] == ["load", "pick", "sla"]
+    assert m["step_settings"]["pick"]["with"] == {"method": "random", "size": 10}
+    assert m["step_settings"]["sla"]["with"]["clocks"][0]["starts"] == "received_at"
+    assert m["review"]["authority"][0]["approvals"] == 2 and m["review"]["authority"][0]["bulk"] is False
+    assert m["boundaries"][0]["roles"] == ["PAYMENTS_LEAD"] and m["boundaries"][0]["reason"] == "returning funds"
+
+    from_bank = await _guided(api, {
+        "name": "Accruals", "kind": "review", "case_key": ["entity", "period"], "source_tool": "journals.grni",
+        "id_field": "po_line", "amount_field": "accrual", "reviewer_roles": ["FIN_REVIEWER"], "decided_by": "person",
+        "authority_tool": "authority.delegated_authority"})
+    assert from_bank["problems"] == [], from_bank["problems"]
+    fm = from_bank["manifest"]
+    assert fm["review"]["authority_dataset"] == "authority"
+    assert fm["step_settings"]["authority"]["with"]["args"] == {"entity": "$case.entity"}

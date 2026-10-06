@@ -171,7 +171,30 @@ export interface Finding {
   previous?: { status: string; comment: string; reason: string | null; decided_by: string };
   /** The model's answer in the configured parts (reasoning.sections). */
   sections?: { id: string; label: string; text: string }[];
+  // steps v2
+  /** The authority tier: who may approve, how many different people, the review lane. */
+  authority?: { label: string; roles: string[]; approvals: number; lane: string; bulk: boolean; source: string };
+  /** A decision reserved for named people (a boundary). */
+  reserved?: { roles: string[]; reason: string };
+  /** What the model proposed but may not (a boundary): withheld for a person. */
+  withheld_proposal?: string | null;
+  /** Balanced journals proposed for the group (propose_entries). */
+  entries?: JournalProposal;
+  /** The outbound message drafted for the group (compose), and what was sent (outreach). */
+  draft_message?: OutboundMessage;
+  sent_message?: OutboundMessage & { message_id?: string | null; approved_by?: string | null; error?: string };
 }
+
+export interface JournalProposal {
+  journal_id: string;
+  period: string | null;
+  lines: { account: string; side: "debit" | "credit"; amount: number; cost_centre?: string; narrative?: string }[];
+  debits: number;
+  credits: number;
+  balanced: boolean;
+  problems: string[];
+}
+export interface OutboundMessage { to: string; subject: string; body: string; step?: string }
 
 /** One sign-off checklist question, with what Helix already knows (review.checklist). */
 export interface ChecklistQuestion {
@@ -203,6 +226,8 @@ export interface Group {
   flags?: ReviewFlag[];
   /** Flags that keep this group out of "Approve all" (review.bulk_exclude). */
   bulk_blockers?: ReviewFlag[];
+  /** Different people who must approve (dual review, authority tier), who has, and whether it is settled. */
+  approvals?: { needed: number; by: string[]; settled: boolean };
   /** The ticket raised for the owning team (manifest `escalation`). */
   ticket?: { reference: string | null; url: string | null; status: "raised" | "failed"; error: string | null; raised_at: string } | null;
 }
@@ -269,7 +294,14 @@ export interface CaseDetail extends CaseSummary {
   } | null;
   /** Who the case waits on; when it is not the viewer, why not. */
   waiting_on?: {
-    step: "review" | "release" | "gate";
+    step: "review" | "release" | "gate" | "event";
+    /** Waiting at an `await` step: the event, since when, its timeout. */
+    event?: string;
+    wait?: string;
+    label?: string;
+    since?: string | null;
+    timeout_hours?: number | null;
+    on_timeout?: string | null;
     roles: string[];
     you: boolean;
     why_not: string | null;
@@ -300,6 +332,12 @@ export interface CaseDetail extends CaseSummary {
   /** Items a step set aside (filter, duplicates, roll-up), with why. */
   excluded?: { item_id: string; by: string; reason: string }[];
   step_labels?: Record<string, string>;
+  step_types?: Record<string, string>;
+  /** The case that opened this one (a `spawn` step), and the cases this one opened. */
+  parent_case_id?: string | null;
+  children?: { case_id: string; subject: string; status: CaseStatus; outcome: string | null; capability_id: string }[];
+  /** Service-level or regulatory clocks (a `clock` step), earliest per clock. */
+  clocks?: { id: string; label: string; due_at: string; warn_before_hours: number; warned: boolean; breached: boolean }[];
 }
 
 /** A question to a desk, a trader or Operations, and its answer. */
@@ -582,6 +620,20 @@ export function usePassGate(caseId: string) {
         action: v.action, comment: v.comment, idempotency_key: newIdempotencyKey(),
       }),
     onSuccess: (detail) => refresh(detail),
+  });
+}
+
+/** Deliver the event a case waits for, by hand (a person the `await` step names). */
+export function useDeliverEvent(caseId: string) {
+  const refresh = useRefreshCases();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { step: string; payload: Record<string, unknown> }) =>
+      api.post<{ status: string }>(`/cases/${enc(caseId)}/events/${enc(v.step)}`, { payload: v.payload }),
+    onSuccess: () => {
+      refresh();
+      qc.invalidateQueries({ queryKey: ["case", caseId] });
+    },
   });
 }
 

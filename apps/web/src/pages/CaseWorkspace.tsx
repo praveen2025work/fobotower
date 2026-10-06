@@ -52,6 +52,7 @@ import EvidencePanel from "../components/case/EvidencePanel";
 import RequestsPanel from "../components/case/RequestsPanel";
 import FollowThroughPanel from "../components/case/FollowThroughPanel";
 import DataSetsPanel from "../components/case/DataSetsPanel";
+import { CaseLinks, GroupSteps } from "../components/case/StepsV2";
 import { ChecklistAnswers, SignOffChecklist, checklistComplete } from "../components/case/SignOffChecklist";
 import CaseHistory from "../components/case/CaseHistory";
 import StatusBadge from "../components/StatusBadge";
@@ -463,6 +464,8 @@ function ProposalPanel({ c, group }: { c: CaseDetail; group: Group }) {
   const hasTests = items.some((i) => Array.isArray(i.tests) && (i.tests as unknown[]).length > 0);
   const sentBack = f?.reinvestigations ?? 0;
   const canSendBack = c.can_decide && sentBack < (c.review?.max_reinvestigations ?? 2);
+  // approved by some, but more different people must approve (dual review, authority tier)
+  const morePeople = group.approvals && !group.approvals.settled && group.approvals.by.length > 0 ? group.approvals : null;
 
   return (
     <div className="space-y-5">
@@ -487,6 +490,7 @@ function ProposalPanel({ c, group }: { c: CaseDetail; group: Group }) {
           f?.comment && <p className="mt-3 rounded-lg border border-surface-200 bg-surface-50 p-3 text-sm leading-relaxed text-surface-800">{f.comment}</p>
         )}
         <EscalationCard group={group} canDecide={c.can_decide} />
+        <GroupSteps group={group} />
         {f?.previous && (
           <p className="mt-2 text-xs text-surface-500">
             Before “{f.reviewer_note}”: {f.previous.comment || f.previous.reason}
@@ -509,7 +513,7 @@ function ProposalPanel({ c, group }: { c: CaseDetail; group: Group }) {
         )}
       </div>
 
-      {group.decision ? (
+      {group.decision && (group.approvals?.settled ?? true) ? (
         <div className="rounded-lg border border-surface-200 p-3 text-sm">
           <p className="flex flex-wrap items-center gap-2">
             <StatusBadge status={decidedLabel(group.decision.action)} />
@@ -541,6 +545,11 @@ function ProposalPanel({ c, group }: { c: CaseDetail; group: Group }) {
         </div>
       ) : c.can_decide ? (
         <div className="rounded-lg border border-surface-200 p-3">
+          {morePeople && (
+            <p className="mb-2 text-xs text-surface-600">
+              Approved by {morePeople.by.join(", ")}; {morePeople.needed - morePeople.by.length} more {morePeople.needed - morePeople.by.length === 1 ? "person" : "people"} must approve — someone else.
+            </p>
+          )}
           {needsConfirm && (
             <label className="mb-2 flex items-start gap-2 rounded-md bg-yellow-50 px-2 py-1.5 text-xs text-yellow-900">
               <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-0.5" />
@@ -856,6 +865,8 @@ function ContextPanel({ c }: { c: CaseDetail }) {
       <RequestsPanel c={c} />
 
       <FollowThroughPanel c={c} />
+
+      <CaseLinks c={c} />
 
       <DataSetsPanel c={c} />
 

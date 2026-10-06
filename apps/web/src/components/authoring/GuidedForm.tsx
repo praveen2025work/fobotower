@@ -27,6 +27,8 @@ export default function GuidedForm({ onBuild, pending }: { onBuild: (answers: Re
     amount_field: "", measure: "actual", baseline: "budget", display: "", materiality: "", unit: "GBP", materiality_unconfirmed: false,
     group_by: "", decided_by: "model_then_person", model_tools: [] as string[], instructions: "", tollgate: false, tollgate_check: "",
     opens: "manual", late_items: false, reviewer_roles: "", owner_role: "", ask: "", checklist: "", follow_through: false,
+    sample_size: "", clock_hours: "", clock_starts: "", authority_tool: "", two_approvers_over: "",
+    reserved_roles: "", reserved_when: "", reserved_reason: "",
   });
   const set = (k: keyof typeof a, v: unknown) => setA((x) => ({ ...x, [k]: v }));
   const key = list(a.case_key);
@@ -42,6 +44,11 @@ export default function GuidedForm({ onBuild, pending }: { onBuild: (answers: Re
     ...a, case_key: key, display: list(a.display), group_by: list(a.group_by), match_keys: list(a.match_keys),
     reviewer_roles: list(a.reviewer_roles), checklist: a.checklist.split("\n").map((q) => q.trim()).filter(Boolean),
     materiality: a.materiality === "" ? null : Number(a.materiality),
+    sample_size: a.sample_size === "" ? null : Number(a.sample_size),
+    clock_hours: a.clock_hours === "" ? null : Number(a.clock_hours),
+    clock_starts: a.clock_starts.trim() || null,
+    two_approvers_over: a.two_approvers_over === "" ? null : Number(a.two_approvers_over),
+    reserved_roles: list(a.reserved_roles),
     ask_targets: a.ask.split("\n").map((l) => l.split(":")).filter((p) => p.length === 2 && p[0].trim())
       .map(([n, r]) => ({ name: n.trim(), roles: list(r) })),
   });
@@ -162,6 +169,46 @@ export default function GuidedForm({ onBuild, pending }: { onBuild: (answers: Re
       <label className={label}>Sign-off checklist (one question per line)
         <textarea value={a.checklist} onChange={(e) => set("checklist", e.target.value)} rows={3} placeholder="Is the root cause evidenced?" className={input} />
       </label>
+      <fieldset className="rounded-lg border border-surface-200 p-3">
+        <legend className={`${label} px-1`}>Controls (optional)</legend>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className={label}>Review a random sample of
+            <input type="number" min={1} value={a.sample_size} onChange={(e) => set("sample_size", e.target.value)} placeholder="all items" className={input} />
+          </label>
+          <label className={label}>Service level (hours)
+            <input type="number" min={1} value={a.clock_hours} onChange={(e) => set("clock_hours", e.target.value)} placeholder="none" className={input} />
+          </label>
+          {a.clock_hours !== "" && (
+            <label className={label}>…counted from the field
+              <input value={a.clock_starts} onChange={(e) => set("clock_starts", e.target.value)} placeholder="when the case opens" className={input} />
+            </label>
+          )}
+          <label className={label}>Who may approve how much: the bank's authority system
+            <select aria-label="Authority from" value={a.authority_tool} onChange={(e) => set("authority_tool", e.target.value)} className={input}>
+              <option value="">not used</option>
+              {readTools.map((t) => <option key={t.name} value={t.name}>{t.name} — {t.description}</option>)}
+            </select>
+          </label>
+          {!a.authority_tool && (
+            <label className={label}>…or two different approvers from (amount)
+              <input type="number" min={0} value={a.two_approvers_over} onChange={(e) => set("two_approvers_over", e.target.value)} placeholder="never" className={input} />
+            </label>
+          )}
+          <label className={label}>Decisions reserved for (roles)
+            <input value={a.reserved_roles} onChange={(e) => set("reserved_roles", e.target.value)} placeholder="CREDIT_OFFICER" className={input} />
+          </label>
+          {a.reserved_roles.trim() && (
+            <>
+              <label className={label}>…when
+                <input value={a.reserved_when} onChange={(e) => set("reserved_when", e.target.value)} placeholder="abs(total) > 1000000" className={input} />
+              </label>
+              <label className={label}>…because
+                <input value={a.reserved_reason} onChange={(e) => set("reserved_reason", e.target.value)} placeholder="credit decisions" className={input} />
+              </label>
+            </>
+          )}
+        </div>
+      </fieldset>
       <button onClick={build} disabled={pending || !a.name.trim()}
         className="inline-flex items-center gap-2 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-brand-fg hover:bg-brand-strong disabled:opacity-50">
         <ListChecks size={14} /> {pending ? "Building…" : "Build the capability"}

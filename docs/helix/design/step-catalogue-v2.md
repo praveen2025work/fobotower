@@ -1,6 +1,6 @@
 # Helix steps v2: building blocks for any banking use case
 
-**Date:** 2026-10-06 · **Status:** phase 1 built; phases 2–6 proposed · **For:** Helix platform team,
+**Date:** 2026-10-06 · **Status:** phases 1–6 built · **For:** Helix platform team,
 capability owners across the bank, architecture.
 
 ## 1. Why
@@ -255,10 +255,10 @@ process.
 |---|---|
 | **Three-way match (purchase order / goods receipt / invoice)** | ★`match_n` → ★`derive` (price and quantity variance) → `classify` → `group` → `reason` → `validate` → `review` → `record` → `publish` (block or release in the purchasing system) |
 | **Nostro reconciliation** | `match` (statement vs ledger, date window, many-to-one) → ★`bucket` (ageing) → ★`score` → ★`route` lanes → `reason` → `review` → `record` → follow-through |
-| **Accruals for goods received, not invoiced** | `load` (goods receipts) → ★`dataset` (invoices) → ★`recompute` (accrual) → ★`filter` (materiality) → ★`propose_entries` (accrual and reversal) → ★`period_check` → `validate` → `review` → ★`approve` (authority matrix) → `record` → ★`post` |
+| **Accruals for goods received, not invoiced** | `load` (goods receipts) → ★`dataset` (invoices) → ★`recompute` (accrual) → ★`filter` (materiality) → ★`propose_entries` (accrual and reversal) → ★`period_check` → `validate` → `review` → ★`approve` (authority matrix) → `record` → ★`post`. *Built: `config/helix/capabilities/fin-accruals.yaml`* |
 | **Balance-sheet substantiation** | `load` (trial balance) → ★`dataset` (prior periods) → ★`flux` → ★`score` (account risk) → ★`spawn` (one child case per account) → each child: ★`attest` by the account owner with evidence → parent rolls up → `review` → `record` → ★`report` |
 | **Manual journal review** | `load` (journals) → ★`score` (out of hours, round amounts, unusual account pairs, user) → ★`sample` (all high, 10% medium) → `reason` → `review` → `record` |
-| **SOX operating-effectiveness test** | `load` (population) → ★`sample` (seeded, stratified) → ★`spawn` (one test per sample, each with its own checklist and evidence) → roll-up → deficiency rating via playbook → `review` → ★`attest` (control owner) → ★`report` |
+| **SOX operating-effectiveness test** | `load` (population) → ★`sample` (seeded, stratified) → ★`spawn` (one test per sample, each with its own checklist and evidence) → roll-up → deficiency rating via playbook → `review` → ★`attest` (control owner) → ★`report`. *Built: `config/helix/capabilities/controls-operating-test.yaml` and `controls-sample-test.yaml`* |
 | **Intercompany matching and netting** | ★`match_n` (entity A vs entity B, both directions) → ★`convert` (FX) → ★`aggregate` (pairs) → `classify` → ★`route` → `reason` → `review` (both entities' owners) → `record` → ★`propose_entries` (eliminations) |
 | **Independent price verification** | `load` (positions) → ★`dataset` ×3 (vendor prices) → ★`derive` (median, spread) → ★`recompute` (vs desk mark) → `classify` (tolerance by asset class, fair-value level) → `reason` → `review` → ★`propose_entries` (valuation reserves) |
 | **Regulatory report validation** | ★`dataset` ×n (reports, GL) → ★`consistency` (cross-report rules) → `group` → `reason` → `review` → ★`attest` (report owner) → ★`report` |
@@ -268,7 +268,7 @@ process.
 | **Payment exceptions (returns, repairs)** | `load` (exceptions) → ★`dataset` (FX rates) → ★`convert` (to GBP) → ★`derive` (age in hours) → ★`bucket` (SLA band) → ★`dedupe` (duplicate submissions) → ★`filter` (test payments) → ★`transform` (the team's own risk score) → `group` (by reason code) → `reason` → `review` → `record` → `publish` (repair instruction, released). *Built in phase 1: `config/helix/capabilities/payments-exceptions.yaml`* |
 | **Payment investigation (customer claim)** | `load` → ★`timeline` (gpi, nostro, messages) → ★`clock` (24 h) → ★`outreach` (counterparty bank query) → ★`await` → `reason` → `review` → ★`compose` (customer reply) → `publish` |
 | **Failed settlement** | `load` (fails) → `enrich` (static data) → `classify` (cause: SSI, inventory, counterparty) → ★`clock` (market cut-off) → ★`outreach` (counterparty) → `review` → `record` → follow-through (settled next day?) |
-| **Complaint handling** | ★`intake` (complaint) → ★`timeline` (account events) → ★`link` (prior complaints) → ★`clock` (8 weeks, paused on client) → `reason` (proposed outcome and redress, ★`recompute`) → ★`approve` (redress authority matrix) → ★`compose` (final response) → `publish` |
+| **Complaint handling** | ★`intake` (complaint) → ★`timeline` (account events) → ★`link` (prior complaints) → ★`clock` (8 weeks, paused on client) → `reason` (proposed outcome and redress, ★`recompute`) → ★`approve` (redress authority matrix) → ★`compose` (final response) → `publish`. *Built: `config/helix/capabilities/client-complaints.yaml`* |
 | **AML alert triage pack** | `load` (alerts) → ★`timeline` (transactions) → ★`link` (related parties, prior alerts) → ★`screen` (candidate hits) → `reason` (narrative only; **E7: close or escalate is reserved for the analyst**) → `review` → `record` |
 | **KYC periodic review** | ★`spawn` (one per client due) → ★`outreach` (documents) → ★`extract` (from documents) → `classify` (missing or expired) → `review` (KYC officer, reserved decision) → ★`attest` |
 | **Covenant monitoring** | ★`extract` (financials from the borrower's pack) → ★`derive` (ratios) → `classify` (breach, near-breach) → `reason` (credit memo draft) → `review` (credit officer, reserved) → `record` → follow-through (next quarter) |
@@ -284,11 +284,11 @@ Every row uses only generic steps. Nothing in the catalogue is specific to one t
 | Phase | Delivers | Unlocks |
 |---|---|---|
 | **1. Engine foundations** ✅ *built* | E1 step instances, E2 named data sets, E3 conditional steps, E6 step SDK; ★`dataset`, `derive`, `filter`, `convert`, `bucket`, `aggregate`, `dedupe`, `transform` | most data preparation by configuration; teams plug in their own logic (`transform`); first non-finance capability: payment exceptions |
-| **2. Accounting actions** | ★`propose_entries`, `schedule`, `period_check`, `approve` (authority matrix), `post` (dry run, then post), `recompute` | accruals, adjustments, reserves, write-offs end to end |
-| **3. Assurance** | ★`sample`, `score`, `anomaly`, `flux`, `consistency`, `attest`, E4 lanes | SOX testing, journal review, substantiation, report validation |
-| **4. Orchestration** | E5 `await`, `spawn`, dependencies; ★`report`, `compose` | close management, sign-off cascades, testing per sample, counterparty workflows |
-| **5. Acquisition** | ★`match_n`, `intake`, `extract` | three-way match, intercompany, invoice capture, document-heavy work |
-| **6. Time, context and parties** | ★`clock`, `timeline`, `link`, `screen`, `outreach`; E7 decision boundaries | payments and trade operations, complaints, KYC, financial-crime packs, lending |
+| **2. Accounting actions** ✅ *built* | ★`propose_entries`, `schedule`, `period_check`, `approve` (authority matrix), `post` (dry run, then post), `recompute` | accruals, adjustments, reserves, write-offs end to end |
+| **3. Assurance** ✅ *built* | ★`sample`, `score`, `anomaly`, `flux`, `consistency`, `attest`, E4 lanes | SOX testing, journal review, substantiation, report validation |
+| **4. Orchestration** ✅ *built* | E5 `await`, `spawn`, dependencies; ★`report`, `compose` | close management, sign-off cascades, testing per sample, counterparty workflows |
+| **5. Acquisition** ✅ *built* | ★`match_n`, `intake`, `extract` | three-way match, intercompany, invoice capture, document-heavy work |
+| **6. Time, context and parties** ✅ *built* | ★`clock`, `timeline`, `link`, `screen`, `outreach`; E7 decision boundaries | payments and trade operations, complaints, KYC, financial-crime packs, lending |
 
 Each phase:
 - keeps today's capabilities running unchanged;
@@ -296,7 +296,55 @@ Each phase:
 - ships with tests;
 - adds a worked example capability to `docs/helix/examples/`.
 
-## 9. Decisions needed
+## 9. As built
+
+All six phases are built. The step types are in `helix/stepkit.py` (data) and
+`helix/steps_v2.py` (the rest). The engine changes are in `helix/workflow.py`, `runner.py`,
+`authority.py` and `timekeeping.py`. Each type has a form in *Configure → Configurable steps*.
+The developer guide §7b is the reference.
+
+Where the build differs from the plan above:
+- **`route` and `approve` are review settings, not steps.**
+  - Lanes (E4) and the approval matrix are one setting: `review.authority`.
+  - Tiers carry `lane`, `roles`, `approvals` and `bulk`.
+  - Placing them in `review` means they apply to every group whatever steps ran.
+- **The authority matrix can come from either place.**
+  - In configuration: `review.authority` tiers.
+  - From the bank's delegated-authority system: a `dataset` step, named in
+    `review.authority_dataset`.
+- **Decision boundaries (E7) are a top-level setting.**
+  - `boundaries` is set per capability, in each capability's own words.
+  - Each boundary names a `when` or `verdicts`, the roles, and whether the model may propose.
+- **`extract` has both controls.**
+  - A confidence threshold (`accept_confidence`).
+  - A `regulated` flag that sends every value to a person.
+  - In all cases a value must appear in its quote, and the quote must appear in the document.
+- **Waiting (E5) is a status.**
+  - A waiting case has status `waiting_<step>`, continued by an event (the events API or a
+    person) or by its child cases finishing.
+  - The scheduler times waits out and keeps clocks.
+- **Dependencies between tasks** (a close calendar) are a parent that waits on children, layered
+  as needed. There is no separate dependency graph.
+
+Example capabilities, with stub connectors here and office connector examples in
+`config/helix/connectors.office.example.yaml`:
+- month-end accruals (`fin.accruals`);
+- complaint handling (`client.complaints`);
+- a control operating test with one child case per sample (`controls.operating-test`,
+  `controls.sample-test`).
+
+## 10. Decisions taken
+
+All the options were taken:
+- phases in the proposed order;
+- the authority matrix in configuration **or** from the bank's system;
+- `extract` with a threshold **and** a regulated flag;
+- boundaries per capability;
+- each office system as a connector.
+
+The original questions follow for the record.
+
+## 11. Decisions needed (original)
 
 1. **The order of the phases.** The proposal is 1 → 2 → 3 → 4 → 5. Phase 2 comes before 3 if
    journals are the priority.

@@ -342,12 +342,31 @@ def _group_env(m: Manifest, g: ProposalGroup, items: dict[str, dict]) -> dict:
             "policy": m.policy_values()}
 
 
+def _approvals_view(m: Manifest, g: ProposalGroup, decisions: list[Decision], items: dict[str, dict]) -> dict:
+    """How many different people must approve, who has, and whether it is settled."""
+    latest: dict[str, Decision] = {}
+    for d in sorted(_since_revision(g, decisions), key=lambda d: d.decided_at):
+        latest[d.decided_by] = d
+    by = [u for u, d in latest.items() if d.action == "approve"]
+    return {"needed": _approvals_needed(m, g, items), "by": by,
+            "settled": _settle(m, g, decisions, items) is not None}
+
+
 def _since_revision(g: ProposalGroup, decisions: list[Decision]) -> list[Decision]:
     """Decisions on the group's current finding — a re-investigation starts afresh."""
     revised = (g.finding or {}).get("revised_at")
     since = datetime.fromisoformat(revised) if revised else None
     return [d for d in decisions if d.group_id == g.group_id
             and (since is None or d.decided_at > since)]
+
+
+def _approvals_needed(m: Manifest, g: ProposalGroup, items: dict[str, dict]) -> int:
+    """Different people who must approve the group: two when `review.dual_review_when`
+    holds, or what its authority tier asks for."""
+    from helix import authority
+    needed = 2 if (m.review.dual_review_when and rules.evaluate(
+        m.review.dual_review_when, _group_env(m, g, items))) else 1
+    return max(needed, authority.approvals_needed(g.finding))
 
 
 def _settle(m: Manifest, g: ProposalGroup, decisions: list[Decision],
@@ -367,10 +386,7 @@ def _settle(m: Manifest, g: ProposalGroup, decisions: list[Decision],
                 "decided_by": d.decided_by, "decided_at": d.decided_at.isoformat()}
     approvals = sorted((d for d in latest.values() if d.action == "approve"),
                        key=lambda d: d.decided_at)
-    from helix import authority
-    needed = 2 if (m.review.dual_review_when and rules.evaluate(
-        m.review.dual_review_when, _group_env(m, g, items))) else 1
-    needed = max(needed, authority.approvals_needed(g.finding))
+    needed = _approvals_needed(m, g, items)
     # Different people, counted both ways: whoever clicked, and whom they acted for.
     people = min(len({d.decided_by for d in approvals}),
                  len({d.on_behalf_of or d.decided_by for d in approvals}))
@@ -793,6 +809,7 @@ async def case_detail(case_id: str, caller: Caller) -> dict:
                       "reason": it.payload.get("excluded_reason")}
                      for it in items if it.payload.get("excluded_by")],
         "step_labels": {sid: (st.label or m.step_type(sid)) for sid, st in m.step_settings.items()},
+        "step_types": {sid: m.step_type(sid) for sid in m.step_settings},
         "follow_through_spec": m.follow_through.model_dump() if m.follow_through else None,
         "requests": requests,
         "request_targets": [{"id": t.id, "name": t.name} for t in m.requests.targets],
@@ -823,6 +840,7 @@ async def case_detail(case_id: str, caller: Caller) -> dict:
                           "checklist": latest[g.group_id].checklist,
                           "decided_at": latest[g.group_id].decided_at}
                          if g.group_id in latest else None),
+            "approvals": _approvals_view(m, g, decisions, items_by),
         } for g in groups],
         "decisions": [{"group_id": d.group_id, "action": d.action, "comment": d.comment,
                        "decided_by": d.decided_by, "on_behalf_of": d.on_behalf_of,
@@ -867,7 +885,19 @@ async def case_detail(case_id: str, caller: Caller) -> dict:
                       for st in m.pause_before if st not in ("review", "publish")],
         "gate_decisions": [{"step": g.step, "action": g.action, "comment": g.comment,
                             "decided_by": g.decided_by, "decided_at": g.decided_at} for g in gates],
+        # steps v2: the case this one was opened for, the cases it opened, its clocks
+        "parent_case_id": case.parent_case_id,
+        "children": await _children(case_id),
+        "clocks": [{"id": k, **v} for k, v in (case.clock_state or {}).items()],
     }
+
+
+async def _children(case_id: str) -> list[dict]:
+    async with get_session() as s:
+        kids = (await s.execute(select(Case).where(Case.parent_case_id == case_id)
+                                .order_by(Case.opened_at))).scalars().all()
+    return [{"case_id": k.case_id, "subject": k.subject, "status": k.status, "outcome": k.outcome,
+             "capability_id": k.capability_id} for k in kids]
 
 
 def _waiting_on(case: Case, m: Manifest, caller: Caller, decisions: list[Decision],
@@ -885,6 +915,17 @@ def _waiting_on(case: Case, m: Manifest, caller: Caller, decisions: list[Decisio
         elif not m.review.opener_may_decide and case.opened_by in (caller.user_id, on_behalf_of):
             why_not = "you opened this case, and its capability needs someone else to sign it off"
         return {"step": "review", "roles": list(m.review.roles), "you": why_not is None, "why_not": why_not}
+    if case.status.startswith("waiting_") and case.status[8:] in m.steps:
+        step = case.status[8:]
+        cfg = m.step_config(step)
+        event = getattr(cfg, "event", "")
+        roles = list(getattr(cfg, "roles", []) or []) or list(m.review.roles)
+        by_hand = event != "children" and caller.has_any_role(roles)
+        return {"step": "event", "event": event, "wait": step, "label": (m.step_settings[step].label if step in m.step_settings else None) or step,
+                "since": case.waiting_since, "timeout_hours": getattr(cfg, "timeout_hours", None),
+                "on_timeout": getattr(cfg, "on_timeout", None), "roles": roles, "you": by_hand,
+                "why_not": None if by_hand else ("it continues when every child case has finished" if event == "children"
+                                                 else f"delivering it by hand needs one of: {', '.join(roles)}")}
     if case.status == "awaiting_publish" and m.release_step():
         why_not = None
         if not caller.has_any_role(m.release_roles()):

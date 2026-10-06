@@ -6,7 +6,7 @@ import { useState } from "react";
 import clsx from "clsx";
 import { CheckCircle2, Clock3, Eye, Hand, OctagonX, Play, Scale, Send, ShieldAlert, Ticket } from "lucide-react";
 
-import { usePassGate, useRelease, type CaseDetail, type Finding, type Group, type ReviewFlag } from "../../api/helix";
+import { useDeliverEvent, usePassGate, useRelease, type CaseDetail, type Finding, type Group, type ReviewFlag } from "../../api/helix";
 import StatusBadge from "../StatusBadge";
 import { ErrorState, formatTime, formatValue } from "../ui";
 
@@ -20,7 +20,7 @@ function count(groups: Group[], flag: ReviewFlag) {
 export function ActionCard({ c }: { c: CaseDetail }) {
   const release = useRelease(c.case_id);
   const w = c.waiting_on;
-  const open = c.groups.filter((g) => !g.decision);
+  const open = c.groups.filter((g) => !g.decision || !(g.approvals?.settled ?? true));
   const approved = c.groups.filter((g) => g.decision?.action === "approve");
   const stake = c.exposure != null ? `${formatValue(c.exposure)}${c.unit ? ` ${c.unit}` : ""} at stake` : null;
 
@@ -76,6 +76,8 @@ export function ActionCard({ c }: { c: CaseDetail }) {
 
   if (w?.step === "gate" && w.gate) return <GateCard c={c} />;
 
+  if (w?.step === "event" && w.wait) return <WaitCard c={c} />;
+
   if (c.status === "stopped") {
     return (
       <Shell tone="waiting" icon={OctagonX} title="Stopped at a tollgate">
@@ -89,7 +91,7 @@ export function ActionCard({ c }: { c: CaseDetail }) {
     const tickets = c.groups.filter((g) => g.ticket?.status === "raised").length;
     const signed = [...new Set(c.groups.map((g) => g.decision?.decided_by).filter(Boolean))].join(", ");
     return (
-      <Shell tone="done" icon={CheckCircle2} title={c.outcome === "published" ? "Done — published" : "Done"}>
+      <Shell tone="done" icon={CheckCircle2} title={c.outcome === "published" ? "Done — published" : c.outcome === "posted" ? "Done — posted to the ledger" : "Done"}>
         <p>
           {c.groups.length} {c.groups.length === 1 ? "group" : "groups"} signed off{signed ? ` by ${signed}` : ""}
           {c.publish?.released ? `; released by ${c.publish.released.by} ${formatTime(c.publish.released.at)}` : ""}
@@ -101,12 +103,51 @@ export function ActionCard({ c }: { c: CaseDetail }) {
   return null;
 }
 
+/** Waiting at an `await` step: for an event (a reply, a confirmation) or for child cases. */
+function WaitCard({ c }: { c: CaseDetail }) {
+  const w = c.waiting_on!;
+  const deliver = useDeliverEvent(c.case_id);
+  const [note, setNote] = useState("");
+  const kids = c.children ?? [];
+  const done = kids.filter((k) => ["completed", "failed", "stopped", "escalated"].includes(k.status)).length;
+  const until = w.since && w.timeout_hours ? new Date(new Date(w.since).getTime() + w.timeout_hours * 3600_000).toISOString() : null;
+  return (
+    <Shell tone={w.you ? "action" : "waiting"} icon={Clock3} title={`Waiting: ${w.label ?? w.wait}`}>
+      {w.event === "children" ? (
+        <p>{done} of {kids.length} child cases finished. The run continues when every one has.</p>
+      ) : (
+        <p>The run waits for <strong>{w.event?.replace(/_/g, " ")}</strong>{w.since ? `, since ${formatTime(w.since)}` : ""}.</p>
+      )}
+      {until && <p className="mt-0.5 text-xs opacity-80">If nothing comes by {formatTime(until)}, it {w.on_timeout === "continue" ? "carries on" : "goes to a person"}.</p>}
+      {w.you ? (
+        <div className="mt-2 flex flex-wrap items-end gap-2">
+          <label className="min-w-0 flex-1 text-xs">What came in (optional)
+            <input value={note} onChange={(e) => setNote(e.target.value)} className="mt-1 block w-full rounded-lg border border-surface-300 bg-card px-2 py-1.5 text-sm text-surface-800" />
+          </label>
+          <button disabled={deliver.isPending} onClick={() => deliver.mutate({ step: w.wait!, payload: note.trim() ? { note: note.trim() } : {} })}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-brand-fg hover:bg-brand-strong disabled:opacity-50">
+            <Play size={13} /> It has arrived — continue
+          </button>
+        </div>
+      ) : (
+        w.why_not && <p className="mt-0.5 text-xs opacity-80">{w.why_not[0].toUpperCase() + w.why_not.slice(1)}.</p>
+      )}
+      {deliver.error && <div className="mt-2"><ErrorState error={deliver.error} /></div>}
+    </Shell>
+  );
+}
+
 /** What each step does next, in words — for "the run goes on to …". */
 const NEXT: Record<string, string> = {
   enrich: "reading more data onto the items", resolve: "looking up reference data", classify: "running the playbook",
   compare: "comparing to the baseline", group: "grouping the items", reason: "the rules and the model's investigation",
   draft: "drafting the summary",
 };
+const NEXT_BY_TYPE: Record<string, string> = {
+  attest: "the owner's attestation", outreach: "sending the drafted messages", post: "posting to the ledger",
+};
+
+const stepType = (c: CaseDetail, step: string) => c.step_types?.[step] ?? "";
 
 /** A tollgate: a person approves the work so far before the run goes on — or stops it. */
 function GateCard({ c }: { c: CaseDetail }) {
@@ -122,7 +163,7 @@ function GateCard({ c }: { c: CaseDetail }) {
   return (
     <Shell tone={w.you ? "action" : "waiting"} icon={Hand} title={w.you ? "Your tollgate" : "Waiting at a tollgate"}>
       <p>
-        The run stopped before <strong>{NEXT[step] ?? step}</strong>, for a person to approve the work so far.
+        The run stopped before <strong>{NEXT[step] ?? NEXT_BY_TYPE[stepType(c, step)] ?? c.step_labels?.[step] ?? step}</strong>, for a person to approve the work so far.
         {w.check && <> Check: <em>{w.check}</em></>}
       </p>
       <p className="mt-0.5 text-xs opacity-80">

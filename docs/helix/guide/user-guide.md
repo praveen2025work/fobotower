@@ -87,16 +87,24 @@ The tab you use is your choice. In a deployment with no model, *Answer questions
 templates do everything, and the capability can still run without a model: choose *a person
 (no model)* for what the rules cannot settle.
 
-**Preparing the data.** In *Configure → Prepare the data*, add generic steps in the order the work
-needs them:
-- reference data (FX rates, limits);
-- computed fields;
-- filters;
-- currency conversion;
-- bands (ageing, service level);
-- duplicates;
-- roll-ups;
-- your team's own tool.
+**Configurable steps.** In *Configure → Configurable steps*, add generic steps in the order
+the work needs them. Each runs only when its condition holds, if you give one.
+
+| Family | Steps |
+|---|---|
+| Data | reference data (FX rates, limits), computed fields, filters, currency conversion, bands, duplicates, roll-ups, your team's own tool |
+| Accounting | recompute and compare (fees, interest), schedule over periods, is the period open?, journal entries, post journals (after a second person releases them) |
+| Assurance | change over periods, unusual against history, consistency checks, sample, risk score, owner attestation |
+| Orchestration | wait for an event, child cases, draft a message, report |
+| Acquisition | match several systems, file intake, read a document |
+| Time and parties | clocks, timeline, related cases, name screening (candidates only), send to the other party |
+
+Steps that need a person first (attestation, sending a message, posting) are given their
+tollgate when you add them. Who may approve how much is set under *Human review*:
+- **Authority tiers**, in Helix or read from the bank's delegated-authority system: the roles
+  that may approve, how many different people, and whether "Approve all" may include the group.
+- **Decisions reserved for named people**: only they decide, never in bulk, and the model's
+  proposal is withheld unless allowed.
 
 Each step can run only when a condition holds. Items a step sets aside stay on the case with the
 reason, and the case shows the data sets it used.
@@ -207,8 +215,19 @@ Some rules apply to every review:
 - Large groups can need **two approvers** (`dual_review_when`, here at 250k or more).
 - The person who opened the case may be barred from deciding (`opener_may_decide: false`).
 - When every group is decided, the case is **recorded**.
-- If the capability writes back (`publish`), a **second person releases** it, and only then
-  is anything written. The write is idempotent.
+- If the capability writes back (`publish`, or `post` for journals), a **second person
+  releases** it, and only then is anything written. The write is idempotent.
+- With **authority tiers**:
+  - a group shows its tier ("over 250k: fin reviewer · 2 different people");
+  - a group above your authority is refused to you;
+  - "1 of 2 approvals (bob)" means someone else must also approve.
+- A **reserved** group shows who decides it. Nobody else can, alone or in bulk.
+- **Journals** proposed for a group show their lines, and whether they balance.
+- **Messages** show as a draft, or as sent with who approved sending.
+- A case **waiting** for an event shows what it waits for and until when.
+  - If you may, you can mark the event as arrived.
+  - A parent case shows its child cases and how many have finished.
+  - Clocks show *on time*, *due soon* or *breached*.
 
 ![Signed off](img/24-case-signed-off.png)
 

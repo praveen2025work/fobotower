@@ -46,6 +46,34 @@ feature, so a new team can see its options.
 
 **Bold** marks features added in this release.
 
+## Steps v2: accruals, complaints, control testing
+
+The same matrix for the example capabilities built from the step families
+(steps v2, phases 2–6):
+- **Accruals** is *Month-end accruals* (`fin.accruals`).
+- **Complaints** is *Complaint handling* (`client.complaints`).
+- **Control test** is *Control operating test* (`controls.operating-test`), with one
+  `controls.sample-test` child case per sample.
+
+| Feature | Setting | Accruals | Complaints | Control test |
+|---|---|---|---|---|
+| Item source | `items.load` | GRNI from the ledger | the day's complaints | the period's payment exceptions (the population) |
+| Period open? | `period_check` | yes: a closed period stops the run | — | — |
+| Reference data | `dataset` | chart of accounts; the delegated-authority matrix | internal watch list | — |
+| Recompute | `recompute` | — | the fee from the tariff vs the fee charged | — |
+| Journals | `propose_entries` | balanced per account, checked against the chart | — | — |
+| Sampling | `sample` | — | — | 3, random, seed kept |
+| Child cases and waiting | `spawn`, `await` | — | — | one per sample; continues when all are finished (72 h timeout) |
+| Timeline, related cases | `timeline`, `link` | — | account events (the model reads them); the client's earlier complaints | — |
+| Clocks | `clock` | — | final response: 40 business days, warned 5 days before | — |
+| Screening | `screen` | — | watch list candidates (a person decides) | — |
+| Messages | `compose`, `outreach` | — | acknowledgement per topic, sent after a handler approves | — |
+| Authority | `review.authority_dataset` / `.authority` | from the bank's matrix: two reviewers over 250k, never in bulk | — | — |
+| Reserved decisions | `boundaries` | — | redress above the limit: the complaints lead | — |
+| Attestation | `attest` | — | — | the control owner, before review |
+| Write-back | `post` / `publish` | journals posted after a financial controller releases them | — | — |
+| Report | `report` | — | — | the test's PDF, kept with the case |
+
 ## Turning a feature on for another team
 
 1. Open *Capabilities → name → Configure* (or the team group's page). Each feature is a field

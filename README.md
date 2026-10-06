@@ -1,6 +1,6 @@
-# Helix — governed AI for Finance
+# Agent One Finance — governed AI for Finance
 
-Helix is the platform Finance teams run their AI-assisted case work on: breaks,
+Agent One Finance is the platform Finance teams run their AI-assisted case work on: breaks,
 reconciliations, variance commentary, accruals, report validation, control
 testing. Each use case is a **capability**: configuration over the team's own
 systems (MCP connectors), run by LangGraph, governed end to end and worked in
@@ -9,10 +9,10 @@ decide within their authority; only approved outcomes are written back.
 
 **FOBO is one use case.** Front-office vs back-office break investigation for
 the Prime and Rates desks was the first capability, and the original FOBO
-investigation console still runs beside Helix (below). On Helix it is the
+investigation console still runs beside Agent One Finance (below). On Agent One Finance it is the
 `break.investigation` capability with its playbook as configuration.
 
-| Finance area | Running on Helix today |
+| Finance area | Running on Agent One Finance today |
 |---|---|
 | Product control | FOBO break investigation (Prime, Rates) |
 | Financial control | Reconciliation investigation, month-end accruals, control operating test |
@@ -24,7 +24,7 @@ example in this repo).
 
 - **Start here:** [`docs/helix/README.md`](docs/helix/README.md) — what runs where, how to run it, the guides
 - **Platform overview:** [`docs/helix/platform-overview.md`](docs/helix/platform-overview.md) · **pitch page:** [`docs/helix/pitch/helix-pitch.html`](docs/helix/pitch/helix-pitch.html) (open in a browser)
-- **Run Helix locally:** API on :8300 (`uvicorn helix.web.main:app`), console on :5180 (`apps/web`, `npm run dev`); see the [developer guide](docs/helix/guide/developer-guide.md#3-run-it-locally)
+- **Run Agent One Finance locally:** API on :8300 (`uvicorn helix.web.main:app`), console on :5180 (`apps/web`, `npm run dev`); see the [developer guide](docs/helix/guide/developer-guide.md#3-run-it-locally)
 
 ## Use case: the FOBO investigation console (original app)
 
@@ -116,8 +116,8 @@ second person can approve a workflow draft.
 cd apps/console && npm run dev
 ```
 
-Then open **http://localhost:3100** for the Helix console, the finalized UI
-(Helix Pilot V1). (`/fobo` still works — it redirects to `/` for old
+Then open **http://localhost:3100** for the Agent One Finance console, the finalized UI
+(Agent One Finance Pilot V1). (`/fobo` still works — it redirects to `/` for old
 bookmarks.)
 
 #### Running on Windows
@@ -348,7 +348,7 @@ curl -X POST localhost:8100/api/recs/R-2031/investigate && curl localhost:8100/a
 ```
 
 A rec that has already run keeps its result; use the reset command under
-*The Helix console* first to see it run again.
+*The Agent One Finance console* first to see it run again.
 
 `FOBO_MCP_URL` both turns on the MCP server at `/mcp` and is the URL the
 harness is told to call. Each agent session gets its own MCP token; there is
@@ -366,7 +366,7 @@ list twelve distinct books (`PRIME-MB-01`…`12`). The draft derives the count
 from the data and reports 12. The mock's prose and its rows disagree; the rows
 win.
 
-Helix Pilot V1 invents some detail in the browser that the orchestrator has no
+Agent One Finance Pilot V1 invents some detail in the browser that the orchestrator has no
 source for yet, so the port shows what the backend actually has instead:
 
 - **Break legs.** The mock makes up trade references and times per leg. The
@@ -385,7 +385,7 @@ source for yet, so the port shows what the backend actually has instead:
 | API | 8100 |
 | Postgres | 5433 |
 | Stub agent harness | 8200 |
-| Helix API | 8300 |
-| Helix stub connectors over HTTP (optional) | 9101+ |
+| Agent One Finance API | 8300 |
+| Agent One Finance stub connectors over HTTP (optional) | 9101+ |
 
 All offset from AgentOne's defaults so both stacks run simultaneously.

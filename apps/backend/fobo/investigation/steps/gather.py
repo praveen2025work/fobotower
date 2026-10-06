@@ -6,8 +6,8 @@ Degradation is graded, per the failure matrix:
 
 Nothing is substituted for a value that could not be retrieved.
 
-Retrievals are recorded the way the Helix session shows them: one MCP call per
-tool, carrying a row per break. Helix reads breaks from MB Rec, never from
+Retrievals are recorded the way the Agent One Finance session shows them: one MCP call per
+tool, carrying a row per break. Agent One Finance reads breaks from MB Rec, never from
 CATS or MOTIF directly, and history and lineage from its own knowledge graph.
 """
 

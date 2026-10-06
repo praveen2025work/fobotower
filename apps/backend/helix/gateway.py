@@ -1,6 +1,6 @@
-"""The MCP gateway: the only path from Helix (steps and the model) to a connector.
+"""The MCP gateway: the only path from Agent One Finance (steps and the model) to a connector.
 
-Connectors are what the Helix team onboards: config/helix/connectors.yaml
+Connectors are what the Agent One Finance team onboards: config/helix/connectors.yaml
 lists each MCP server, how to reach it, and which of its tools are
 allow-listed, with the argument that carries the data scope. Per call:
 
@@ -52,7 +52,7 @@ class ToolSpec(Strict):
     # write tools change a bank system: never offered to the model, callable
     # only by the `publish` step after a second person approved it
     access: Literal["read", "write"] = "read"
-    # write tools: the argument that carries Helix's idempotency key, so the
+    # write tools: the argument that carries Agent One Finance's idempotency key, so the
     # system can treat a repeated write as the same write
     idempotency_arg: str | None = None
 

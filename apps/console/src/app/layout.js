@@ -24,7 +24,7 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata = {
   title: 'FOBO Control Tower — Agent One',
   description:
-    'Helix · Agent One sessions across CATS vs MOTIF and Rec Factory recs',
+    'Agent One Finance · Agent One sessions across CATS vs MOTIF and Rec Factory recs',
 };
 
 /**

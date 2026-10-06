@@ -1,4 +1,4 @@
-"""The Helix scenario: seven recs, and where each one stands today.
+"""The Agent One Finance scenario: seven recs, and where each one stands today.
 
 Pure data. history.py writes it into the reconciliation, run, node and
 break_event tables; nothing reads these constants at request time.

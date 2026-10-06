@@ -107,7 +107,7 @@ async def test_complaints_bring_context_clocks_and_send_only_after_approval(api)
         assert it["clock_final_response_due"].endswith("Z") and it["clock_final_response_state"] in ("on time", "due soon", "breached")
         assert it["fee_correct"] == it["fee_tariff"] and it["fee_correct_ok"] == (it["fee_tariff"] == it["fee_charged"])
         assert isinstance(it["related"], list)
-        if it["screen_candidate"]:                                    # a candidate only; never cleared by Helix
+        if it["screen_candidate"]:                                    # a candidate only; never cleared by Agent One Finance
             assert all(c["score"] >= 0.8 for c in it["screen_candidates"])
     groups = {g["group_key"]["topic"]: g for g in case["groups"]}
     assert all(g["finding"]["draft_message"]["subject"].startswith("We have received") for g in groups.values())

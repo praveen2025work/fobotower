@@ -1,4 +1,4 @@
-"""Asking a Helix session a question, and deciding adjustments from it."""
+"""Asking an Agent One Finance session a question, and deciding adjustments from it."""
 
 import pytest
 from httpx import ASGITransport, AsyncClient

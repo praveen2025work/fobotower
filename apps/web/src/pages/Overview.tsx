@@ -19,7 +19,7 @@ function OverviewHero({ waiting, review, release, escalated, capabilities }: {
   return (
     <section aria-label="Overview" className="hx-hero hx-rise mb-5 grid gap-5 p-5 sm:p-7 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
       <div className="min-w-0">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-nav-mark">Helix · Governed AI for Finance</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-nav-mark">Agent One Finance · Governed AI</p>
         <h1 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">
           {waiting ? `${waiting} ${waiting === 1 ? "case is" : "cases are"} waiting on you` : "Nothing is waiting on you"}
         </h1>

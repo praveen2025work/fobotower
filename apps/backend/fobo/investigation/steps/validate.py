@@ -54,7 +54,7 @@ async def _record_grounding(state: InvestigationState, session) -> None:
     rows = _grounding_rows(state)
     failed = sum(1 for r in rows if r["result"] != "Traced")
     await GroundingRecorder(session, state["investigation_session_id"]).record(
-        application="Helix",
+        application="Agent One Finance",
         tool="helix.grounding_check",
         params={"rec": state["reconciliation_id"], "figures": len(rows)},
         row_count=len(rows),

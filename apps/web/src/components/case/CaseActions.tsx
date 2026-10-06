@@ -279,7 +279,7 @@ export function ReleaseSummary({ c }: { c: CaseDetail }) {
 export function explainEscalation(f: Finding): string {
   const reason = f.reason ?? "";
   if (reason.startsWith("UNGROUNDED_FIGURE")) {
-    return `The explanation quoted figures that are not in the data (${reason.split(":").slice(1).join(":").trim()}). Helix never lets an unverified figure through, so a person decides.`;
+    return `The explanation quoted figures that are not in the data (${reason.split(":").slice(1).join(":").trim()}). Agent One Finance never lets an unverified figure through, so a person decides.`;
   }
   if (reason.startsWith("REASONER_ERROR")) return `The model could not finish its investigation (${reason.split(":").slice(1).join(":").trim()}).`;
   if (/spend limit/i.test(reason)) return `${reason}. The model was not used, so a person decides.`;

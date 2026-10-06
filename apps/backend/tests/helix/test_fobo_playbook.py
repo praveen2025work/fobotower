@@ -1,4 +1,4 @@
-"""FOBO's behaviour on Helix: the CATS vs MOTIF rec group runs FOBO's playbook
+"""FOBO's behaviour on Agent One Finance: the CATS vs MOTIF rec group runs FOBO's playbook
 (config/playbook/fobo-cats-vs-motif.yaml) as configuration — cause checks,
 categories, the verdict table, the FO-never-posts guard, unset-policy
 confirmation, escalation teams and book lineage as of the COB."""

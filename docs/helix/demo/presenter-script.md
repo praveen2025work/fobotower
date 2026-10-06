@@ -1,4 +1,4 @@
-# Helix demo: presenter script (silent video)
+# Agent One Finance demo: presenter script (silent video)
 
 **Video:** [`helix-demo-silent.mp4`](helix-demo-silent.mp4), 4 min 20 s, 1280×720, no
 audio. Recorded on 2026-10-05 from the current app: light theme, the dev stack, dev data and
@@ -35,9 +35,9 @@ the deterministic stub model (no live model calls).
 
 ---
 
-### 1 · 0:00 — Helix *(title card)*
+### 1 · 0:00 — Agent One Finance *(title card)*
 
-> This is Helix: one governed platform where our accounting teams run reconciliations, reviews
+> This is Agent One Finance: one governed platform where our accounting teams run reconciliations, reviews
 > and commentary. The AI does the legwork. Our people make every decision.
 
 ### 2 · 0:11 — The problem today *(card)*
@@ -57,7 +57,7 @@ On screen, each in turn: hours saved; awaiting review and overdue; escalated; hi
 On screen: the most urgent case, the "at stake" amount, then the **Needs confirmation**
 filter.
 
-> The work is done before he arrives. At six thirty, Helix opened yesterday's run for every
+> The work is done before he arrives. At six thirty, Agent One Finance opened yesterday's run for every
 > Prime book, matched CATS to MOTIF and classified every break. The inbox puts the most urgent
 > first, shows what is at stake, and filters to what needs his confirmation.
 
@@ -71,7 +71,7 @@ On screen:
 
 > In a case, the card at the top says exactly what is needed: three groups to decide, one
 > needs confirmation, one is a judgement call. This redemption break is back office, so FOBO's
-> playbook says post. But the materiality threshold is not confirmed yet, so Helix asks for
+> playbook says post. But the materiality threshold is not confirmed yet, so Agent One Finance asks for
 > his confirmation instead of assuming. He can also see how this break was approved before.
 
 ### 6 · 1:25 — Rule R2
@@ -86,7 +86,7 @@ On screen: the front-office group (side: front office, verdict: DO NOT POST).
 On screen: the novel break, "needs your judgement", then the card "Escalated — a person
 decides" with "What you can do".
 
-> When Helix cannot prove something, it escalates. This novel break has no proven side, so a
+> When Agent One Finance cannot prove something, it escalates. This novel break has no proven side, so a
 > person decides. The card says why in plain words, who owns it, and what the reviewer can do:
 > approve with their own explanation, reject, or send it back to investigate again.
 
@@ -123,11 +123,11 @@ On screen: a break run stopped at **Your tollgate** (the check, "the model has n
 
 ### 11 · 2:43 — The skill's answer and sign-off
 
-On screen: an aged break's proposal in the skill's sections (**Root cause**, hypotheses, **Tests not performed**, verdict and why, remediation, control, **End-state validation**), then the **Sign-off checklist** with Helix's answer beside each question; Frank ticks *yes* on the first three.
+On screen: an aged break's proposal in the skill's sections (**Root cause**, hypotheses, **Tests not performed**, verdict and why, remediation, control, **End-state validation**), then the **Sign-off checklist** with Agent One Finance's answer beside each question; Frank ticks *yes* on the first three.
 
 > Judgement breaks come back in the skill's own sections: root cause, tests not performed,
 > verdict, remediation, end state. Before approving, Frank answers the skill's checklist, with
-> what Helix already knows beside each question.
+> what Agent One Finance already knows beside each question.
 
 ### 12 · 2:57 — The next COB *(follow-through)*
 

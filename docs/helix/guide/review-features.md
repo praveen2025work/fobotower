@@ -231,7 +231,7 @@ shows each one's settings.
 | Feature | What a person sees |
 |---|---|
 | **Answer in sections** (`reasoning.sections`) | the model's proposal as named parts, e.g. root cause, remediation, end state |
-| **Sign-off checklist** (`review.checklist`) | yes / no / n/a questions above *Approve*, with Helix's answer next to each |
+| **Sign-off checklist** (`review.checklist`) | yes / no / n/a questions above *Approve*, with Agent One Finance's answer next to each |
 | **Follow-through** (`follow_through`) | on the earlier case: what cleared on the next run and what is still open; on the item: *carried · MONITOR* |
 | **Learning from the work** (`insights.unexplained`, `.automation_after`) | on capability and group pages: what nothing explained, and what could be a rule |
 | **Data and parameters** (derived) | on capability (Configure tab) and group pages: the fields each check reads, the thresholds still to confirm |

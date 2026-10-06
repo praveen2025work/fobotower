@@ -1,6 +1,6 @@
 """Tracing, through the OpenTelemetry API only.
 
-Helix never depends on a tracing backend. With no provider configured every
+Agent One Finance never depends on a tracing backend. With no provider configured every
 span is a no-op. To send traces to Phoenix (or anything OTLP), configure one
 of these at startup — `setup_tracing()` is called once by the web app:
 
@@ -60,7 +60,7 @@ def _otlp_endpoint(base: str) -> str:
     return base if base.endswith("/v1/traces") else f"{base}/v1/traces"
 
 
-# OpenInference span kinds, so Phoenix renders Helix spans as chains, tools and agents.
+# OpenInference span kinds, so Phoenix renders Agent One Finance spans as chains, tools and agents.
 CHAIN, TOOL, AGENT = "CHAIN", "TOOL", "AGENT"
 
 

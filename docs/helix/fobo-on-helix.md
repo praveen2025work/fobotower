@@ -1,8 +1,8 @@
-# FOBO on Helix
+# FOBO on Agent One Finance
 
 **Date:** 2026-10-04. The FOBO investigation console (`apps/backend/fobo`, `apps/console`)
 is unchanged and keeps running. This page shows how the same behaviour is expressed on
-Helix — as configuration of the shared reconciliation capability — so FOBO can move onto the
+Agent One Finance — as configuration of the shared reconciliation capability — so FOBO can move onto the
 platform when the team is ready, and other rec groups get the same machinery.
 
 **Where it lives:**
@@ -18,10 +18,10 @@ platform when the team is ready, and other rec groups get the same machinery.
 That setup is *Break investigation* with the `fobo-prime` group: it reads MB Rec's open breaks
 (`load`), adds timing checks and a tollgate for the desk's input, and never re-matches. See
 [Configure it: FOBO on MB Rec's breaks](guide/configure-fobo-mb-rec.md). The run below is the
-matching variant (`recon.investigation`), for where Helix itself must match the two
+matching variant (`recon.investigation`), for where Agent One Finance itself must match the two
 systems. Its playbook is the same.
 
-**How a FOBO run goes on Helix (matching variant):**
+**How a FOBO run goes on Agent One Finance (matching variant):**
 
 ```
 match (CATS vs MOTIF) → enrich (break snapshots) → resolve (book → desk → team, as of the COB)
@@ -31,10 +31,10 @@ match (CATS vs MOTIF) → enrich (break snapshots) → resolve (book → desk �
 
 ## Parity
 
-Status: **Same** = the same rule, now as Helix configuration ·
+Status: **Same** = the same rule, now as Agent One Finance configuration ·
 **Different** = the same purpose, reached another way · **Not yet**.
 
-| FOBO | On Helix | Status |
+| FOBO | On Agent One Finance | Status |
 |---|---|---|
 | Playbook YAML (`config/playbook/fobo-cats-vs-motif.yaml`), owned by Product Control | `playbook:` in the rec group — versioned, four-eyes approved by the group's owners | **Same** |
 | Six cause checks C1–C6 over dated snapshots; all run, negatives kept | `classify` step: `playbook.checks` over `motif.break_snapshots` joined by `enrich`; every result kept on the item | **Same** |
@@ -49,7 +49,7 @@ Status: **Same** = the same rule, now as Helix configuration ·
 | Priors from prior resolutions, 180-day lookback | approved decisions in the knowledge graph; same subject first, then shared entities (instrument, book); `knowledge.priors_lookback_days: 180` | **Same** |
 | Pattern groups | `group_by: [category, side]` | **Same** |
 | Reasoner: none / session_service / direct | `HELIX_LLM_ADAPTER`: none / agent_sdk / stub (or your module) | **Different** — the Agent SDK in-process; no separate session service |
-| Agent reads breaks over a per-session MCP endpoint | the model's tools are served in-process and every call goes through the Helix gateway (allow-list, scope, audit, protection); a booking-events specialist runs as an Agent SDK subagent with the same tools | **Different** |
+| Agent reads breaks over a per-session MCP endpoint | the model's tools are served in-process and every call goes through the Agent One Finance gateway (allow-list, scope, audit, protection); a booking-events specialist runs as an Agent SDK subagent with the same tools | **Different** |
 | Grounding: every figure traces to a computed delta | `validate` gate: every figure traces to the run's data or tool results | **Same** |
 | Idempotent controller decisions per pattern | idempotent decisions per group; bulk decide; required comments | **Same** |
 | Reject-and-redraft cycles (`max_review_cycles`) | "Investigate again" with a reviewer note (`review.max_reinvestigations`) | **Different** |
@@ -64,10 +64,10 @@ Status: **Same** = the same rule, now as Helix configuration ·
 | A rec opens when its run lands (11:00 run, COB) | scheduled cases (`30 6 * * 1-5`, yesterday's COB per book) and events from MOTIF's feed (`POST /api/events`) | **Same** |
 | Controller confirms a POST made under an unset threshold | `review.confirm: tick_and_comment`; "Approve all" leaves such verdicts out (`review.bulk_exclude`) | **Same** (stricter: enforced by the server) |
 | Rec deadline (11:00 run) | `case.due: {from: cob, business_days: 1, at: "11:00"}` — due-soon and missed reminders | **Same** |
-| Fix upstream goes to the owning team | `escalation` raises a ticket for `escalate_to` after the controller decides | **Different** (FOBO named the owner; Helix also raises the ticket) |
+| Fix upstream goes to the owning team | `escalation` raises a ticket for `escalate_to` after the controller decides | **Different** (FOBO named the owner; Agent One Finance also raises the ticket) |
 | `rank` step (order candidate causes) | the first positive check in playbook order is the cause | **Different** |
 
-## Changing FOBO's rules on Helix
+## Changing FOBO's rules on Agent One Finance
 
 1. As a CATS vs MOTIF owner (frank, gina), open *Capabilities → Reconciliation investigation →
    Groups → CATS vs MOTIF*.

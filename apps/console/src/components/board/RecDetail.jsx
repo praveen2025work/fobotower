@@ -166,7 +166,7 @@ export function RecDetail({
           role="tablist"
         >
           {[
-            ['session', 'Helix session'],
+            ['session', 'Agent One Finance session'],
             [
               'adjustments',
               `Drafted adjustments${pendingHere ? ` (${pendingHere} pending)` : ''}`,

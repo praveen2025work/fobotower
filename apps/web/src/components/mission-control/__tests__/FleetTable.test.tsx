@@ -1,5 +1,5 @@
 // From aria-ai (platform-ui/src/components/mission-control/__tests__); two cases
-// updated for the Helix adaptation (empty-state wording, row link).
+// updated for the Agent One Finance adaptation (empty-state wording, row link).
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
@@ -76,7 +76,7 @@ describe("FleetTable", () => {
 
   it("shows the empty-state message when no agents are returned", () => {
     renderTable([]);
-    // Helix wording: a fleet row is a capability × team group in the user's scope
+    // Agent One Finance wording: a fleet row is a capability × team group in the user's scope
     expect(screen.getByText(/no cases in your scope/i)).toBeInTheDocument();
   });
 

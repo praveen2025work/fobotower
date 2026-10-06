@@ -1,4 +1,4 @@
-// The sign-off checklist (review.checklist): each question with what Helix
+// The sign-off checklist (review.checklist): each question with what Agent One Finance
 // already knows next to it, answered yes / no / n/a before approving.
 
 import clsx from "clsx";
@@ -43,7 +43,7 @@ export function SignOffChecklist({ questions, answers, onChange }: {
                 ))}
               </span>
             </div>
-            {q.known && <p className="mt-0.5 text-surface-500">Helix: {q.known}</p>}
+            {q.known && <p className="mt-0.5 text-surface-500">Agent One Finance: {q.known}</p>}
             {answers[q.id]?.answer === "no" && (
               <input
                 aria-label={`Note for ${q.label}`}

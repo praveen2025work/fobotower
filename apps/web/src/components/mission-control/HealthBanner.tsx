@@ -3,7 +3,7 @@ import { Bot, Database, Eye, Heart, KeyRound } from "lucide-react";
 import type { Operations } from "../../api/missionControlApi";
 
 /**
- * aria-ai's compact platform health strip, on Helix's health: database, the
+ * aria-ai's compact platform health strip, on Agent One Finance's health: database, the
  * LLM adapter, tracing (Phoenix) and the entitlement source.
  */
 function HealthBanner({ health }: { health: Operations["health"] | undefined }): JSX.Element | null {

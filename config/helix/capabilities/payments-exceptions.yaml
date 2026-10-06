@@ -10,7 +10,7 @@
 #   sla         service-level band: within 4h, 4–24h, over 24h (bucket)
 #   risk        the payments team's own risk score, from its own service (transform)
 #   group → reason → draft → validate → review → record
-# Payment release stays in the payments system: Helix proposes and evidences;
+# Payment release stays in the payments system: Agent One Finance proposes and evidences;
 # Payments Operations decides.
 
 id: payments.exceptions
@@ -124,7 +124,7 @@ review:
   roles: [PAYMENTS_OPS]
   require_comment: [reject, escalated]
   checklist:
-    - { id: no_release, label: "I confirm Helix released, returned or cancelled nothing; the action is mine to take in the payments system", required: true }
+    - { id: no_release, label: "I confirm Agent One Finance released, returned or cancelled nothing; the action is mine to take in the payments system", required: true }
 
 requests:
   targets:

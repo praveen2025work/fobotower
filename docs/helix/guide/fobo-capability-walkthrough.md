@@ -1,9 +1,9 @@
-# FOBO as a Helix capability — the walkthrough
+# FOBO as an Agent One Finance capability — the walkthrough
 
 **Date:** 2026-10-05 · **For:** Product Control (the skill's owners), the FOBO group owners, and the
-Helix team.
+Agent One Finance team.
 
-This walks through the FOBO investigation as it is configured in Helix, screen by screen,
+This walks through the FOBO investigation as it is configured in Agent One Finance, screen by screen,
 from the controllers' [FOBO Investigation Skill v1.0](../fobo-skill/fobo-investigation-skill-v1.0.md).
 The section-by-section mapping of the skill is in [skill-to-helix.md](../fobo-skill/skill-to-helix.md).
 
@@ -11,7 +11,7 @@ The section-by-section mapping of the skill is in [skill-to-helix.md](../fobo-sk
 
 | Layer | What it holds | Who owns it | FOBO |
 |---|---|---|---|
-| **Capability** | The shape of the work, the same for every team: where breaks come from, which steps run and in what order, the tollgate, the gates, retention, and what a team may change | Helix team and the capability owner (erin) | *Break investigation* (`break.investigation`) |
+| **Capability** | The shape of the work, the same for every team: where breaks come from, which steps run and in what order, the tollgate, the gates, retention, and what a team may change | Agent One Finance team and the capability owner (erin) | *Break investigation* (`break.investigation`) |
 | **Team group** | One team's configuration of it: its books, thresholds, playbook (the skill's rules), the model's instructions and tools, reviewers, who may be asked, deadline | That team's owners (frank) | *FOBO Prime — MB Rec breaks* (`fobo-prime`) |
 
 Rates is a second group on the same capability (`fobo-rates`), with its own books, thresholds and
@@ -137,7 +137,7 @@ breaks with an unproven side.
 
    ![A question, open](img/90-case-question-open.png)
 
-4. **The trader answers in Helix.** They see only the question and the breaks it is about,
+4. **The trader answers in Agent One Finance.** They see only the question and the breaks it is about,
    not the whole case.
 
    ![The trader's view](img/91-trader-question.png)
@@ -155,10 +155,10 @@ breaks with an unproven side.
 
 ## Part 4 — What else the skill asks for, and where it is
 
-| Skill | In Helix | Where to see it |
+| Skill | In Agent One Finance | Where to see it |
 |---|---|---|
 | §12 output | the model answers in the skill's sections; a required one missing goes to a person | the group's proposal, section by section |
-| §14 checklist | the controller answers the questions before approving; Helix shows what it knows next to each | above *Approve* |
+| §14 checklist | the controller answers the questions before approving; Agent One Finance shows what it knows next to each | above *Approve* |
 | §4 step 9 / §11 end state | each POST, CORRECT & RE-POST and MONITOR is re-tested on the next COB; still open → U (adjustment did not clear) or K | *Follow-through* on the earlier case; *carried* on the break |
 | §7 trade level | CATS and MOTIF trades are the model's tools, with a trade-level specialist | the *Data used* list |
 | §8 missing side | `MISSING_SIDE` → M, judgement | the checks column |
@@ -186,7 +186,7 @@ Edit in *Configure* or in the files. File changes reach a running deployment wit
 
 | Who | Is told | How they answer |
 |---|---|---|
-| FOBO controllers | a case at the tollgate; review needed; an answer arrived | in Helix |
-| The desk, Operations, CATS support | a question for them (bell, and Teams through the webhook) | in Helix: *Inbox → Questions for you* |
+| FOBO controllers | a case at the tollgate; review needed; an answer arrived | in Agent One Finance |
+| The desk, Operations, CATS support | a question for them (bell, and Teams through the webhook) | in Agent One Finance: *Inbox → Questions for you* |
 | A Teams or email bot | — | `POST /api/requests/{id}/answer` with the event secret and `answered_by` |
 | MB Rec | — | `POST /api/events` per book and COB; a repeat opens a follow-up when there is something new |

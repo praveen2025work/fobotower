@@ -1,4 +1,4 @@
-"""Documents — a Helix-provided MCP service: read PDFs and Excel workbooks,
+"""Documents — an Agent One Finance-provided MCP service: read PDFs and Excel workbooks,
 write PDF reports.
 
 Unlike the stubs, this is a real service: it reads and writes files. It is
@@ -9,7 +9,7 @@ capability's `publish` step can call it, after a second person releases the
 case; the model never can.
 
 Documents to read live under one folder per data-scope value (an entity, a
-book): <HELIX_DOCUMENTS_DIR>/<scope>/<name>. Reports Helix writes are kept in
+book): <HELIX_DOCUMENTS_DIR>/<scope>/<name>. Reports Agent One Finance writes are kept in
 the shared database (helix_document) so every API instance can serve them,
 or with HELIX_REPORTS_STORE=fs under <HELIX_REPORTS_DIR>/<scope>/.
 
@@ -238,10 +238,10 @@ def build_pdf(title: str, subtitle: str, sections: list[dict] | None,
         canvas.saveState()
         canvas.setFillColor(grey)
         canvas.setFont("Helvetica", 7)
-        canvas.drawString(doc.leftMargin, 8 * mm, f"Helix · {title} · page {doc.page}")
+        canvas.drawString(doc.leftMargin, 8 * mm, f"Agent One Finance · {title} · page {doc.page}")
         canvas.restoreState()
 
-    doc = SimpleDocTemplate(buf, pagesize=landscape(A4) if wide else A4, title=title, author="Helix",
+    doc = SimpleDocTemplate(buf, pagesize=landscape(A4) if wide else A4, title=title, author="Agent One Finance",
                             leftMargin=15 * mm, rightMargin=15 * mm, topMargin=15 * mm, bottomMargin=15 * mm)
     doc.build(story, onFirstPage=footer, onLaterPages=footer)
     return buf.getvalue(), doc.page

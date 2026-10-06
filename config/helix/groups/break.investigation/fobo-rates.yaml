@@ -260,7 +260,7 @@ set:
       summary, the checks performed and the classification are already on the
       case from the playbook; write the rest, briefly, for the controller.
     # §12 Required output format: sections 3 and 5–7 (1, 2 and 4 are the
-    # break table, the tests and the classification Helix already shows).
+    # break table, the tests and the classification Agent One Finance already shows).
     sections:
       - { id: root_cause, label: Root cause, required: true,
           hint: "One clear statement; rank multiple causes; or say it is not established and why" }
@@ -338,7 +338,7 @@ set:
     roles: [FOBO_RATES_CONTROLLER]
     require_comment: [reject, escalated]
     # §14 Completion checklist: the nine questions, answered before approval,
-    # with what Helix already knows shown next to each.
+    # with what Agent One Finance already knows shown next to each.
     checklist:
       - { id: what_checked,   label: "What did I check?",                           prefill: tests }
       - { id: why_checked,    label: "Why did I check it?",                         prefill: category }

@@ -1,4 +1,4 @@
-"""One rec, as the Helix console renders it.
+"""One rec, as the Agent One Finance console renders it.
 
 The run's status decides where each part comes from:
 

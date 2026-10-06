@@ -53,7 +53,7 @@ export function BoardStatus({ load, onRetry }) {
             className="text-[12.5px] mt-2"
             style={{ color: 'var(--text-muted)' }}
           >
-            Loading recs and opening their Helix sessions…
+            Loading recs and opening their Agent One Finance sessions…
           </p>
         )}
       </div>

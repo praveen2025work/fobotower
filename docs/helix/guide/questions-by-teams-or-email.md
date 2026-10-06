@@ -1,13 +1,13 @@
 # Questions by Teams or email: the bot recipe
 
-**Date:** 2026-10-05 · **For:** whoever runs the Helix webhook and the Teams/Power Automate flows.
+**Date:** 2026-10-05 · **For:** whoever runs the Agent One Finance webhook and the Teams/Power Automate flows.
 
 A reviewer asks a desk, a trader or Operations for evidence (`requests.targets` on the
-capability or group). Most people asked never open Helix, so the question reaches them in Teams
-or by email, and their reply comes back into Helix as the answer. This works for every capability
+capability or group). Most people asked never open Agent One Finance, so the question reaches them in Teams
+or by email, and their reply comes back into Agent One Finance as the answer. This works for every capability
 that has request targets: FOBO Prime, FOBO Rates, or any other team that adds them.
 
-## What Helix sends
+## What Agent One Finance sends
 
 With `HELIX_NOTIFY_WEBHOOK_URL` set, every notification is POSTed there as JSON. A question also
 carries what a flow needs to collect the reply:
@@ -28,7 +28,7 @@ carries what a flow needs to collect the reply:
 }
 ```
 
-Other kinds are notifications for people in Helix:
+Other kinds are notifications for people in Agent One Finance:
 - `question_unanswered`: the reviewers are told after `escalate_after_hours`.
 - `answered`: tells the person who asked.
 
@@ -43,10 +43,10 @@ curl -X POST "$ANSWER_URL" \
 ```
 
 With a file (PDF or Excel, at most 10 MB), the bot posts multipart to `answer_with_file_url`. The
-form fields are `answer`, `answered_by` and `file`. Helix keeps the file as the case's evidence,
+form fields are `answer`, `answered_by` and `file`. Agent One Finance keeps the file as the case's evidence,
 recording who sent it and which question it answered, and lists it on the question.
 
-Then Helix:
+Then Agent One Finance:
 - records the answer under the person's name (`answered_by`);
 - releases the group if it was waiting (`hold_decision`);
 - during review, sends the group back to the model with the answer
@@ -60,8 +60,8 @@ Then Helix:
    example the Prime desk channel for `target = desk`. Show `title` and `question`, a text input
    *Your answer*, and a link to `answer_in_console`.
 3. **HTTP:** POST `answer_url` with the headers above and the body
-   `{"answer": <response text>, "answered_by": <responder's UPN mapped to a Helix user id>}`.
-4. **On failure** (409 means already answered or cancelled), reply in the thread with Helix's
+   `{"answer": <response text>, "answered_by": <responder's UPN mapped to an Agent One Finance user id>}`.
+4. **On failure** (409 means already answered or cancelled), reply in the thread with Agent One Finance's
    `detail`.
 
 For email, use *Send an email with options* or a shared mailbox. Parse the reply's first block
@@ -83,5 +83,5 @@ Each happens once per question. The scheduler checks every minute.
 
 - The event secret lets a bot answer **only** questions. It cannot read cases.
 - `answered_by` is recorded as given. Map identities in the flow; do not let responders type it.
-- In Helix, people asked see only the question and the rows it is about (*Inbox → Questions for
+- In Agent One Finance, people asked see only the question and the rows it is about (*Inbox → Questions for
   you*). They do not see the whole case.

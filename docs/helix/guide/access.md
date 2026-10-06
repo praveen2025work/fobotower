@@ -1,4 +1,4 @@
-# Opening Helix on a Mac or phone
+# Opening Agent One Finance on a Mac or phone
 
 ## 1. Read-only snapshot (no setup)
 
@@ -68,4 +68,4 @@ On a phone the menu sits behind the ☰ button. On a desktop the sidebar starts 
 to icons; use the arrow at its foot to expand it, and the choice is remembered.
 
 > This is the dev setup: anyone on the same network can open it, and identities are the
-> dev users. Do not use it with real data. In the office, Helix runs behind SSO.
+> dev users. Do not use it with real data. In the office, Agent One Finance runs behind SSO.

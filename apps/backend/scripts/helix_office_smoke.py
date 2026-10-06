@@ -1,4 +1,4 @@
-"""Helix office smoke test: is this deployment wired to the office's services?
+"""Agent One Finance office smoke test: is this deployment wired to the office's services?
 
 Run it once the office settings are in place (HELIX_LLM_ADAPTER=agent_sdk,
 PHOENIX_COLLECTOR_ENDPOINT, HELIX_ENTITLEMENT_URL, real connector URLs…):

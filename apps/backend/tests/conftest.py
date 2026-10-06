@@ -15,7 +15,7 @@ TEST_DATABASE_URL = os.getenv(
     "postgresql+asyncpg://fobo:fobo@localhost:5433/fobo_test",
 )
 os.environ["FOBO_DATABASE_URL"] = TEST_DATABASE_URL
-# Helix case runs finish before the call returns, unless a test asks otherwise.
+# Agent One Finance case runs finish before the call returns, unless a test asks otherwise.
 os.environ.setdefault("HELIX_RUN_MODE", "inline")
 
 import asyncpg  # noqa: E402

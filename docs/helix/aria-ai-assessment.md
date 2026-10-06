@@ -1,19 +1,19 @@
-# aria-ai (EAIP) — assessment for Helix
+# aria-ai (EAIP) — assessment for Agent One Finance
 
 **Date:** 2026-10-03 · **Repo:** `praveen2025work/aria-ai` @ `e74b232` (last commit 2026-06-17)
-**Question:** can anything in aria-ai be used for Helix, or should aria-ai itself become Helix?
+**Question:** can anything in aria-ai be used for Agent One Finance, or should aria-ai itself become Agent One Finance?
 
 ## 1. Verdict
 
-**Keep Helix (this repo) as the platform. Harvest five pieces from aria-ai's
-Python half (`eap-core`). Do not pivot aria-ai into Helix.**
+**Keep Agent One Finance (this repo) as the platform. Harvest five pieces from aria-ai's
+Python half (`eap-core`). Do not pivot aria-ai into Agent One Finance.**
 
 aria-ai is broad and largely working, but it is an *agent* platform (chat
 first, LLM specialists fanned out in parallel) built on four stacks with two
-competing engines. Helix is a *case/workflow* platform (rules first, the
+competing engines. Agent One Finance is a *case/workflow* platform (rules first, the
 model only for what rules cannot settle, every figure validated, people sign
 off) on one stack that matches the office (Python, LangGraph, Postgres,
-Phoenix, real MCP connectors). The parts of aria-ai that Helix lacks sit in
+Phoenix, real MCP connectors). The parts of aria-ai that Agent One Finance lacks sit in
 `eap-core`, which is already Python + FastAPI + SQLAlchemy + Postgres — they
 port in, they don't need a pivot.
 
@@ -56,26 +56,26 @@ HR, marketing, operations, flood claims; 7 agents each), a 40-page UI (about
 10 of them product-marketing pages: pricing, solutions, promote), k8s
 manifests, Prometheus/Grafana.
 
-## 4. Fit against what Helix needs
+## 4. Fit against what Agent One Finance needs
 
-| Helix requirement (agreed design) | aria-ai | Fit |
+| Agent One Finance requirement (agreed design) | aria-ai | Fit |
 |---|---|---|
-| Helix team supplies **MCP connectors**; office already has them | Its "MCP adapters" are **REST services** (`POST /tools/{name}`, tools discovered from `/openapi.json`) — not the MCP protocol. Neither eap-core nor agent-runner uses an MCP SDK; both call the adapters over plain HTTP | ✗ — they cannot plug into office MCP connectors, nor the office connectors into it, without a translation layer |
+| Agent One Finance team supplies **MCP connectors**; office already has them | Its "MCP adapters" are **REST services** (`POST /tools/{name}`, tools discovered from `/openapi.json`) — not the MCP protocol. Neither eap-core nor agent-runner uses an MCP SDK; both call the adapters over plain HTTP | ✗ — they cannot plug into office MCP connectors, nor the office connectors into it, without a translation layer |
 | **Phoenix** observability | agent-runner traces to Phoenix today; the plan is Langfuse as the single tracer and Phoenix dropped | ✗ the direction conflicts with the office choice |
 | One stack the team can own | Java + Oracle + Node + Python; two engines, convergence undecided | ✗ |
 | Deterministic first, LLM only for the rest; every figure validated | Agents "narrate, never invent figures"; a per-agent `validation_contract` flag; no per-figure grounding check against what tools returned | partial |
 | Human sign-off per group, decisions feed the next run | Approval gates on write tools; precedent memory | partial — different shape, good parts |
 | Capability = config only | Pack = `pack.yaml` (agents, plugins, policies); `brd_to_pack.py` drafts one from a BRD | ✓ strong idea |
 | Central entitlement, data-level scope | Role checks; SSO design docs; no data-scope enforcement on tool calls | partial |
-| Masking of sensitive fields before the model | **Yes** — field masking in `HookEngine.pre_tool`, before prompt and audit | ✓ Helix lacks this |
-| Approval-gated **write-back** tools | **Yes** — approval queue, pause/resume | ✓ Helix lacks this |
-| Evaluations | **Yes** — framework, judges, PII-free corpus check, per-pack eval cases | ✓ Helix lacks this |
+| Masking of sensitive fields before the model | **Yes** — field masking in `HookEngine.pre_tool`, before prompt and audit | ✓ Agent One Finance lacks this |
+| Approval-gated **write-back** tools | **Yes** — approval queue, pause/resume | ✓ Agent One Finance lacks this |
+| Evaluations | **Yes** — framework, judges, PII-free corpus check, per-pack eval cases | ✓ Agent One Finance lacks this |
 
-## 5. What to take into Helix
+## 5. What to take into Agent One Finance
 
 In priority order. Each is small, Python, and already tested in eap-core.
 
-| # | Take | From (eap-core) | Into Helix as | Why |
+| # | Take | From (eap-core) | Into Agent One Finance as | Why |
 |---|---|---|---|---|
 | 1 | **Field masking before the model and the audit** | `governance/masking.py`, the mask step of `governance/hooks.py` | a `mask` policy per connector tool in `connectors.yaml`; applied in `gateway.call` before results reach the LLM adapter, the audit row and the span | Bank data in prompts and traces is the first question model-risk will ask |
 | 2 | **BRD → manifest drafting** | `authoring/brd_to_pack.py` (one no-tools LLM turn → YAML → same validator; errors returned, never raised; human gate before load) | `POST /api/capabilities/draft-from-brd` → a **draft** `capability_version` that owners approve | Makes "seamless onboarding" literal: a business team pastes requirements, gets a validated draft manifest |
@@ -84,7 +84,7 @@ In priority order. Each is small, Python, and already tested in eap-core.
 | 5 | **Similarity priors** | `memory/precedent.py`, `ports/vector.py` | an optional pgvector search behind `knowledge.similar_decisions` | Today priors match the exact group key; similarity finds "like" cases |
 
 Also worth reading, not porting yet: the Java `DagExecutor` (leases,
-heartbeats, durable timers) as the reference when Helix adds scheduled and
+heartbeats, durable timers) as the reference when Agent One Finance adds scheduled and
 event-opened cases; `platform-ui` pages `PackAuthoring`, `Approvals`, `Audit`,
 `RunConsole` as UX references for the capability builder; the adapter
 **backends** (`fobo-backend`, `recon-engine-backend`, `pnl-lineage-backend`) as
@@ -93,17 +93,17 @@ richer stub data — wrapped as real MCP servers like
 
 ## 6. What not to take
 
-- The agent fan-out as Helix's core loop — Helix is case-centric; an agent is
+- The agent fan-out as Agent One Finance's core loop — Agent One Finance is case-centric; an agent is
   what the `reason` step calls, through `HELIX_LLM_ADAPTER`.
-- The REST "MCP" adapter protocol — Helix speaks real MCP.
+- The REST "MCP" adapter protocol — Agent One Finance speaks real MCP.
 - Langfuse — the office standard is Phoenix.
 - Java/Oracle control plane, Node agent-runner — a second and third stack.
 - The marketing pages and six demo industries.
 
 ## 7. If the team still wants one product, not two
 
-Then the direction is **aria-ai's eap-core moves onto Helix**, not the
-reverse: Helix's case model, gateway and gates stay; eap-core's masking,
+Then the direction is **aria-ai's eap-core moves onto Agent One Finance**, not the
+reverse: Agent One Finance's case model, gateway and gates stay; eap-core's masking,
 approvals, authoring, evals and precedent memory come in (§5); aria-ai's
 specialist agents can be offered as one implementation of
 `HELIX_LLM_ADAPTER`. The Java/Oracle platform and agent-runner are retired

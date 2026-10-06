@@ -1,20 +1,20 @@
-# aria-ai → Helix: reuse map
+# aria-ai → Agent One Finance: reuse map
 
 **Date:** 2026-10-04 · Source: `praveen2025work/aria-ai` `platform-ui` (40 pages, 13 component
 groups) and `enterprise-agent-platform` (eap-core). Companion to
 [`aria-ai-assessment.md`](aria-ai-assessment.md).
 
-The rule: **reuse aria-ai's components as they are** — copied with their own tests, fed by Helix
+The rule: **reuse aria-ai's components as they are** — copied with their own tests, fed by Agent One Finance
 APIs that keep aria-ai's data shapes — and adapt only where a concept differs (an aria-ai *agent* or
-*pack* is a Helix *capability* and its *team groups*; an aria-ai *run* is a Helix *case*).
+*pack* is an Agent One Finance *capability* and its *team groups*; an aria-ai *run* is an Agent One Finance *case*).
 
 Status: **Reused** = aria-ai code copied, unchanged or with a stated small adaptation ·
-**Adapted** = same concept and visual language, rebuilt on Helix's model · **Planned** = next wave ·
+**Adapted** = same concept and visual language, rebuilt on Agent One Finance's model · **Planned** = next wave ·
 **Replaced** = the office already provides it · **Not carried** = demo or product-marketing only.
 
 ## 1. For users — preparers, reviewers, controllers
 
-| aria-ai | Helix | Status |
+| aria-ai | Agent One Finance | Status |
 |---|---|---|
 | Layout (sidebar, top bar, error boundary), StatCard, StatusBadge, DataTable, ErrorBoundary, design tokens | `apps/web` shell | **Reused** |
 | Dashboard / MissionControl / Watchtower (home) | Overview: what waits on me, capabilities | **Adapted** |
@@ -27,12 +27,12 @@ Status: **Reused** = aria-ai code copied, unchanged or with a stated small adapt
 | `packs/PackFlow` | Capability flow diagram (steps, tools, people) | Planned (wave 3) |
 | Documentation, Guides | In-app guide to the platform and each capability | Planned (wave 4) |
 
-## 2. For developers — capability owners, team-group owners, the Helix team
+## 2. For developers — capability owners, team-group owners, the Agent One Finance team
 
-| aria-ai | Helix | Status |
+| aria-ai | Agent One Finance | Status |
 |---|---|---|
 | PackAuthoring (BRD → pack) | Authoring (BRD → capability manifest, validated, second-owner approval) | **Adapted** |
-| — (aria-ai had teams, not team configurations) | **Team groups**: each team configures a capability (FOBO rec groups such as CATS vs MOTIF) — owners, four-eyes, versions | **New in Helix** |
+| — (aria-ai had teams, not team configurations) | **Team groups**: each team configures a capability (FOBO rec groups such as CATS vs MOTIF) — owners, four-eyes, versions | **New in Agent One Finance** |
 | Manifests (YAML view) | Group settings editor (YAML) | **Adapted**; capability manifest view + version diff — Planned (wave 3) |
 | Plugins, `plugin/*` (SkillEditor, SkillSearchDialog, RevisionHistory, CommandsTab, HooksTab, ImportWizard) | Skill editor for a capability's / group's `reasoning.skill`, with revision history | Planned (wave 3) |
 | Registry (live MCP fleet) | Connectors page (onboarded tools, read/write, data scope) | **Adapted** |
@@ -42,9 +42,9 @@ Status: **Reused** = aria-ai code copied, unchanged or with a stated small adapt
 
 ## 3. For run-the-bank — support, operations, control
 
-| aria-ai | Helix | Status |
+| aria-ai | Agent One Finance | Status |
 |---|---|---|
-| MissionControl, `mission-control/*` | **Operations** page | **Reused**: KpiTile, Sparkline, SeverityBadge, LiveTail, IncidentStrip, ScanningStrip, useStickyBottom (+ their tests) · **Adapted**: FleetTable (row = capability × team group), HealthBanner, McpServersPanel (Helix data) · ApprovalQueue → "Waiting on people" |
+| MissionControl, `mission-control/*` | **Operations** page | **Reused**: KpiTile, Sparkline, SeverityBadge, LiveTail, IncidentStrip, ScanningStrip, useStickyBottom (+ their tests) · **Adapted**: FleetTable (row = capability × team group), HealthBanner, McpServersPanel (Agent One Finance data) · ApprovalQueue → "Waiting on people" |
 | SystemStatus | Operations health banner: database, LLM, tracing, entitlement; live connector probes | **Adapted** |
 | Audit | Audit (connector calls, refusals, sign-offs, releases) | **Adapted** |
 | ObservabilityHub | Phoenix (traces, sessions per case) + the trace link on every case | **Replaced** by Phoenix; a hub page of trace links — Planned (wave 4) |
@@ -62,7 +62,7 @@ marketing for aria-ai as a product.
 
 ## 5. eap-core (backend) concepts
 
-| aria-ai (eap-core) | Helix | Status |
+| aria-ai (eap-core) | Agent One Finance | Status |
 |---|---|---|
 | Governance: mask before prompt, audit, trace | `governance.py` — mask **and** reversible per-case pseudonyms | **Adapted** (extended) |
 | Approval queue for gated actions | `access: write` tools + `publish` step released by a second person | **Adapted** |

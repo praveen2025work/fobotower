@@ -8,7 +8,7 @@
 # environment variable named on the right, never written here.
 #
 # Office platform services (RAG, data explorer, plugins' MCP servers) are
-# onboarded the same way — add an entry, list the tools Helix may use — so
+# onboarded the same way — add an entry, list the tools Agent One Finance may use — so
 # every call goes through the gateway: allow-list, scope check, audit, trace.
 #
 # Then check the wiring: scripts/helix_office_smoke.py --user <id>
@@ -127,7 +127,7 @@ connectors:
 
   # Steps v2: accounting actions, assurance, orchestration, parties
   # (fin.accruals, client.complaints, controls.operating-test). Each system
-  # stays the source; Helix reads it, and writes only where a person approved.
+  # stays the source; Agent One Finance reads it, and writes only where a person approved.
   journals:
     name: General ledger — periods, accounts, journals
     transport: http

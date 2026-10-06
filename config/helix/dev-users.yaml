@@ -84,14 +84,14 @@ users:
     roles: [CONTROL_OWNER, CONTROL_TESTER, HELIX_CONTROLS_OWNER]
     data_scopes: { entity: ["*"] }
   pat:
-    name: Pat (Helix platform support — switches, connectors; sees no case data)
+    name: Pat (Agent One Finance platform support — switches, connectors; sees no case data)
     roles: [HELIX_PLATFORM_ADMIN]
     data_scopes: {}
   helix-scheduler:
-    name: Helix scheduler (service account — opens scheduled and event cases, never decides)
+    name: Agent One Finance scheduler (service account — opens scheduled and event cases, never decides)
     roles: [FIN_PREPARER, CASH_OPS, FOBO_CONTROLLER, FOBO_RATES_CONTROLLER, PAYMENTS_OPS, COMPLAINTS_HANDLER, CONTROL_TESTER]
     data_scopes: { entity: ["*"], book: ["*"] }
   viewer:
-    name: Viewer (no Helix roles)
+    name: Viewer (no Agent One Finance roles)
     roles: []
     data_scopes: {}

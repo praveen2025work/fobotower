@@ -1,4 +1,4 @@
-"""The FOBO → Helix parity script compares break by break."""
+"""The FOBO → Agent One Finance parity script compares break by break."""
 
 import importlib.util
 import json

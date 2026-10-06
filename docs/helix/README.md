@@ -1,8 +1,8 @@
-# Helix
+# Agent One Finance
 
 **Governed AI for Finance.** Finance teams onboard their AI-assisted case work
-into Helix as **configuration**: break investigation, reconciliations, variance
-commentary, accruals, report validation, control testing. The Helix team
+into Agent One Finance as **configuration**: break investigation, reconciliations, variance
+commentary, accruals, report validation, control testing. The Agent One Finance team
 onboards connectors (the bank's systems as MCP servers); each capability is a
 versioned manifest over them, run by LangGraph, governed end to end, and
 worked in one console.
@@ -11,15 +11,15 @@ worked in one console.
 Product Control, the first capability on the platform. The same building blocks
 run the other Finance use cases, and work beyond Finance too.
 
-aria-ai (EAIP) has been pivoted into Helix: its UI shell, its governance
+aria-ai (EAIP) has been pivoted into Agent One Finance: its UI shell, its governance
 (masking, approval-gated actions) and its BRD-to-pack authoring live here
 now — see [`aria-ai-assessment.md`](aria-ai-assessment.md) for what was
 taken and why.
 
-FOBO's behaviour on Helix — its playbook as configuration of the CATS vs MOTIF rec groups:
+FOBO's behaviour on Agent One Finance — its playbook as configuration of the CATS vs MOTIF rec groups:
 [`fobo-on-helix.md`](fobo-on-helix.md).
 
-**Moving the office FOBO (on Agent One) onto Helix** — change guide, office Claude Code skill and
+**Moving the office FOBO (on Agent One) onto Agent One Finance** — change guide, office Claude Code skill and
 parity script: [`migration/`](migration/README.md).
 
 **Executive demo video (3 min) and presenter notes:** [`demo/`](demo/README.md).
@@ -29,7 +29,7 @@ parity script: [`migration/`](migration/README.md).
 Worked examples — FOBO Prime vs Rates (real runs) and other accounting capabilities
 (accruals, substantiation, intercompany, journal controls, suspense): [`examples.md`](examples.md).
 
-What Helix inherits from the office agent platform (MCP, plugins, RAG), what
+What Agent One Finance inherits from the office agent platform (MCP, plugins, RAG), what
 is still missing, and the order to add it:
 [`office-platform-and-roadmap.md`](office-platform-and-roadmap.md).
 
@@ -51,7 +51,7 @@ walkthrough: [`…-helix-how-a-use-case-works.md`](../superpowers/specs/2026-10-
 
 ```bash
 cd apps/backend && .venv/bin/alembic upgrade head
-.venv/bin/uvicorn helix.web.main:app --port 8300 --reload        # the Helix API
+.venv/bin/uvicorn helix.web.main:app --port 8300 --reload        # the Agent One Finance API
 ```
 
 ```bash
@@ -76,7 +76,7 @@ Users (top-right switcher, development only):
 | `dan`, `erin` | Cash operations — the cash rec group (erin also owns the recon capability) |
 | `frank` | FOBO controller, all books — owner of the CATS vs MOTIF rec group |
 | `gina` | FOBO controller, PRIME-MB-01 only — second owner of CATS vs MOTIF |
-| `pat` | Helix platform support — off switches (incl. connectors); sees no case data |
+| `pat` | Agent One Finance platform support — off switches (incl. connectors); sees no case data |
 | `helix-scheduler` | Service account scheduled and event-opened cases run as |
 | `viewer` | No roles — sees nothing |
 
@@ -119,8 +119,8 @@ apps/backend/helix/
   stub_connectors/  GL, budget, bank, ledger, reporting (write), CATS, MOTIF — real MCP servers
   mcp_services/     documents: read PDF / Excel, write PDF reports (write) — a real service
 config/helix/
-  connectors.yaml   onboarded connectors, tool allow-list, read/write, data scope   (Helix team)
-  governance.yaml   mask / pseudonymize fields, trace payload policy               (Helix team)
+  connectors.yaml   onboarded connectors, tool allow-list, read/write, data scope   (Agent One Finance team)
+  governance.yaml   mask / pseudonymize fields, trace payload policy               (Agent One Finance team)
   capabilities/     one manifest per capability                                    (owners)
   dev-users.yaml    development stand-in for central entitlements
 ```
@@ -169,7 +169,7 @@ developers and run-the-bank, with what is reused, adapted, planned or replaced, 
 
 ## 2c. Documents — PDF and Excel in, PDF reports out
 
-`documents` is a connector Helix provides itself (`helix/mcp_services/documents.py`):
+`documents` is a connector Agent One Finance provides itself (`helix/mcp_services/documents.py`):
 `list_documents`, `read_pdf`, `read_workbook` (read) and `render_pdf_report` (write — the
 publish step only, after a second person releases the case). Files are kept per entity:
 `HELIX_DOCUMENTS_DIR/<entity>/` to read, `HELIX_REPORTS_DIR/<entity>/` for reports.
@@ -189,9 +189,9 @@ Sample documents: `python scripts/make_helix_documents.py`.
 
 | Option | Value | Why |
 |---|---|---|
-| `system_prompt` | the capability's `reasoning.skill` + Helix output rules | the use case's instructions, the platform's rules |
+| `system_prompt` | the capability's `reasoning.skill` + Agent One Finance output rules | the use case's instructions, the platform's rules |
 | `tools` | `[]` | no built-in Claude Code tools (no Bash, Read, …) |
-| `mcp_servers` | one in-process SDK MCP server, `helix` | its tools are exactly the capability's `reasoning.tools`; each handler calls the Helix gateway |
+| `mcp_servers` | one in-process SDK MCP server, `helix` | its tools are exactly the capability's `reasoning.tools`; each handler calls the Agent One Finance gateway |
 | `strict_mcp_config` | `True` | no other MCP servers load |
 | `allowed_tools` | `mcp__helix__<tool>` | those tools run without a permission prompt |
 | `permission_mode` | `dontAsk` | headless: anything else is denied |
@@ -203,14 +203,14 @@ Tokens, cost, turns and session id are kept on the finding and on the span.
 **If your office wraps the Agent SDK** (gateway URL, credentials, model routing), change only
 `ClaudeAgentSdkAdapter._run` (the `query()` call) or point `HELIX_LLM_ADAPTER` at your own class
 with the same contract: `name` and `async reason(request, tools) -> ReasonResult`. Keep tool calls
-going through `tools` — that is what lets Helix validate every figure the model states.
+going through `tools` — that is what lets Agent One Finance validate every figure the model states.
 
 Authoring (§4) uses the same adapter choice, with no tools and structured output `{yaml, assumptions}`.
 
 ### 3.2 Observability — Phoenix
 
 - `PHOENIX_COLLECTOR_ENDPOINT=https://phoenix.internal` (+ `PHOENIX_PROJECT_NAME`, default `helix`)
-  and `pip install -e ".[phoenix]"`: Helix calls `phoenix.otel.register(..., batch=True,
+  and `pip install -e ".[phoenix]"`: Agent One Finance calls `phoenix.otel.register(..., batch=True,
   auto_instrument=True)`, which also instruments the **Claude Agent SDK** and **LangGraph**
   (`openinference-instrumentation-claude-agent-sdk`, `-langchain`).
 - Or `HELIX_TRACING_SETUP=your_pkg.tracing:setup` if your Phoenix connector is a wrapper.
@@ -240,7 +240,7 @@ identity header cannot be set by anyone who merely reaches the server. `/health`
 Per connector in `config/helix/connectors.yaml`: `transport: http`, `url`, `headers_env`
 (header → env var with its value), and the tool allow-list. For each tool: `scope` (the argument
 carrying the data scope) and `access: read | write`. Write tools are never offered to the model and
-run only in `publish`, after release; `idempotency_arg` names the argument that carries Helix's
+run only in `publish`, after release; `idempotency_arg` names the argument that carries Agent One Finance's
 idempotency key (case:group), so a retried write is the same write. A full office version is in
 `config/helix/connectors.office.example.yaml` — office RAG and data-explorer servers are onboarded
 the same way. Results may be MCP structured content or JSON text; steps read
@@ -252,7 +252,7 @@ a list of records under `rows`.
 `pseudonymize` fields reach the model as per-case tokens (`«COUNTERPARTY:QXKD»`) that it can still
 pass to tools — the gateway restores real values for the connector — and reviewers see real values.
 Set `HELIX_PSEUDONYM_KEY` (a secret) in the office. `trace_payloads: masked` hides auto-instrumented
-payloads; Helix's own spans carry the model's view only.
+payloads; Agent One Finance's own spans carry the model's view only.
 
 ### 3.6 Running it
 
@@ -292,8 +292,8 @@ shadow runs in Phoenix · scheduled and event-opened cases · evidence upload in
 notifications · parallel reasoning across groups · FOBO's validation tests (FO-1…BO-6) as
 structured checks · moving FOBO's users onto the platform.
 
-**Design proposal:** [Helix steps v2: building blocks for any Finance use case](design/step-catalogue-v2.md): the processes to cover, about thirty operations, the step catalogue v2, engine changes, controls and a phased plan.
+**Design proposal:** [Agent One Finance steps v2: building blocks for any Finance use case](design/step-catalogue-v2.md): the processes to cover, about thirty operations, the step catalogue v2, engine changes, controls and a phased plan.
 
-**Platform overview:** [Helix: governed AI for Finance](platform-overview.md): what every use case gets, the building blocks, the controls built in, 26 use cases by division (8 running) and how a team adopts it.
+**Platform overview:** [Agent One Finance: governed AI for Finance](platform-overview.md): what every use case gets, the building blocks, the controls built in, 26 use cases by division (8 running) and how a team adopts it.
 
-**Pitch page:** `apps/web/public/pitch/index.html`, served by the console at `/pitch/` (sidebar: *About Helix*). One self-contained file to open from disk or send: [`pitch/helix-pitch.html`](pitch/helix-pitch.html) (rebuild with `node apps/web/scripts/inline-pitch.mjs`). The page shows the platform in one page, with an explorer of 26 use cases and the real configuration of the eight running today.
+**Pitch page:** `apps/web/public/pitch/index.html`, served by the console at `/pitch/` (sidebar: *About Agent One Finance*). One self-contained file to open from disk or send: [`pitch/helix-pitch.html`](pitch/helix-pitch.html) (rebuild with `node apps/web/scripts/inline-pitch.mjs`). The page shows the platform in one page, with an explorer of 26 use cases and the real configuration of the eight running today.

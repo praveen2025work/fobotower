@@ -426,7 +426,7 @@ describe("Sections, checklist and follow-through", () => {
     open();
     expect(await screen.findByText("Payroll accrual reversed")).toBeInTheDocument();
     expect(screen.getByText("not answered")).toBeInTheDocument();
-    expect(screen.getByText(/Helix: 14 tests on 1 item/)).toBeInTheDocument();
+    expect(screen.getByText(/Agent One Finance: 14 tests on 1 item/)).toBeInTheDocument();
     const approve = screen.getByRole("button", { name: "Approve" });
     expect(approve).toBeDisabled();
     await userEvent.click(within(screen.getByRole("radiogroup", { name: "What did I check?" })).getByRole("radio", { name: "yes" }));

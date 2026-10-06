@@ -1,6 +1,6 @@
-# FOBO → Helix change guide (for the office)
+# FOBO → Agent One Finance change guide (for the office)
 
-**Date:** 2026-10-04 · **For:** the engineer moving FOBO onto Helix in the office, and the
+**Date:** 2026-10-04 · **For:** the engineer moving FOBO onto Agent One Finance in the office, and the
 office Claude Code that does the conversion with them.
 
 **Where you are.** In the office, the old FOBO app has already been converted to run on the
@@ -8,11 +8,11 @@ office agent platform ("Agent One"): the Claude Agent SDK for model calls, offic
 for CATS and MOTIF, and Phoenix for traces. FOBO is still its own application, with its own
 orchestrator, rules code, tools, screens and database.
 
-**Where you are going.** FOBO stops being an application. It becomes **one rec group on Helix's
+**Where you are going.** FOBO stops being an application. It becomes **one rec group on Agent One Finance's
 shared reconciliation capability**, at the accounting-platform level: the same machinery every
 accounting team uses (Prime, Rates, cash, accruals and so on). FOBO's rules move from code
 into configuration. Agent One's Agent SDK wrapper, MCP servers and Phoenix setup are kept and
-plugged into Helix. Everything FOBO-specific that Helix already does is retired.
+plugged into Agent One Finance. Everything FOBO-specific that Agent One Finance already does is retired.
 
 **The rule for the whole migration: the controller sees the same answer.** For every break,
 the category, side and verdict must match the old run. The parity script in Phase 5 proves
@@ -43,15 +43,15 @@ BEFORE — FOBO on Agent One (one app, one team)
      │   fobo_* MCP tools (list_breaks, break_detail, similar_breaks, …)
      └── CATS / MOTIF via office MCP servers           Postgres (fobo_* tables)
 
-AFTER — FOBO as a rec group on Helix (one platform, every accounting team)
+AFTER — FOBO as a rec group on Agent One Finance (one platform, every accounting team)
 
-  Helix web (inbox, case workspace, review, release)    ← all teams
-  Helix API ── capability break.investigation (shared engine, mandatory gates)
+  Agent One Finance web (inbox, case workspace, review, release)    ← all teams
+  Agent One Finance API ── capability break.investigation (shared engine, mandatory gates)
                  └── group fobo-prime (Prime), a Rates group, …  ← FOBO is YAML here
        steps: load (MB Rec's breaks) → enrich → resolve → classify (timing first) → group
               → tollgate (controller + the desk's input) → reason → draft
               → validate* → review* → record*         (* gates cannot be removed)
-       ├── llm: Agent One's Agent SDK wrapper as the Helix LLM adapter (one call per group)
+       ├── llm: Agent One's Agent SDK wrapper as the Agent One Finance LLM adapter (one call per group)
        ├── gateway: allow-list, data scope, audit row, masking → office MCP servers
        ├── knowledge graph: book → desk → team as of COB; approved decisions as priors
        └── Phoenix: one trace per case run
@@ -63,7 +63,7 @@ Find each row's "Agent One" column in your office code during Phase 0. The paths
 they sit in this repo's FOBO (`apps/backend/fobo`). The Agent One conversion probably kept
 similar names.
 
-| FOBO concept | FOBO / Agent One (typical place) | Helix target | How it moves |
+| FOBO concept | FOBO / Agent One (typical place) | Agent One Finance target | How it moves |
 |---|---|---|---|
 | Rec run (book × COB) | `investigation/agent_run.py`, `state.py` | a **case** keyed `[book, cob]` | `set.case` in the group file |
 | The breaks (MB Rec has already reconciled CATS to MOTIF) | `steps/gather.py` reads them from MB Rec | `load` from `mbrec.breaks` on the **Break investigation** capability — no re-matching (see [Configure it](../guide/configure-fobo-mb-rec.md)) | config |
@@ -92,23 +92,23 @@ similar names.
 | 11:00 run per COB | scheduler / Agent One trigger | `case.opens_on: schedule`, `schedule_keys`, `events: true` | config |
 | Rec deadline | — | `case.due: {from: cob, business_days: 1, at: "11:00"}` | config |
 | Fix upstream → owning team | named in the analysis | `escalation` raises a ticket after the decision | config (needs a ticketing connector) |
-| Board, detail, chat, trace, hours saved | `apps/console`, `console_views/*`, `reports/*` | Helix inbox, case workspace, "Ask about this case", run history, Overview | built in |
+| Board, detail, chat, trace, hours saved | `apps/console`, `console_views/*`, `reports/*` | Agent One Finance inbox, case workspace, "Ask about this case", run history, Overview | built in |
 | Phoenix tracing | Agent One's setup | `PHOENIX_COLLECTOR_ENDPOINT` or `HELIX_TRACING_SETUP=pkg.mod:fn` | env |
 | Users, roles, books visible | FOBO auth | `HELIX_ENTITLEMENT_URL` (roles + `book` data scope), `HELIX_IDENTITY_HEADER` | env |
 
 **Reference implementation.** The Prime group, already converted and tested:
 `config/helix/groups/break.investigation/fobo-prime.yaml` (MB Rec's breaks, timing checks,
 the tollgate). The older `recon.investigation/cats-motif.yaml` and `cats-motif-rates.yaml` match
-CATS to MOTIF in Helix itself. Use them only where no system has reconciled already. Their
+CATS to MOTIF in Agent One Finance itself. Use them only where no system has reconciled already. Their
 playbook is the same.
 Behaviour tests: `apps/backend/tests/helix/test_fobo_playbook.py`. Line-by-line parity:
 [`../fobo-on-helix.md`](../fobo-on-helix.md).
 
 ## 3. What you keep from Agent One, and what you retire
 
-**Keep and plug in. These are the office's, and Helix should not rebuild them.**
+**Keep and plug in. These are the office's, and Agent One Finance should not rebuild them.**
 
-| Agent One piece | Plug into Helix as |
+| Agent One piece | Plug into Agent One Finance as |
 |---|---|
 | The Agent SDK wrapper (auth, model routing, gateway URL) | the body of `_run` in `helix/llm_agent_sdk.py`, or your own adapter selected with `HELIX_LLM_ADAPTER=pkg.mod:obj` |
 | CATS / MOTIF / ticketing MCP servers | entries in `config/helix/connectors.yaml` (`transport: http`, `url`, `headers_env`). With ids `cats`, `motif` and `ticketing` the group file works unchanged. Otherwise, change the names in the group file to match (config only) |
@@ -124,10 +124,10 @@ Behaviour tests: `apps/backend/tests/helix/test_fobo_playbook.py`. Line-by-line 
 - The fobo_* MCP server and its tools.
 - The session-service reasoner (start/poll).
 - FOBO's own playbook and workflow versioning, the workflow tab and the YAML loader CLI.
-- The FOBO console. Users move to the Helix web app.
+- The FOBO console. Users move to the Agent One Finance web app.
 - FOBO's tables. Keep them read-only for the records retention period; do not drop them.
 
-**Never** load Agent One's MCP servers straight into the Agent SDK inside Helix. A tool the model
+**Never** load Agent One's MCP servers straight into the Agent SDK inside Agent One Finance. A tool the model
 reaches outside the gateway skips the allow-list, the book scope check and the audit row. The
 adapter sets `strict_mcp_config=True` for this reason.
 
@@ -141,7 +141,7 @@ Agent One's FOBO reasoner was **rec-level and asynchronous**. It started one age
 the whole run and polled it. It returned a `RecVerdict` with one verdict per pattern plus
 exceptions.
 
-Helix is **group-level and awaited**. It makes one `reason()` call per proposal group, runs
+Agent One Finance is **group-level and awaited**. It makes one `reason()` call per proposal group, runs
 groups in parallel, and checkpoints and resumes the run itself:
 
 ```python
@@ -160,7 +160,7 @@ that starts a session for the group and awaits it. Do not reintroduce start/poll
 
 ### 4.2 The fobo_* tools are not needed
 
-| fobo_* tool | Why Helix does not need it |
+| fobo_* tool | Why Agent One Finance does not need it |
 |---|---|
 | `fobo_list_breaks`, `fobo_break_detail` | every break in the group is in the prompt (`group.items`, full rows, with enrich, resolve, classify and test results on each) |
 | `fobo_list_tests`, `fobo_evidence_required`, `fobo_required_on_fail`, `fobo_unset_policies` | the playbook already ran: each item carries its check results, test results (pass / fail / not run, and why) and the P1 flag |
@@ -178,18 +178,18 @@ sees the group:
 
 - how to call the fobo_* tools;
 - the rec / patterns / `already_established` input description (the input is now one group);
-- the §12 output format (Helix asks for a structured `{status, comment, verdict, reason}`, and
+- the §12 output format (Agent One Finance asks for a structured `{status, comment, verdict, reason}`, and
   its own output rules are appended).
 
 The result is short, like the `reasoning.skill` in `cats-motif.yaml`.
 
-**`CORRECT_AND_REPOST`.** The old contract allowed this verdict and the Helix FOBO groups do not
+**`CORRECT_AND_REPOST`.** The old contract allowed this verdict and the Agent One Finance FOBO groups do not
 list it. If Agent One's runs ever produce it, Product Control decides how it maps. Do not add
 it silently.
 
 ## 5. Behaviour that must not change
 
-Each rule below has a Helix test that proves it. Run them after every change to the group file.
+Each rule below has an Agent One Finance test that proves it. Run them after every change to the group file.
 
 | Rule | Proven by (`apps/backend/tests/helix/`) |
 |---|---|
@@ -216,12 +216,12 @@ cd apps/backend && .venv/bin/python -m pytest -q tests/helix/test_fobo_playbook.
 These change *how* work flows, not the category, side or verdict on a break. Tell the
 controllers before go-live.
 
-| Old | Helix | Effect on users |
+| Old | Agent One Finance | Effect on users |
 |---|---|---|
 | `rank` orders candidate causes | the first positive check in playbook order is the cause | the same in practice, because the playbook orders checks by precedence. Confirm with Product Control |
 | reject-and-redraft cycles | "Investigate again" with a note, per group | the reviewer sends back one group, not the whole run |
 | one agent session per rec | one model call per group, in parallel | faster; cost and trace per group |
-| FOBO console | Helix web | new screens, same information. See the [user guide](../guide/user-guide.md) |
+| FOBO console | Agent One Finance web | new screens, same information. See the [user guide](../guide/user-guide.md) |
 | owner team named in the analysis | also a ticket for that team (if `escalation` is configured) | less copy-paste |
 
 ## 7. Phases
@@ -231,18 +231,18 @@ Each phase ends with a check and your sign-off. Office Claude stops at every one
 | # | Phase | Done when |
 |---|---|---|
 | 0 | **Inventory.** Map Agent One's FOBO code and config to every row of §2. Record the actual policy values, schedule, books, roles, MCP server URLs and tool names. Write `MIGRATION_INVENTORY.md` | every §2 row has an office location or "not present"; open questions are listed |
-| 1 | **Bring Helix in.** Add `apps/backend/helix`, its migrations, `apps/web`, `config/helix` from `praveen2025work/fobotower` main. Give it its own database (`HELIX_DATABASE_URL`). Run `alembic upgrade head` | the API starts with the stub model; `pytest tests/helix` is green |
+| 1 | **Bring Agent One Finance in.** Add `apps/backend/helix`, its migrations, `apps/web`, `config/helix` from `praveen2025work/fobotower` main. Give it its own database (`HELIX_DATABASE_URL`). Run `alembic upgrade head` | the API starts with the stub model; `pytest tests/helix` is green |
 | 2 | **Connectors.** Point `cats`, `motif` (and `ticketing`, `documents` if used) at the office MCP servers. Start from `connectors.office.example.yaml`; secrets go in env only | `scripts/helix_office_smoke.py --user <id>` passes database, entitlements, connectors |
 | 3 | **Rules as config.** Copy `break.investigation/fobo-prime.yaml` and set the office values from the inventory: books, schedule, policy values (nulls stay null), tests, categories, verdicts, guards, roles. Copy `fobo-reference.yaml` with the office's book → desk → team lineage. One file per FOBO rec group (Prime, Rates, …). Anything the YAML cannot express goes to `MIGRATION_GAPS.md`, not into engine code | `python -m helix.config_sync` creates drafts, a second owner approves, and §5 tests pass |
 | 4 | **Model.** Plug Agent One's SDK call into the adapter (§4.1). Trim the skill (§4.3). Set `HELIX_LLM_ADAPTER`, `PHOENIX_COLLECTOR_ENDPOINT`, `HELIX_ENTITLEMENT_URL`, `HELIX_IDENTITY_HEADER`, `HELIX_TRUSTED_PROXY_SECRET` | smoke test with `--case break.investigation --group fobo-prime --key book=… --key cob=…` passes, and the trace appears in Phoenix |
 | 5 | **Parallel run.** Run each book's COB in both systems for an agreed period (suggested: 10 business days, every book). Compare with the parity script (below). Log every difference in `PARITY_LOG.md` with a cause and a decision | zero unexplained differences across the period; Product Control signs off |
-| 6 | **Cut-over and retire.** Switch the 11:00 schedule to Helix, turn off the FOBO trigger, and move users to Helix web. Retire the §3 list after one clean month-end. Keep FOBO tables read-only | Helix is the only system writing; rollback plan tested once |
+| 6 | **Cut-over and retire.** Switch the 11:00 schedule to Agent One Finance, turn off the FOBO trigger, and move users to Agent One Finance web. Retire the §3 list after one clean month-end. Keep FOBO tables read-only | Agent One Finance is the only system writing; rollback plan tested once |
 
 **Parity script** (in this repo: `apps/backend/scripts/fobo_helix_parity.py`):
 
 ```bash
 # Old: export the run's breaks as CSV or JSON (columns: instrument, category, side, verdict)
-# Helix: the case for the same book and COB
+# Agent One Finance: the case for the same book and COB
 .venv/bin/python scripts/fobo_helix_parity.py --old old_PRIME-MB-01_2026-09-30.csv \
     --api https://helix.internal.example --case-id <case_id> --user <your id>
 # Different column names in the old export:
@@ -251,23 +251,23 @@ Each phase ends with a check and your sign-off. Office Claude stops at every one
 
 The script prints each break where category, side or verdict differ, or that only one system
 has. It exits 0 only when everything agrees. When the model is involved, compare the
-deterministic breaks first (Helix finding `decided_by: playbook`). Model-decided verdicts can
+deterministic breaks first (Agent One Finance finding `decided_by: playbook`). Model-decided verdicts can
 legitimately vary between two model runs, so review those by reading, not by diff.
 
 ## 8. Rollback
 
 Until Phase 6 is signed off, FOBO on Agent One stays the system of record. Rollback means
-turning off the Helix group (the off switch in Operations, or `case.opens_on: manual`) and
+turning off the Agent One Finance group (the off switch in Operations, or `case.opens_on: manual`) and
 carrying on. After cut-over, keep the Agent One deployment able to start for one month-end.
-Rollback is then: Helix off switch, Agent One trigger on, and tell the controllers.
+Rollback is then: Agent One Finance off switch, Agent One trigger on, and tell the controllers.
 
 ## 9. The prompt to start office Claude
 
 Paste this into Claude Code in the office repo, after copying the skill (top of this page):
 
 ```text
-Use the fobo-to-helix skill. We are moving our FOBO on Agent One to Helix: FOBO becomes
-groups of Helix's break.investigation capability, on MB Rec's breaks. The change guide
+Use the fobo-to-helix skill. We are moving our FOBO on Agent One to Agent One Finance: FOBO becomes
+groups of Agent One Finance's break.investigation capability, on MB Rec's breaks. The change guide
 is docs/helix/migration/README.md.
 
 Start with Phase 0 only: inventory our FOBO code and config against every row of the
@@ -281,12 +281,12 @@ Then, phase by phase: "Phase 1 approved, continue with Phase 1", and so on.
 ## 10. Sign-off checklist
 
 - [ ] Inventory complete; open questions answered by Product Control
-- [ ] Helix tests green in the office (`pytest tests/helix`)
+- [ ] Agent One Finance tests green in the office (`pytest tests/helix`)
 - [ ] Office smoke test passes, including one real case and its Phoenix trace
 - [ ] Each FOBO rec group file approved by two owners
 - [ ] Policy thresholds: the same values as FOBO (nulls stay null, P1)
 - [ ] Parity: zero unexplained differences over the parallel-run period, for every book
 - [ ] `MIGRATION_GAPS.md` empty, or each gap accepted by Product Control
-- [ ] Controllers trained on Helix web (user guide); delegation set up for leave
+- [ ] Controllers trained on Agent One Finance web (user guide); delegation set up for leave
 - [ ] Rollback tested once
 - [ ] FOBO trigger off; FOBO tables read-only; retirement list done after one month-end

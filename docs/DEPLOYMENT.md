@@ -1,8 +1,8 @@
 # Deployment
 
-How to run the FOBO console (the first Finance use case, built before Helix) on a shared
+How to run the FOBO console (the first Finance use case, built before Agent One Finance) on a shared
 server (a demo or UAT box), rather than on a developer's machine. For local development,
-see the README. To deploy Helix itself, see the
+see the README. To deploy Agent One Finance itself, see the
 [developer guide](helix/guide/developer-guide.md#17-deploying-in-the-office).
 
 ## Read this first: it is not production-ready

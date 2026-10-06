@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Versioned, four-eyes workflow configuration stored in Postgres, edited from a new Workflow tab in the Helix console, with YAML import/export, and every LangGraph run pinned to the version it started with.
+**Goal:** Versioned, four-eyes workflow configuration stored in Postgres, edited from a new Workflow tab in the Agent One Finance console, with YAML import/export, and every LangGraph run pinned to the version it started with.
 
 **Architecture:** A `workflow_version` table becomes the authority for which workflow runs; the checked-in YAML seeds version 1. A store module (`app/workflow/versions.py`) enforces the draft → second-approver rules. `run_investigation` records the active version on the run and binds its config in a `ContextVar`, so `settings()` inside every LangGraph step returns the run's own version. A new `/api/workflow` router serves the catalogue, versions, diff, rebase, validation and YAML. The console gets a Workflow tab: a graph view with who-decides tags, a draft editor with live validation, and a versions panel with approve/reject.
 
@@ -4713,7 +4713,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ---
 
-### Task 13: The Workflow tab in Helix
+### Task 13: The Workflow tab in Agent One Finance
 
 **Files:**
 - Create: `apps/console/src/components/helix/workflow/ActiveStrip.jsx`
@@ -5099,7 +5099,7 @@ export function WorkflowView({ callerKey }) {
 }
 ```
 
-- [ ] **Step 5: Add the tab and the switch to Helix**
+- [ ] **Step 5: Add the tab and the switch to Agent One Finance**
 
 In `apps/console/src/components/helix/HelixApp.jsx`:
 
@@ -5163,7 +5163,7 @@ With the API running (`cd apps/api && FOBO_ENV=dev .venv/bin/uvicorn api.main:ap
 
 ```bash
 git add apps/console/src
-git commit -m "feat: Workflow tab in Helix, with a dev caller switch
+git commit -m "feat: Workflow tab in Agent One Finance, with a dev caller switch
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```

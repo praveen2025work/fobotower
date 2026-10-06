@@ -1,18 +1,18 @@
-# Helix Capability Platform — Design
+# Agent One Finance Capability Platform — Design
 
 **Date:** 2026-10-03 · **Revision:** 3 (aria-ai pivoted in; office LLM and Phoenix) · **Status:** draft for team review · **Skeleton:** built — see [`docs/helix/README.md`](../../helix/README.md) · **Branch:** `claude/exciting-darwin-7xukjj`
 
 ## 1. Purpose
 
-Turn the FOBO Investigation Console into **Helix**: one application that
+Turn the FOBO Investigation Console into **Agent One Finance**: one application that
 accounting groups onboard their own AI-assisted work into — reconciliations,
 variance commentary, sign-off packs, exception reviews — without building a
 new app each time.
 
-**The operating model:** the Helix team onboards **MCP connectors** (the
+**The operating model:** the Agent One Finance team onboards **MCP connectors** (the
 bank's data sources, as tools). Everything else a new capability needs —
 its workflow, rules, agent instructions, review policy and screens — is
-configuration that its owners set up in Helix, and it works without Helix
+configuration that its owners set up in Agent One Finance, and it works without Agent One Finance
 writing code for it.
 
 FOBO (CATS vs MOTIF) stops being *the* application and becomes the **first
@@ -25,33 +25,33 @@ and its test suite proves the extraction changed nothing.
 | Question | Decision |
 |---|---|
 | What happens to FOBO | Kept, as the first capability (legacy pack with its own code) |
-| What the Helix team builds per new capability | **Only MCP connectors.** Workflow, rules, prompts, review, UI are configuration |
-| How a capability is defined | A manifest, edited in the console, built from the core step library and the onboarded connectors' tools. Pack code is a Helix-team escape hatch, not the onboarding path |
+| What the Agent One Finance team builds per new capability | **Only MCP connectors.** Workflow, rules, prompts, review, UI are configuration |
+| How a capability is defined | A manifest, edited in the console, built from the core step library and the onboarded connectors' tools. Pack code is an Agent One Finance-team escape hatch, not the onboarding path |
 | What proves the platform is generic | A second capability onboarded with **zero code**: one connector plus configuration |
 | Database | **One shared database**; every row carries `capability_id` |
 | Who approves a capability and its changes | The capability's **owners** — several named people, plus a bank role — with four-eyes (drafter ≠ approver) |
-| Where roles and data access come from | The bank's **central entitlements system**, at data level, called by Helix through a configured entitlement URL |
+| Where roles and data access come from | The bank's **central entitlements system**, at data level, called by Agent One Finance through a configured entitlement URL |
 | What the unit of work is called | Core term **case**; each capability sets its own UI label (FOBO: "Rec run"; others may use "lane", "review", …) — §3 |
-| Name | **Helix** (package `helix`, UI title "Helix") |
+| Name | **Agent One Finance** (package `helix`, UI title "Agent One Finance") |
 | Observability | **Arize Phoenix**, self-hosted, via OpenTelemetry/OpenInference; one trace per case, one Phoenix project per capability. Postgres stays the audit system of record. Walkthrough: [`2026-10-03-helix-how-a-use-case-works.md`](2026-10-03-helix-how-a-use-case-works.md) |
 
 Out of scope: choosing the second real business capability; building
 specific bank connectors (each is its own small onboarding, §6.4).
 
-### Revision 3 (2026-10-03): aria-ai pivoted into Helix
+### Revision 3 (2026-10-03): aria-ai pivoted into Agent One Finance
 
 | Question | Decision |
 |---|---|
-| aria-ai | Pivoted **into** Helix: this repo is the home; aria-ai's concepts and UI come here (assessment: `docs/helix/aria-ai-assessment.md`) |
-| LLM | The office's **Claude Agent SDK** — `HELIX_LLM_ADAPTER=agent_sdk`; Helix builds the outside layer, the office may adjust only the `query()` call |
-| Observability | The office's **Phoenix** — OpenInference auto-instrumentation (Agent SDK, LangGraph) plus Helix spans |
+| aria-ai | Pivoted **into** Agent One Finance: this repo is the home; aria-ai's concepts and UI come here (assessment: `docs/helix/aria-ai-assessment.md`) |
+| LLM | The office's **Claude Agent SDK** — `HELIX_LLM_ADAPTER=agent_sdk`; Agent One Finance builds the outside layer, the office may adjust only the `query()` call |
+| Observability | The office's **Phoenix** — OpenInference auto-instrumentation (Agent SDK, LangGraph) plus Agent One Finance spans |
 | Console | aria-ai's UI shell (`apps/web`): Overview, Inbox, Capabilities, case workspace (3-pane), Authoring, Audit, Connectors |
 | Taken from aria-ai | masking before model/audit/trace; approval-gated actions (as the `publish` step); BRD → manifest authoring; next: precedent memory, evals |
 
 Built in revision 3, beyond aria-ai and the earlier skeleton:
 
 - **Gateway-bridged Agent SDK.** The model's tools are an in-process SDK MCP server whose
-  handlers call the Helix gateway, so allow-list, data scope, audit and figure validation hold for
+  handlers call the Agent One Finance gateway, so allow-list, data scope, audit and figure validation hold for
   every model call; built-in Claude Code tools are off; output is a JSON-schema result.
 - **Reversible pseudonymization.** Protected identifiers reach the model as per-case tokens it can
   still pass to tools; the gateway restores real values for the connector and re-tokenizes results.
@@ -86,8 +86,8 @@ mostly *separating* code, not rewriting it.
 ## 3. Concepts
 
 ```
-Helix (platform)
- ├─ Connector ─── an onboarded MCP server: a bank system's data as tools      ← Helix team
+Agent One Finance (platform)
+ ├─ Connector ─── an onboarded MCP server: a bank system's data as tools      ← Agent One Finance team
  │
  ├─ Capability ── "what kind of work"                                          ← capability owners
  │    ├─ Manifest      subjects, items, steps, rules, agent skill, review, views
@@ -207,7 +207,7 @@ fields, never by capability-specific code.
 
 ## 6. Connectors and the MCP gateway
 
-The Helix team's whole per-capability job.
+The Agent One Finance team's whole per-capability job.
 
 ### 6.1 What a connector is
 
@@ -217,19 +217,19 @@ A registered external MCP server — a bank system exposed as tools.
 |---|---|
 | `connector_id` | e.g. `gl`, `budget`, `cats`, `motif` |
 | `url`, `transport` | streamable HTTP MCP endpoint |
-| `auth` | how Helix authenticates to it (service credential from the vault; never in the manifest) |
-| `tools` | discovered via MCP `tools/list`, then **allow-listed** by the Helix team |
+| `auth` | how Agent One Finance authenticates to it (service credential from the vault; never in the manifest) |
+| `tools` | discovered via MCP `tools/list`, then **allow-listed** by the Agent One Finance team |
 | `data_scope_param` | which argument carries the user's data scope (entity, book…), so entitlement can be enforced (§7) |
 | `classification` | data classification, shown to owners when they pick tools |
-| `owner`, `status` | Helix team; `draft` → `active` (four-eyes, Helix team) |
+| `owner`, `status` | Agent One Finance team; `draft` → `active` (four-eyes, Agent One Finance team) |
 
 ### 6.2 The gateway
 
-Helix's MCP server (today `fobo/mcp_server/`) becomes the **gateway**. Agent
+Agent One Finance's MCP server (today `fobo/mcp_server/`) becomes the **gateway**. Agent
 sessions and core steps never call a connector directly:
 
 ```
-agent session ──(per-session token)──▶ Helix MCP gateway ──▶ connector (bank MCP server)
+agent session ──(per-session token)──▶ Agent One Finance MCP gateway ──▶ connector (bank MCP server)
 core step (load/enrich) ─────────────▶        │
                                                ├─ tool allowed for this capability?
                                                ├─ caller entitled to this data scope? (§7)
@@ -246,22 +246,22 @@ core step (load/enrich) ─────────────▶        │
 
 ### 6.3 Core tools
 
-Served by Helix itself for every capability: `core.case_items`,
+Served by Agent One Finance itself for every capability: `core.case_items`,
 `core.item_detail`, `core.similar_decisions` (priors from past decisions),
 `core.policy`. FOBO's eight tools become `fobo.*` in its pack.
 
-### 6.4 Onboarding a connector (Helix team)
+### 6.4 Onboarding a connector (Agent One Finance team)
 
-1. Register URL + auth reference; Helix runs `tools/list`.
+1. Register URL + auth reference; Agent One Finance runs `tools/list`.
 2. Allow-list tools; map each tool's data-scope argument.
-3. Contract test: Helix calls each tool with a sample scope and checks the
+3. Contract test: Agent One Finance calls each tool with a sample scope and checks the
    result against its declared schema.
-4. Second Helix team member approves → `active`; its tools appear in the
+4. Second Agent One Finance team member approves → `active`; its tools appear in the
    capability builder's tool picker.
 
 ## 7. Entitlement — central, data-level
 
-Helix holds no roles of its own. It calls the bank's central entitlements
+Agent One Finance holds no roles of its own. It calls the bank's central entitlements
 system through a configured URL.
 
 ```
@@ -290,7 +290,7 @@ GET {HELIX_ENTITLEMENT_URL}/users/{staff_id}/entitlements?app=helix
 
 | Change | Drafted by | Approved by |
 |---|---|---|
-| New connector, connector tool allow-list | Helix team | another Helix team member |
+| New connector, connector tool allow-list | Agent One Finance team | another Agent One Finance team member |
 | New capability, manifest change | a capability owner | another owner (`owners.people` or `owners.role`), never the drafter |
 | Workflow change for a capability | a capability owner | another owner — today's Workflow tab rule, scoped per capability |
 | Review decision on a case | — | a user with `review.roles`; four-eyes if the manifest says so |
@@ -327,7 +327,7 @@ checkpoint written before the move.
 ## 10. Orchestration
 
 ```
-             ┌────────────────────── Helix core ───────────────────────┐
+             ┌────────────────────── Agent One Finance core ───────────────────────┐
 event ─────▶ │ open case ─▶ capability ─▶ pin workflow ─▶ entitlement   │ ─▶ LangGraph run
 schedule     │                 version         version       check     │     core steps (+ FOBO legacy)
 manual / api └─────────────────────────────────────────────────────────┘     gates: validate, review, record
@@ -356,7 +356,7 @@ manual / api └─────────────────────�
   set review roles and owners; validate; submit for owner approval; diff
   against the active version. Built on the Workflow tab's existing draft →
   approve → diff machinery.
-- **Connector admin** (Helix team only) — register, allow-list, contract
+- **Connector admin** (Agent One Finance team only) — register, allow-list, contract
   test, approve.
 - FOBO's event board, adjustments panel and book drawer stay as FOBO views.
 
@@ -407,7 +407,7 @@ behaviour change** (same board, same figures, same decisions).
 
 | # | Phase | Outcome |
 |---|---|---|
-| 0 | **Rename + split** — `fobo` → `helix.core` + `helix.packs.fobo` | **Deferred.** Helix was built beside FOBO instead (`apps/backend/helix`, no imports of `fobo`); FOBO moves on as a later capability |
+| 0 | **Rename + split** — `fobo` → `helix.core` + `helix.packs.fobo` | **Deferred.** Agent One Finance was built beside FOBO instead (`apps/backend/helix`, no imports of `fobo`); FOBO moves on as a later capability |
 | 1a | **Phoenix observability** | **Done** — verified against Phoenix 20.19 |
 | 1 | **Capabilities + owners** — manifest, validator, versions, four-eyes | **Done**, plus new capabilities from drafts |
 | 2 | **Central entitlement** — URL client, cache, fail-closed, dev stub | **Done** |

@@ -22,7 +22,7 @@ owner. Nothing in this design assumes access to an AgentOne checkout at build ti
 
 | Document | Role in this design |
 |---|---|
-| Helix Controller Investigation Model — BRD v1.9 | Governing contract. Session model, tool separation, decision rules R1–R7, data model, controls C1–C7, acceptance criteria A1–A10 |
+| Agent One Finance Controller Investigation Model — BRD v1.9 | Governing contract. Session model, tool separation, decision rules R1–R7, data model, controls C1–C7, acceptance criteria A1–A10 |
 | FOBO Agent — System Architecture v1.0 | Workflow state machine, bitemporal graph schema, cause checks, failure matrix, observability attributes |
 | FOBO Control Tower — Agent One (HTML mock) | Target UI surface, design tokens, information architecture, analytics metrics |
 | AgentOne Platform tech-stack reference | Component conventions, directory layout, event contract that migration must satisfy |
@@ -127,11 +127,11 @@ resolve → gather → group → rank → draft → validate → review ⏸ → 
           ENTITLEMENT GATE — deterministic, never model-decided
                  │
     ┌───────┬────┴───┬────────┬────────────┬──────────┐
-    │  MBR  │ MOTIF  │  CATS  │ Trade Store│  Helix   │
+    │  MBR  │ MOTIF  │  CATS  │ Trade Store│  Agent One Finance   │
     │ tools │ tools  │ tools  │   tools    │ session  │
     └───┬───┴───┬────┴───┬────┴─────┬──────┴────┬─────┘
       adapter adapter  adapter   adapter    (no adapter —
-        │       │        │          │        never leaves Helix)
+        │       │        │          │        never leaves Agent One Finance)
     ┌───┴───────┴────────┴──────────┴───┐
     │ FIXTURE LAYER — 4 classes to swap  │
     └────────────────────────────────────┘
@@ -550,7 +550,7 @@ request independently governed, owned and audited from a CATS request.
 
 | Group | Tools |
 |---|---|
-| **Helix session** (no adapter) | `helix_get_analysis_context`, `helix_get_evidence_item`, `helix_get_investigation_history` |
+| **Agent One Finance session** (no adapter) | `helix_get_analysis_context`, `helix_get_evidence_item`, `helix_get_investigation_history` |
 | **MBR** | `mbr_summarise_breaks`, `mbr_search_breaks`, `mbr_get_break_details` |
 | **MOTIF** | `motif_summarise_exceptions`, `motif_search_exceptions`, `motif_get_exception_details`, `motif_get_record_history` |
 | **CATS** | `cats_get_book_values`, `cats_get_trade_values`, `cats_get_record_history` |
@@ -823,7 +823,7 @@ registration.
 |---|---|---|
 | **1** | Contracts package, Postgres schema, fixture loader, LangGraph happy path through the review interrupt, console shell with run schedule and pipeline rail | Checkpoint and resume genuinely work |
 | **2** | Analysis panel, grounding list, pattern-grouped adjustments, group approval, idempotent decision recording, `record` node | The mock, live on real state |
-| **3** | Helix, MOTIF and CATS tool groups, entitlement gate, chat drawer, R1–R7, `revise`, evidence diff | The investigation loop |
+| **3** | Agent One Finance, MOTIF and CATS tool groups, entitlement gate, chat drawer, R1–R7, `revise`, evidence diff | The investigation loop |
 | **4** | MBR and Trade Store tool groups, file ingestion, R4 paging, analytics tab, evaluation suite | Full BRD coverage |
 
 Phase 3 covers two source applications before four, mirroring the BRD's own §19.4

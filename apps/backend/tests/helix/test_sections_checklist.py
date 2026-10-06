@@ -51,7 +51,7 @@ async def test_approving_needs_the_sign_off_checklist(api):
     case = await _fobo_review(api)
     g = next(g for g in case["groups"] if g["group_key"]["category"] == "T")
     known = {q["id"]: q["known"] for q in g["checklist"]}
-    assert known["adjustment"].startswith("MONITOR")                  # Helix fills in what it knows
+    assert known["adjustment"].startswith("MONITOR")                  # Agent One Finance fills in what it knows
     assert known["why_checked"].startswith("T · Timing difference")
     assert "tests on" in known["what_checked"]
 

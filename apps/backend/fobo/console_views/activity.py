@@ -1,4 +1,4 @@
-"""The notification feed, as the Helix bell shows it.
+"""The notification feed, as the Agent One Finance bell shows it.
 
 Derived, never stored: each run contributes the events its state implies,
 timed from its own timestamps, and each controller decision today adds one.

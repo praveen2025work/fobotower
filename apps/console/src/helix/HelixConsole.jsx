@@ -7,7 +7,7 @@ import CapabilityView from './CapabilityView';
 import { Empty, ErrorNote, Loading } from './ui';
 import { useAsync } from './useAsync';
 
-/** The generic Helix shell: who you are, the capabilities you may use, and the selected one. */
+/** The generic Agent One Finance shell: who you are, the capabilities you may use, and the selected one. */
 export default function HelixConsole() {
   const [user, setUser] = useState(() => currentUser());
   const [selectedId, setSelectedId] = useState(null);
@@ -26,7 +26,7 @@ export default function HelixConsole() {
     <div className="min-h-screen bg-gray-50 text-gray-900">
       <header className="flex flex-wrap items-center justify-between gap-3 bg-[#0b2a5b] px-6 py-3 text-white">
         <div>
-          <h1 className="text-lg font-semibold">Helix</h1>
+          <h1 className="text-lg font-semibold">Agent One Finance</h1>
           <p className="text-xs text-blue-100">Capabilities onboarded as configuration</p>
         </div>
         {users.data?.length > 0 && (

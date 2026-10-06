@@ -1,4 +1,4 @@
-// The Helix API client. Identity is one header; in the office the SSO proxy
+// The Agent One Finance API client. Identity is one header; in the office the SSO proxy
 // sets it, here the user switcher does. Roles and data scopes are always
 // decided by the server.
 export const HELIX_API = process.env.NEXT_PUBLIC_HELIX_API ?? 'http://localhost:8300';

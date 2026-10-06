@@ -45,8 +45,8 @@ test('a draft goes live when a second controller approves it, and only new runs 
   await page.getByRole('button', { name: 'Pipeline', exact: true }).click();
   // R-1055's current step is Human Sign-off, so RecDetail defaults to the
   // "Drafted adjustments" pane below the 2xl breakpoint; the Graph run
-  // button lives in the "Helix session" pane.
-  await page.getByRole('tab', { name: 'Helix session' }).click();
+  // button lives in the "Agent One Finance session" pane.
+  await page.getByRole('tab', { name: 'Agent One Finance session' }).click();
   await page.getByRole('button', { name: /Graph run/ }).click();
   await expect(page.getByText(/workflow v1 ·/)).toBeVisible();
 });

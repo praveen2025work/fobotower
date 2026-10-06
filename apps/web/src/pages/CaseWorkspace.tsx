@@ -1,4 +1,4 @@
-// The case workspace — aria-ai's 3-pane Run layout for a Helix case:
+// The case workspace — aria-ai's 3-pane Run layout for an Agent One Finance case:
 // proposals | the selected proposal (or Ask, or the run's history) | case context.
 
 import { useEffect, useMemo, useRef, useState } from "react";

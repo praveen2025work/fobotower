@@ -1,11 +1,11 @@
-"""Every Helix setting, read from the environment once.
+"""Every Agent One Finance setting, read from the environment once.
 
 The plug points for the office environment are here, all optional:
 
   HELIX_LLM_ADAPTER        none | stub | "module:attr" (your LLM connector)
   HELIX_TRACING_SETUP      "module:attr" called once at startup (e.g. Phoenix)
   PHOENIX_COLLECTOR_ENDPOINT  if set and arize-phoenix-otel is installed,
-                           Helix registers Phoenix itself
+                           Agent One Finance registers Phoenix itself
   HELIX_ENTITLEMENT_URL    the central entitlements service; unset = dev stub
   HELIX_IDENTITY_HEADER    the header carrying the signed-in user (SSO proxy)
   HELIX_TRUSTED_PROXY_SECRET  a secret the SSO proxy adds to every request;

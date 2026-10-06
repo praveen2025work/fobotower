@@ -1,4 +1,4 @@
-// Types and TanStack Query hooks for the Helix API (apps/backend/helix/web/main.py).
+// Types and TanStack Query hooks for the Agent One Finance API (apps/backend/helix/web/main.py).
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -196,7 +196,7 @@ export interface JournalProposal {
 }
 export interface OutboundMessage { to: string; subject: string; body: string; step?: string }
 
-/** One sign-off checklist question, with what Helix already knows (review.checklist). */
+/** One sign-off checklist question, with what Agent One Finance already knows (review.checklist). */
 export interface ChecklistQuestion {
   id: string;
   label: string;

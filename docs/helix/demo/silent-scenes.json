@@ -1,9 +1,9 @@
 [
  {
   "id": "s01",
-  "title": "Helix",
+  "title": "Agent One Finance",
   "caption": "",
-  "say": "This is Helix: one governed platform where our accounting teams run reconciliations, reviews and commentary. The AI does the legwork. Our people make every decision."
+  "say": "This is Agent One Finance: one governed platform where our accounting teams run reconciliations, reviews and commentary. The AI does the legwork. Our people make every decision."
  },
  {
   "id": "s02",
@@ -21,13 +21,13 @@
   "id": "s04",
   "title": "Inbox",
   "caption": "Opened at 06:30 · most urgent first · money at stake",
-  "say": "The work is done before he arrives. At six thirty, Helix opened yesterday's run for every Prime book, matched CATS to MOTIF and classified every break. The inbox puts the most urgent first, shows what is at stake, and filters to what needs his confirmation."
+  "say": "The work is done before he arrives. At six thirty, Agent One Finance opened yesterday's run for every Prime book, matched CATS to MOTIF and classified every break. The inbox puts the most urgent first, shows what is at stake, and filters to what needs his confirmation."
  },
  {
   "id": "s05",
   "title": "A case",
   "caption": "FOBO's own playbook decides · unconfirmed thresholds are flagged, not assumed",
-  "say": "In a case, the card at the top says exactly what is needed: three groups to decide, one needs confirmation, one is a judgement call. This redemption break is back office, so FOBO's playbook says post. But the materiality threshold is not confirmed yet, so Helix asks for his confirmation instead of assuming. He can also see how this break was approved before."
+  "say": "In a case, the card at the top says exactly what is needed: three groups to decide, one needs confirmation, one is a judgement call. This redemption break is back office, so FOBO's playbook says post. But the materiality threshold is not confirmed yet, so Agent One Finance asks for his confirmation instead of assuming. He can also see how this break was approved before."
  },
  {
   "id": "s06",
@@ -39,7 +39,7 @@
   "id": "s07",
   "title": "Escalated",
   "caption": "Can't prove it? A person decides, and sees why",
-  "say": "When Helix cannot prove something, it escalates. This novel break has no proven side, so a person decides. The card says why in plain words, who owns it, and what the reviewer can do: approve with their own explanation, reject, or send it back to investigate again."
+  "say": "When Agent One Finance cannot prove something, it escalates. This novel break has no proven side, so a person decides. The card says why in plain words, who owns it, and what the reviewer can do: approve with their own explanation, reject, or send it back to investigate again."
  },
  {
   "id": "s08",
@@ -63,7 +63,7 @@
   "id": "s17",
   "title": "The skill's answer and sign-off",
   "caption": "Answers in the skill's sections · its completion checklist before approval",
-  "say": "Judgement breaks come back in the skill's own sections: root cause, tests not performed, verdict, remediation, end state. Before approving, Frank answers the skill's checklist, with what Helix already knows beside each question."
+  "say": "Judgement breaks come back in the skill's own sections: root cause, tests not performed, verdict, remediation, end state. Before approving, Frank answers the skill's checklist, with what Agent One Finance already knows beside each question."
  },
  {
   "id": "s18",

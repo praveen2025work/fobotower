@@ -38,7 +38,7 @@ class Reconciliation(Base):
     master_book: Mapped[str] = mapped_column(String(64))
     scheduled_time: Mapped[time] = mapped_column(Time)
     books_total: Mapped[int] = mapped_column(Integer)
-    # How the Helix console files a rec: its rec group (CATS-MOTIF or
+    # How the Agent One Finance console files a rec: its rec group (CATS-MOTIF or
     # RF-CASHCOLL), the L4 it covers, and the currency its figures are in.
     rec_group: Mapped[str] = mapped_column(String(16), default="CATS-MOTIF")
     l4: Mapped[str] = mapped_column(String(64), default="")
@@ -62,7 +62,7 @@ class Run(Base):
     )
     status: Mapped[str] = mapped_column(String(16))
     books_open: Mapped[int] = mapped_column(Integer, default=0)
-    # A Helix session starts when One Fin UX sends the rec's Ready event, not
+    # An Agent One Finance session starts when One Fin UX sends the rec's Ready event, not
     # at a fixed time. Until then only master-book readiness is known.
     ready_event_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
     ready_at: Mapped[datetime | None] = mapped_column(

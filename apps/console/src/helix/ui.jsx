@@ -1,4 +1,4 @@
-// Small presentational pieces shared by the Helix screens.
+// Small presentational pieces shared by the Agent One Finance screens.
 
 const TONES = {
   awaiting_review: 'bg-amber-100 text-amber-800',

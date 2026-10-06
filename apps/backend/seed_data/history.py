@@ -1,4 +1,4 @@
-"""Seven days of run history, and today as the Helix console shows it.
+"""Seven days of run history, and today as the Agent One Finance console shows it.
 
 Figures like a 7-day pattern history, a median draft-to-sign-off time and a
 "carried N sessions" badge cannot come from a single run. This seeds the rows

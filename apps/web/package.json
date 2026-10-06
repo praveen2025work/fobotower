@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Helix web console — aria-ai's UI shell over the Helix API",
+  "description": "Agent One Finance web console — aria-ai's UI shell over the Agent One Finance API",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

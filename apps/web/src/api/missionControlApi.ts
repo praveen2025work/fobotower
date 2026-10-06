@@ -1,5 +1,5 @@
 // aria-ai's Mission Control types, kept with the same shapes so its components
-// (components/mission-control/*) are reused unchanged — fed by Helix's one
+// (components/mission-control/*) are reused unchanged — fed by Agent One Finance's one
 // /api/operations endpoint instead of aria-ai's seven.
 
 import { useQuery } from "@tanstack/react-query";
@@ -21,7 +21,7 @@ export interface FleetAgent {
   /** 24 hourly success-rate points 0..1, oldest → newest */
   sparkline: number[];
   lastRunAt: string | null;
-  /** Helix: where a click on the row goes (the capability or team group). */
+  /** Agent One Finance: where a click on the row goes (the capability or team group). */
   href?: string;
 }
 

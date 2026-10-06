@@ -1,4 +1,4 @@
-"""FOBO on MB Rec's breaks: the matching is done upstream, Helix investigates,
+"""FOBO on MB Rec's breaks: the matching is done upstream, Agent One Finance investigates,
 following the FOBO Investigation Skill v1.0 (docs/helix/fobo-skill/).
 
 The run reads MB Rec's open breaks (never CATS and MOTIF positions), applies the

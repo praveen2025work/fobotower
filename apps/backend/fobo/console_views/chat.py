@@ -1,4 +1,4 @@
-"""Answer a question asked in a Helix session.
+"""Answer a question asked in an Agent One Finance session.
 
 Deterministic first: each intent below is recognised by its wording and
 answered from the rec's own data, and any data it needs is retrieved through
@@ -82,7 +82,7 @@ def _blocked(rec) -> list[dict]:
         {"type": "list", "title": "Suggested next steps", "items": [
             an.get("action") or "Escalate to the source-system owner.",
             "Once the corrected data lands, One Fin UX raises a new MB Rec readiness "
-            "event and Helix re-opens this session.",
+            "event and Agent One Finance re-opens this session.",
         ]},
     ]
 
@@ -247,7 +247,7 @@ async def answer(rec: dict, question: str, tools: SessionTools, *, cob: str,
         tools.call_ids.extend(analysis_call_ids)
         return "mcp_data", [{"type": "p", "text": (
             "The analysis used these MCP calls. Investigation data comes from MB Rec and "
-            "Helix's own knowledge graph, not read directly from CATS or MOTIF. Open any "
+            "Agent One Finance's own knowledge graph, not read directly from CATS or MOTIF. Open any "
             "call to see the rows it returned.")}]
     codes = _patterns_named(rec, t)
     if codes:

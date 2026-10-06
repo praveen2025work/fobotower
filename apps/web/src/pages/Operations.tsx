@@ -1,5 +1,5 @@
-// Run-the-bank: aria-ai's Mission Control, on Helix. The components are
-// aria-ai's (components/mission-control); the data is Helix's /api/operations,
+// Run-the-bank: aria-ai's Mission Control, on Agent One Finance. The components are
+// aria-ai's (components/mission-control); the data is Agent One Finance's /api/operations,
 // scoped to what the signed-in user may see.
 
 import { Link } from "react-router-dom";

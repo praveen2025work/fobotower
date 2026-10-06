@@ -1,6 +1,6 @@
-"""Helix's own metadata and session factory.
+"""Agent One Finance's own metadata and session factory.
 
-Separate from fobo's: Helix tables are prefixed `helix_` and live in the same
+Separate from fobo's: Agent One Finance tables are prefixed `helix_` and live in the same
 database, so both run side by side until FOBO moves onto the platform.
 """
 

@@ -2,7 +2,7 @@
 
 `query()` is replaced by a stand-in that behaves like the model: it connects to
 the adapter's real in-process SDK MCP server over the MCP protocol, calls tools
-(which go through the Helix gateway), and returns a ResultMessage. Everything
+(which go through the Agent One Finance gateway), and returns a ResultMessage. Everything
 but the model itself is the production path.
 """
 

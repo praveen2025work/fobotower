@@ -1,4 +1,4 @@
-"""How a run's status reads on the Helix console.
+"""How a run's status reads on the Agent One Finance console.
 
 The pipeline is ingest -> ready -> analysis -> signoff -> posting. A run's
 status says which step it has reached; the steps array is derived from it,

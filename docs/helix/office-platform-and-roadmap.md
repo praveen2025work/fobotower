@@ -1,15 +1,15 @@
-# Helix on the office agent platform — what to inherit, what is missing, what next
+# Agent One Finance on the office agent platform — what to inherit, what is missing, what next
 
 **Date:** 2026-10-04. Companion to [`aria-ai-reuse-map.md`](aria-ai-reuse-map.md).
 
 ## 1. Division of labour
 
 The office agent platform already provides **MCP servers, plugins, and RAG / data-explorer
-tools**, the **Claude Agent SDK** for model calls, and **Phoenix** for observability. Helix should
-not rebuild any of these. Helix is the layer above them: it turns them into **governed finance
+tools**, the **Claude Agent SDK** for model calls, and **Phoenix** for observability. Agent One Finance should
+not rebuild any of these. Agent One Finance is the layer above them: it turns them into **governed finance
 work**.
 
-| The office platform gives | Helix adds on top |
+| The office platform gives | Agent One Finance adds on top |
 |---|---|
 | MCP servers (bank systems, RAG, data explorer) | An allow-list per capability, data-scope checks per call, an audit row and a trace per call, masking and pseudonyms between bank data and the model |
 | Plugins (skills, subagents, hooks, MCP bundles) | Skills attached to a capability or a team group, versioned, with four-eyes approval |
@@ -18,7 +18,7 @@ work**.
 
 **How to inherit, not copy:**
 
-- **An office MCP server** (including RAG and the data explorer) is onboarded as a Helix
+- **An office MCP server** (including RAG and the data explorer) is onboarded as an Agent One Finance
   connector: one entry in `config/helix/connectors.yaml` with `transport: http` and its URL. It is
   then available to every capability, through the gateway. No code is needed.
 - **An office plugin's skills** become a capability's or group's `reasoning.skill`.
@@ -98,7 +98,7 @@ reuse map), **web** = a current technique, **new** = neither.
 | **Notifications** (Teams / email: waiting on you, released, failed) | Nobody polls an inbox | new |
 | **Ageing and SLA** on open groups | Controllers chase what is late | aria watchtower |
 
-### Developers — capability owners, group owners, the Helix team
+### Developers — capability owners, group owners, the Agent One Finance team
 
 | Feature | Why | From |
 |---|---|---|
@@ -135,7 +135,7 @@ reuse map), **web** = a current technique, **new** = neither.
   - MCP Apps, UI templates rendered in a sandbox, so a connector can bring its own view into the
     case workspace.
 
-  Helix's MCP SDK (2.3) already speaks this version.
+  Agent One Finance's MCP SDK (2.3) already speaks this version.
 - **Agent SDK subagents and hooks.** A subagent per specialist (FX, accruals, booking events)
   under one case. PreToolUse hooks enforce the gateway's policy inside the model loop too.
 - **Knowledge graph plus vectors (GraphRAG).** Widen the graph to entities (account,
@@ -146,7 +146,7 @@ reuse map), **web** = a current technique, **new** = neither.
 
 ## 4a. Done since this was written (same day)
 
-The platform gaps found in review, and FOBO's behaviour, are now in Helix:
+The platform gaps found in review, and FOBO's behaviour, are now in Agent One Finance:
 
 - **Case runs**: off the request path, with recovery after a restart. Failed or escalated cases
   can be re-run as new attempts.
@@ -178,7 +178,7 @@ Then, in a second round:
 
 Earlier list, kept for the record — still open from it:
 - nothing from the lists above;
-- retiring the FOBO app once its users have moved to Helix.
+- retiring the FOBO app once its users have moved to Agent One Finance.
 
 ## 5. Suggested order
 

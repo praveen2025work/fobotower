@@ -1,4 +1,4 @@
-# Helix by example
+# Agent One Finance by example
 
 **Date:** 2026-10-04. Worked examples for the accounting teams. The FOBO cases are real
 runs on the dev data, COB 2026-09-30. The other capabilities are configuration files you
@@ -148,7 +148,7 @@ missing-connector problems listed above.
 
 ## 5. Installing an example
 
-1. If a connector is missing, the Helix team onboards it. That is one entry in
+1. If a connector is missing, the Agent One Finance team onboards it. That is one entry in
    `config/helix/connectors.yaml` (see `connectors.office.example.yaml`).
 2. Copy the file in:
    - a capability goes to `config/helix/capabilities/<id>.yaml`;

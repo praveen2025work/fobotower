@@ -1,6 +1,6 @@
 import { get, post } from '@/lib/apiClient';
 
-/** Every call the Helix console makes to the orchestrator. */
+/** Every call the Agent One Finance console makes to the orchestrator. */
 
 export const fetchBoard = () => get('/api/board');
 

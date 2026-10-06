@@ -1,6 +1,6 @@
 # Runbook: evaluating a capability on the real model (office)
 
-**Date:** 2026-10-05 · **For:** the Helix team and a capability's owners, in the office
+**Date:** 2026-10-05 · **For:** the Agent One Finance team and a capability's owners, in the office
 environment where the model is reached through the Agent SDK.
 
 In dev and CI the model is the deterministic **stub**: it proves the plumbing, never the
@@ -10,7 +10,7 @@ instructions, sections, tools or model, run this.
 ## What it measures
 
 An **eval** replays cases people already decided on the version under test, as hidden shadow
-cases. Nothing is written back, and a shadow never reaches publish. Helix then compares each
+cases. Nothing is written back, and a shadow never reaches publish. Agent One Finance then compares each
 group with the earlier decision:
 
 | Score | Meaning | Target before go-live |
@@ -48,8 +48,8 @@ Then:
 ## 2. Build the test set
 
 An eval needs decided cases: approved and rejected groups, in the reviewers' own words.
-- **New on Helix** (for example FOBO Prime): run Helix in *shadow* alongside today's process for
-  one to two weeks. Controllers decide in Helix as they work, which gives at least 20 cases
+- **New on Agent One Finance** (for example FOBO Prime): run Agent One Finance in *shadow* alongside today's process for
+  one to two weeks. Controllers decide in Agent One Finance as they work, which gives at least 20 cases
   across the books.
 - **Already live**: last month's cases are the test set.
 

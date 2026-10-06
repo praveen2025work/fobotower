@@ -3,7 +3,7 @@
 **Date:** 2026-10-05 · **For:** the MB Rec and MOTIF teams (the data), Product Control (the
 parameters), and the FOBO Prime group owners.
 
-Helix derives this from the configuration (`fobo-prime.yaml`); it is never typed by hand. The
+Agent One Finance derives this from the configuration (`fobo-prime.yaml`); it is never typed by hand. The
 same list is live in the console: *Capabilities → Break investigation → Groups → FOBO Prime →
 Data and parameters*. For any other capability or group the panel shows its own contract. The
 API is `GET /api/capabilities/{id}/contract?team_group={group}`.
@@ -19,7 +19,7 @@ API is `GET /api/capabilities/{id}/contract?team_group={group}`.
 So a gap in the feed shows up as "not run" and as more breaks going to a person. It never shows
 up as a wrong POST.
 
-## 1. Data Helix reads from each break
+## 1. Data Agent One Finance reads from each break
 
 `mbrec.breaks` is MB Rec's open breaks for a book and COB. `motif.break_snapshots` is the FO/BO
 snapshot joined on the instrument by the *enrich* step. Where both are listed, either source
@@ -71,7 +71,7 @@ may provide the field; in the office, agree which one does.
 | `static_present` | check STATIC_OUTLIER | mbrec.breaks or motif.break_snapshots |
 | `trade_pnl_explained` | test FO-5 | mbrec.breaks or motif.break_snapshots |
 
-Helix computes the rest itself: the category, side, cause and cause reason (playbook), the
+Agent One Finance computes the rest itself: the category, side, cause and cause reason (playbook), the
 `carried_*` fields (follow-through: what was decided on the last COB), and the owning desk
 (reference lookups).
 
@@ -123,6 +123,6 @@ versioned, and past cases keep the values they ran on.
 | Item | Where it lives |
 |---|---|
 | Escalation routing per category | `playbook.categories.*.escalate_to` and the ticketing tool's `team` |
-| Books in scope | the reviewers' data scopes, and which books MB Rec notifies Helix about |
+| Books in scope | the reviewers' data scopes, and which books MB Rec notifies Agent One Finance about |
 | Who may be asked (desk, Operations, CATS support) and their roles | `requests.targets` |
 | The §14 checklist wording | `review.checklist` |

@@ -1,4 +1,4 @@
-// Helix — what we offer each accounting team. Structured deck: theme, layouts, sections.
+// Agent One Finance — what we offer each accounting team. Structured deck: theme, layouts, sections.
 const pptxgen = require("pptxgenjs");
 const React = require("react");
 const { renderToStaticMarkup } = require("react-dom/server");
@@ -9,7 +9,7 @@ const { applyTheme } = require("/root/.claude/skills/synced/3f22aee8-e3bd-41eb-9
 const OUT = process.argv[2] || "helix-team-offerings.pptx";
 
 const THEME = {
-  name: "Helix Navy",
+  name: "Agent One Finance Navy",
   headFontFace: "Calibri",
   bodyFontFace: "Calibri",
   colors: {
@@ -29,8 +29,8 @@ async function icon(Comp, color, size = 256) {
 (async () => {
   const pres = new pptxgen();
   pres.layout = "LAYOUT_16x9"; // 10 x 5.625
-  pres.title = "Helix — what we offer each accounting team";
-  pres.author = "Helix";
+  pres.title = "Agent One Finance — what we offer each accounting team";
+  pres.author = "Agent One Finance";
   pres.theme = { headFontFace: THEME.headFontFace, bodyFontFace: THEME.bodyFontFace };
   const C = pres.SchemeColor;
 
@@ -50,7 +50,7 @@ async function icon(Comp, color, size = 256) {
     slideNumber: { x: 9.2, y: 5.25, w: 0.5, h: 0.25, fontSize: 9, color: C.text1, align: "right" },
     objects: [
       { placeholder: { options: { name: "title", type: "title", x: 0.5, y: 0.3, w: 9.0, h: 0.75, fontSize: 28, bold: true, color: C.text2, valign: "middle" }, text: "" } },
-      { text: { text: "Helix · governed AI for accounting teams", options: { x: 0.5, y: 5.25, w: 5, h: 0.25, fontSize: 9, color: C.text1, isTextBox: true } } },
+      { text: { text: "Agent One Finance · governed AI for accounting teams", options: { x: 0.5, y: 5.25, w: 5, h: 0.25, fontSize: 9, color: C.text1, isTextBox: true } } },
     ],
   });
 
@@ -70,9 +70,9 @@ async function icon(Comp, color, size = 256) {
   // ---------- 1. Title ----------
   pres.addSection({ title: "Introduction" });
   let s = pres.addSlide({ masterName: "Title Dark", sectionTitle: "Introduction" });
-  s.addText("Helix for accounting teams", { placeholder: "title" });
+  s.addText("Agent One Finance for accounting teams", { placeholder: "title" });
   s.addText("What each team gets — one governed platform, configured per team", { placeholder: "body" });
-  s.addNotes("Helix is one platform where accounting teams run reconciliations, reviews and commentary with AI doing the legwork and people making every decision. This deck covers what each team gets.");
+  s.addNotes("Agent One Finance is one platform where accounting teams run reconciliations, reviews and commentary with AI doing the legwork and people making every decision. This deck covers what each team gets.");
 
   // ---------- 2. At a glance ----------
   s = pres.addSlide({ masterName: "Content", sectionTitle: "Introduction" });

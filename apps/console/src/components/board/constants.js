@@ -21,12 +21,12 @@ export const PIPELINE = [
   {
     key: 'ready',
     label: 'Ready event',
-    sub: 'One Fin UX → Helix',
+    sub: 'One Fin UX → Agent One Finance',
     icon: Zap,
   },
   {
     key: 'analysis',
-    label: 'Helix Session Analysis',
+    label: 'Agent One Finance Session Analysis',
     sub: 'Agent One',
     icon: Sparkles,
   },
@@ -53,7 +53,7 @@ export const STEP_SECTION = {
 };
 
 export const SECTION_LABEL = {
-  session: 'Helix session',
+  session: 'Agent One Finance session',
   adjustments: 'Drafted adjustments',
 };
 

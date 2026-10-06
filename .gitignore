@@ -18,6 +18,6 @@ apps/web/vite.config.d.ts
 apps/web/vite.config.js
 apps/web/node_modules/
 
-# Helix runtime output (reports written by the documents service)
+# Agent One Finance runtime output (reports written by the documents service)
 var/
 

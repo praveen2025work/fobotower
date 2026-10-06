@@ -19,11 +19,11 @@ each get their own contract.
 from helix import rules
 from helix.manifest import Manifest
 
-# Fields Helix itself adds to an item.
+# Fields Agent One Finance itself adds to an item.
 DERIVED = {"carried_verdict": "follow_through", "carried_from": "follow_through",
            "carried_runs": "follow_through", "category": "playbook", "side": "playbook",
            "cause": "playbook", "cause_reason": "playbook", "category_name": "playbook",
-           "determinism": "playbook", "escalate_to": "playbook", "item_id": "Helix"}
+           "determinism": "playbook", "escalate_to": "playbook", "item_id": "Agent One Finance"}
 
 
 def _add(out: dict, field: str, used_by: str) -> None:
@@ -81,12 +81,12 @@ def contract(m: Manifest) -> dict:
             _add(fields, k, f"join with {e.tool}")
     resolved = {r.as_: f"reference lookup from {r.node}" for r in m.resolve}
     if m.compare:
-        resolved[m.compare.as_] = f"Helix: {m.compare.measure} − {m.compare.baseline}"
+        resolved[m.compare.as_] = f"Agent One Finance: {m.compare.measure} − {m.compare.baseline}"
         for f in (m.compare.measure, m.compare.baseline):
             _add(fields, f, "compare")
     if m.match:
         for f in (f"{m.match.left_label}_amount", f"{m.match.right_label}_amount", "difference", "break_type"):
-            resolved[f] = "Helix: the match"
+            resolved[f] = "Agent One Finance: the match"
         for f in [*m.match.keys, m.match.amount_field]:
             _add(fields, f, f"match {m.match.left.tool} with {m.match.right.tool}")
     for r in m.resolve:

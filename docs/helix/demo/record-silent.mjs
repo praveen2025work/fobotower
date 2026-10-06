@@ -75,7 +75,7 @@ function card(title, lines, kicker) {
   li.on{opacity:1;transform:none} li:before{content:"";display:inline-block;width:12px;height:12px;border-radius:50%;background:#00aeef;margin-right:18px;vertical-align:middle}
   .f{position:absolute;bottom:34px;left:110px;font-size:15px;opacity:.6}
   </style></head><body><div class="k">${kicker}</div><h1>${title}</h1><ul>${lines.map((l) => `<li>${l}</li>`).join("")}</ul>
-  <div class="f">Helix · governed AI for accounting operations</div></body></html>`;
+  <div class="f">Agent One Finance · governed AI for accounting operations</div></body></html>`;
 }
 async function revealLines(p, dur, startFrac = 0.06) {
   const n = await p.locator("li").count();
@@ -101,7 +101,7 @@ const PRIME_ESCALATED = process.env.CASE_ESCALATED || "recon.investigation.8d1e3
 
 const scenes = {
   async s01(p, d) {
-    await p.setContent(card("Helix", ["AI does the legwork: gather, match, classify, draft", "People make every decision", "One governed platform for every accounting team"], "Governed AI for accounting operations"));
+    await p.setContent(card("Agent One Finance", ["AI does the legwork: gather, match, classify, draft", "People make every decision", "One governed platform for every accounting team"], "Governed AI for accounting operations"));
     return () => revealLines(p, d);
   },
   async s02(p, d) {

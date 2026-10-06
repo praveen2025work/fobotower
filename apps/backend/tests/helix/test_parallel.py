@@ -48,7 +48,7 @@ async def test_specialists_become_subagents_with_only_gateway_tools():
     opts = await adapter._options(req, tools=None)
     assert opts.tools == [SUBAGENT_TOOL] and SUBAGENT_TOOL in opts.allowed_tools
     agent = opts.agents["booking-events"]
-    assert agent.tools == ["mcp__helix__motif_booking_events"] and "Helix" in agent.prompt
+    assert agent.tools == ["mcp__helix__motif_booking_events"] and "Agent One Finance" in agent.prompt
     assert "booking-events: Reads booking events" in opts.system_prompt
     plain = await adapter._options(ReasonRequest(**{**req.__dict__, "specialists": []}), tools=None)
     assert plain.tools == [] and plain.agents is None

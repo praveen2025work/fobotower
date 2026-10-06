@@ -309,7 +309,7 @@ class RequestTarget(Strict):
 class RequestsSpec(Strict):
     """Asking for evidence instead of assuming it (FOBO skill §13). A reviewer
     asks a target a question about a group (or the case); they are notified and
-    answer in Helix (or a bot answers for them through the API). The answer is
+    answer in Agent One Finance (or a bot answers for them through the API). The answer is
     kept on the case and reaches the model as context."""
     targets: list[RequestTarget] = Field(default_factory=list)
     # A group with an open question waits for the answer before it is decided.
@@ -343,7 +343,7 @@ class ChecklistItem(Strict):
     label: str
     # Must be answered yes (or n/a) to approve; otherwise answering is optional.
     required: bool = True
-    # What Helix already knows, shown next to the question: tests (the tests
+    # What Agent One Finance already knows, shown next to the question: tests (the tests
     # run, failed and not run), evidence (evidence and answers on the case),
     # verdict, category, or a reasoning section id.
     prefill: str | None = None

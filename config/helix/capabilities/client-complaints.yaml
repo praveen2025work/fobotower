@@ -3,7 +3,7 @@
 #   related       earlier complaints from the same client, and how they ended
 #   sla           the final-response clock: 8 weeks (40 business days) from receipt
 #   fee_check     recompute the fee from the tariff and compare with what was charged
-#   watch/screen  candidate matches against the team's internal watch list (never cleared by Helix)
+#   watch/screen  candidate matches against the team's internal watch list (never cleared by Agent One Finance)
 #   ack/send_ack  an acknowledgement drafted per topic, sent once a handler approves sending
 #   boundaries    redress above the handler's limit is reserved for the complaints lead
 # The handler decides; the lead decides redress above the limit.

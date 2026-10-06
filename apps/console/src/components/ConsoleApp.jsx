@@ -260,7 +260,7 @@ export default function ConsoleApp() {
                   color: 'var(--text-on-brand2)',
                 }}
               >
-                Helix · Agent One sessions across CATS vs MOTIF and Rec Factory
+                Agent One Finance · Agent One sessions across CATS vs MOTIF and Rec Factory
                 recs
               </div>
             </div>

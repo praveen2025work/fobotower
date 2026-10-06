@@ -1,4 +1,4 @@
-# Helix user guide
+# Agent One Finance user guide
 
 **Date:** 2026-10-04 · For capability owners, preparers, reviewers and controllers.
 Developers: see [`developer-guide.md`](developer-guide.md).
@@ -28,7 +28,7 @@ and Rates groups then show the same screens for a reconciliation.
 | **Team group** | One team's settings for a shared capability | CATS vs MOTIF — Rates |
 | **Case** | One unit of work: one entity and period, or one book and COB | `UK01 accruals · 2026-09` |
 | **Item / group** | Items are the lines in a case; similar items are grouped, and **one decision covers a whole group** | the accrual lines of account 6200 |
-| **Connector** | A bank system served over MCP; Helix reads from and writes to it only through the gateway | `gl.balances`, `motif.positions` |
+| **Connector** | A bank system served over MCP; Agent One Finance reads from and writes to it only through the gateway | `gl.balances`, `motif.positions` |
 
 A case always runs the same steps: get the items, explain them (by rules, the playbook or
 the model), check every figure, and **wait for a person**. Nothing is written back to a
@@ -78,7 +78,7 @@ checked by the same platform validator.
 
 | Start from | Needs a model? | When |
 |---|---|---|
-| **Answer questions** (the default tab) | No | You know the process; Helix asks what a case is, where items come from, whether to match two systems or investigate what another system found, what is material, how to group, who reviews, whether a model or a person settles what the rules cannot, a tollgate, who may be asked for evidence, a sign-off checklist and follow-through |
+| **Answer questions** (the default tab) | No | You know the process; Agent One Finance asks what a case is, where items come from, whether to match two systems or investigate what another system found, what is material, how to group, who reviews, whether a model or a person settles what the rules cannot, a tollgate, who may be asked for evidence, a sign-off checklist and follow-through |
 | **Describe it (BRD)** | Yes, to draft properly | You have a written requirement. With a model connected (the office Agent SDK), it drafts a full configuration. Without one, the tab says so and only picks the nearest template |
 | **Template**: attestation, commentary, reconciliation, report validation | No | It is close to an existing pattern |
 | **YAML**: paste a manifest, e.g. one from [`../examples/`](../examples/) | No | You already have it |
@@ -101,7 +101,7 @@ the work needs them. Each runs only when its condition holds, if you give one.
 
 Steps that need a person first (attestation, sending a message, posting) are given their
 tollgate when you add them. Who may approve how much is set under *Human review*:
-- **Authority tiers**, in Helix or read from the bank's delegated-authority system: the roles
+- **Authority tiers**, in Agent One Finance or read from the bank's delegated-authority system: the roles
   that may approve, how many different people, and whether "Approve all" may include the group.
 - **Decisions reserved for named people**: only they decide, never in bulk, and the model's
   proposal is withheld unless allowed.

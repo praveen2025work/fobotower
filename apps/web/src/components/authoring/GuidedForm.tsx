@@ -8,8 +8,8 @@ import { ListChecks } from "lucide-react";
 import { usePlatform, type DraftResult } from "../../api/helix";
 
 const KINDS = [
-  { value: "investigate", label: "Investigate what another system found", help: "e.g. MB Rec's breaks: no matching, Helix explains each one" },
-  { value: "reconcile", label: "Match two systems", help: "e.g. bank vs ledger: Helix matches, then explains what does not match" },
+  { value: "investigate", label: "Investigate what another system found", help: "e.g. MB Rec's breaks: no matching, Agent One Finance explains each one" },
+  { value: "reconcile", label: "Match two systems", help: "e.g. bank vs ledger: Agent One Finance matches, then explains what does not match" },
   { value: "commentary", label: "Explain variances", help: "e.g. actual vs budget: what is material gets commentary" },
   { value: "review", label: "Review a list", help: "e.g. attestations or exceptions, one decision per group" },
 ] as const;
@@ -150,7 +150,7 @@ export default function GuidedForm({ onBuild, pending }: { onBuild: (answers: Re
         <label className={label}>A case opens
           <select aria-label="A case opens" value={a.opens} onChange={(e) => set("opens", e.target.value)} className={input}>
             <option value="manual">when someone opens it</option>
-            <option value="event">when another system notifies Helix</option>
+            <option value="event">when another system notifies Agent One Finance</option>
             <option value="schedule">on a schedule</option>
           </select>
         </label>

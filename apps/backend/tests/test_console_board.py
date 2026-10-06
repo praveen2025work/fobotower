@@ -1,4 +1,4 @@
-"""The Helix board: every rec as the console renders it, from real rows."""
+"""The Agent One Finance board: every rec as the console renders it, from real rows."""
 
 import pytest
 from httpx import ASGITransport, AsyncClient

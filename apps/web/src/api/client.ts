@@ -1,4 +1,4 @@
-// The Helix API client. Identity is one header: in the office the SSO proxy
+// The Agent One Finance API client. Identity is one header: in the office the SSO proxy
 // sets it and this module sends nothing; in development the user switcher
 // picks a fixture user. Roles and data scopes are always the server's call.
 

@@ -1,4 +1,4 @@
-"""The Helix API: `uvicorn helix.web.main:app --port 8300`.
+"""The Agent One Finance API: `uvicorn helix.web.main:app --port 8300`.
 
 Identity comes from one request header (HELIX_IDENTITY_HEADER, set by the
 SSO proxy in the office; the console's user switcher in development); roles
@@ -41,7 +41,7 @@ async def lifespan(_app: FastAPI):
     await runner.drain()
 
 
-app = FastAPI(title="Helix API", description="Governed AI for Finance: capabilities, cases, review and audit.",
+app = FastAPI(title="Agent One Finance API", description="Governed AI for Finance: capabilities, cases, review and audit.",
               version="0.1.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware, allow_origins=[settings().console_origin], allow_credentials=True,
@@ -877,7 +877,7 @@ async def invalidate_entitlements(body: InvalidateIn, request: Request) -> dict:
 
 @app.get("/api/platform")
 async def platform(c: Caller = Depends(caller)) -> dict:
-    """What this Helix instance offers: steps, connector tools, adapters."""
+    """What this Agent One Finance instance offers: steps, connector tools, adapters."""
     reg = registry()
     return {
         "steps": catalogue(),

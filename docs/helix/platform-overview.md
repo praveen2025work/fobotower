@@ -1,10 +1,10 @@
-# Helix: governed AI for Finance
+# Agent One Finance: governed AI for Finance
 
 **Date:** 2026-10-06 · Shared version: [Claude Docs](https://claude.ai/code/artifact/05a731bc-1630-4127-9ace-757b27dd26ea) · Design detail: [step catalogue v2](design/step-catalogue-v2.md)
 
 ## Summary
 
-Helix gives every Finance team one governed way to run its case-based work: product control, financial control, financial reporting, treasury and accounts payable. FOBO is one use case: the first capability on the platform. It pulls the data in, prepares it, and proposes what to do: rules first, then the model, then a person. Named people decide, and only an approved outcome is ever written back. A team gets this by **configuration, not code**.
+Agent One Finance gives every Finance team one governed way to run its case-based work: product control, financial control, financial reporting, treasury and accounts payable. FOBO is one use case: the first capability on the platform. It pulls the data in, prepares it, and proposes what to do: rules first, then the model, then a person. Named people decide, and only an approved outcome is ever written back. A team gets this by **configuration, not code**.
 
 Today's build:
 
@@ -39,9 +39,9 @@ A model can now do much of the gathering and first reasoning. But on its own it 
 
 The job is to give every team that speed inside one set of controls.
 
-## What Helix provides
+## What Agent One Finance provides
 
-Every use case gets the same platform. A team describes its work as a **capability**: what a case is, where the items come from, the steps, who decides and what is written back. Helix runs it the same way every time.
+Every use case gets the same platform. A team describes its work as a **capability**: what a case is, where the items come from, the steps, who decides and what is written back. Agent One Finance runs it the same way every time.
 
 ```mermaid
 flowchart LR
@@ -89,7 +89,7 @@ New step types are added once, through a small SDK, and then every team can use 
 These hold for every capability, whatever its steps. A team cannot configure them away.
 
 1. **People decide.** The model proposes, a person decides. When nothing settles a group, it goes to a person, not a guess.
-2. **Authority.** Tiers by amount, risk or verdict say who may approve and how many different people must. The matrix is held in Helix, or read from the bank's delegated-authority system.
+2. **Authority.** Tiers by amount, risk or verdict say who may approve and how many different people must. The matrix is held in Agent One Finance, or read from the bank's delegated-authority system.
 3. **Reserved decisions.** Credit, sanctions, AML, redress above a limit, payment release: only named roles decide, never in bulk. The model's proposal is withheld where it may not propose.
 4. **Segregation of duties.** The opener may be barred from signing off. Whoever releases a write-back did not review the case.
 5. **No silent writes.** Writes only through tools marked as writes, only by the release, posting or outreach step, after approval. Each write is idempotent; a ledger's own check runs first.
@@ -101,7 +101,7 @@ These hold for every capability, whatever its steps. A team cannot configure the
 
 ## Use cases by Finance area
 
-Each row is built only from the blocks above. The last rows show the same platform beyond Finance. “Running” means a capability exists in Helix today; the others need configuration and connectors to the team's systems, no new platform code.
+Each row is built only from the blocks above. The last rows show the same platform beyond Finance. “Running” means a capability exists in Agent One Finance today; the others need configuration and connectors to the team's systems, no new platform code.
 
 | Area | Use case | Steps that carry it | Who decides | Written back |
 | --- | --- | --- | --- | --- |
@@ -139,7 +139,7 @@ Eight capabilities run on the platform. They use stub connectors here, and have 
 | Capability | Area | What it shows |
 | --- | --- | --- |
 | Break investigation (FOBO) | Product control | A full playbook (checks, categories, verdict table, guards); team groups for Prime and Rates; a tollgate before the model; follow-through on the next business day; tickets to owning teams |
-| Reconciliation investigation | Financial control | Helix matches two systems itself; rules settle write-offs within limit, and nothing is written off twice |
+| Reconciliation investigation | Financial control | Agent One Finance matches two systems itself; rules settle write-offs within limit, and nothing is written off twice |
 | P&L variance commentary | Financial reporting | Commentary in sections, published to the reporting pack after a second person releases it |
 | Report validation | Financial reporting | A workbook matched to GL balances; a PDF report written after release |
 | Payment exceptions | Treasury and payments | The first non-finance capability, built only from data steps; uses the payments team's own risk service |
@@ -156,7 +156,7 @@ A new use case needs configuration and, at most, a connector to each system it r
    - paste a business requirements document for a model to draft from;
    - start from a template.
 
-   Helix checks the draft against every platform rule.
+   Agent One Finance checks the draft against every platform rule.
 2. **Connect the systems.** Each system is an MCP connector, onboarded once. Its tools are marked read or write, and each is scoped to entities, books or clients.
 3. **Configure the steps.** In *Configure*, pick steps from the families, fill their forms, and set:
    - the reviewers;
@@ -175,10 +175,10 @@ A new use case needs configuration and, at most, a connector to each system it r
 
 ## Fit and limits
 
-Helix fits work that comes as a list of items, each needing an investigation and a decision by an accountable person. It is not the right tool for everything.
+Agent One Finance fits work that comes as a list of items, each needing an investigation and a decision by an accountable person. It is not the right tool for everything.
 
-- **Not a system of record.** Ledgers, payment engines, KYC and case-management systems keep their data and their own controls. Helix reads them, and writes only approved outcomes back.
-- **Not an autonomous decision-maker.** Credit, sanctions, AML, fraud and payment release stay with named people. Helix prepares and evidences; it never clears a screening hit or releases a payment.
+- **Not a system of record.** Ledgers, payment engines, KYC and case-management systems keep their data and their own controls. Agent One Finance reads them, and writes only approved outcomes back.
+- **Not an autonomous decision-maker.** Credit, sanctions, AML, fraud and payment release stay with named people. Agent One Finance prepares and evidences; it never clears a screening hit or releases a payment.
 - **Not a workflow engine for everything.** Long multi-team processes are layered as parent and child cases. A process that is mostly forms and routing, with no investigation, is better served elsewhere.
 - **Not real-time.** Cases run in seconds to minutes. Pre-trade or in-flight payment checks belong in the transaction path.
 

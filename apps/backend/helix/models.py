@@ -1,4 +1,4 @@
-"""Helix tables. Every row carries capability_id; one shared database.
+"""Agent One Finance tables. Every row carries capability_id; one shared database.
 
 Audit is these rows: append-only facts about who decided what, on which data,
 under which manifest version. Tracing (Phoenix) is separate and best effort.
@@ -350,7 +350,7 @@ class KgEdge(HelixBase):
 
 
 class Document(HelixBase):
-    """A document Helix wrote (e.g. a PDF report), kept in the shared database
+    """A document Agent One Finance wrote (e.g. a PDF report), kept in the shared database
     so every API instance can serve it."""
 
     __tablename__ = "helix_document"

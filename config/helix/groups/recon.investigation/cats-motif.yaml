@@ -1,7 +1,7 @@
 # The FOBO Prime rec group: CATS (front office) vs MOTIF (back office) positions
 # per Prime book and COB, run on the shared reconciliation engine with FOBO's own
 # playbook — the same rules as the FOBO app's
-# config/playbook/fobo-cats-vs-motif.yaml, expressed as Helix configuration:
+# config/playbook/fobo-cats-vs-motif.yaml, expressed as Agent One Finance configuration:
 #
 #   enrich    the dated FO/BO snapshot per instrument (motif.break_snapshots)
 #   resolve   each book's desk and escalation team, as of the COB, from the

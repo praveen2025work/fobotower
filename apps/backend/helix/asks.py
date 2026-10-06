@@ -2,7 +2,7 @@
 
 A reviewer (or the controller at a tollgate) asks one of the capability's
 `requests.targets` — the desk, a trader, Operations — a question about a group
-or the whole case. The people addressed are notified and answer in Helix; a
+or the whole case. The people addressed are notified and answer in Agent One Finance; a
 bot (Teams, email) may answer for them through the API with the event secret.
 
 While a question about a group is open, the group waits for it

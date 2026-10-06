@@ -1,7 +1,7 @@
 """The sign-off checklist (review.checklist): questions a reviewer answers
 before approving a group — e.g. the FOBO skill's §14 completion checklist.
 
-Each question may show what Helix already knows (`prefill`): the tests run on
+Each question may show what Agent One Finance already knows (`prefill`): the tests run on
 the group's items, the evidence and answers on the case, the verdict, the
 category, or one of the model's answer sections. Approving needs every
 required question answered yes or n/a; the answers are kept on the decision.
@@ -42,7 +42,7 @@ def _verdict(finding: dict) -> str:
 
 
 def known(m: Manifest, finding: dict | None, items: list[dict], evidence: list[dict], answers: list[dict]) -> list[dict]:
-    """The checklist for one group, with what Helix already knows next to each question."""
+    """The checklist for one group, with what Agent One Finance already knows next to each question."""
     finding = finding or {}
     sections = {x["id"]: x.get("text", "") for x in finding.get("sections") or []}
     out = []

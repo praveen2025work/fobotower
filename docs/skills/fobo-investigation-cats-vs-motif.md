@@ -360,7 +360,7 @@ correction**, after which `BO + Adjustments = FO` must be re-tested.
 | CATS | Front Office system; source of FO PnL |
 | MOTIF | Back Office / accounting system; source of BO PnL |
 | MBREC | Reconciliation engine producing the break population and auto-postings |
-| Helix | Programme under which the skill-based / AI-assisted investigation model is being developed |
+| Agent One Finance | Programme under which the skill-based / AI-assisted investigation model is being developed |
 | Break | A difference between FO and BO for a given position, book and date |
 | Pull factor | Outstanding-principal factor on an amortising instrument; drives position and PnL |
 | Redemption | Principal repayment event, typically reflected as a pull factor movement |

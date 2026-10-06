@@ -27,8 +27,8 @@ from helix.manifest import Manifest, problems
 from helix.workflow import catalogue
 
 INSTRUCTIONS = """
-You turn a business requirements document (BRD) into a Helix capability
-manifest. Helix runs it as: load items from connector tools → compare or match
+You turn a business requirements document (BRD) into an Agent One Finance capability
+manifest. Agent One Finance runs it as: load items from connector tools → compare or match
 → group → rules first, then the model with read-only tools → draft → validate
 (every figure must trace to data) → human review → record → optional publish
 (write-back after a second person releases it).

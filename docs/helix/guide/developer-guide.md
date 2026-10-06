@@ -1,6 +1,6 @@
-# Helix developer guide and specification
+# Agent One Finance developer guide and specification
 
-**Date:** 2026-10-04 · For engineers who run, extend and onboard Helix.
+**Date:** 2026-10-04 · For engineers who run, extend and onboard Agent One Finance.
 End users: see [`user-guide.md`](user-guide.md).
 
 **Contents**
@@ -29,7 +29,7 @@ End users: see [`user-guide.md`](user-guide.md).
  Browser (apps/web: React 18 + TS + Vite + Tailwind, Barclays light/dark)
    │  /api  (identity header from SSO; X-Helix-User in dev)
    ▼
- Helix API  (FastAPI, apps/backend/helix/web/main.py, :8300)
+ Agent One Finance API  (FastAPI, apps/backend/helix/web/main.py, :8300)
    ├── capabilities / groups   versioned manifests, four-eyes approval, config_sync
    ├── cases                   open → run → review → record → (release → publish)
    │     └── runner ── LangGraph StateGraph per manifest
@@ -68,9 +68,9 @@ There are five rules the design holds to:
 | `apps/backend/helix/web/main.py` | the HTTP API |
 | `apps/backend/helix/mcp_services/documents.py` | documents MCP service: read PDF / Excel, build PDF reports |
 | `apps/backend/helix/stub_connectors/` | dev stand-ins for GL, budget, bank, ledger, CATS, MOTIF |
-| `apps/backend/migrations/` | Alembic migrations (Helix and FOBO share the DB) |
-| `apps/backend/tests/helix/` | Helix tests |
-| `apps/web/` | the Helix web app |
+| `apps/backend/migrations/` | Alembic migrations (Agent One Finance and FOBO share the DB) |
+| `apps/backend/tests/helix/` | Agent One Finance tests |
+| `apps/web/` | the Agent One Finance web app |
 | `config/helix/capabilities/*.yaml` | live capabilities (seeded / synced) |
 | `config/helix/groups/<capability>/*.yaml` | team groups |
 | `config/helix/connectors.yaml` | onboarded connectors and their tool allow-list |
@@ -464,7 +464,7 @@ Expressions gained `case.<field>`, `days_between`, `hours_between`, `weekday`, `
 | Time and parties | `clock` | service-level or regulatory clocks per item (hours or business days, paused hours); warned before and on breach (scheduler) | `clocks[{id, label, starts, hours or business_days, warn_before_hours, pause_hours_field}]` |
 | | `timeline` | one ordered timeline from several systems; the model reads it (`for_model`) | `sources[{tool, args, time_field, label}]`, `into` |
 | | `link` | earlier cases on the same client/account/counterparty, in any capability | `match_on`, `lookback_days`, `capabilities`, `limit` |
-| | `screen` | fuzzy name matching against a list data set: **candidates only**, never cleared by Helix | `list`, `fields`, `list_field`, `threshold` |
+| | `screen` | fuzzy name matching against a list data set: **candidates only**, never cleared by Agent One Finance | `list`, `fields`, `list_field`, `threshold` |
 | | `outreach` | sends each drafted message through a write tool after a person approves at the tollgate before it | `tool` (write), `roles`, `when` |
 
 **Rules the platform checks.**
@@ -646,7 +646,7 @@ curl -X POST localhost:8300/api/capabilities/fin.accruals-review/cases \
 |---|---|
 | A use case | A manifest (no code) |
 | A team on a shared capability | A group file (no code) |
-| A bank system | An MCP server + an entry in `connectors.yaml`; Helix code is unchanged |
+| A bank system | An MCP server + an entry in `connectors.yaml`; Agent One Finance code is unchanged |
 | An LLM connector | `HELIX_LLM_ADAPTER=pkg.mod:obj`, an object with `name` and `async reason(request: ReasonRequest, tools)` (see `helix/llm.py`) |
 | Tracing | `HELIX_TRACING_SETUP=pkg.mod:fn`, called once at startup |
 | Entitlements | `HELIX_ENTITLEMENT_URL` (or an adapter) returning roles and data scopes |

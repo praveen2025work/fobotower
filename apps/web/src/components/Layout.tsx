@@ -1,7 +1,7 @@
 // The app shell — aria-ai's Layout (Barclays navy collapsible sidebar, top bar, error
-// boundary per page), wired to Helix: navigation for the unified case view,
-// the signed-in user from the Helix API, and the dev user switcher only when
-// Helix runs on fixture entitlements. The sun / moon button switches between
+// boundary per page), wired to Agent One Finance: navigation for the unified case view,
+// the signed-in user from the Agent One Finance API, and the dev user switcher only when
+// Agent One Finance runs on fixture entitlements. The sun / moon button switches between
 // the Barclays light and dark themes (src/theme.ts).
 
 import { useEffect, useRef, useState } from "react";
@@ -129,11 +129,11 @@ function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
       >
         <div className={clsx("flex h-14 items-center border-b border-nav-line", compact ? "justify-center px-2" : "px-4")}>
           <div className="flex items-center gap-2.5">
-            <div className="hx-mark flex h-8 w-8 items-center justify-center rounded-lg font-bold text-nav-bg">H</div>
+            <div className="hx-mark flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold text-nav-bg">A1</div>
             {!compact && (
               <div>
-                <h1 className="text-base font-bold leading-none tracking-tight">Helix</h1>
-                <p className="mt-0.5 text-[10px] leading-none text-nav-muted">Governed AI for Finance</p>
+                <h1 className="text-base font-bold leading-none tracking-tight">Agent One Finance</h1>
+                <p className="mt-0.5 text-[10px] leading-none text-nav-muted">Governed AI, case by case</p>
               </div>
             )}
           </div>
@@ -180,14 +180,14 @@ function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
               href="/pitch/"
               target="_blank"
               rel="noreferrer"
-              title={compact ? "About Helix" : undefined}
+              title={compact ? "About Agent One Finance" : undefined}
               className={clsx(
                 "flex items-center rounded-lg text-nav-fg transition-colors hover:bg-nav-hover hover:text-white",
                 compact ? "justify-center p-2.5" : "gap-2.5 px-3 py-2 text-sm font-medium",
               )}
             >
               <Presentation size={compact ? 18 : 16} />
-              {!compact && <span>About Helix</span>}
+              {!compact && <span>About Agent One Finance</span>}
             </a>
           </div>
         </nav>
@@ -212,8 +212,8 @@ function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
               <Menu size={18} className="text-surface-500" />
             </button>
             <span className="flex items-center gap-1.5 lg:hidden">
-              <span className="flex h-7 w-7 items-center justify-center rounded-md bg-nav-bg text-xs font-bold text-white">H</span>
-              <span className="text-sm font-bold text-surface-900">Helix</span>
+              <span className="flex h-7 w-7 items-center justify-center rounded-md bg-nav-bg text-[11px] font-bold text-white">A1</span>
+              <span className="text-sm font-bold text-surface-900">Agent One Finance</span>
             </span>
             {platform.data && me.data?.is_admin && (
               <span className="hidden text-xs text-surface-500 sm:inline">
@@ -225,7 +225,7 @@ function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
 
           <div className="flex shrink-0 items-center gap-1 sm:gap-2">
             {me.data?.is_admin && (
-              <span className="mr-1 hidden items-center gap-1.5 text-xs text-surface-500 sm:flex" title="Helix API">
+              <span className="mr-1 hidden items-center gap-1.5 text-xs text-surface-500 sm:flex" title="Agent One Finance API">
                 <Activity size={14} />
                 API
                 <span className={clsx("h-2 w-2 rounded-full", platform.isError ? "bg-red-400" : platform.data ? "bg-green-400" : "bg-surface-400")} />

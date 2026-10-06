@@ -1,9 +1,9 @@
-# Helix — How a Use Case Works
+# Agent One Finance — How a Use Case Works
 
 **Date:** 2026-10-03 · **Status:** draft for team review · **Companion to:**
 [`2026-10-03-helix-capability-platform-design.md`](2026-10-03-helix-capability-platform-design.md)
 
-What Helix provides as infrastructure, what a use case brings, and what
+What Agent One Finance provides as infrastructure, what a use case brings, and what
 happens — layer by layer — from onboarding a use case to auditing a decision
 it produced. One worked example runs through the whole document.
 
@@ -33,7 +33,7 @@ it produced. One worked example runs through the whole document.
 │  one door to every bank system · tool allow-list per use case ·              │
 │  data scope enforced on every call · every call recorded                     │
 ├──────────────────────────────────────────────────────────────────────────────┤
-│  CONNECTORS (onboarded by the Helix team)                                    │
+│  CONNECTORS (onboarded by the Agent One Finance team)                                    │
 │  GL · budget · CATS · MOTIF · custody · … each an MCP server                 │
 └──────────────────────────────────────────────────────────────────────────────┘
    AUDIT (Postgres, system of record)      OBSERVABILITY (Phoenix, OpenTelemetry)
@@ -44,10 +44,10 @@ it produced. One worked example runs through the whole document.
 
 | Party | Provides | Never has to do |
 |---|---|---|
-| **Helix team** | The platform above; onboards and approves **MCP connectors**; runs Phoenix | Write code for a specific use case |
+| **Agent One Finance team** | The platform above; onboards and approves **MCP connectors**; runs Phoenix | Write code for a specific use case |
 | **Use-case owners** (e.g. Product Control, Finance) | A manifest in the capability builder: which connector tools, which steps, rules and thresholds, the agent's instructions, review roles; approve each other's changes | Write code, provision infrastructure, build screens |
-| **Preparers / reviewers** | Work cases in the generic UI: read the analysis, ask the agent, approve or reject | Leave Helix to find evidence |
-| **Bank systems** | Data through MCP connectors; roles and data scopes through the entitlement service | Know anything about Helix's internals |
+| **Preparers / reviewers** | Work cases in the generic UI: read the analysis, ask the agent, approve or reject | Leave Agent One Finance to find evidence |
+| **Bank systems** | Data through MCP connectors; roles and data scopes through the entitlement service | Know anything about Agent One Finance's internals |
 | **Audit / model risk** | Review Postgres audit rows and Phoenix traces | Ask engineers to reconstruct what happened |
 
 ## 3. Lifecycle of a use case
@@ -66,10 +66,10 @@ it produced. One worked example runs through the whole document.
 
 | Step | Who | Platform piece | Result |
 |---|---|---|---|
-| 1. Register the data source as an MCP connector; allow-list its tools; contract test | Helix team | MCP gateway, `connector_version` | Tools appear in the builder's tool picker |
-| 2. Second Helix member approves | Helix team | four-eyes on `connector_version` | Connector `active` |
+| 1. Register the data source as an MCP connector; allow-list its tools; contract test | Agent One Finance team | MCP gateway, `connector_version` | Tools appear in the builder's tool picker |
+| 2. Second Agent One Finance member approves | Agent One Finance team | four-eyes on `connector_version` | Connector `active` |
 | 3. Create the capability: case key and label, items, steps, rules, agent skill, tools, review roles, screen columns | Use-case owner | Capability builder → manifest | `capability_version` draft |
-| 4. Validate | Helix (automatic) | Manifest validator + step `needs`/`produces` check + gates present + tools allowed + roles exist in entitlement | Errors shown in plain words, or ✓ |
+| 4. Validate | Agent One Finance (automatic) | Manifest validator + step `needs`/`produces` check + gates present + tools allowed + roles exist in entitlement | Errors shown in plain words, or ✓ |
 | 5. Approve | Another owner | four-eyes on `capability_version` | Capability live; workflow version 1 active |
 | 6. Users with its roles see it in the switcher | — | Entitlement | Ready to run |
 
@@ -109,7 +109,7 @@ A Finance team wants AI-drafted commentary on material month-end variances.
 
 **Onboard**
 
-1. The Helix team onboards two connectors: `gl` (tools `gl.variances`,
+1. The Agent One Finance team onboards two connectors: `gl` (tools `gl.variances`,
    `gl.journal_lines`) and `budget` (`budget.plan_lines`), each with `entity`
    as its data-scope argument.
 2. A Finance owner builds the capability in the console: case label "Lane",
@@ -189,7 +189,7 @@ model's answer — §6, §7.
   proposal groups with approve/reject, the agent chat, evidence (each
   `source_call` with the rows it returned), run trace, and a "View trace in
   Phoenix" link per case.
-- Builder screens for owners; connector admin for the Helix team.
+- Builder screens for owners; connector admin for the Agent One Finance team.
 - *Use case configures:* labels, columns, which panels show.
 
 ### 5.5 MCP gateway and connectors
@@ -197,7 +197,7 @@ model's answer — §6, §7.
 - One door to every bank system. Per call: tool allowed for this capability?
   caller entitled to this scope? scope argument clamped, timeout/retry,
   `source_call` row, OpenTelemetry span.
-- *Helix team configures:* the connector. *Use case configures:* which of its
+- *Agent One Finance team configures:* the connector. *Use case configures:* which of its
   tools to use.
 
 ## 6. Audit — the system of record (Postgres)
@@ -232,11 +232,11 @@ for debugging, model-risk review, quality evaluation and cost.
   (covers LangGraph runs and steps) and `openinference-instrumentation-anthropic`
   (the `direct` adapter's model calls) — give LLM-aware spans with no
   hand-written tracing.
-- **Custom spans** where Helix owns the code: case open, entitlement check,
+- **Custom spans** where Agent One Finance owns the code: case open, entitlement check,
   MCP gateway call, rule evaluation, guard check, validate, review decision.
-- **Session-service calls**: Helix propagates the trace context (W3C
+- **Session-service calls**: Agent One Finance propagates the trace context (W3C
   `traceparent`) to the bank's agent harness, so its spans join the same
-  trace when the harness is instrumented; when it is not, Helix still records
+  trace when the harness is instrumented; when it is not, Agent One Finance still records
   the request/response span and every MCP tool call the agent makes, because
   those pass through the gateway.
 
@@ -281,7 +281,7 @@ per capability**, so each use-case team sees only its own traces.
 | | Audit (Postgres) | Observability (Phoenix) |
 |---|---|---|
 | Purpose | Evidence for decisions | Behaviour of the system |
-| Audience | Auditors, controllers, model risk | Helix team, use-case owners, model risk |
+| Audience | Auditors, controllers, model risk | Agent One Finance team, use-case owners, model risk |
 | Completeness | Mandatory; a write failure fails the step | Best effort; an export failure never fails a run |
 | Retention | Years, per records policy | Shorter, per Phoenix storage policy |
 | Content | Decisions, data references, versions | Full prompts, outputs, timings, tokens |

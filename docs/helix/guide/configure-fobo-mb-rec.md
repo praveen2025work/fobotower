@@ -14,7 +14,7 @@ What is left is the manual part a controller does each morning:
 - what did the desk or the trader say?
 - who has to fix it?
 
-Helix should do that part, and **never re-match the positions**.
+Agent One Finance should do that part, and **never re-match the positions**.
 
 **The shape:**
 
@@ -32,7 +32,7 @@ you make it, and becomes live when a second owner approves it.
 
 ---
 
-## Step 1 — Connect MB Rec (Helix team, once)
+## Step 1 — Connect MB Rec (Agent One Finance team, once)
 
 MB Rec is reached as an MCP server, like every other source. It needs one entry in
 `config/helix/connectors.yaml`. In the office, the URL and auth come from
@@ -127,7 +127,7 @@ Then *Review and submit*. Another group owner approves.
 
 ## Step 4 — How a morning runs
 
-1. **MB Rec finishes PRIME-MB-04 for 30 Sept** and calls Helix:
+1. **MB Rec finishes PRIME-MB-04 for 30 Sept** and calls Agent One Finance:
 
    ```bash
    curl -X POST https://helix.internal.example/api/events \
@@ -136,7 +136,7 @@ Then *Review and submit*. Another group owner approves.
           "case_key": {"book": "PRIME-MB-04", "cob": "2026-09-30"}}'
    ```
 
-2. **Helix reads the breaks, joins the snapshots, resolves the desk and runs the playbook.**
+2. **Agent One Finance reads the breaks, joins the snapshots, resolves the desk and runs the playbook.**
    In this example:
    - **JGB 10Y** was booked after the cut-off and is new: **timing difference**;
    - **EURUSD FWD** has been open 2 COBs: **aged**.
@@ -162,11 +162,11 @@ Then *Review and submit*. Another group owner approves.
 
 ## Your three situations
 
-| Situation | How it is configured now | Not yet in Helix |
+| Situation | How it is configured now | Not yet in Agent One Finance |
 |---|---|---|
 | **Timing difference** | `TIMING` check → category T → **MONITOR**; `AGED` check sends anything open 2+ COBs to a person; *Recurring items* shows a break that keeps coming back; the model reads `mbrec.break_history`. **Follow-through** re-tests every MONITOR on the next COB: cleared shows on the earlier case, and one still open becomes `MONITOR_NOT_CLEARED` → K, for a person | — |
 | **Other sources** | Each source is a connector tool; add it to *Enrich* (joined onto every break) or to the model's tools (read when needed). A controller can attach a file to the case | A source with no MCP server needs one, onboarded once |
-| **Trader provides the info** | The controller writes it in the **tollgate note**, or **asks the desk from the case** (*Questions → Ask for evidence*). The group waits; the trader answers in Helix (or a Teams/email bot answers for them); the answer goes to the model. See the [walkthrough](fobo-capability-walkthrough.md) | — |
+| **Trader provides the info** | The controller writes it in the **tollgate note**, or **asks the desk from the case** (*Questions → Ask for evidence*). The group waits; the trader answers in Agent One Finance (or a Teams/email bot answers for them); the answer goes to the model. See the [walkthrough](fobo-capability-walkthrough.md) | — |
 
 ## The same as files
 

@@ -1,4 +1,4 @@
-# Helix: executive demo (CIO and accounting MDs)
+# Agent One Finance: executive demo (CIO and accounting MDs)
 
 **Latest, for presenting live:** [`helix-demo-silent.mp4`](helix-demo-silent.mp4), 4 min 20 s,
 no audio, recorded 2026-10-05 from the current app. You speak over it from
@@ -54,8 +54,8 @@ dev data, and the deterministic stub model (no live model calls).
 | *Which model and where does it run?* | In the office: the Claude Agent SDK, through the office agent platform. Traces go to Phoenix. The demo used a deterministic stand-in. |
 | *What does it cost to run?* | Model spend is recorded per case, with caps per case and per day. Over a cap, the work goes to people. |
 | *How is this different from the office agent platform?* | It builds on it. It uses the platform's MCP connectors, plugins and RAG, and adds the workflow, playbooks, four-eyes control, evidence and audit that accounting needs. |
-| *How long to onboard a new process?* | If its systems are already connected: a configuration file, checked by the platform, approved by a second owner. A new system needs an MCP connector, onboarded once by the Helix team. |
-| *What happens to FOBO?* | FOBO keeps running unchanged. Its rules run on Helix as configuration (Prime and Rates), so it can move across when the team chooses. |
+| *How long to onboard a new process?* | If its systems are already connected: a configuration file, checked by the platform, approved by a second owner. A new system needs an MCP connector, onboarded once by the Agent One Finance team. |
+| *What happens to FOBO?* | FOBO keeps running unchanged. Its rules run on Agent One Finance as configuration (Prime and Rates), so it can move across when the team chooses. |
 | *How do we know it agrees with our people?* | Evals replay past decided cases on any new version, without writing anything, and report agreement before it goes live. |
 
 ## Re-making the video

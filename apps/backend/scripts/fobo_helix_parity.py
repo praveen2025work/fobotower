@@ -1,12 +1,12 @@
-"""FOBO → Helix parity check: does Helix reach the same answer as the old FOBO run?
+"""FOBO → Agent One Finance parity check: does Agent One Finance reach the same answer as the old FOBO run?
 
-Run the same book and COB through the old FOBO agent and through Helix, then
+Run the same book and COB through the old FOBO agent and through Agent One Finance, then
 compare, break by break, the three things the playbook decides: category,
 side and verdict. Use it during the migration's parallel run; the cut-over
 needs a clean result on every book for an agreed number of COBs.
 
     cd apps/backend
-    # Helix side: a case JSON saved from the API, or fetched here
+    # Agent One Finance side: a case JSON saved from the API, or fetched here
     curl -s -H 'X-Helix-User: frank' localhost:8300/api/cases/<case_id> > helix.json
     .venv/bin/python scripts/fobo_helix_parity.py --helix helix.json --old old_run.csv
 
@@ -112,8 +112,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--old", required=True, help="the old FOBO run: CSV or JSON, one row per break")
     p.add_argument("--old-columns", help='rename columns, e.g. "id=break_ref,side=origin"')
     src = p.add_mutually_exclusive_group(required=True)
-    src.add_argument("--helix", help="a Helix case saved as JSON (GET /api/cases/<id>)")
-    src.add_argument("--api", help="Helix base URL, with --case-id and --user")
+    src.add_argument("--helix", help="an Agent One Finance case saved as JSON (GET /api/cases/<id>)")
+    src.add_argument("--api", help="Agent One Finance base URL, with --case-id and --user")
     p.add_argument("--case-id")
     p.add_argument("--user")
     args = p.parse_args(argv)
@@ -127,7 +127,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     diffs = compare(old, new)
-    print(f"old run: {len(old)} breaks · Helix: {len(new)} breaks · differences: {len(diffs)}")
+    print(f"old run: {len(old)} breaks · Agent One Finance: {len(new)} breaks · differences: {len(diffs)}")
     if diffs:
         print(f"\n{'break':<24} {'field':<10} {'old':<16} helix")
         for d in diffs:

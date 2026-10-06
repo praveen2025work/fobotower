@@ -14,7 +14,7 @@ function dotClass(status: string | undefined): string {
 }
 
 /**
- * aria-ai's compact MCP-servers panel, on Helix's live connector probes:
+ * aria-ai's compact MCP-servers panel, on Agent One Finance's live connector probes:
  * each onboarded connector is asked to list its tools; down means no answer.
  */
 function McpServersPanel({ connectors, isLoading }: { connectors: ConnectorHealth[] | undefined; isLoading: boolean }): JSX.Element {

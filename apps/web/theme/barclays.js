@@ -1,4 +1,4 @@
-// Barclays themes for the Helix console — the single source of the colours.
+// Barclays themes for the Agent One Finance console — the single source of the colours.
 //
 // Pages keep aria-ai's Tailwind classes (`bg-surface-50`, `text-primary-700`,
 // `bg-red-100`…); every palette here becomes CSS variables, so one class

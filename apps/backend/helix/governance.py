@@ -3,7 +3,7 @@
 Two treatments, by field name (case-insensitive, at any depth):
 
   mask          irreversible: the value becomes ***MASKED*** wherever data
-                leaves Helix's trust boundary — to the model, into traces,
+                leaves Agent One Finance's trust boundary — to the model, into traces,
                 into the audit copy of a tool result.
   pseudonymize  reversible, per case: the value becomes a stable token like
                 «COUNTERPARTY:QXKD». The model reasons and calls tools with
@@ -49,7 +49,7 @@ class DataProtection(Strict):
 class Governance(Strict):
     data_protection: list[DataProtection] = Field(default_factory=list)
     # What auto-instrumented spans (LangGraph state, Agent SDK messages) may carry:
-    # masked = hide them, Helix's own spans carry protected payloads; full = no hiding.
+    # masked = hide them, Agent One Finance's own spans carry protected payloads; full = no hiding.
     trace_payloads: Literal["masked", "full"] = "masked"
 
 

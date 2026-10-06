@@ -317,7 +317,7 @@ def build_motif() -> MCPServer:
 
 
 # ---------- MB Rec: the reconciliation system FOBO's breaks come from ----------
-# MB Rec has already matched CATS to MOTIF; Helix reads its open breaks and
+# MB Rec has already matched CATS to MOTIF; Agent One Finance reads its open breaks and
 # investigates them. It never re-matches the positions itself.
 
 # Test hook: breaks MB Rec raises later in the day for a book and COB, as if a

@@ -1,11 +1,11 @@
-# Helix steps v2: building blocks for any Finance use case
+# Agent One Finance steps v2: building blocks for any Finance use case
 
-**Date:** 2026-10-06 · **Status:** phases 1–6 built · **For:** Helix platform team,
+**Date:** 2026-10-06 · **Status:** phases 1–6 built · **For:** Agent One Finance platform team,
 capability owners across Finance (and teams beyond it), architecture.
 
 ## 1. Why
 
-Helix today has 13 steps that run in a straight line over **one list of items**:
+Agent One Finance today has 13 steps that run in a straight line over **one list of items**:
 - load or match;
 - enrich, resolve, classify, compare;
 - group, reason, draft;
@@ -13,7 +13,7 @@ Helix today has 13 steps that run in a straight line over **one list of items**:
 - publish.
 
 That is enough for FOBO, cash recs, variance commentary and report validation. It is not enough
-for the rest of Finance. Helix is the governed AI platform for Finance, and FOBO is one of its use
+for the rest of Finance. Agent One Finance is the governed AI platform for Finance, and FOBO is one of its use
 cases. Finance alone already needs:
 - three-way matches;
 - accruals that must post balanced journals;
@@ -23,7 +23,7 @@ cases. Finance alone already needs:
 - price testing against several external sources.
 
 This document does three things:
-1. Lists the **processes** Helix should be able to run (§2).
+1. Lists the **processes** Agent One Finance should be able to run (§2).
 2. Breaks them into the **operations** they share (§3).
 3. Turns those into a **step catalogue v2** (§4), the **engine changes** it needs (§5), and the
    **controls** every step must respect (§6).
@@ -61,8 +61,8 @@ checked, a proposal is made, a person decides, the outcome is recorded and follo
 | **Trade and securities operations** | failed settlements, trade affirmation exceptions, corporate actions (elections, entitlements), static data breaks, custody reconciliations | events over several days, market cut-offs, claims, many systems per trade |
 | **Collateral and margin** | margin call disputes, collateral eligibility, CSA threshold checks | two-party disputes, daily calls, agreed vs disputed amounts |
 | **Lending operations** | loan servicing exceptions, covenant monitoring, drawdown checks, annual reviews (preparation), collateral revaluation | documents (facility agreements, financials), dates and covenants, credit officers decide |
-| **Client onboarding and KYC** | document collection, periodic reviews, data remediation, beneficial-ownership checks | documents and outreach to the client, refresh cycles; **Helix prepares, the KYC officer decides** |
-| **Financial crime operations** | AML alert triage packs, sanctions hit preparation, fraud case packs, SAR drafting support | strict decision boundary: **Helix assembles evidence and timelines; a person decides; nothing is auto-closed** |
+| **Client onboarding and KYC** | document collection, periodic reviews, data remediation, beneficial-ownership checks | documents and outreach to the client, refresh cycles; **Agent One Finance prepares, the KYC officer decides** |
+| **Financial crime operations** | AML alert triage packs, sanctions hit preparation, fraud case packs, SAR drafting support | strict decision boundary: **Agent One Finance assembles evidence and timelines; a person decides; nothing is auto-closed** |
 | **Credit and market risk** | limit breach investigation, VaR back-testing exceptions, model monitoring, counterparty exposure checks, stress test data checks | limits and approvals by authority, daily cycles, quantitative evidence |
 | **Operational risk and controls** | incident and loss event capture, RCSA, key risk indicators, issue and action tracking, SOX/controls testing | owners, due dates, evidence, sign-off cascades |
 | **Compliance** | trade and communications surveillance alert triage, conflicts checks, gifts and entertainment, regulatory change impact assessment, breach logs | text and voice evidence, policy references, regulatory deadlines |
@@ -73,7 +73,7 @@ checked, a proposal is made, a person decides, the outcome is recorded and follo
 | **HR and procurement (finance-adjacent)** | invoice capture, vendor onboarding checks, expense review | documents, three-way match, policy rules |
 
 **Decision boundaries.** Each capability declares what the model may propose and what only a
-person decides. In regulated decisions Helix prepares and evidences; a named person decides; the
+person decides. In regulated decisions Agent One Finance prepares and evidences; a named person decides; the
 system of record executes. Those decisions include:
 - credit;
 - sanctions;
@@ -86,7 +86,7 @@ system of record executes. Those decisions include:
 These are enforced the same way FOBO's R2 guard is: in code, after the model.
 
 Out of scope for the model, by policy: anything where AI must not decide. That includes sanctions,
-AML and fraud decisions, credit decisions, and payment release. Helix can **prepare and evidence**
+AML and fraud decisions, credit decisions, and payment release. Agent One Finance can **prepare and evidence**
 these, but a person decides and existing controlled systems execute.
 
 ## 3. The operations they share
@@ -352,5 +352,5 @@ The original questions follow for the record.
    connector.
 3. **Whether `extract` (model reading documents) is allowed** for regulated documents, and with
    what confidence threshold for automatic acceptance.
-4. **The authority matrix source.** Is it held in Helix configuration, or read from the bank's
+4. **The authority matrix source.** Is it held in Agent One Finance configuration, or read from the bank's
    delegated-authority system?

@@ -1,14 +1,14 @@
 ---
 name: fobo-to-helix
-description: Move FOBO (CATS vs MOTIF break investigation, already running on the office Agent One / Claude Agent SDK platform) onto Helix as groups of the shared break.investigation capability (breaks MB Rec has already reconciled). Use when asked to inventory, convert, configure, parity-test, cut over or retire FOBO for Helix. Works phase by phase from docs/helix/migration/README.md and stops for sign-off after each phase.
+description: Move FOBO (CATS vs MOTIF break investigation, already running on the office Agent One / Claude Agent SDK platform) onto Agent One Finance as groups of the shared break.investigation capability (breaks MB Rec has already reconciled). Use when asked to inventory, convert, configure, parity-test, cut over or retire FOBO for Agent One Finance. Works phase by phase from docs/helix/migration/README.md and stops for sign-off after each phase.
 ---
 
-# FOBO → Helix migration
+# FOBO → Agent One Finance migration
 
 You are converting this repository's FOBO, which runs on Agent One, so that FOBO runs as
-**configuration on Helix**: one group file per FOBO rec group (Prime, Rates, …) on Helix's
+**configuration on Agent One Finance**: one group file per FOBO rec group (Prime, Rates, …) on Agent One Finance's
 `break.investigation` capability, which reads the breaks MB Rec has already reconciled. The Agent SDK call, MCP servers and Phoenix setup that
-Agent One already has are plugged into Helix. They are not rebuilt.
+Agent One already has are plugged into Agent One Finance. They are not rebuilt.
 
 **Read first, every session:**
 
@@ -29,7 +29,7 @@ If any of these files is missing, stop. Ask the user to copy them in from
 1. **The controller sees the same answer.** For every break, the category, side and verdict
    must match FOBO. If something would change an answer, do not change it. Write it in
    `MIGRATION_GAPS.md` (what, where, the old behaviour, the options) and ask.
-2. **No FOBO code in the Helix engine.** FOBO is configuration: the group YAML, reference YAML
+2. **No FOBO code in the Agent One Finance engine.** FOBO is configuration: the group YAML, reference YAML
    and connectors. Do not edit `helix/steps.py`, `workflow.py`, `manifest.py`, `gateway.py`
    or the gates to fit a FOBO quirk. If the YAML cannot express a rule, that is a gap
    (rule 1). The only code you write is the LLM adapter's `_run` (§4.1 of the guide), plus
@@ -43,7 +43,7 @@ If any of these files is missing, stop. Ask the user to copy them in from
    - FO-1/2/4/7 failures hold a POST.
    - Missing evidence or an unset threshold means "not run", never a pass.
    - Gates validate, review and record stay.
-5. **Every model tool goes through the Helix gateway.** Onboard the office MCP servers as
+5. **Every model tool goes through the Agent One Finance gateway.** Onboard the office MCP servers as
    connectors in `config/helix/connectors.yaml`. Never pass them straight to the Agent SDK
    (`mcp_servers`), and keep `strict_mcp_config=True` and `tools=[]`.
 6. **No secrets in files.** Use `headers_env` and the environment.
@@ -73,7 +73,7 @@ Find where each row of the guide's §2 table lives in *this* repository. Useful 
 Write `MIGRATION_INVENTORY.md` with:
 
 - **One table, one row per §2 row:** FOBO concept · file:line in this repo · current value or
-  behaviour · Helix target · notes. Write "not present" where Agent One has no such thing.
+  behaviour · Agent One Finance target · notes. Write "not present" where Agent One has no such thing.
 - **Values:**
   - every policy threshold (value, unit, file:line);
   - every book and rec group;
@@ -92,7 +92,7 @@ Write `MIGRATION_INVENTORY.md` with:
 
 Check: every §2 row is filled in. Stop and show the open questions.
 
-## Phase 1 — Bring Helix in
+## Phase 1 — Bring Agent One Finance in
 
 1. Add from `praveen2025work/fobotower` main:
    - `apps/backend/helix/` with its migrations and `pyproject` dependencies;
@@ -102,7 +102,7 @@ Check: every §2 row is filled in. Stop and show the open questions.
    - `config/helix/`.
 
    Do not overwrite this repo's FOBO files.
-2. Give Helix its own database (`HELIX_DATABASE_URL`). Run `alembic upgrade head`.
+2. Give Agent One Finance its own database (`HELIX_DATABASE_URL`). Run `alembic upgrade head`.
 3. Run with the defaults (`HELIX_LLM_ADAPTER=stub`, dev users):
 
    ```
@@ -118,7 +118,7 @@ Check: tests green, and the API starts. Report the test counts.
    `cats`, `motif` (and `ticketing`, `documents` and RAG if used).
 2. Fill each entry with the inventory's URLs and env var names.
 3. Prefer the connector ids the group file uses: `cats`, `motif`, `ticketing`. Tool names
-   must be the office server's real tool names; Helix calls them as written.
+   must be the office server's real tool names; Agent One Finance calls them as written.
    - If they differ from the reference (`positions`, `break_snapshots`, `booking_events`,
      `create_ticket`), use the office names in `connectors.yaml` and in the group file
      (`match`, `enrich`, `reasoning.tools`, `escalation.tool`). Both are config.
@@ -190,7 +190,7 @@ It must pass, and the trace must show in Phoenix. Report the model, turns and co
 3. Compare the deterministic breaks (`decided_by: playbook`) by diff; they must match
    exactly. Compare model-decided breaks by reading. Their wording may differ, but their
    verdict should not.
-4. Log every difference in `PARITY_LOG.md`: book, COB, break, field, old, Helix, cause, and the
+4. Log every difference in `PARITY_LOG.md`: book, COB, break, field, old, Agent One Finance, cause, and the
    decision (config fix, accepted per guide §6, or gap).
    - Fix config differences in the group file, through a new approved version.
    - Never change the engine.
@@ -200,7 +200,7 @@ sign-off.
 
 ## Phase 6 — Cut-over and retire (only after sign-off)
 
-1. Set the Helix group's schedule live and turn off the FOBO trigger. Move users to Helix web.
+1. Set the Agent One Finance group's schedule live and turn off the FOBO trigger. Move users to Agent One Finance web.
 2. Keep Agent One's FOBO deployment able to start for one month-end. Write down the rollback
    steps (guide §8) and test them once.
 3. After a clean month-end, remove the retirement list in guide §3:
@@ -209,7 +209,7 @@ sign-off.
 
    Make the FOBO tables read-only. Do not drop them.
 
-Check: Helix is the only system that writes. Fill in the sign-off checklist in guide §10.
+Check: Agent One Finance is the only system that writes. Fill in the sign-off checklist in guide §10.
 
 ## What to report after each phase
 

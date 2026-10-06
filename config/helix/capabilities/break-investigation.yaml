@@ -5,7 +5,7 @@
 # part: why each break exists, whether it is a timing difference that will
 # clear, what other sources say, and who must fix it. The first step is `load`
 # (read the open breaks), never `match`. Compare recon-investigation.yaml, for
-# teams whose two systems Helix must match itself.
+# teams whose two systems Agent One Finance must match itself.
 #
 # The capability owns the shape of the work and its gates; each team group
 # (config/helix/groups/break.investigation/) sets its source, playbook, tools,

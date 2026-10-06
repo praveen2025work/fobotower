@@ -84,7 +84,7 @@ export function SessionPanel({
             color: 'var(--text-primary)',
           }}
         >
-          Helix session
+          Agent One Finance session
         </span>
         <span
           className="text-[10px] truncate"
@@ -330,7 +330,7 @@ export function SessionPanel({
             >
               One Fin UX sends an MB Rec readiness event as each master book is
               ready. When all books are ready, One Fin UX sends the Ready event
-              and Helix starts this session automatically.
+              and Agent One Finance starts this session automatically.
             </div>
           </div>
         )}
@@ -382,7 +382,7 @@ export function SessionPanel({
                   : 'Session not open yet'
             }
             className="hx-input flex-1 text-[12.5px] px-3 py-2 resize-none focus:outline-none"
-            aria-label="Message the Helix session"
+            aria-label="Message the Agent One Finance session"
           />
           <button
             onClick={() => submit()}

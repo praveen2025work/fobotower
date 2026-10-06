@@ -1,4 +1,4 @@
-# Data protection between bank data and the model — owned by the Helix team.
+# Data protection between bank data and the model — owned by the Agent One Finance team.
 #
 # Field names match at any depth, case-insensitively, in tool results and in
 # what the reason step sends the model. `applies_to_tools` uses
@@ -11,7 +11,7 @@
 #                 real values for connectors, reviewers see real values
 #
 # trace_payloads: masked hides payloads in auto-instrumented spans (LangGraph
-# state, Agent SDK messages); Helix's own spans carry protected payloads only.
+# state, Agent SDK messages); Agent One Finance's own spans carry protected payloads only.
 
 trace_payloads: masked
 

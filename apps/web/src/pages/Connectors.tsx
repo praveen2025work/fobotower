@@ -4,14 +4,14 @@ import { usePlatform } from "../api/helix";
 import StatusBadge from "../components/StatusBadge";
 import { Card, ErrorState, Loading, PageHeader } from "../components/ui";
 
-/** What the Helix team has onboarded: MCP connectors, their tool allow-list, and the core steps. */
+/** What the Agent One Finance team has onboarded: MCP connectors, their tool allow-list, and the core steps. */
 export default function Connectors(): JSX.Element {
   const platform = usePlatform();
   return (
     <div>
       <PageHeader
         title="Connectors"
-        subtitle="Bank systems onboarded by the Helix team as MCP servers. Capabilities may only use the tools listed here."
+        subtitle="Bank systems onboarded by the Agent One Finance team as MCP servers. Capabilities may only use the tools listed here."
       />
       {platform.isLoading && <Loading what="connectors" />}
       {platform.error && <ErrorState error={platform.error} />}

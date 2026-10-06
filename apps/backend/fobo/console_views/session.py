@@ -1,4 +1,4 @@
-"""A Helix session: its row, its conversation, and the calls behind it.
+"""An Agent One Finance session: its row, its conversation, and the calls behind it.
 
 The session opens with the analysis turn, whose MCP calls are the ones the
 investigation made. Everything after that (questions, answers, decision

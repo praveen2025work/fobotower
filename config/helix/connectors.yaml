@@ -1,4 +1,4 @@
-# Onboarded MCP connectors — owned by the Helix team.
+# Onboarded MCP connectors — owned by the Agent One Finance team.
 #
 # Each entry is one bank system exposed as an MCP server. Only tools listed
 # here can be used by any capability (an allow-list); `scope` names the
@@ -218,7 +218,7 @@ connectors:
         description: BO trades per book and COB (quantity, direction, consideration, price, pull factor, settlement)
         scope: { arg: book, key: book }
 
-  # A Helix-provided service, not a stub: reads PDF and Excel files and writes
+  # An Agent One Finance-provided service, not a stub: reads PDF and Excel files and writes
   # PDF reports (helix/mcp_services/documents.py). Files are kept per entity;
   # in the office, serve it over http next to the team share it reads.
   documents:

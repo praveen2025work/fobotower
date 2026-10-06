@@ -1,6 +1,6 @@
 """Who a caller is, what they may do, and which data they may see.
 
-Helix holds no roles. In the office, HELIX_ENTITLEMENT_URL points at the
+Agent One Finance holds no roles. In the office, HELIX_ENTITLEMENT_URL points at the
 central entitlements service and `HttpEntitlement` asks it:
 
   GET {url}/users/{user_id}/entitlements?app=helix

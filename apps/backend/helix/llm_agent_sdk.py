@@ -3,10 +3,10 @@
 `HELIX_LLM_ADAPTER=agent_sdk` selects it. One `reason()` call is one Agent SDK
 `query()` for one proposal group:
 
-  system prompt   the capability's `reasoning.skill`, plus Helix's output rules
+  system prompt   the capability's `reasoning.skill`, plus Agent One Finance's output rules
   prompt          the case key, the group (key, totals, items) and its priors, as JSON
   tools           ONLY the capability's allowed connector tools, served by an
-                  in-process SDK MCP server whose handlers call the Helix gateway
+                  in-process SDK MCP server whose handlers call the Agent One Finance gateway
                   (`tools`) — so allow-list, data scope, audit row and figure
                   validation apply to every call the model makes. Built-in Claude
                   Code tools are switched off (`tools=[]`) and no other MCP server
@@ -44,7 +44,7 @@ from helix.observability import AGENT, set_output, span
 SERVER = "helix"
 
 OUTPUT_RULES = """
-You are working inside Helix, a governed workflow. Rules that override anything above:
+You are working inside Agent One Finance, a governed workflow. Rules that override anything above:
 - Use only the tools provided. Every figure you state must come from a tool result
   or from the case data in the prompt; figures that cannot be traced are rejected
   and the group goes to a person.
@@ -56,11 +56,11 @@ You are working inside Helix, a governed workflow. Rules that override anything 
 
 # Specialists (manifest reasoning.specialists) become Agent SDK subagents. Their
 # tools are the same gateway-backed MCP tools; the main agent reaches them
-# through the SDK's subagent tool — the only built-in tool Helix enables.
+# through the SDK's subagent tool — the only built-in tool Agent One Finance enables.
 SUBAGENT_TOOL = os.getenv("HELIX_SUBAGENT_TOOL") or "Agent"
 
 SPECIALIST_RULES = """
-You are a specialist inside Helix, a governed workflow. Use only the tools provided;
+You are a specialist inside Agent One Finance, a governed workflow. Use only the tools provided;
 every figure you report must come from a tool result. Report what you found and the
 figures, briefly, to the agent that asked you.
 """.strip()
@@ -112,7 +112,7 @@ def _sdk_tool_name(qualified: str) -> str:
 
 
 def _gateway_tool(qualified: str, schema: dict, description: str, tools: ToolInvoker):
-    @tool(_sdk_tool_name(qualified), description or f"Helix connector tool {qualified}", schema)
+    @tool(_sdk_tool_name(qualified), description or f"Agent One Finance connector tool {qualified}", schema)
     async def handler(args: dict) -> dict:
         try:
             result = await tools(qualified, dict(args))
@@ -247,7 +247,7 @@ class ClaudeAgentSdkAdapter:
 
 
 ASK_RULES = """
-You are answering a reviewer's question about one case inside Helix, a governed
+You are answering a reviewer's question about one case inside Agent One Finance, a governed
 workflow. Answer from the case data in the prompt and the tools provided only.
 Every figure you state must come from them; say plainly when the data does not
 answer the question. Be brief and specific. Reply with the structured result only.

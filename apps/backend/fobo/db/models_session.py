@@ -140,7 +140,7 @@ class ControllerDecision(Base):
 
 
 class SessionMessage(Base):
-    """One turn of a Helix session's conversation, as the controller saw it.
+    """One turn of an Agent One Finance session's conversation, as the controller saw it.
 
     The analysis turn is not stored: it is derived from the investigation.
     Questions, answers and decision notes are, so a reload shows the same

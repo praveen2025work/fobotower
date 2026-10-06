@@ -31,7 +31,7 @@ export function EventBoard({ selectedId, onSelect, stats }) {
               color: 'var(--text-muted)',
             }}
           >
-            Sessions start when Helix receives the One Fin UX Ready event
+            Sessions start when Agent One Finance receives the One Fin UX Ready event
           </span>
           <div className="ml-auto flex items-center gap-x-3 gap-y-1 flex-wrap text-[11px] tabular-nums">
             <Stat v={stats.total} l="recs" c="var(--barcl-eagle)" />

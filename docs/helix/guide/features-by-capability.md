@@ -11,7 +11,7 @@ feature, so a new team can see its options.
 - **FOBO Prime / FOBO Rates**: *Break investigation*, groups `fobo-prime` and `fobo-rates`
   (MB Rec's breaks).
 - **Cash**: *Reconciliation investigation*, group `cash-bank-ledger` (bank vs ledger, matched by
-  Helix).
+  Agent One Finance).
 - **Variance**: *P&L variance commentary*.
 - **Report validation**: *Report validation*.
 
@@ -19,7 +19,7 @@ feature, so a new team can see its options.
 
 | Feature | Setting | FOBO Prime / Rates | Cash | Variance | Report validation |
 |---|---|---|---|---|---|
-| Item source | `items.load` / `match` | MB Rec's breaks (no re-matching) | Helix matches bank to ledger | GL balances vs budget (`compare`) | Helix matches the report workbook to GL balances |
+| Item source | `items.load` / `match` | MB Rec's breaks (no re-matching) | Agent One Finance matches bank to ledger | GL balances vs budget (`compare`) | Agent One Finance matches the report workbook to GL balances |
 | **Data steps** (steps v2) | `step_settings` | — | — | — | — |
 | Join more data | `enrich` | MOTIF snapshots per instrument | — | — | — |
 | Reference lookups | `resolve` | book → desk → escalation team, as of the COB | — | — | — |

@@ -6,8 +6,8 @@
 > investigation is conducted. Where the transcription was cut off at a page
 > edge it is marked `[edge of capture]` rather than guessed at.
 >
-> Kept in the repository as the source of the Helix configuration. How each
-> section maps to Helix: [`skill-to-helix.md`](skill-to-helix.md).
+> Kept in the repository as the source of the Agent One Finance configuration. How each
+> section maps to Agent One Finance: [`skill-to-helix.md`](skill-to-helix.md).
 
 ## 1. Role
 
@@ -363,7 +363,7 @@ correction**, after which `BO + Adjustments = FO` must be re-tested.
 | CATS | Front Office system; source of FO PnL |
 | MOTIF | Back Office / accounting system; source of BO PnL |
 | MBREC | Reconciliation engine producing the break population and auto-postings |
-| Helix | Programme under which the skill-based / AI-assisted investigation model is being developed |
+| Agent One Finance | Programme under which the skill-based / AI-assisted investigation model is being developed |
 | Break | A difference between FO and BO for a given position, book and date |
 | Pull factor | Outstanding-principal factor on an amortising instrument; drives position and PnL |
 | Redemption | Principal repayment event, typically reflected as a pull factor movement |

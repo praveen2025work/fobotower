@@ -280,7 +280,7 @@ async def _connector_health() -> list[dict]:
 
 async def operations(caller: Caller) -> dict:
     """What run-the-bank support needs on one screen — aria-ai's Mission Control,
-    on Helix data. Case-derived figures are scoped to what the caller may see."""
+    on Agent One Finance data. Case-derived figures are scoped to what the caller may see."""
     from sqlalchemy import text as sql
 
     from helix.config import settings

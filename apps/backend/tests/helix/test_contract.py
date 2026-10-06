@@ -24,11 +24,11 @@ async def test_cash_and_variance_contracts_show_what_helix_computes(api):
     cash = (await api.get("/api/capabilities/recon.investigation/contract?team_group=cash-bank-ledger",
                           headers=api.as_user("dan"))).json()
     data = {d["field"]: d for d in cash["data"]}
-    assert data["difference"]["from"] == "Helix: the match"
+    assert data["difference"]["from"] == "Agent One Finance: the match"
     assert cash["to_confirm"] == []
     assert {p["name"]: p["used_by"] for p in cash["parameters"]}["write_off_limit"] == ["rule small-single-break"]
     var = (await api.get("/api/capabilities/fin.variance-commentary/contract", headers=api.as_user("carol"))).json()
-    assert {d["field"]: d["from"] for d in var["data"]}["variance"] == "Helix: actual − budget"
+    assert {d["field"]: d["from"] for d in var["data"]}["variance"] == "Agent One Finance: actual − budget"
 
 
 async def test_the_contract_is_for_those_who_may_see_the_capability(api):

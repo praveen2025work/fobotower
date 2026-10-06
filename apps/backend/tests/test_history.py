@@ -53,7 +53,7 @@ async def test_a_completed_run_records_when_it_finished():
 
 
 async def test_a_run_waiting_for_its_ready_event_has_not_started():
-    """Helix sessions start on the One Fin UX Ready event. Until it arrives
+    """Agent One Finance sessions start on the One Fin UX Ready event. Until it arrives
     only master-book readiness is known."""
     async with get_session() as s:
         await load_history(s)

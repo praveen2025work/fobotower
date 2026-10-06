@@ -1,5 +1,5 @@
-"""Helix tests share the session's test database (tests/conftest.py points
-FOBO_DATABASE_URL at it, and Helix falls back to that URL). These fixtures
+"""Agent One Finance tests share the session's test database (tests/conftest.py points
+FOBO_DATABASE_URL at it, and Agent One Finance falls back to that URL). These fixtures
 create the helix_* tables, empty them before each test, and seed the
 capabilities from config/helix."""
 

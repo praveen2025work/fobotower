@@ -12,7 +12,7 @@ file, running the CLI validator and restarting the API, and nothing in the
 console shows the configuration at all: the Graph run drawer lists the steps,
 but the settings, pause points and reasoner are invisible.
 
-This work gives Product Control a **Workflow** tab in the Helix console where
+This work gives Product Control a **Workflow** tab in the Agent One Finance console where
 they can see the graph — every step tagged by who decides it (code, playbook,
 reasoner, human) — and change it through a versioned, four-eyes process.
 
@@ -31,10 +31,10 @@ reasoner, human) — and change it through a versioned, four-eyes process.
   turning merged hand edits into drafts. Deferred until a server-side GitHub
   token is approved.
 - **Live run overlay** on the graph, and the **per-break decision path** in
-  Helix. Not selected for this release.
+  Agent One Finance. Not selected for this release.
 - **Sign-off resuming the graph.** Known gap, recorded here: the decision
   endpoint writes decisions directly and never calls `resume_investigation`,
-  so Helix runs stay parked before `review`. Not changed by this work.
+  so Agent One Finance runs stay parked before `review`. Not changed by this work.
 - Editing the playbook, or adding new step types. The screen configures the
   steps the registry already has; it cannot invent one.
 - Rate limiting. No endpoint in the API has it today; adding it is separate
@@ -118,7 +118,7 @@ A repository over `workflow_version`:
    creates, so the binding reaches every step; a test proves it (§7.1).
 3. When nothing is bound, `settings()` falls back to the YAML file, as today.
    Only the CLI and unit tests that call nodes directly hit this path. API
-   request handlers that need settings outside a run (the Helix chat's
+   request handlers that need settings outside a run (the Agent One Finance chat's
    "which reasoner" message) bind the active version explicitly.
 4. Every reader of a run's checkpoint — `open_case`, `read_case`, the decision
    endpoint, the trace query — goes through one helper,
@@ -220,7 +220,7 @@ validated before it is returned.
 
 ## 5. Console — the Workflow tab
 
-A third header tab in Helix: **Pipeline · Agent Analytics · Workflow**. It uses
+A third header tab in Agent One Finance: **Pipeline · Agent Analytics · Workflow**. It uses
 the existing tokens, light/dark themes and `Drawer`. Approve and reject use a
 small double-confirm dialog styled like the adjustments `ConfirmDialog` (which
 is specific to adjustments and cannot be reused as is).

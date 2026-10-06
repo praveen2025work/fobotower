@@ -59,7 +59,7 @@ export default function DataContractPanel({ capabilityId, teamGroup }: { capabil
             </table>
             {(fromData.length > 12 || d.data.length > fromData.length) && (
               <button onClick={() => setAll(!all)} className="mt-1 text-xs text-primary-700 hover:underline">
-                {all ? "Show fewer" : `Show all ${d.data.length}, with what Helix computes`}
+                {all ? "Show fewer" : `Show all ${d.data.length}, with what Agent One Finance computes`}
               </button>
             )}
           </section>

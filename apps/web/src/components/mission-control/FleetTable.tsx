@@ -64,7 +64,7 @@ function SkeletonRow() {
 }
 
 /**
- * From aria-ai's Mission Control, adapted for Helix: a "fleet" row is a
+ * From aria-ai's Mission Control, adapted for Agent One Finance: a "fleet" row is a
  * capability × team group, and a click opens that group (agent.href).
  *
  * Left column of the Mission Control grid — 6/12 cols, single source of

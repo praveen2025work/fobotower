@@ -17,7 +17,7 @@ const STATUS_STYLES: Record<string, string> = {
   archived: "bg-surface-100 text-surface-500 border-surface-200",
   unknown: "bg-surface-100 text-surface-500 border-surface-200",
   degraded: "bg-orange-100 text-orange-700 border-orange-200",
-  // Helix case, finding and decision states
+  // Agent One Finance case, finding and decision states
   running: "bg-primary-50 text-primary-700 border-primary-200",
   awaiting_review: "bg-yellow-100 text-yellow-700 border-yellow-200",
   awaiting_publish: "bg-primary-50 text-primary-700 border-primary-200",

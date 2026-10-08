@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Suspense, lazy, useState, type ReactNode } from "react";
+import { Suspense, lazy, useEffect, useState, type ReactNode } from "react";
 import { Route, Routes } from "react-router-dom";
 
 import Layout from "./components/Layout";
@@ -30,6 +30,9 @@ function App(): JSX.Element {
   };
   return (
     <Routes key={generation}>
+      {/* The pitch page is a static file (public/pitch/index.html). A server that sends
+          unknown paths to the console would show a blank page for /pitch: go to the file. */}
+      <Route path="/pitch/*" element={<StaticPage href="/pitch/index.html" />} />
       <Route element={<Layout onUserChange={onUserChange} />}>
         <Route path="/" element={<Overview />} />
         <Route path="/inbox" element={page(<InboxPage />)} />
@@ -44,6 +47,14 @@ function App(): JSX.Element {
       </Route>
     </Routes>
   );
+}
+
+/** Leaves the console for a static page served beside it. */
+function StaticPage({ href }: { href: string }) {
+  useEffect(() => {
+    window.location.replace(href);
+  }, [href]);
+  return null;
 }
 
 export default App;

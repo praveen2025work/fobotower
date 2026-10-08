@@ -193,7 +193,7 @@ function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
           {/* The pitch page: a static page in public/pitch, opened beside the console. */}
           <div className="px-3 pt-2">
             <a
-              href="/pitch/"
+              href="/pitch/index.html"
               target="_blank"
               rel="noreferrer"
               title={compact ? "About Agent One Finance" : undefined}

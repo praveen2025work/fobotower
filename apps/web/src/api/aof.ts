@@ -1022,6 +1022,8 @@ export interface Learning {
   unexplained: { case_id: string; subject: string; team_group: string | null; item_id: string; group: string; why: string; amount: number | null; opened_at: string }[];
   unexplained_by_reason: { why: string; items: number }[];
   automation: { team_group: string | null; group_key: Record<string, string>; label: string; verdict: string | null; approved: number; rejected: number; needed: number; cases: string[] }[];
+  /** Conditions on the data that predict the verdict people approved: proposals for the playbook's owners. */
+  proposed_checks?: { team_group: string | null; category: string; verdict: string; when: string; covers: number; of: number; wrong: number; precision: number; cases: string[] }[];
 }
 
 export const useLearning = (id: string, teamGroup?: string) =>

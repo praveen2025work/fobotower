@@ -12,6 +12,7 @@ Serve one over HTTP, e.g. to try the http transport:
 """
 
 import argparse
+import functools
 import random
 import zlib
 
@@ -208,8 +209,7 @@ def motif_trades(book: str, cob: str, instrument: str | None = None) -> dict:
     return {"rows": rows}
 
 
-def motif_positions(book: str, cob: str) -> dict:
-    """Back-office (MOTIF) positions and MTM for one book and COB date."""
+def _motif_base(book: str, cob: str) -> list[dict]:
     r = _rng("motif-diff", book, cob)
     rows = []
     for row in _fo_positions(book, cob):
@@ -219,7 +219,76 @@ def motif_positions(book: str, cob: str) -> dict:
         if roll < 0.22:
             row = {**row, "mtm": round(row["mtm"] + r.choice([-120.0, 85.5, -15_000.0, 42_000.0]), 2)}
         rows.append(row)
-    return {"rows": rows}
+    return rows
+
+
+# Scenarios the algorithm steps look for, on COBs from this date (earlier COBs
+# keep the figures the tests were written against):
+#   rebook    an amount booked in MOTIF to the wrong instrument: +A on one, -A on another
+#   split     a booking made in MOTIF in two partial bookings, one of them missing today
+#   systemic  the same instrument out by about the same amount in about half the books
+#   alias     an instrument MOTIF holds under a slightly different name (a typo)
+SCENARIOS_FROM = "2026-10-01"
+PRIME_BOOKS = [f"PRIME-MB-{n:02d}" for n in range(1, 13)]
+RATES_BOOKS = ["RATES-LDN-01", "RATES-LDN-02", "RATES-LDN-03", "RATES-LDN-04", "RATES-NY-01", "RATES-NY-02"]
+
+
+@functools.lru_cache(maxsize=4096)
+def _scenario(book: str, cob: str) -> dict:
+    if cob < SCENARIOS_FROM:
+        return {}
+    fo = {p["instrument"]: p for p in _fo_positions(book, cob)}
+    base = {p["instrument"]: p for p in _motif_base(book, cob)}
+    clean = [i for i in INSTRUMENTS if i in base and base[i]["mtm"] == fo[i]["mtm"]]
+    out: dict = {"alias": sorted(i for i in INSTRUMENTS
+                                 if i not in base and _rng("alias", book, cob, i).random() < 0.5)}
+    s = _rng("systemic", cob)
+    if s.random() < 0.5:
+        ins = s.choice(INSTRUMENTS)
+        delta = round(s.uniform(20_000, 60_000), 2)
+        if ins in clean and _rng("sys-book", book, cob).random() < 0.5:
+            out["systemic"] = (ins, round(delta * (1 + _rng("sys-amt", book, cob).uniform(-0.1, 0.1)), 2))
+            clean.remove(ins)
+    r = _rng("rebook", book, cob)
+    if r.random() < 0.35 and len(clean) >= 2:
+        i, j = r.sample(clean, 2)
+        out["rebook"] = (i, j, round(r.uniform(5_000, 80_000), 2))
+        clean = [c for c in clean if c not in (i, j)]
+    r = _rng("split", book, cob)
+    if r.random() < 0.35 and clean:
+        k = r.choice(clean)
+        amount = round(r.uniform(10_000, 90_000), 2)
+        part = round(amount * r.uniform(0.3, 0.7), 2)
+        out["split"] = (k, amount, (part, round(amount - part, 2)))
+    return out
+
+
+def _scenario_instruments(book: str, cob: str) -> set[str]:
+    sc = _scenario(book, cob)
+    return ({sc["systemic"][0]} if "systemic" in sc else set()) | (set(sc["rebook"][:2]) if "rebook" in sc else set()) \
+        | ({sc["split"][0]} if "split" in sc else set())
+
+
+def motif_positions(book: str, cob: str) -> dict:
+    """Back-office (MOTIF) positions and MTM for one book and COB date."""
+    rows = _motif_base(book, cob)
+    sc = _scenario(book, cob)
+    if not sc:
+        return {"rows": rows}
+    by = {r["instrument"]: dict(r) for r in rows}
+    if "systemic" in sc:
+        ins, delta = sc["systemic"]
+        by[ins]["mtm"] = round(by[ins]["mtm"] - delta, 2)
+    if "rebook" in sc:
+        i, j, amount = sc["rebook"]
+        by[i]["mtm"] = round(by[i]["mtm"] - amount, 2)          # booked to j instead of i
+        by[j]["mtm"] = round(by[j]["mtm"] + amount, 2)
+    if "split" in sc:
+        k, amount, _ = sc["split"]
+        by[k]["mtm"] = round(by[k]["mtm"] - amount, 2)          # the second partial booking is missing
+    fo = {p["instrument"]: p for p in _fo_positions(book, cob)}
+    aliases = [{**fo[i], "instrument": i.replace(" ", "", 1)} for i in sc["alias"]]
+    return {"rows": [by[i] for i in INSTRUMENTS if i in by] + aliases}
 
 
 # The cause each instrument's break has, as FOBO's six cause checks would find
@@ -232,8 +301,9 @@ def break_snapshots(book: str, cob: str) -> dict:
     booking time vs ledger cut-off, static mapping, curve datasets, components,
     trade versions and adjustments on each side."""
     rows = []
+    scenario = _scenario_instruments(book, cob)
     for ins in INSTRUMENTS:
-        cause = _rng("cause", book, cob, ins).choice(CAUSES)
+        cause = None if ins in scenario else _rng("cause", book, cob, ins).choice(CAUSES)
         rows.append({
             "instrument": ins,
             "fo_booking_ts": f"{cob}T23:41:00Z" if cause == "C1" else f"{cob}T17:05:00Z",
@@ -247,7 +317,7 @@ def break_snapshots(book: str, cob: str) -> dict:
             "bo_version": 2,
             "fo_adjustments": [],
             "bo_adjustments": ["SETTLE-REF-88120", "SETTLE-REF-88120-DUP"] if cause == "C6" else [],
-            **_validation_fields(book, cob, ins, cause),
+            **_validation_fields(book, cob, ins, "scenario" if ins in scenario else cause),
         })
     return {"rows": rows}
 
@@ -294,10 +364,19 @@ def booking_events(book: str, cob: str, break_type: str | None = None,
     (optionally of one type, or for one instrument)."""
     r = _rng("events", book, cob, break_type or instrument or "all")
     kinds = ["late booking", "price amendment", "FX fixing", "cancel/rebook", "settlement fail"]
-    return {"rows": [{"event": r.choice(kinds), "instrument": r.choice(INSTRUMENTS),
-                      "amount": round(r.uniform(-50_000, 50_000), 2),
-                      "booked_at": f"{cob}T{r.randint(16, 23):02d}:{r.randint(0, 59):02d}"}
-                     for _ in range(3)]}
+    rows = [{"event": r.choice(kinds), "instrument": r.choice(INSTRUMENTS),
+             "amount": round(r.uniform(-50_000, 50_000), 2),
+             "booked_at": f"{cob}T{r.randint(16, 23):02d}:{r.randint(0, 59):02d}"}
+            for _ in range(3)]
+    sc = _scenario(book, cob)
+    if "split" in sc and not break_type and instrument in (None, sc["split"][0]):
+        k, _, parts = sc["split"]
+        rows += [{"event": "partial booking", "instrument": k, "amount": p,
+                  "booked_at": f"{cob}T{16 + n}:{10 * n + 5:02d}", "status": "pending in MOTIF"}
+                 for n, p in enumerate(parts)]
+    for n, row in enumerate(rows):
+        row["event_id"] = f"EV-{zlib.crc32(f'{book}|{cob}|{n}|{row['instrument']}'.encode()) % 10**6:06d}"
+    return {"rows": rows}
 
 
 def build_cats() -> MCPServer:
@@ -337,7 +416,7 @@ def _open_breaks(book: str, cob: str) -> list[dict]:
         cause = _rng("cause", book, cob, ins).choice(CAUSES)
         # A late booking is usually new (a timing difference that should clear
         # on the next COB); other breaks may have been open for a while.
-        age = 0 if cause == "C1" else _rng("age", book, cob, ins).choice([0, 0, 1, 2, 4])
+        age = 0 if cause == "C1" or ins in _scenario_instruments(book, cob) else _rng("age", book, cob, ins).choice([0, 0, 1, 2, 4])
         # What the skill's scenario checks read (§3 R5, §8): rare, deterministic.
         x = _rng("mbrec-scenario", book, cob, ins).random()
         rows.append({"break_id": f"MBR-{zlib.crc32(f'{book}|{ins}'.encode()) % 10**6:06d}",
@@ -367,10 +446,28 @@ def mbrec_break_history(book: str, cob: str, instrument: str) -> dict:
                       "difference": round(r.uniform(-50_000, 50_000), 2)} for n in range(1, 6)]}
 
 
+def mbrec_break_history_book(book: str, cob: str) -> dict:
+    """The last five COBs of every open break in a book: one row per instrument
+    and COB (cobs_ago 1 = the previous COB), open or cleared, and the difference."""
+    rows = []
+    for b in _open_breaks(book, cob):
+        rows += mbrec_break_history(book, cob, b["instrument"])["rows"]
+    return {"rows": rows}
+
+
+def mbrec_breaks_all(cob: str) -> dict:
+    """Open breaks in every Prime and Rates book for one COB (book, instrument,
+    difference only): to see whether a break is one book's or everyone's."""
+    return {"rows": [{"book": b["book"], "instrument": b["instrument"], "difference": b["difference"]}
+                     for book in PRIME_BOOKS + RATES_BOOKS for b in _open_breaks(book, cob)]}
+
+
 def build_mbrec() -> MCPServer:
     server = MCPServer(name="mbrec", instructions="MB Rec reconciled breaks (stub).")
     server.add_tool(mbrec_breaks, name="breaks", description=mbrec_breaks.__doc__)
     server.add_tool(mbrec_break_history, name="break_history", description=mbrec_break_history.__doc__)
+    server.add_tool(mbrec_break_history_book, name="break_history_book", description=mbrec_break_history_book.__doc__)
+    server.add_tool(mbrec_breaks_all, name="breaks_all", description=mbrec_breaks_all.__doc__)
     return server
 
 

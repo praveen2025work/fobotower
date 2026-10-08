@@ -33,10 +33,53 @@ items:
   amount_field: difference
   display: [instrument, desk, break_type, age_days, cats_amount, motif_amount, difference]
 
-# Read the reconciled breaks → join more data → reference lookups → playbook →
-# group → rules, then the model → draft → gates. A controller approves the
-# breaks and the playbook's classification before the model is asked anything.
-steps: [load, enrich, resolve, classify, group, reason, draft, validate, review, record]
+# Read the reconciled breaks → join more data → evidence from the algorithm
+# steps → reference lookups → playbook → group → rules, then the model → draft →
+# gates. A controller approves the breaks and the playbook's classification
+# before the model is asked anything. The algorithm steps only add evidence
+# (fields on each break); a team's playbook decides what it means.
+steps: [load, enrich, history, events, bo_positions, offsets, split_bookings, systemic, near_refs, trend, unusual, resolve, classify, group, reason, draft, validate, review, record]
+
+step_settings:
+  history:
+    type: dataset
+    label: Each break's last five COBs in MB Rec
+    with: { name: history, tool: mbrec.break_history_book, args: { book: $case.book, cob: $case.cob } }
+  events:
+    type: dataset
+    label: The book's booking events in MOTIF
+    with: { name: events, tool: motif.booking_events, args: { book: $case.book, cob: $case.cob } }
+  bo_positions:
+    type: dataset
+    label: The book's positions in MOTIF
+    with: { name: bo_positions, tool: motif.positions, args: { book: $case.book, cob: $case.cob } }
+  offsets:
+    type: offsets
+    label: Equal and opposite breaks (booked to the wrong instrument)
+    with: { amount: difference, within: [book], tolerance: 0.01 }
+  split_bookings:
+    type: subset_match
+    label: Booking events that add up to the break (a split booking)
+    with: { target: difference, pool: events, pool_value: amount, pool_label: event_id, within: [instrument],
+            when: "break_type == 'amount_break'", max_size: 3, tolerance: 0.01, as: split }
+  systemic:
+    type: cluster
+    label: The same instrument breaking in other books
+    with: { same: [instrument], across: book, amount: difference, within_pct: 25, min_count: 3,
+            peers_tool: mbrec.breaks_all, peers_args: { cob: $case.cob } }
+  near_refs:
+    type: fuzzy_match
+    label: The instrument in MOTIF under a slightly different name
+    with: { field: instrument, pool: bo_positions, pool_field: instrument, when: "break_type == 'missing_motif'",
+            amount: cats_amount, pool_amount: mtm, amount_within_pct: 1, threshold: 0.9 }
+  trend:
+    type: trend
+    label: How each break moved over its last five COBs
+    with: { history: history, key: instrument, value: difference, history_value: difference, order: cobs_ago, min_points: 3 }
+  unusual:
+    type: anomaly
+    label: A break unusually large for this instrument
+    with: { history: history, key: instrument, value: difference, history_value: difference, method: robust, threshold: 3.5 }
 pause_before: [reason, review]
 tollgates:
   reason:

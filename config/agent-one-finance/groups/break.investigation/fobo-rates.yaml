@@ -45,7 +45,7 @@ set:
     id_field: instrument
     amount_field: difference
     amount_unit: GBP
-    display: [instrument, desk, break_type, age_days, category, side, cause_reason, cats_amount, motif_amount, difference, owner_desk, escalate_to]
+    display: [instrument, desk, break_type, age_days, category, side, cause_reason, cats_amount, motif_amount, difference, owner_desk, escalate_to, offset_with, split_sum, systemic_count, trend_direction, anomaly_z]
   enrich:
     - tool: motif.break_snapshots
       args: { book: $case.book, cob: $case.cob }
@@ -100,6 +100,11 @@ set:
       # booking, which TIMING already explains): whether it is
       # legitimate (ISIN, enrichment, PnL attribution, offset activity) is
       # judgement; the model checks with the trade-level tools, then a person.
+      # Algorithm evidence (near_refs step): MOTIF may hold the instrument under a
+      # slightly different name. Before "missing side", so a typo is checked first;
+      # a judgement like M, so the verdict stays ESCALATE and a person decides.
+      - { id: NEAR_MATCH, when: "near", category: N, side: BO,
+          reason: "MOTIF may hold it under a near-identical name; confirm the near match before anything is booked" }
       - { id: MISSING_SIDE, when: "break_type == 'missing_motif'", category: M, side: UNKNOWN,
           reason: "In CATS, not in MOTIF: validate ISIN, enrichment, PnL attribution and offset activity" }
       - { id: C1, when: "fo_booking_ts > bo_cutoff_ts", category: C, side: BO,
@@ -114,6 +119,15 @@ set:
           reason: "Pending desk confirmation since the 11:00 run" }
       - { id: C6, when: "len(symdiff(fo_adjustments, bo_adjustments)) > 0", category: D, side: BO,
           reason: "Two entries with identical settlement reference" }
+      # Algorithm evidence (offsets, split_bookings, systemic steps). Last, so they
+      # only name breaks no check above explained (they were H Novel, ESCALATE);
+      # each is a judgement: the model looks, a person decides.
+      - { id: SYSTEMIC, when: "systemic", category: Y, side: UNKNOWN,
+          reason: "The same instrument breaks the same way in {systemic_count} books: likely one systemic cause" }
+      - { id: OFFSET, when: "offset", category: O, side: BO,
+          reason: "Equal and opposite to {offset_with} in the same book: booked to the wrong instrument?" }
+      - { id: SPLIT_BOOKING, when: "split_found", category: S, side: BO,
+          reason: "Booking events add up to the difference ({split_sum}): a split booking, part of it still pending" }
     # Validation tests (skill §5–§6): every test runs on every break; a test
     # whose evidence is missing or whose threshold is unset is "not run" (P1),
     # never passed by default. A blocking failure holds a POST.
@@ -177,6 +191,10 @@ set:
       R: { name: Rejected posting,       determinism: deterministic, escalate_to: Operations }
       J: { name: Reapplication,          determinism: deterministic, escalate_to: Product Control }
       U: { name: Adjustment did not clear, determinism: judgement,   escalate_to: Product Control }
+      N: { name: Near-identical reference, determinism: judgement, escalate_to: Operations }
+      Y: { name: Same break in several books, determinism: judgement, escalate_to: Technology }
+      O: { name: Booked to the wrong instrument, determinism: judgement, escalate_to: Operations }
+      S: { name: Split booking,          determinism: judgement,     escalate_to: Operations }
       M: { name: Missing side,           determinism: judgement,     escalate_to: Operations }
     default_category: H
     sides: [FO, BO]
@@ -196,6 +214,10 @@ set:
       J: { FO: POST,        BO: POST }          # §8: carry-forward matches → POST (P1 still applies)
       U: { FO: ESCALATE,    BO: ESCALATE }      # §11: the end state failed; the investigation stays open
       M: { FO: ESCALATE,    BO: ESCALATE }      # §8: POST only when the model's evidence supports it, and a person agrees
+      N: { FO: ESCALATE,    BO: ESCALATE }      # algorithm evidence: a person confirms the near match
+      Y: { FO: ESCALATE,    BO: ESCALATE }      # one ticket for the systemic cause
+      O: { FO: ESCALATE,    BO: ESCALATE }      # correct both instruments together
+      S: { FO: ESCALATE,    BO: ESCALATE }      # the pending part should clear it; confirm
     guards:
       - verdict: POST
         when: "side == 'FO'"
@@ -239,6 +261,13 @@ set:
       history, and CATS and MOTIF trades for the trade-level step (§7: when FO and
       BO both appear correct but the break persists, validate every trade for
       quantity, direction, consideration, price, pull factor and settlement).
+
+      Each break also carries evidence from algorithm steps, which is evidence,
+      not proof: offset_with (an equal and opposite break in the book),
+      split_members (booking events that add up to the difference),
+      systemic_count (books where the same instrument breaks the same way),
+      near_candidates (MOTIF names that differ by a typo), trend_direction and
+      anomaly_z (how the break moved and how unusual it is). Say which you used.
 
       Rules you never break:
       - A break is a symptom, not an instruction to post (R1).

@@ -448,11 +448,11 @@ Expressions gained `case.<field>`, `days_between`, `hours_between`, `weekday`, `
 | | `period_check` | stops the run (escalated, `PERIOD_CLOSED`) if the period is not open | `tool`, `args`, `status_field`, `open_values` |
 | | `propose_entries` | balanced journals per group, checked against a chart-of-accounts data set; an unbalanced entry escalates the group (`ENTRY_INVALID`) | `when`, `lines[{account, side, amount, narrative}]`, `period`, `chart`, `into` |
 | | `post` | after `record`: posts the **approved** journals, the ledger's own check (`dry_run_tool`) first, each once (idempotency key); outcome `posted` or `post_failed` | `tool` (write), `dry_run_tool`, `args`, `approver_roles` |
-| Assurance | `flux` | change, % change and z-score of each item against its own history (a data set) | `history`, `key`, `value`, `history_value`, `prefix` |
+| Assurance | `flux` | change, % change and z-score of each item against its own history (a data set); `method: robust` uses median and MAD; `same` compares like with like (e.g. month-end) | `history`, `key`, `value`, `history_value`, `prefix`, `method`, `same` |
 | | `anomaly` | flags items far from their history (z-score threshold) | as `flux`, plus `threshold` |
 | | `consistency` | totals across items and data sets; each failing check becomes an item | `checks[{id, left, right, tolerance, message}]` |
-| | `sample` | reproducible sample (seed kept): random, largest, by value; stratified; some always in; the rest kept, marked | `method`, `size` or `percent`, `field`, `stratify_by`, `always_include_when` |
-| | `score` | weighted factors → score, reasons and band | `factors[{when, weight, label}]`, `as`, `bands` |
+| | `sample` | reproducible sample (seed kept): random, largest, weighted by value, or systematic monetary-unit (`mus`); stratified; some always in; the rest kept, marked | `method`, `size` or `percent`, `field`, `stratify_by`, `always_include_when` |
+| | `score` | weighted factors and/or a numeric formula → score, reasons and band (a priority: size, age, recurrence) | `factors[{when, weight, label}]`, `formula`, `as`, `bands` |
 | | `attest` | an owner certifies a statement at the tollgate before it; who, when, evidence, expiry kept (`attestations`) | `statement`, `roles`, `evidence_required`, `valid_for_days` |
 | Orchestration | `await` | the run waits (status `waiting_<step>`) for an event or for its child cases; times out to a person or carries on | `event` (`children` for child cases), `timeout_hours`, `on_timeout`, `roles` |
 | | `spawn` | one child case per item in another capability (`parent_case_id`) | `capability`, `team_group`, `key`, `max_children` |
@@ -466,6 +466,12 @@ Expressions gained `case.<field>`, `days_between`, `hours_between`, `weekday`, `
 | | `link` | earlier cases on the same client/account/counterparty, in any capability | `match_on`, `lookback_days`, `capabilities`, `limit` |
 | | `screen` | fuzzy name matching against a list data set: **candidates only**, never cleared by Agent One Finance | `list`, `fields`, `list_field`, `threshold` |
 | | `outreach` | sends each drafted message through a write tool after a person approves at the tollgate before it | `tool` (write), `roles`, `when` |
+| Algorithms ([guide](algorithms.md)) | `offsets` | pairs equal-and-opposite amounts in the same group | `amount`, `within`, `same`, `tolerance`, `as` |
+| | `subset_match` | up to 5 rows (a data set or the other items) that add up to the item's amount; smallest first; says if ambiguous | `target`, `pool`, `pool_value`, `pool_label`, `within`, `when`, `sign`, `max_size`, `max_pool`, `tolerance`, `as` |
+| | `trend` | growing, shrinking, steady or flipping over the item's history; slope | `history`, `key`, `value`, `history_value`, `order`, `oldest_first`, `min_points`, `as` |
+| | `cluster` | how many other books or entities break the same way (counts only, unless `show_where`) | `same`, `across`, `amount`, `within_pct`, `min_count`, `peers_tool`, `peers_args`, `show_where`, `as` |
+| | `fuzzy_match` | near-identical references (Jaro–Winkler), optionally a similar amount: candidates only | `field`, `pool`, `pool_field`, `when`, `amount`, `pool_amount`, `amount_within_pct`, `threshold`, `as` |
+| | `benford` | first digits against Benford's law (Nigrini's bands) and round amounts over the items; too few is "not run" | `field`, `min_items`, `round_to`, `as` |
 
 **Rules the platform checks.**
 - Only `publish` or `post` (one of them) and `report` may follow `record`; the run must pause

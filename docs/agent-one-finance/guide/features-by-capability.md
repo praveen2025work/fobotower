@@ -39,6 +39,8 @@ feature, so a new team can see its options.
 | **Unexplained items** | `insights.unexplained` | no check explained it, or H Novel (§9 feedback) | what no rule or the model settled | the same, over 90 days | — |
 | **Rule candidates** | `insights.automation_after` | judgement calls approved unchanged 5× | 5× | an account's commentary approved unchanged 3× | default (5×) |
 | **Data and parameters** | derived | MB Rec / MOTIF fields per check and test; thresholds to confirm | match fields, write-off limit | GL fields, materiality | workbook and GL fields |
+| **Algorithm evidence** ([algorithms](algorithms.md)) | `step_settings` (offsets, subset_match, cluster, fuzzy_match, trend, anomaly robust) | wrong-instrument pairs, split bookings, the same break in several books, typo'd names in MOTIF, trend and how unusual; four new judgement categories N, O, S, Y | — | — | — |
+| **Proposed checks** | `insights.automation_after` | conditions that predict the approved verdict, for the playbook's owners | yes | yes | — |
 | Tickets | `escalation` | DO NOT POST, CORRECT & RE-POST, escalations → owning team | — | — | — |
 | Write-back | `publish` | — | — | commentary to the reporting pack after release | a PDF report after release |
 | Schedule / events | `case.opens_on` | event (MB Rec finishes a book) | schedule | schedule (2nd of the month) | manual |

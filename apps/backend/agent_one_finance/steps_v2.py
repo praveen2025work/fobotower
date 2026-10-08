@@ -25,7 +25,7 @@ import statistics
 from datetime import datetime, timedelta, timezone
 from typing import Any, Literal
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from agent_one_finance import rules
 from agent_one_finance.stepkit import (Cfg, StepType, _args, _ctx, _env, _exclude, _keep_dataset, _save, ds,
@@ -321,15 +321,36 @@ class HistoryCfg(Cfg):
     key: str                          # the field on both the items and the history
     value: str                        # the item's figure
     history_value: str = "value"
+    # mean: mean and standard deviation; robust: median and MAD, which the
+    # outliers being looked for cannot drag (a z of 3.5 is the usual cut-off)
+    method: Literal["mean", "robust"] = "mean"
+    # compare only with past rows whose field has the item's value (e.g. month_end)
+    same: str | None = None
 
 
-def _series(state, cfg) -> dict[str, list[float]]:
+def _series(state, cfg, item: dict | None = None) -> dict[str, list[float]]:
     out: dict[str, list[float]] = {}
     for r in (state.get("datasets") or {}).get(cfg.history, []):
+        if cfg.same and item is not None and str(r.get(cfg.same)) != str(item.get(cfg.same)):
+            continue
         v = r.get(cfg.history_value)
         if isinstance(v, (int, float)):
             out.setdefault(str(r.get(cfg.key)), []).append(float(v))
     return out
+
+
+def _centre(past: list[float], method: str) -> tuple[float, float]:
+    """The history's centre and spread: mean and standard deviation, or median
+    and 1.4826 × MAD (the same scale for normal data, unmoved by outliers)."""
+    if method == "robust":
+        med = statistics.median(past)
+        mad = statistics.median([abs(x - med) for x in past]) if len(past) > 1 else 0.0
+        return med, 1.4826 * mad
+    return statistics.fmean(past), (statistics.pstdev(past) if len(past) > 1 else 0.0)
+
+
+def _history_for(state, cfg, it: dict) -> list[float]:
+    return _series(state, cfg, it if cfg.same else None).get(str(it.get(cfg.key)), [])
 
 
 class FluxCfg(HistoryCfg):
@@ -337,13 +358,11 @@ class FluxCfg(HistoryCfg):
 
 
 async def _flux(state, cfg: FluxCfg, step_id):
-    hist = _series(state, cfg)
     items = []
     for it in state["items"]:
-        new, past, v = dict(it), hist.get(str(it.get(cfg.key)), []), it.get(cfg.value)
+        new, past, v = dict(it), _history_for(state, cfg, it), it.get(cfg.value)
         if past and isinstance(v, (int, float)):
-            mean = statistics.fmean(past)
-            sd = statistics.pstdev(past) if len(past) > 1 else 0.0
+            mean, sd = _centre(past, cfg.method)
             new[f"{cfg.prefix}_baseline"] = round(mean, 2)
             new[f"{cfg.prefix}_change"] = round(v - mean, 2)
             new[f"{cfg.prefix}_pct"] = round((v - mean) / abs(mean) * 100, 1) if mean else None
@@ -365,13 +384,13 @@ class AnomalyCfg(HistoryCfg):
 
 
 async def _anomaly(state, cfg: AnomalyCfg, step_id):
-    hist = _series(state, cfg)
     items = []
     for it in state["items"]:
-        new, past, v = dict(it), hist.get(str(it.get(cfg.key)), []), it.get(cfg.value)
+        new, past, v = dict(it), _history_for(state, cfg, it), it.get(cfg.value)
         z = None
-        if len(past) > 1 and isinstance(v, (int, float)) and statistics.pstdev(past):
-            z = (v - statistics.fmean(past)) / statistics.pstdev(past)
+        if len(past) > 1 and isinstance(v, (int, float)):
+            centre, spread = _centre(past, cfg.method)
+            z = (v - centre) / spread if spread else None
         new["anomaly_z"] = round(z, 2) if z is not None else None
         new["anomaly"] = bool(z is not None and abs(z) >= cfg.threshold)
         items.append(new)
@@ -440,7 +459,9 @@ register(StepType(
 
 
 class SampleCfg(Cfg):
-    method: Literal["random", "top", "monetary"] = "random"
+    # monetary: weighted by value at random; mus: systematic monetary-unit
+    # sampling (fixed interval, random start; items as big as the interval always in)
+    method: Literal["random", "top", "monetary", "mus"] = "random"
     size: int | None = Field(default=None, ge=1)
     percent: float | None = Field(default=None, gt=0, le=100)
     field: str | None = None              # for top and monetary
@@ -476,6 +497,8 @@ async def _sample(state, cfg: SampleCfg, step_id):
         n = n_for(group)
         if cfg.method == "top" and cfg.field:
             chosen += sorted(group, key=lambda i: -abs(float(i.get(cfg.field) or 0)))[:n]
+        elif cfg.method == "mus" and cfg.field:
+            chosen += _mus(group, cfg.field, n, rng)
         elif cfg.method == "monetary" and cfg.field:
             weights = [abs(float(i.get(cfg.field) or 0)) + 1e-9 for i in group]
             picked: list = []
@@ -497,6 +520,28 @@ async def _sample(state, cfg: SampleCfg, step_id):
     return {"items": keep, "datasets": {**(state.get("datasets") or {}), "sample": log}}
 
 
+def _mus(group: list[dict], fld: str, n: int, rng: random.Random) -> list[dict]:
+    """Systematic monetary-unit sampling: lay the items end to end by absolute
+    value (in item order), take every `interval`-th currency unit from a random
+    start; an item at least one interval long is always selected."""
+    ordered = sorted(group, key=lambda i: str(i.get("item_id")))
+    total = sum(abs(float(i.get(fld) or 0)) for i in ordered)
+    if not total or n <= 0:
+        return []
+    interval = total / n
+    point, cum, picked = rng.uniform(0, interval), 0.0, []
+    for it in ordered:
+        size = abs(float(it.get(fld) or 0))
+        hit = False
+        while point < cum + size:
+            hit = True
+            point += interval
+        cum += size
+        if hit:
+            picked.append(it)
+    return picked
+
+
 register(StepType(
     "sample", "Sample", "Selects a reproducible sample (random, largest, or by value; stratified; some always included); the rest stay on the case, marked.",
     SampleCfg, _sample, expressions=lambda c: [("always_include_when", c.always_include_when)] if c.always_include_when else []))
@@ -514,16 +559,32 @@ class ScoreBand(Cfg):
 
 
 class ScoreCfg(Cfg):
-    factors: list[Factor] = Field(min_length=1)
+    factors: list[Factor] = Field(default_factory=list)
+    # a numeric expression added to the score, e.g. a priority from size, age and
+    # recurrence: "abs(difference) / 10000 + age_days * 5 + ifelse(recurring, 20, 0)"
+    formula: str | None = None
     as_: str = Field(default="score", alias="as")
     bands: list[ScoreBand] = Field(default_factory=list)
     band_as: str = "band"
+
+    @model_validator(mode="after")
+    def _something_to_score(self):
+        if not self.factors and not self.formula:
+            raise ValueError("give factors, a formula, or both")
+        return self
 
 
 async def _score(state, cfg: ScoreCfg, step_id):
     items = []
     for it in state["items"]:
         total, why = 0.0, []
+        if cfg.formula:
+            try:
+                part = float(rules.evaluate(cfg.formula, _env(state, it)))
+                total += part
+                why.append(f"formula {round(part, 2)}")
+            except (rules.ExpressionError, TypeError, ValueError):
+                why.append("formula not computed")
         for f in cfg.factors:
             try:
                 if rules.evaluate(f.when, _env(state, it)):
@@ -541,7 +602,8 @@ async def _score(state, cfg: ScoreCfg, step_id):
 
 register(StepType(
     "score", "Risk score", "Adds a weighted score from named factors, its reasons and a band (high / medium / low) that review lanes and approvals can use.",
-    ScoreCfg, _score, expressions=lambda c: [(f"factors[{f.label}].when", f.when) for f in c.factors]))
+    ScoreCfg, _score, expressions=lambda c: [(f"factors[{f.label}].when", f.when) for f in c.factors]
+    + ([("formula", c.formula)] if c.formula else [])))
 
 
 class AttestCfg(Cfg):

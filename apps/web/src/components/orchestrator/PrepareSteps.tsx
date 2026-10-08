@@ -39,6 +39,13 @@ export const DATA_TYPES: StepTypeInfo[] = [
   { type: "score", family: "Assurance", label: "Risk score", says: "A weighted score from named factors, with its reasons and a band review lanes can use.", empty: { factors: [{ when: "", weight: 10, label: "" }], as: "score", bands: [] } },
   { type: "attest", family: "Assurance", label: "Owner attestation", says: "An owner certifies a statement at a tollgate; recorded with who, when, evidence and expiry.", place: "groups", person: true,
     empty: { statement: "", roles: [], evidence_required: false, valid_for_days: null } },
+  // algorithms (evidence only: they add fields, never decide)
+  { type: "offsets", family: "Algorithms", label: "Equal and opposite", says: "Pairs equal-and-opposite amounts (cancel and rebook, booked to the wrong item, a reversal); marks both, decides nothing.", empty: { amount: "amount", within: [], same: [], tolerance: 0.01, as: "offset" } },
+  { type: "subset_match", family: "Algorithms", label: "Parts that add up", says: "Finds a few rows (up to 5) that together explain an item's amount — a split or partial booking — and says if another set also works.", empty: { target: "amount", pool: "items", pool_value: "amount", pool_label: "item_id", within: [], when: null, sign: "same", max_size: 4, max_pool: 20, tolerance: 0.01, as: "subset" } },
+  { type: "trend", family: "Algorithms", label: "Trend over history", says: "Growing, shrinking, steady or flipping sign over the item's own history, with the slope.", empty: { history: "", key: "", value: "amount", history_value: "value", order: "", oldest_first: false, min_points: 3, as: "trend" } },
+  { type: "cluster", family: "Algorithms", label: "Same break, several places", says: "Counts other books or entities where the same item breaks the same way: three or more suggests one systemic cause.", empty: { same: [], across: "", amount: null, within_pct: 50, min_count: 3, peers_tool: null, peers_args: {}, show_where: false, as: "systemic" } },
+  { type: "fuzzy_match", family: "Algorithms", label: "Near-identical references", says: "References that differ only by a typo or format (Jaro-Winkler), optionally with a similar amount — candidates for a person.", empty: { field: "", pool: "items", pool_field: null, when: null, amount: null, pool_amount: null, amount_within_pct: null, threshold: 0.88, as: "near" } },
+  { type: "benford", family: "Algorithms", label: "Benford and round amounts", says: "First-digit test against Benford's law (Nigrini's bands) and round-amount flags, for journal and payment controls.", empty: { field: "amount", min_items: 100, round_to: 1000, as: "benford" } },
   // orchestration
   { type: "await", family: "Orchestration", label: "Wait for an event", says: "The run waits for an event (a reply, a confirmation) or for its child cases, with a timeout.", empty: { event: "", timeout_hours: 24, on_timeout: "escalate", roles: [] } },
   { type: "spawn", family: "Orchestration", label: "Child cases", says: "Opens a child case per item in another capability; a later wait for `children` rolls them up.", empty: { capability: "", key: {}, max_children: 200 } },
@@ -81,7 +88,10 @@ function fields(id: string, type: string): FieldSpec[] {
     { kind: "select", path: `${w}.history`, label: "History (a data set)", options: datasetNames },
     { kind: "text", path: `${w}.key`, label: "Matched on the field", placeholder: "account" },
     { kind: "text", path: `${w}.value`, label: "The item's figure" },
-    { kind: "text", path: `${w}.history_value`, label: "The history's figure" }];
+    { kind: "text", path: `${w}.history_value`, label: "The history's figure" },
+    { kind: "select", path: `${w}.method`, label: "Centre and spread", options: [{ value: "mean", label: "mean and standard deviation" }, { value: "robust", label: "median and MAD (robust to outliers)" }] },
+    { kind: "text", path: `${w}.same`, label: "Only past rows with the same (optional)", placeholder: "month_end" }];
+  const pool: FieldSpec = { kind: "text", path: `${w}.pool`, label: "Look in", help: "items, or a data set name" };
   switch (type) {
     case "dataset": return [
       { kind: "text", path: `${w}.name`, label: "Name it", placeholder: "fx", help: "Other steps refer to it by this name." },
@@ -149,13 +159,14 @@ function fields(id: string, type: string): FieldSpec[] {
           { key: "right.source", label: "Right: data set" }, { key: "right.field", label: "Right field" },
           { key: "tolerance", label: "Tolerance", kind: "number" }, { key: "message", label: "Message", wide: true }] }];
     case "sample": return [
-      { kind: "select", path: `${w}.method`, label: "Method", options: [{ value: "random", label: "random" }, { value: "top", label: "largest first" }, { value: "monetary", label: "by value (monetary unit)" }] },
+      { kind: "select", path: `${w}.method`, label: "Method", options: [{ value: "random", label: "random" }, { value: "top", label: "largest first" }, { value: "monetary", label: "weighted by value" }, { value: "mus", label: "monetary unit (systematic)" }] },
       { kind: "number", path: `${w}.size`, label: "Size", min: 1, nullable: true },
       { kind: "number", path: `${w}.percent`, label: "…or percent", min: 0, max: 100, nullable: true },
       { kind: "text", path: `${w}.field`, label: "Value field (largest / by value)" },
       { kind: "text", path: `${w}.stratify_by`, label: "Stratify by (optional)" },
       { kind: "expr", path: `${w}.always_include_when`, label: "Always include when (optional)" }];
     case "score": return [
+      { kind: "expr", path: `${w}.formula`, label: "Formula (optional)", placeholder: "abs(difference) / 10000 + age_days * 5" },
       { kind: "rows", path: `${w}.factors`, label: "Factors", addLabel: "Add a factor", newRow: { when: "", weight: 10, label: "" },
         columns: [{ key: "label", label: "Factor" }, { key: "when", label: "When", wide: true }, { key: "weight", label: "Weight", kind: "number" }] },
       { kind: "text", path: `${w}.as`, label: "Into the field" },
@@ -226,6 +237,45 @@ function fields(id: string, type: string): FieldSpec[] {
       { kind: "tool", path: `${w}.tool`, label: "The bank's channel", access: "write" },
       { kind: "list", path: `${w}.roles`, label: "Sending approved by (roles)" },
       { kind: "expr", path: `${w}.when`, label: "For groups where" }];
+    case "offsets": return [
+      { kind: "text", path: `${w}.amount`, label: "Amount field" },
+      { kind: "list", path: `${w}.within`, label: "Both must share (e.g. book)" },
+      { kind: "list", path: `${w}.same`, label: "…and these, if set" },
+      { kind: "number", path: `${w}.tolerance`, label: "Tolerance", min: 0, step: 0.01 }];
+    case "subset_match": return [
+      { kind: "text", path: `${w}.target`, label: "The item's amount to explain" }, pool,
+      { kind: "text", path: `${w}.pool_value`, label: "Their amount field" },
+      { kind: "text", path: `${w}.pool_label`, label: "Call each part by" },
+      { kind: "list", path: `${w}.within`, label: "Parts share with the item" },
+      { kind: "select", path: `${w}.sign`, label: "The parts", options: [{ value: "same", label: "add up to the amount" }, { value: "opposite", label: "net it to zero" }] },
+      { kind: "expr", path: `${w}.when`, label: "Only for items where (optional)" },
+      { kind: "number", path: `${w}.max_size`, label: "At most this many parts", min: 1, max: 5 },
+      { kind: "number", path: `${w}.tolerance`, label: "Tolerance", min: 0, step: 0.01 }];
+    case "trend": return [...history.slice(0, 4),
+      { kind: "text", path: `${w}.order`, label: "The history's position field", placeholder: "cobs_ago" },
+      { kind: "bool", path: `${w}.oldest_first`, label: "A larger position is newer (a date)" },
+      { kind: "number", path: `${w}.min_points`, label: "Judge from this many points", min: 2, max: 60 }];
+    case "cluster": return [
+      { kind: "list", path: `${w}.same`, label: "The same item when these match" },
+      { kind: "text", path: `${w}.across`, label: "Counted across (book, entity)" },
+      { kind: "text", path: `${w}.amount`, label: "Amount field (optional)" },
+      { kind: "number", path: `${w}.within_pct`, label: "Amounts within %", min: 1, nullable: true },
+      { kind: "number", path: `${w}.min_count`, label: "Systemic from (places)", min: 2 },
+      { kind: "tool", path: `${w}.peers_tool`, label: "Read the other places with (empty = this case)", access: "read" },
+      { kind: "kv", path: `${w}.peers_args`, label: "Arguments", keyLabel: "Argument", valueLabel: "Value ($case.<field>)" },
+      { kind: "bool", path: `${w}.show_where`, label: "Name the other places (they may be outside a user's scope)" }];
+    case "fuzzy_match": return [
+      { kind: "text", path: `${w}.field`, label: "The item's reference" }, pool,
+      { kind: "text", path: `${w}.pool_field`, label: "Their reference (default: the same field)" },
+      { kind: "expr", path: `${w}.when`, label: "Only for items where (optional)" },
+      { kind: "text", path: `${w}.amount`, label: "Amount to compare (optional)" },
+      { kind: "text", path: `${w}.pool_amount`, label: "Their amount" },
+      { kind: "number", path: `${w}.amount_within_pct`, label: "Amounts within %", min: 0.1, nullable: true },
+      { kind: "number", path: `${w}.threshold`, label: "Similar from (0–1)", min: 0.5, max: 1, step: 0.01 }];
+    case "benford": return [
+      { kind: "text", path: `${w}.field`, label: "Amount field" },
+      { kind: "number", path: `${w}.min_items`, label: "Run from this many amounts", min: 10 },
+      { kind: "number", path: `${w}.round_to`, label: "Round amounts are multiples of", min: 1, nullable: true }];
     default: return [];
   }
 }

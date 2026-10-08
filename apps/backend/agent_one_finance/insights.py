@@ -14,6 +14,8 @@ match. Re-runs of one key count once. Only cases the caller may see count
 on the capability-wide list.
 """
 
+import itertools
+
 from sqlalchemy import select
 
 from agent_one_finance.db import get_session
@@ -128,7 +130,7 @@ async def learning(capability_id: str, caller: Caller, team_group: str | None,
     for c, m in rows:
         latest.setdefault(str(sorted(c.case_key.items())) + (c.team_group or "") + (c.follow_up_of or ""), (c, m))
     if not latest:
-        return {"unexplained": [], "unexplained_by_reason": [], "automation": []}
+        return {"unexplained": [], "unexplained_by_reason": [], "automation": [], "proposed_checks": []}
     ids = [c.case_id for c, _ in latest.values()]
     async with get_session() as s:
         groups = (await s.execute(select(ProposalGroup).where(ProposalGroup.case_id.in_(ids)))).scalars().all()
@@ -141,6 +143,8 @@ async def learning(capability_id: str, caller: Caller, team_group: str | None,
 
     unexplained, tally = [], {}
     auto: dict[tuple, dict] = {}
+    examples: list[dict] = []
+    needed = 5
     for g in groups:
         c, m = by_case[g.case_id]
         f = g.finding or {}
@@ -166,6 +170,13 @@ async def learning(capability_id: str, caller: Caller, team_group: str | None,
         d = decided.get((g.case_id, g.group_id))
         if d is None:
             continue
+        needed = m.insights.automation_after
+        if d.action == "approve":
+            for item_id in g.item_ids:
+                it = items.get((g.case_id, item_id), {})
+                examples.append({"scope": (c.team_group, it.get("category") or g.label),
+                                 "row": it, "label": f.get("verdict") or f.get("status") or "approved",
+                                 "case": c.subject})
         key = (c.team_group, tuple(sorted(g.group_key.items())), f.get("verdict"))
         a = auto.setdefault(key, {"team_group": c.team_group, "group_key": dict(g.group_key), "label": g.label,
                                   "verdict": f.get("verdict"), "approved": 0, "rejected": 0,
@@ -179,7 +190,109 @@ async def learning(capability_id: str, caller: Caller, team_group: str | None,
                          if a["approved"] >= a["needed"] and a["rejected"] == 0),
                         key=lambda a: -a["approved"])
     unexplained.sort(key=lambda r: r["opened_at"], reverse=True)
-    return {"unexplained": unexplained[:200],
+    return {"proposed_checks": propose_checks(examples, needed)[:30],
+            "unexplained": unexplained[:200],
             "unexplained_by_reason": sorted(({"why": k, "items": v} for k, v in tally.items()),
                                             key=lambda r: -r["items"]),
             "automation": automation[:50]}
+
+
+# ---------------------------------------------------------------------
+# Proposed checks: a condition on the data that predicts the verdict
+# ---------------------------------------------------------------------
+
+# Fields the playbook or the platform wrote: they describe the outcome, not the break.
+_NOT_FEATURES = {"item_id", "checks", "tests", "test_finding", "blocked_by", "cause_reason", "category",
+                 "category_name", "determinism", "escalate_to", "cause", "excluded_by", "excluded_reason"}
+MIN_PRECISION = 0.95
+
+
+def _fmt(v) -> str:
+    if isinstance(v, str):
+        return "'" + v.replace("\\", "\\\\").replace("'", "\\'") + "'"
+    return f"{v:g}" if isinstance(v, float) else str(v)
+
+
+def _conditions(rows: list[dict]) -> list[tuple[str, object]]:
+    """Candidate conditions over the rows' own fields: a flag, a value of a
+    field with few values, or a threshold of a number. Each is (expression,
+    test) where test(row) -> bool."""
+    fields: dict[str, list] = {}
+    for r in rows:
+        for k, v in r.items():
+            if k in _NOT_FEATURES or k.endswith(("_candidates", "_members", "_where", "_reasons", "_at", "_ts")):
+                continue
+            if isinstance(v, (bool, int, float, str)) or v is None:
+                fields.setdefault(k, []).append(v)
+    out: list[tuple[str, object]] = []
+    for k, vals in sorted(fields.items()):
+        present = [v for v in vals if v is not None]
+        if not present:
+            continue
+        if all(isinstance(v, bool) for v in present):
+            out.append((k, lambda r, k=k: r.get(k) is True))
+            out.append((f"not {k}", lambda r, k=k: r.get(k) is False))
+        elif all(isinstance(v, str) for v in present):
+            distinct = sorted(set(present))
+            if 1 < len(distinct) <= 12:
+                out += [(f"{k} == {_fmt(v)}", lambda r, k=k, v=v: r.get(k) == v) for v in distinct]
+        elif all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in present):
+            distinct = sorted(set(present))
+            if len(distinct) < 2:
+                continue
+            step = max(1, len(distinct) // 20)
+            cuts = [(a + b) / 2 for a, b in zip(distinct[::step], distinct[step::step])]
+            cuts = [round(c, 2) if abs(c) < 1000 else round(c) for c in cuts]
+            for c in dict.fromkeys(cuts):
+                out.append((f"{k} >= {_fmt(c)}", lambda r, k=k, c=c: isinstance(r.get(k), (int, float)) and r.get(k) >= c))
+                out.append((f"{k} < {_fmt(c)}", lambda r, k=k, c=c: isinstance(r.get(k), (int, float)) and r.get(k) < c))
+    return out
+
+
+def propose_checks(examples: list[dict], needed: int) -> list[dict]:
+    """examples: [{"scope": (team_group, category), "row": item fields, "label":
+    the verdict people approved, "case": subject}]. For each scope where people
+    approved more than one verdict, the simplest condition (one, else two
+    joined by `and`) that picks out one verdict with at least 95% precision
+    and at least `needed` cases. A proposal for the playbook's owners, who
+    replay it before anything changes."""
+    by_scope: dict[tuple, list[dict]] = {}
+    for e in examples:
+        by_scope.setdefault(e["scope"], []).append(e)
+    out = []
+    for scope, ex in sorted(by_scope.items(), key=lambda kv: str(kv[0])):
+        labels = sorted({e["label"] for e in ex})
+        if len(labels) < 2:
+            continue                           # one verdict only: the automation list already says so
+        conds = _conditions([e["row"] for e in ex])
+        for label in labels:
+            pos = [e for e in ex if e["label"] == label]
+            if len(pos) < needed:
+                continue
+
+            def score(test):
+                hit = [e for e in ex if test(e["row"])]
+                tp = sum(1 for e in hit if e["label"] == label)
+                return tp, len(hit) - tp
+
+            singles = []
+            for expr, test in conds:
+                tp, fp = score(test)
+                if tp >= needed:
+                    singles.append((tp / (tp + fp), tp, -len(expr), expr, test, fp))
+            best = max((c for c in singles if c[0] >= MIN_PRECISION), default=None)
+            if best is None:
+                top = sorted(singles, reverse=True)[:15]
+                pairs = []
+                for (_, _, _, e1, t1, _), (_, _, _, e2, t2, _) in itertools.combinations(top, 2):
+                    tp, fp = score(lambda r, t1=t1, t2=t2: t1(r) and t2(r))
+                    if tp >= needed and tp / (tp + fp) >= MIN_PRECISION:
+                        pairs.append((tp / (tp + fp), tp, -len(e1 + e2), f"{e1} and {e2}", None, fp))
+                best = max(pairs, default=None)
+            if best is None:
+                continue
+            precision, tp, _, expr, _, fp = best
+            out.append({"team_group": scope[0], "category": scope[1], "verdict": label, "when": expr,
+                        "covers": tp, "of": len(pos), "wrong": fp, "precision": round(precision, 3),
+                        "cases": sorted({e["case"] for e in pos})[:3]})
+    return sorted(out, key=lambda p: (-p["covers"], p["when"]))

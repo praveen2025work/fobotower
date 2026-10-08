@@ -367,3 +367,4 @@ def catalogue() -> list[dict]:
 
 # The step types of phases 2–6 register themselves (agent_one_finance/steps_v2.py).
 from agent_one_finance import steps_v2  # noqa: E402,F401
+from agent_one_finance import algorithms  # noqa: E402,F401

@@ -198,6 +198,13 @@ connectors:
       break_history:
         description: The last five COBs of one instrument's break (open or cleared)
         scope: { arg: book, key: book }
+      break_history_book:
+        description: The last five COBs of every open break in a book (for the trend step)
+        scope: { arg: book, key: book }
+      breaks_all:
+        # Every book for one COB (book, instrument, difference). No book argument, so no
+        # book scope: the cluster step reads it and keeps only a count on the case.
+        description: Open breaks in every Prime and Rates book for one COB
 
   motif:
     name: MOTIF — back-office positions and events (stub)

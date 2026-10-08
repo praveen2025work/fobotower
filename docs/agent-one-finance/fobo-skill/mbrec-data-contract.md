@@ -88,6 +88,16 @@ Agent One Finance computes the rest itself: the category, side, cause and cause 
 5. **`age_days`**: how many COBs the break has been open. This drives the timing and aged checks.
 6. The **instrument** as the break's id, which must be stable from COB to COB. Follow-through
    matches a break to the last COB's decision on it.
+7. **`break_history_book(book, cob)`**: the last five COBs of every open break in a book
+   (`instrument`, `cobs_ago`, `difference`, `status`). This feeds the trend and robust-anomaly
+   steps ([algorithms](../guide/algorithms.md)). Without it, those fields are empty and nothing
+   is assumed.
+8. **`breaks_all(cob)`**: every book's open breaks for a COB (`book`, `instrument`,
+   `difference` only). The cluster step keeps only the count of other books on a case. MB Rec
+   decides whether this tool may be offered without a book scope.
+
+MOTIF's `booking_events` (with an `event_id`) and `positions` feed the split-booking and
+near-identical-name steps.
 
 ### Asks of MOTIF / CATS (through the snapshots)
 

@@ -39,6 +39,17 @@ The office head must reach `d224c0604a72` first. If the office added its own mig
 them after `e7f9a1b3c5d7` (set their `down_revision`), and rename any `helix_` table names in
 them by hand. Every migration has a working `downgrade`.
 
+## 1a. Added 2026-10-08: algorithm steps
+
+These are no migration and no setting changes; they are new code and configuration.
+
+| What | Files | Office action |
+|---|---|---|
+| Algorithm steps: offsets, subset_match, trend, cluster, fuzzy_match, benford; robust and seasonal anomaly/flux; monetary-unit sampling; score formula | `agent_one_finance/algorithms.py`, `steps_v2.py`, `tests/agent_one_finance/test_algorithms.py`, `guide/algorithms.md` | none (engine) |
+| Checks learned from approved decisions | `insights.py`, `web: LearningPanel.tsx` | none |
+| *Break investigation* runs the algorithm steps; FOBO checks N, O, S, Y | `capabilities/break-investigation.yaml`, `groups/break.investigation/fobo-*.yaml` | approve the new versions; log category changes (H or M to N, O, S or Y) as accepted parity differences; verdicts unchanged |
+| New MB Rec tools `break_history_book`, `breaks_all` | `connectors.yaml`, `connectors.office.example.yaml`, `fobo-skill/mbrec-data-contract.md` | ask MB Rec for them; until then, leave those two steps out of the capability's `steps`, and their fields stay empty |
+
 ## 2. Features, and the files that carry them
 
 | Feature | Backend (`apps/backend/agent_one_finance/`) | Web (`apps/web/src/`) | Config / docs | Tests (`apps/backend/tests/agent_one_finance/`) |

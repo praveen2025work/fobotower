@@ -44,6 +44,9 @@ connectors:
     tools:
       breaks:        { description: "Open breaks MB Rec reconciled for a book and COB", scope: { arg: book, key: book } }
       break_history: { description: "The last five COBs of one instrument's break", scope: { arg: book, key: book } }
+      break_history_book: { description: "The last five COBs of every open break in a book", scope: { arg: book, key: book } }
+      # No book argument: the cluster step keeps only a count of other books on the case.
+      breaks_all:    { description: "Open breaks in every book for one COB (book, instrument, difference)" }
 
   motif:
     name: MOTIF — back-office positions and events

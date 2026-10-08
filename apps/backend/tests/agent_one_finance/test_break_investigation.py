@@ -9,6 +9,8 @@ the desk said before the model is asked anything."""
 
 import uuid
 
+from agent_one_finance.stub_connectors import finance
+
 CAP, GROUP = "break.investigation", "fobo-prime"
 
 
@@ -36,7 +38,10 @@ async def test_breaks_come_from_mb_rec_and_wait_at_the_tollgate(api):
     assert case["status"] == "paused_before_reason"
     tools = {c["tool"] for c in case["tool_calls"]}
     assert "mbrec.breaks" in tools
-    assert not tools & {"cats.positions", "motif.positions"}               # no re-matching
+    assert "cats.positions" not in tools                                    # no re-matching
+    # MOTIF's positions are read only to look up instrument names (near_refs), not to make breaks
+    assert {c["requested_by"] for c in case["tool_calls"] if c["tool"] == "motif.positions"} <= {"bo_positions"}
+    assert len(case["items"]) == len(finance.mbrec_breaks(book="PRIME-MB-01", cob="2026-09-29")["rows"])
     by = {i["instrument"]: i for i in case["items"]}
     assert by["IRS 5Y USD"]["category"] == "K"                                 # open 2+ COBs: aged
     assert by["UST 10Y"]["category"] == "F"                                    # §8 static outlier
@@ -163,3 +168,34 @@ async def test_the_model_can_go_to_trade_level_and_a_missing_side_is_judgement(a
     assert found["decided_by"].startswith("llm") and found["sme_review"] is True
     model_tools = {c["tool"] for c in after["tool_calls"] if c["requested_by"] == "llm"}
     assert {"cats.trades", "motif.trades"} <= model_tools
+
+
+async def test_algorithm_evidence_names_breaks_no_check_explained(api):
+    """PRIME-MB-10 on 8 Oct: an amount booked to the wrong instrument, a split
+    booking, and an instrument MOTIF holds under a typo. The algorithm steps
+    add the evidence; the playbook names the category; the verdict stays a
+    person's (ESCALATE), as it was for these breaks before."""
+    case = await _open(api, "PRIME-MB-10", "2026-10-08")
+    by = {i["instrument"]: i for i in case["items"]}
+    gilt, jgb = by["GILT 5Y"], by["JGB 10Y"]
+    assert gilt["offset_with"] == "JGB 10Y" and jgb["offset_with"] == "GILT 5Y"
+    assert (gilt["category"], jgb["category"]) == ("O", "O") and gilt["difference"] == -jgb["difference"]
+    sofr = by["SOFR FUT"]
+    assert sofr["category"] == "S" and sofr["split_unique"] and len(sofr["split_members"]) == 2
+    assert round(sum(m["value"] for m in sofr["split_members"]), 2) == sofr["difference"]
+    irs = by["IRS 10Y EUR"]
+    assert irs["break_type"] == "missing_motif" and irs["near"]
+    assert [c["reference"] for c in irs["near_candidates"]] == ["IRS10Y EUR"]
+    assert irs["category"] in ("N", "T")                     # a late booking (timing) is still checked first
+    for i in (gilt, jgb, sofr):
+        assert i["trend_points"] >= 1 and "anomaly_z" in i
+    assert {gilt["determinism"], sofr["determinism"]} == {"judgement"}     # not settled by the table: model, then a person
+    used = {c["requested_by"]: c["tool"] for c in case["tool_calls"]}
+    assert used["history"] == "mbrec.break_history_book" and used["systemic"] == "mbrec.breaks_all"
+
+
+async def test_the_same_break_in_several_books_is_one_systemic_cause(api):
+    case = await _open(api, "PRIME-MB-01", "2026-10-12")
+    cdx = next(i for i in case["items"] if i["instrument"] == "CDX IG")
+    assert cdx["systemic"] and cdx["systemic_count"] >= 3 and cdx["category"] == "Y"
+    assert "systemic_where" not in cdx                       # other books stay unnamed on this book's case

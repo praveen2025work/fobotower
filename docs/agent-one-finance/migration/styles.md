@@ -70,3 +70,9 @@ styles ok: upstream style files, tokens only, Tailwind ^3.4.14, 12 hx-* classes
 ```
 
 Each failure names the file and line, and what to use instead.
+
+## The palette
+
+Only five colour families, each with one meaning: `surface` (neutral), `primary`/`accent`/`brand`
+(your turn), `orange` (needs a person's judgement), `red` (problem), `green` (done).
+`npm run check:styles` rejects any other family. See [`../guide/ui-principles.md`](../guide/ui-principles.md).

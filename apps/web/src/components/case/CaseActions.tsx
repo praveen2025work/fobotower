@@ -33,7 +33,7 @@ export function ActionCard({ c }: { c: CaseDetail }) {
     if (judg) parts.push(`${judg} judgement ${judg === 1 ? "call" : "calls"}`);
     if (esc) parts.push(`${esc} escalated`);
     return (
-      <Shell tone={w.you ? (esc ? "attention" : "action") : "waiting"} icon={w.you ? Scale : Eye}
+      <Shell tone={w.you ? "action" : "waiting"} icon={w.you ? Scale : Eye}
         title={w.you ? (c.acting_for ? `Your review — covering for ${c.acting_for}` : "Your review") : "Waiting for review"}
       >
         <p>{w.you ? parts.join(" · ") : `${parts.join(" · ")}. Reviewers: ${roleList(w.roles)}.`}</p>

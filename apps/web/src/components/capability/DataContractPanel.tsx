@@ -21,7 +21,7 @@ export default function DataContractPanel({ capabilityId, teamGroup }: { capabil
         <div className="space-y-4">
           <section aria-label="Parameters">
             <h3 className="mb-1 text-xs font-semibold uppercase tracking-wider text-surface-500">
-              Parameters {d.to_confirm.length > 0 && <span className="ml-1 rounded bg-yellow-100 px-1.5 text-yellow-800">{d.to_confirm.length} to confirm</span>}
+              Parameters {d.to_confirm.length > 0 && <span className="ml-1 rounded bg-orange-100 px-1.5 text-orange-800">{d.to_confirm.length} to confirm</span>}
             </h3>
             {d.parameters.length === 0 ? <p className="text-xs text-surface-500">None.</p> : (
               <table className="w-full text-left text-xs">
@@ -31,7 +31,7 @@ export default function DataContractPanel({ capabilityId, teamGroup }: { capabil
                       <td className="py-1 pr-2 font-medium text-surface-800">{p.name.replace(/_/g, " ")}</td>
                       <td className="py-1 pr-2">
                         {p.to_confirm
-                          ? <span className="rounded bg-yellow-100 px-1.5 font-semibold text-yellow-800">to confirm</span>
+                          ? <span className="rounded bg-orange-100 px-1.5 font-semibold text-orange-800">to confirm</span>
                           : <span className="tabular-nums">{String(p.value)}{p.unit ? ` ${p.unit}` : ""}</span>}
                       </td>
                       <td className="py-1 text-surface-500">{p.used_by.length ? p.used_by.join("; ") : "not used by any rule yet"}</td>

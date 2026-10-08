@@ -52,7 +52,7 @@ export default function RequestsPanel({ c }: { c: CaseDetail }) {
                 {r.escalated_at ? `Unanswered: reviewers told ${formatTime(r.escalated_at)}` : `Reminded ${formatTime(r.reminded_at!)}`}
               </p>
             )}
-            {r.status === "open" && r.group_id && <p className="mt-1 text-[11px] text-amber-700">This group waits for the answer before it is decided.</p>}
+            {r.status === "open" && r.group_id && <p className="mt-1 text-[11px] text-orange-700">This group waits for the answer before it is decided.</p>}
           </li>
         ))}
       </ul>

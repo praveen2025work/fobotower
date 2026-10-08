@@ -17,9 +17,9 @@ describe("SeverityBadge", () => {
 
   it("applies yellow styles for medium severity (with med alias)", () => {
     const { container, rerender } = render(<SeverityBadge severity="medium" />);
-    expect((container.firstChild as HTMLElement).className).toContain("bg-yellow-100");
+    expect((container.firstChild as HTMLElement).className).toContain("bg-orange-100");
     rerender(<SeverityBadge severity="med" />);
-    expect((container.firstChild as HTMLElement).className).toContain("bg-yellow-100");
+    expect((container.firstChild as HTMLElement).className).toContain("bg-orange-100");
   });
 
   it("falls back to low styles for unknown severities", () => {

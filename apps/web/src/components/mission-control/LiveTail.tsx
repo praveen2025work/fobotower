@@ -31,8 +31,8 @@ interface LiveTailProps {
 
 const LEVEL_CLASS: Record<string, string> = {
   info: "text-accent-300",
-  warn: "text-yellow-300",
-  warning: "text-yellow-300",
+  warn: "text-orange-300",
+  warning: "text-orange-300",
   error: "text-red-300",
   debug: "text-code-muted",
 };

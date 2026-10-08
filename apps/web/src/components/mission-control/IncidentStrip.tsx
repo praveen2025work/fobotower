@@ -11,7 +11,7 @@ interface IncidentStripProps {
 const STATUS_STRIPE: Record<string, string> = {
   error: "bg-red-600",
   degraded: "bg-orange-600",
-  warning: "bg-yellow-600",
+  warning: "bg-orange-600",
 };
 
 function relativeFromMinutes(mins: number): string {

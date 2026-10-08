@@ -25,4 +25,18 @@ and keeps everything else one click away.
 8. **Actions over explanations.** One line of guidance where a person must act ("Approve with your own
    explanation, reject with a reason, or ask the model to look again"), not a list of rules.
 
+9. **Five colours, five meanings.** Colour says what to do, never decorates:
+
+   | Meaning | Family | Used for |
+   |---|---|---|
+   | Neutral | `surface` (grey) | most text, borders, statuses that need nothing ("proposed", "confirmed") |
+   | Your turn, brand | `primary`, `accent`, `brand` (Barclays blue, cyan) | links, buttons, "awaiting review", tollgates, "Your review" |
+   | Needs a person's judgement | `orange` | escalated, to confirm, judgement call, due soon |
+   | Problem | `red` | failed, rejected, refused, overdue |
+   | Done | `green` | approved, completed, published |
+
+   `npm run check:styles` fails on any other colour family (yellow, amber, purple, sky, …): they carry
+   no meaning and have no dark-mode version in the Barclays theme. In lists, an urgency is coloured text,
+   not a filled badge, so one red row still stands out.
+
 New panels start folded unless the person needs them for the decision on that screen.

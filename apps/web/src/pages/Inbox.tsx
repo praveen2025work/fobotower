@@ -53,8 +53,8 @@ export function WhatsLeft({ r }: { r: InboxRow }) {
   const open = r.groups - r.decided;
   const flags: [number, string, string][] = [
     [r.escalated, "escalated", "bg-orange-100 text-orange-800"],
-    [r.needs_confirmation ?? 0, "to confirm", "bg-yellow-100 text-yellow-800"],
-    [r.judgement_calls ?? 0, "judgement", "bg-purple-100 text-purple-800"],
+    [r.needs_confirmation ?? 0, "to confirm", "bg-orange-100 text-orange-800"],
+    [r.judgement_calls ?? 0, "judgement", "bg-orange-100 text-orange-800"],
   ];
   const shown = flags.filter(([n]) => n > 0);
   const top = shown[0];
@@ -94,7 +94,7 @@ export function InboxTable({ rows }: { rows: InboxRow[] }) {
                 </Link>
                 {r.follow_up_of && (
                   <Link to={`/cases/${encodeURIComponent(r.follow_up_of)}`} title="Late items for a book and date already worked — see the day's case"
-                    className="ml-2 rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-800 hover:underline">late items</Link>
+                    className="ml-2 rounded bg-surface-100 px-1.5 py-0.5 text-[10px] font-semibold text-surface-800 hover:underline">late items</Link>
                 )}
                 {r.acting_for && (
                   <span className="ml-2 inline-flex items-center gap-1 rounded bg-accent-50 px-1.5 py-0.5 text-[10px] font-medium text-accent-800">

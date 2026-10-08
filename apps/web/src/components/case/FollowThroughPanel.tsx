@@ -21,7 +21,7 @@ export default function FollowThroughPanel({ c }: { c: CaseDetail }) {
       ) : (
         <>
           <p className="mb-2 text-xs text-surface-600">
-            Checked on the next {next}: <span className="font-medium text-emerald-700">{ft.cleared} cleared</span>
+            Checked on the next {next}: <span className="font-medium text-green-700">{ft.cleared} cleared</span>
             {" · "}
             <span className={ft.still_open ? "font-medium text-orange-700" : ""}>{ft.still_open} still open</span>
           </p>
@@ -29,7 +29,7 @@ export default function FollowThroughPanel({ c }: { c: CaseDetail }) {
             {ft.items.map((r) => (
               <li key={r.item_id} className="flex items-center gap-2 text-xs">
                 {r.status === "cleared"
-                  ? <CheckCircle2 size={13} className="shrink-0 text-emerald-600" aria-label="cleared" />
+                  ? <CheckCircle2 size={13} className="shrink-0 text-green-600" aria-label="cleared" />
                   : <RotateCw size={13} className="shrink-0 text-orange-600" aria-label="still open" />}
                 <span className="min-w-0 flex-1 truncate font-medium text-surface-800">{r.item_id}</span>
                 <span className="shrink-0 text-surface-500">{(r.verdict ?? "").replace(/_/g, " ")}</span>

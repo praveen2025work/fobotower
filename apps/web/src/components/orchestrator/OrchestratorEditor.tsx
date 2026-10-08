@@ -206,7 +206,7 @@ export default function OrchestratorEditor({ capabilityId, manifest, mode, canEd
               >
                 <span className={clsx("h-2 w-2 shrink-0 rounded-full", s.gate ? "bg-surface-500" : on ? "bg-green-500" : "bg-surface-300")} />
                 <span className="min-w-0 flex-1 truncate">{s.title}</span>
-                {s.step && pauses.includes(s.step) && <Hand size={12} className="shrink-0 text-amber-600" aria-label="stops for a person" />}
+                {s.step && pauses.includes(s.step) && <Hand size={12} className="shrink-0 text-primary-600" aria-label="stops for a person" />}
                 {s.gate && <Lock size={11} className="shrink-0 text-surface-400" aria-label="always on" />}
                 {changedIn(s) && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary-500" aria-label="changed" />}
                 {n > 0 && <span className="shrink-0 rounded-full bg-red-100 px-1.5 text-[10px] font-semibold text-red-700">{n}</span>}
@@ -247,11 +247,11 @@ export default function OrchestratorEditor({ capabilityId, manifest, mode, canEd
           )}
 
           {stage.step && !stage.gate && isOn(working, stage) && stage.step !== "publish" && stage.step !== steps[0] && (
-            <div className={clsx("mt-3 rounded-lg border p-3", pauses.includes(stage.step) ? "border-amber-200 bg-amber-50/60" : "border-surface-200")}>
+            <div className={clsx("mt-3 rounded-lg border p-3", pauses.includes(stage.step) ? "border-primary-200 bg-primary-50/60" : "border-surface-200")}>
               <label className="inline-flex items-center gap-2 text-xs font-medium text-surface-800">
                 <input type="checkbox" checked={pauses.includes(stage.step)} disabled={!!pauseLocked}
                   onChange={(e) => setWorking((w) => setTollgate(w, stage.step!, e.target.checked))} />
-                <Hand size={12} className="text-amber-600" /> Tollgate: a person approves the work so far before this step
+                <Hand size={12} className="text-primary-600" /> Tollgate: a person approves the work so far before this step
               </label>
               <p className="mt-0.5 text-[11px] text-surface-500">
                 The run waits here. The person sees what the earlier steps produced, then continues the run or stops it with a reason.
@@ -266,7 +266,7 @@ export default function OrchestratorEditor({ capabilityId, manifest, mode, canEd
             </div>
           )}
           {(stage.step === "review" || (stage.step === "publish" && isOn(working, stage))) && (
-            <p className="mt-3 inline-flex items-center gap-1.5 text-xs text-surface-600"><Hand size={12} className="text-amber-600" /> The run always stops here for a person.</p>
+            <p className="mt-3 inline-flex items-center gap-1.5 text-xs text-surface-600"><Hand size={12} className="text-primary-600" /> The run always stops here for a person.</p>
           )}
           {(stepLocked && stage.step && (stage.optional || stage.id === "source")) && (
             <p className="mt-2 text-[11px] text-surface-500"><Lock size={10} className="mr-0.5 inline" /> Which steps run is {isGroup ? "set by the capability" : "for its owners to change"}.</p>

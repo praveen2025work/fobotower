@@ -339,7 +339,7 @@ export default function PrepareSteps({ ctx, setWorking, stepsLocked }: {
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded bg-primary-50 px-1.5 py-0.5 text-[11px] font-medium text-primary-800">{t.label}</span>
               <span className="text-[11px] text-surface-400">{t.family}</span>
-              {t.person && <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[11px] text-amber-800">a person approves first</span>}
+              {t.person && <span className="rounded bg-primary-50 px-1.5 py-0.5 text-[11px] text-primary-800">a person approves first</span>}
               <code className="text-[11px] text-surface-500">{id}</code>
               <span className="text-[11px] text-surface-400">step {steps.indexOf(id) + 1} of {steps.length}</span>
               {!stepsLocked && (

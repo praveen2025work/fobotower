@@ -30,7 +30,7 @@ export default function FlowDiagram({ capabilityId, teamGroup }: { capabilityId:
               data-testid={`flow-${n.id}`}
             >
               <div className="flex items-center gap-1.5">
-                {n.pause && <Pause size={11} className="text-yellow-700" aria-label="pauses for people" />}
+                {n.pause && <Pause size={11} className="text-primary-700" aria-label="pauses for people" />}
                 {n.gate && <ShieldCheck size={11} className="text-primary-600" aria-label="gate" />}
                 <span className="font-semibold text-surface-900">{n.id}</span>
               </div>

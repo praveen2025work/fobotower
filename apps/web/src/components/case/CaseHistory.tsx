@@ -40,7 +40,7 @@ export default function CaseHistory({ caseId }: { caseId: string }) {
           return (
             <li key={e.checkpoint_id} className="relative">
               <span className={clsx("absolute -left-[22px] top-1 rounded-full bg-card p-0.5",
-                e.event === "people" ? "text-primary-600" : e.event === "waiting" ? "text-yellow-700" : "text-surface-400")}>
+                e.event === "people" ? "text-primary-600" : e.event === "waiting" ? "text-orange-700" : "text-surface-400")}>
                 <Icon size={12} />
               </span>
               <div className="flex flex-wrap items-baseline gap-x-3 text-sm">

@@ -362,8 +362,8 @@ function BulkApprove({ c, openedAt }: { c: CaseDetail; openedAt: number }) {
 }
 
 const FLAG_UI: Record<ReviewFlag, { label: string; cls: string } | null> = {
-  confirmation: { label: "Needs confirmation", cls: "bg-yellow-100 text-yellow-800" },
-  judgement: { label: "Needs your judgement", cls: "bg-purple-100 text-purple-800" },
+  confirmation: { label: "Needs confirmation", cls: "bg-orange-100 text-orange-800" },
+  judgement: { label: "Needs your judgement", cls: "bg-orange-100 text-orange-800" },
   escalated: null, // the status badge already says so
   model: null,
 };
@@ -400,7 +400,7 @@ function TestsCell({ tests }: { tests: TestResult[] }) {
         </span>
       ))}
       {notRun.length > 0 && (
-        <span title={notRun.map((t) => `${t.id}: ${t.why}`).join("\n")} className="rounded bg-yellow-100 px-1 text-[10px] text-yellow-700">
+        <span title={notRun.map((t) => `${t.id}: ${t.why}`).join("\n")} className="rounded bg-orange-100 px-1 text-[10px] text-orange-700">
           {notRun.length} not run
         </span>
       )}
@@ -438,7 +438,7 @@ function PlaybookPanel({ group }: { group: Group }) {
       {(f.side_name ?? f.side) && <div><span className="text-surface-500">Side</span><p className="font-medium text-surface-800">{f.side_name ?? f.side}</p></div>}
       {f.escalate_to && <div><span className="text-surface-500">Owner</span><p className="font-medium text-surface-800">{f.escalate_to}</p></div>}
       {f.requires_confirmation && (
-        <p className="col-span-full mt-1 flex items-start gap-1.5 text-yellow-700">
+        <p className="col-span-full mt-1 flex items-start gap-1.5 text-orange-700">
           <AlertTriangle size={12} className="mt-0.5 shrink-0" /> Requires controller confirmation: {f.requires_confirmation}
         </p>
       )}
@@ -448,7 +448,7 @@ function PlaybookPanel({ group }: { group: Group }) {
         </p>
       )}
       {f.sme_review && (
-        <p className="col-span-full mt-1 flex items-start gap-1.5 rounded-md bg-purple-50 px-2 py-1 font-medium text-purple-800">
+        <p className="col-span-full mt-1 flex items-start gap-1.5 rounded-md bg-orange-50 px-2 py-1 font-medium text-orange-800">
           <Scale size={12} className="mt-0.5 shrink-0" /> Needs your judgement: the model investigated this one; check its reasoning before you decide.
         </p>
       )}
@@ -540,7 +540,7 @@ function ProposalPanel({ c, group }: { c: CaseDetail; group: Group }) {
             by <span className="font-medium">{group.decision.decided_by}</span>
             {group.decision.on_behalf_of && <span className="text-surface-600">for {group.decision.on_behalf_of} (covering)</span>}
             {formatTime(group.decision.decided_at)}
-            {group.decision.confirmed && <span className="rounded bg-yellow-100 px-1.5 py-0.5 text-[10px] font-semibold text-yellow-800">confirmed</span>}
+            {group.decision.confirmed && <span className="rounded bg-surface-100 px-1.5 py-0.5 text-[10px] font-semibold text-surface-700">confirmed</span>}
           </p>
           {group.decision.comment && <p className="mt-1 text-surface-600">{group.decision.comment}</p>}
           {group.decision.checklist && group.decision.checklist.length > 0 && <ChecklistAnswers answers={group.decision.checklist} />}
@@ -571,7 +571,7 @@ function ProposalPanel({ c, group }: { c: CaseDetail; group: Group }) {
             </p>
           )}
           {needsConfirm && (
-            <label className="mb-2 flex items-start gap-2 rounded-md bg-yellow-50 px-2 py-1.5 text-xs text-yellow-900">
+            <label className="mb-2 flex items-start gap-2 rounded-md bg-orange-50 px-2 py-1.5 text-xs text-orange-900">
               <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-0.5" />
               <span>
                 I confirm this verdict although {f?.requires_confirmation?.replace(/^.*depends on unset policy:\s*/, "the policy ") ?? "a policy"} is not yet set.
@@ -695,7 +695,7 @@ function ProposalPanel({ c, group }: { c: CaseDetail; group: Group }) {
                         {i === 0 && typeof it.carried_verdict === "string" && it.carried_verdict && (
                           <span
                             title={`Decided ${String(it.carried_verdict).replace(/_/g, " ")} in ${String(it.carried_from ?? "the last run")}; still open`}
-                            className="ml-1.5 inline-flex items-center rounded bg-amber-100 px-1 text-[10px] font-semibold text-amber-800"
+                            className="ml-1.5 inline-flex items-center rounded bg-orange-100 px-1 text-[10px] font-semibold text-orange-800"
                           >
                             carried · {String(it.carried_verdict).replace(/_/g, " ")}
                           </span>

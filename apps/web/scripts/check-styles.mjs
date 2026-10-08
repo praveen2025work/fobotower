@@ -6,7 +6,8 @@
 //
 // What it checks:
 //   1. the style files are byte-for-byte upstream's (theme/style-manifest.json);
-//   2. no hard-coded colours in src (hex, rgb(), hsl(), Tailwind `bg-[#…]`): use the tokens;
+//   2. no hard-coded colours in src (hex, rgb(), hsl(), Tailwind `bg-[#…]`): use the tokens, and only the
+//      palette's five families (surface, primary/accent/brand, orange, red, green);
 //   3. no other stylesheet in src, and no other UI or CSS library in package.json;
 //   4. Tailwind is still major version 3;
 //   5. every hx-* class the pages use is defined in src/index.css;
@@ -31,6 +32,10 @@ const STYLE_FILES = [
 const OTHER_UI = /^(bootstrap|react-bootstrap|@mui\/|@material-ui\/|antd$|@chakra-ui\/|styled-components$|@emotion\/|bulma$|semantic-ui|@mantine\/|primereact$|@fluentui\/|sass$|less$)/;
 const COLOUR = /(#[0-9a-fA-F]{3,8}\b|\brgba?\((?!\s*var\()|\bhsla?\((?!\s*var\())/;
 const ARBITRARY = /\b[a-z-]+-\[(#|rgb|hsl)[^\]]*\]/;
+// The palette is five meanings: neutral (surface), your turn / brand (primary, accent, brand),
+// needs a person's judgement (orange), problem (red), done (green). Other colour families
+// carry no meaning here and have no dark-mode version in the Barclays theme.
+const OFF_PALETTE = /\b(?:text|bg|border|border-[lrtbxy]|ring|from|via|to|fill|stroke|divide|outline|decoration|caret|placeholder)-(slate|gray|zinc|neutral|stone|amber|yellow|lime|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d{2,3}\b/;
 const OK_INLINE = /^(--hx-[a-z-]+|\["--hx-[a-z-]+" as string\]|width|height|fontSize)$/;
 
 const sha = (f) => createHash("sha256").update(readFileSync(join(web, f))).digest("hex");
@@ -69,6 +74,8 @@ for (const p of src) {
   readFileSync(p, "utf8").split("\n").forEach((line, i) => {
     const code = line.replace(/\/\/.*$/, "");
     if (COLOUR.test(code)) fail.push(`${rel}:${i + 1}: hard-coded colour; use a token class (bg-primary-600, text-surface-700, …) or rgb(var(--c-…)): ${line.trim().slice(0, 100)}`);
+    const off = code.match(OFF_PALETTE);
+    if (off) fail.push(`${rel}:${i + 1}: \`${off[0]}\` is outside the palette; use surface, primary/accent, orange (needs a person), red (problem) or green (done)`);
     if (ARBITRARY.test(code)) fail.push(`${rel}:${i + 1}: arbitrary Tailwind colour; use a token: ${line.trim().slice(0, 100)}`);
     const m = code.match(/style=\{\{([^}]*)\}\}/);
     if (m) {

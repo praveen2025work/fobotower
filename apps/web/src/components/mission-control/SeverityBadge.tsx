@@ -9,7 +9,7 @@ interface SeverityBadgeProps {
 
 const SEVERITY_STYLES: Record<Severity, string> = {
   high: "bg-red-100 text-red-700",
-  medium: "bg-yellow-100 text-yellow-700",
+  medium: "bg-orange-100 text-orange-700",
   low: "bg-surface-100 text-surface-700",
 };
 

@@ -87,7 +87,7 @@ export default function Authoring(): JSX.Element {
           {way === "brd" && (
             <>
               {modes.data?.brd_note && (
-                <p className="mb-2 rounded-lg bg-yellow-50 px-3 py-2 text-xs text-yellow-900">{modes.data.brd_note}</p>
+                <p className="mb-2 rounded-lg bg-orange-50 px-3 py-2 text-xs text-orange-900">{modes.data.brd_note}</p>
               )}
               <label className="block text-xs font-medium text-surface-600">
                 BRD

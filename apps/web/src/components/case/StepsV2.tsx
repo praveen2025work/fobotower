@@ -30,7 +30,7 @@ export function GroupSteps({ group }: { group: Group }) {
             </span>
           )}
           {f.reserved && (
-            <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-amber-900">
+            <span className="inline-flex items-center gap-1 rounded bg-orange-50 px-1.5 py-0.5 text-orange-900">
               <Lock size={12} /> Reserved for {roles(f.reserved.roles)}: {f.reserved.reason}
             </span>
           )}
@@ -42,7 +42,7 @@ export function GroupSteps({ group }: { group: Group }) {
         </div>
       )}
       {f.withheld_proposal && (
-        <p className="text-xs text-amber-900">The model proposed “{f.withheld_proposal}”, a decision reserved for people; it is withheld for you to decide.</p>
+        <p className="text-xs text-orange-900">The model proposed “{f.withheld_proposal}”, a decision reserved for people; it is withheld for you to decide.</p>
       )}
       {f.entries && (
         <div className="rounded-lg border border-surface-200">
@@ -136,9 +136,9 @@ export function CaseLinks({ c }: { c: CaseDetail }) {
               const state = now > due ? "breached" : now > due - k.warn_before_hours * 3600_000 ? "due soon" : "on time";
               return (
                 <li key={k.id} className="flex items-center gap-2 text-xs">
-                  <AlarmClock size={12} className={clsx(state === "breached" ? "text-red-600" : state === "due soon" ? "text-amber-600" : "text-surface-400")} />
+                  <AlarmClock size={12} className={clsx(state === "breached" ? "text-red-600" : state === "due soon" ? "text-orange-600" : "text-surface-400")} />
                   <span className="min-w-0 flex-1 truncate">{k.label}</span>
-                  <span className={clsx(state === "breached" ? "font-medium text-red-700" : state === "due soon" ? "text-amber-800" : "text-surface-500")}>
+                  <span className={clsx(state === "breached" ? "font-medium text-red-700" : state === "due soon" ? "text-orange-800" : "text-surface-500")}>
                     {state} · {formatTime(k.due_at)}
                   </span>
                 </li>

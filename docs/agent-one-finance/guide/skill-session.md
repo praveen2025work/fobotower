@@ -68,6 +68,14 @@ So one book can run as a skill session and another on the rules-and-model setup
 5. **`review`**: a controller decides every break. **`record`**: decisions are kept and teach the
    next run's priors. Nothing is written to a bank system.
 
+## Seeing the session
+
+The case's **Model session** tab shows the conversation turn by turn: the prompt Agent One Finance
+sent, what the model wrote, every tool it called and with which arguments, how many rows came back
+(or a refusal), and its final answer, with the model, session id, turns and cost. Every tool call
+there is also an audit row under *Data used*. **Ask about this case** lets the controller keep
+questioning the case afterwards, with the same skill and tools.
+
 ## The skill file
 
 `reasoning.skill_file` is a path under the config folder (`config/agent-one-finance/`); paths outside it

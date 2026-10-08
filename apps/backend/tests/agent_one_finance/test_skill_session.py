@@ -9,7 +9,7 @@ import dataclasses
 import json
 import uuid
 
-from claude_agent_sdk import ResultMessage
+from claude_agent_sdk import AssistantMessage, ResultMessage, TextBlock, ToolResultBlock, ToolUseBlock, UserMessage
 from mcp.client import Client
 
 from agent_one_finance import llm
@@ -70,6 +70,8 @@ async def test_mb_recs_event_runs_the_skill_in_one_session(api, monkeypatch):
     assert {g["finding"]["status"] for g in case["groups"]} == {"escalated"}
     assert all(g["finding"]["sections"][0]["id"] == "root_cause" for g in case["groups"])
     assert "investigated" in case["draft"]["summary"]
+    calls = [t for t in case["draft"]["session"]["transcript"] if t["kind"] == "tool_call"]
+    assert [t["tool"] for t in calls] == [c["tool"] for c in case["tool_calls"]]   # every call, in one session
     for g in case["groups"]:
         res = await api.post(f"/api/cases/{case['case_id']}/decisions", headers=api.as_user("frank"),
                              json={"group_id": g["group_id"], "action": "approve", "comment": "checked",
@@ -138,6 +140,11 @@ async def test_the_agent_sdk_runs_one_session_with_the_skill_and_the_gateway_too
         async with Client(options.mcp_servers["aof"]["instance"]) as mcp:
             res = await mcp.call_tool("mbrec_breaks", json.loads(prompt)["case"])
             first = json.loads(res.content[0].text)["rows"][0]
+        # what the SDK streams back: the model's words and tool call, then the tool's answer
+        yield AssistantMessage(content=[TextBlock("I will read MB Rec's breaks first."),
+                                        ToolUseBlock("t1", "mcp__aof__mbrec_breaks", json.loads(prompt)["case"])],
+                               model="m")
+        yield UserMessage(content=[ToolResultBlock("t1", [{"type": "text", "text": res.content[0].text}])])
         yield ResultMessage(subtype="success", duration_ms=1, duration_api_ms=1, is_error=False, num_turns=4,
                             session_id="s", total_cost_usd=0.02, usage={"input_tokens": 1, "output_tokens": 1},
                             structured_output={"summary": "One break.", "results": [
@@ -156,3 +163,9 @@ async def test_the_agent_sdk_runs_one_session_with_the_skill_and_the_gateway_too
     schema = opts.output_format["schema"]["properties"]["results"]["items"]["properties"]
     assert schema["verdict"]["enum"][0] == "ESCALATE" and "root_cause" in schema["sections"]["properties"]
     assert [c["tool"] for c in case["tool_calls"]] == ["mbrec.breaks"]       # through the gateway, audited
+    session = case["draft"]["session"]                                     # the conversation is kept on the case
+    assert (session["session_id"], session["turns"], session["skill_file"]) == ("s", 4, "skills/fobo-investigation-skill.md")
+    kinds = [(t["role"], t["kind"]) for t in session["transcript"]]
+    assert kinds == [("user", "prompt"), ("model", "text"), ("model", "tool_call"), ("tool", "tool_result"),
+                     ("model", "answer")]
+    assert session["transcript"][2]["tool"] == "mbrec_breaks" and session["transcript"][3]["rows"] == len(finance.mbrec_breaks(**KEY)["rows"])

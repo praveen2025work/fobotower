@@ -85,6 +85,9 @@ class SessionResult:
     summary: str = ""
     model: str | None = None
     usage: dict = field(default_factory=dict)
+    # The conversation, turn by turn: [{turn, role: user|model|tool, kind: prompt|text|tool_call|tool_result|answer,
+    #   text?, tool?, input?, rows?, error?}] — what the model said, which tools it called with what, and what came back.
+    transcript: list[dict] = field(default_factory=list)
 
 
 async def run_session(adapter, request: SessionRequest, tools: "ToolInvoker") -> SessionResult:
@@ -99,7 +102,9 @@ async def run_session(adapter, request: SessionRequest, tools: "ToolInvoker") ->
         allowed_tools=request.allowed_tools, output="verdict" if request.verdicts else "commentary",
         notes=request.notes, verdicts=request.verdicts or None, specialists=request.specialists,
         sections=request.sections), tools)
-    return SessionResult(results=[], summary=res.comment, model=res.model, usage=res.usage) if (
+    return SessionResult(results=[], summary=res.comment, model=res.model, usage=res.usage, transcript=[
+        {"turn": 1, "role": "user", "kind": "prompt", "text": "The whole case as one group (the adapter has no session)."},
+        {"turn": 1, "role": "model", "kind": "answer", "text": res.comment}]) if (
         res.status == "proposed" and not res.verdict and not res.sections) else SessionResult(
         results=[{"id": "all", "status": res.status, "comment": res.comment, "reason": res.reason,
                   "verdict": res.verdict, "sections": res.sections}], model=res.model, usage=res.usage)
@@ -233,10 +238,16 @@ class StubLlm:
         from agent_one_finance.gateway import tool_schema
 
         read, rows = [], []
+        transcript = [{"turn": 1, "role": "user", "kind": "prompt",
+                       "text": f"Investigate each {request.item_label.lower()} for {request.case_key}."}]
         for tool in request.allowed_tools:
             if not set((await tool_schema(tool)).get("required", [])) <= set(request.case_key):
                 continue
+            turn = len(transcript) // 2 + 1
+            transcript.append({"turn": turn, "role": "model", "kind": "tool_call", "tool": tool,
+                               "input": dict(request.case_key)})
             got = (await tools(tool, dict(request.case_key))).get("rows", []) or []
+            transcript.append({"turn": turn, "role": "tool", "kind": "tool_result", "tool": tool, "rows": len(got)})
             read.append(f"{len(got)} rows from {tool}")
             if not rows and any(isinstance(r, dict) and request.id_field in r for r in got):
                 rows = [r for r in got if isinstance(r, dict) and request.id_field in r]
@@ -255,7 +266,9 @@ class StubLlm:
                 "sections": {sp["id"]: _stub_section(sp, fake, comment, seen, None) for sp in request.sections},
                 "fields": {f: r.get(f) for f in request.result_fields if f in r}})
         summary = f"{len(results)} {request.item_label.lower()}(s) investigated; reviewed {seen}."
-        return SessionResult(results=results, summary=summary, model="stub")
+        transcript.append({"turn": len(transcript) // 2 + 1, "role": "model", "kind": "answer",
+                           "text": f"{summary} {len(results)} result(s) returned."})
+        return SessionResult(results=results, summary=summary, model="stub", transcript=transcript)
 
     async def extract(self, request: "ExtractRequest") -> dict:
         """The stub reads `name: value` lines only (a real model reads prose)."""

@@ -30,6 +30,11 @@ from typing import Any
 
 from claude_agent_sdk import (
     AgentDefinition,
+    AssistantMessage,
+    TextBlock,
+    ToolResultBlock,
+    ToolUseBlock,
+    UserMessage,
     ClaudeAgentOptions,
     ResultMessage,
     create_sdk_mcp_server,
@@ -312,7 +317,16 @@ async def _investigate(self: "ClaudeAgentSdkAdapter", request: SessionRequest, t
     prompt = _session_prompt(request)
     with span("llm.agent_sdk.session", kind=AGENT, input=prompt, case_id=request.case_id,
               capability_id=request.capability_id, model=self.model, tools=",".join(request.allowed_tools)) as sp:
-        result = await self._run(prompt, options)
+        result, transcript = None, [{"turn": 0, "role": "user", "kind": "prompt", "text": prompt}]
+        turn = 0
+        async for message in self._query(prompt=prompt, options=options):
+            if isinstance(message, ResultMessage):
+                result = message
+            elif isinstance(message, AssistantMessage):
+                turn += 1
+                transcript += _assistant_turn(turn, message)
+            elif isinstance(message, UserMessage):
+                transcript += _tool_results(turn, message)
         out = _parse_any(result)
         set_output(sp, out)
         usage = {"input_tokens": (result.usage or {}).get("input_tokens"),
@@ -320,7 +334,44 @@ async def _investigate(self: "ClaudeAgentSdkAdapter", request: SessionRequest, t
                  "cost_usd": result.total_cost_usd, "turns": result.num_turns,
                  "duration_ms": result.duration_ms, "session_id": result.session_id}
         results = [r for r in out.get("results") or [] if isinstance(r, dict)]
-        return SessionResult(results=results, summary=str(out.get("summary") or ""), model=self.model, usage=usage)
+        transcript.append({"turn": turn, "role": "model", "kind": "answer",
+                           "text": f"{out.get('summary') or ''} {len(results)} result(s) returned.".strip()})
+        return SessionResult(results=results, summary=str(out.get("summary") or ""), model=self.model, usage=usage,
+                             transcript=transcript)
+
+
+def _qualified(sdk_name: str) -> str:
+    """mcp__aof__mbrec_breaks -> mbrec_breaks (as the model saw it)."""
+    return sdk_name.split("__", 2)[-1]
+
+
+def _assistant_turn(turn: int, message) -> list[dict]:
+    out = []
+    for block in message.content or []:
+        if isinstance(block, TextBlock) and block.text.strip():
+            out.append({"turn": turn, "role": "model", "kind": "text", "text": block.text.strip()[:4000]})
+        elif isinstance(block, ToolUseBlock):
+            out.append({"turn": turn, "role": "model", "kind": "tool_call", "tool": _qualified(block.name),
+                        "input": block.input, "id": block.id})
+    return out
+
+
+def _tool_results(turn: int, message) -> list[dict]:
+    out = []
+    content = message.content if isinstance(message.content, list) else []
+    for block in content:
+        if not isinstance(block, ToolResultBlock):
+            continue
+        text = block.content if isinstance(block.content, str) else " ".join(
+            c.get("text", "") for c in block.content or [] if isinstance(c, dict))
+        rows = None
+        try:
+            rows = len(json.loads(text).get("rows", []))
+        except (ValueError, AttributeError):
+            pass
+        out.append({"turn": turn, "role": "tool", "kind": "tool_result", "id": block.tool_use_id,
+                    "rows": rows, "error": bool(block.is_error), **({"text": text[:300]} if block.is_error else {})})
+    return out
 
 
 ClaudeAgentSdkAdapter.investigate = _investigate

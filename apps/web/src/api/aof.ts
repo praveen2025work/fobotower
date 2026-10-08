@@ -247,8 +247,36 @@ export interface ToolCall {
   called_at: string;
 }
 
+/** One entry of a skill session's conversation (the `agent` step). */
+export interface SessionTurn {
+  turn: number;
+  role: "user" | "model" | "tool";
+  kind: "prompt" | "text" | "tool_call" | "tool_result" | "answer";
+  text?: string;
+  tool?: string;
+  input?: Record<string, unknown>;
+  rows?: number | null;
+  error?: boolean;
+}
+
+/** The skill session that produced the case's results. */
+export interface SessionInfo {
+  adapter: string;
+  model: string | null;
+  skill_file: string | null;
+  skill_chars: number;
+  tools: string[];
+  results: number;
+  failure: string | null;
+  session_id?: string;
+  turns?: number;
+  cost_usd?: number;
+  duration_ms?: number;
+  transcript: SessionTurn[];
+}
+
 export interface CaseDetail extends CaseSummary {
-  draft: { headline: string; skipped_steps?: string[] } | null;
+  draft: { headline: string; summary?: string; skipped_steps?: string[]; session?: SessionInfo } | null;
   labels: { case: string; item: string };
   steps: string[];
   pause_before: string[];

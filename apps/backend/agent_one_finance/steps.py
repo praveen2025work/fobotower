@@ -54,6 +54,7 @@ class CaseState(TypedDict, total=False):
     spawned: bool                     # a `spawn` step opened child cases
     model_context: list[dict]         # data sets the model sees when it investigates (e.g. a timeline)
     session_summary: str              # what the `agent` step's session said about the whole case
+    session: dict                     # the skill session: model, id, turns, cost, transcript
     outcome: str | None
     escalation_reason: str | None
 
@@ -632,7 +633,7 @@ async def agent(state: CaseState) -> dict:
     ctx = _ctx(state, "agent", set(rs.tools))
     ctx.protector = guard
     adapter = llm()
-    summary, results, model, usage = "", [], None, {}
+    summary, results, model, usage, transcript = "", [], None, {}, []
     with span("agent.session", case_id=state["case_id"], tools=",".join(rs.tools)) as sp:
         failure = await controls.over_budget(m, state["case_id"])
         if failure is None:
@@ -649,6 +650,8 @@ async def agent(state: CaseState) -> dict:
             try:
                 res = await run_session(adapter, request, gateway.invoker(ctx))
                 summary, results, model, usage = guard.reveal(res.summary or ""), res.results, res.model, res.usage
+                transcript = [{k: (guard.reveal(v) if isinstance(v, str) else v) for k, v in t.items()}
+                              for t in res.transcript]
             except (gateway.ToolDenied, gateway.ToolFailed) as e:
                 failure = f"TOOL_ERROR: {e}"
             except Exception as e:  # the model must never fail the run silently
@@ -708,7 +711,11 @@ async def agent(state: CaseState) -> dict:
                                         group_key=group_key, item_ids=g["item_ids"], priors=priors,
                                         finding=finding))
         await s.commit()
-    return {"items": items, "groups": groups, "findings": findings, "session_summary": summary}
+    session = {"adapter": adapter.name, "model": model, "skill_file": rs.skill_file,
+               "skill_chars": len(rs.skill), "tools": list(rs.tools), "results": len(results),
+               "failure": failure, "transcript": transcript[:400],
+               **{k: usage.get(k) for k in ("session_id", "turns", "cost_usd", "duration_ms") if usage.get(k) is not None}}
+    return {"items": items, "groups": groups, "findings": findings, "session_summary": summary, "session": session}
 
 
 async def draft(state: CaseState) -> dict:
@@ -735,6 +742,8 @@ async def draft(state: CaseState) -> dict:
         d["unit"] = m.items.amount_unit
     if state.get("session_summary"):
         d["summary"] = state["session_summary"]     # the skill session's own words on the case
+    if state.get("session"):
+        d["session"] = state["session"]             # shown on the case: the conversation, turn by turn
     if state.get("skipped"):
         d["skipped_steps"] = list(state["skipped"])    # steps whose `when` did not hold this run
     async with get_session() as s:

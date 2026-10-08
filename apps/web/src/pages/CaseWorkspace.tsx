@@ -55,6 +55,7 @@ import DataSetsPanel from "../components/case/DataSetsPanel";
 import { CaseLinks, GroupSteps } from "../components/case/StepsV2";
 import { ChecklistAnswers, SignOffChecklist, checklistComplete } from "../components/case/SignOffChecklist";
 import CaseHistory from "../components/case/CaseHistory";
+import SessionTranscript from "../components/case/SessionTranscript";
 import StatusBadge from "../components/StatusBadge";
 import { DueBadge } from "../components/Urgency";
 import { Empty, ErrorState, Loading, WorkflowStepper, currentStep, formatTime, formatValue } from "../components/ui";
@@ -77,6 +78,7 @@ function DecidedBy({ by }: { by: string }) {
 
 const TABS = [
   { id: "proposal", label: "Proposal" },
+  { id: "session", label: "Model session" },
   { id: "ask", label: "Ask about this case" },
   { id: "history", label: "Run history" },
 ] as const;
@@ -239,7 +241,7 @@ export default function CaseWorkspace(): JSX.Element {
         <section className={clsx("min-w-0 lg:block lg:overflow-y-auto", pane !== "detail" && "hidden")} aria-label="Proposal">
           <ReleaseSummary c={c} />
           <div className="flex gap-1 overflow-x-auto border-b border-surface-100 px-2 pt-2 sm:px-3" role="tablist">
-            {TABS.map((t) => (
+            {TABS.filter((t) => t.id !== "session" || c.draft?.session).map((t) => (
               <button
                 key={t.id}
                 role="tab"
@@ -257,6 +259,7 @@ export default function CaseWorkspace(): JSX.Element {
           <div className="p-3 sm:p-5">
             {tab === "proposal" &&
               (group ? <ProposalPanel key={group.group_id} c={c} group={group} /> : <Empty>Select a proposal.</Empty>)}
+            {tab === "session" && c.draft?.session && <SessionTranscript session={c.draft.session} />}
             {tab === "ask" && <CaseChat caseId={c.case_id} />}
             {tab === "history" && <CaseHistory key={c.status} caseId={c.case_id} />}
           </div>

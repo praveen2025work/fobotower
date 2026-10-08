@@ -10,9 +10,9 @@ Today's build:
 
 - **44 building blocks.** 13 core steps every case can use, plus 31 configurable step types in 6 families.
 - **Governance built in**: segregation of duties, the authority matrix, reserved decisions, release before write-back, audit, masking and retention.
-- **Eight capabilities running**, seven of them in Finance:
-  - product control: FOBO break investigation (Prime and Rates);
-  - financial control: reconciliation, month-end accruals, control operating test;
+- **Ten capabilities running**, nine of them in Finance:
+  - product control: FOBO break investigation (Prime and Rates), and the same investigation as one skill session;
+  - financial control: reconciliation, month-end accruals, control operating test and its per-sample control test;
   - financial reporting: P&L variance commentary, report validation;
   - treasury and payments operations: payment exceptions;
   - beyond Finance, the same platform: complaint handling.
@@ -134,7 +134,7 @@ Each row is built only from the blocks above. The last rows show the same platfo
 
 ## Running today
 
-Eight capabilities run on the platform. They use stub connectors here, and have office connector examples ready. Each one shows a different part of what the platform does.
+Ten capabilities run on the platform. They use stub connectors here, and have office connector examples ready. Each one shows a different part of what the platform does.
 
 | Capability | Area | What it shows |
 | --- | --- | --- |
@@ -146,6 +146,8 @@ Eight capabilities run on the platform. They use stub connectors here, and have 
 | Month-end accruals | Financial control | A closed period stops the run; balanced journals; the bank's authority matrix with two approvers over 250k; posted after a controller releases |
 | Complaint handling | Beyond Finance | A timeline the model reads; related complaints; the 8-week clock; screening candidates; acknowledgements sent only after approval; redress above the limit reserved for the lead |
 | Control operating test | Finance controls | A reproducible sample; one child case per sample; the parent waits for them all; the control owner attests; a PDF report |
+| Control test — one sample | Finance controls | The operating test's child case: each attribute performed and evidenced, signed off by a tester |
+| Break investigation (skill session) | Product control | The FOBO skill run as one model session per book and COB with MB Rec, MOTIF and CATS tools; figures checked against the tool results; a controller signs off every break |
 
 ## How a team adopts it
 

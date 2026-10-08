@@ -33,13 +33,12 @@ export function ActionCard({ c }: { c: CaseDetail }) {
     if (judg) parts.push(`${judg} judgement ${judg === 1 ? "call" : "calls"}`);
     if (esc) parts.push(`${esc} escalated`);
     return (
-      <Shell tone={w.you ? "action" : "waiting"} icon={w.you ? Scale : Eye}
+      <Shell compact tone={w.you ? "action" : "waiting"} icon={w.you ? Scale : Eye}
         title={w.you ? (c.acting_for ? `Your review — covering for ${c.acting_for}` : "Your review") : "Waiting for review"}
       >
-        <p>{w.you ? parts.join(" · ") : `${parts.join(" · ")}. Reviewers: ${roleList(w.roles)}.`}</p>
-        {!w.you && w.why_not && <p className="mt-0.5 text-xs opacity-80">You can look but not decide: {w.why_not}.</p>}
-        {w.you && esc > 0 && <p className="mt-0.5 text-xs">Escalated groups need your own explanation to approve; each shows why it was escalated.</p>}
-        {stake && <p className="mt-0.5 text-xs opacity-80">{stake}</p>}
+        {parts.join(" · ")}
+        {stake && <span className="opacity-80"> · {stake}</span>}
+        {!w.you && <span className="opacity-80"> · reviewers: {roleList(w.roles)}{w.why_not ? `; you can look but not decide: ${w.why_not}` : ""}</span>}
       </Shell>
     );
   }
@@ -222,12 +221,21 @@ const TONES = {
   done: "border-green-200 bg-green-50 text-green-900",
 } as const;
 
-function Shell({ tone, icon: Icon, title, children }: {
+function Shell({ tone, icon: Icon, title, children, compact = false }: {
   tone: keyof typeof TONES;
   icon: typeof Scale;
   title: string;
   children: React.ReactNode;
+  compact?: boolean;              // one line: the title, then what is left
 }) {
+  if (compact) {
+    return (
+      <section role="status" aria-label={title} className={clsx("mt-3 flex items-start gap-2 rounded-lg border px-3 py-2 text-sm", TONES[tone])}>
+        <Icon size={15} className="mt-0.5 shrink-0" />
+        <p className="min-w-0"><span className="mr-1.5 font-semibold">{title}:</span>{children}</p>
+      </section>
+    );
+  }
   return (
     <section role="status" aria-label={title} className={clsx("mt-3 flex gap-3 rounded-xl border px-3 py-2.5 text-sm sm:px-4", TONES[tone])}>
       <Icon size={18} className="mt-0.5 shrink-0" />
@@ -294,23 +302,19 @@ export function explainEscalation(f: Finding): string {
   return reason || "Escalated for a person to decide.";
 }
 
-/** The escalated group's card: why, who owns it, and what the reviewer can do. */
+/** Why the group was escalated, as the top band of its finding card: why, the ticket, what the reviewer can do. */
 export function EscalationCard({ group, canDecide }: { group: Group; canDecide: boolean }) {
   const f = group.finding;
   if (!f || f.status !== "escalated") return null;
   return (
-    <section className="mt-3 rounded-lg border border-orange-200 bg-orange-50 p-3 text-sm text-orange-950" aria-label="Why it was escalated">
-      <h3 className="flex items-center gap-1.5 font-semibold text-orange-900">
-        <ShieldAlert size={15} /> Escalated — a person decides
-      </h3>
-      <p className="mt-1">{explainEscalation(f)}</p>
-      {group.ticket?.reference && (
-        <p className="mt-1 flex items-center gap-1 text-xs"><Ticket size={11} /> Ticket {group.ticket.reference}</p>
-      )}
+    <section className="bg-orange-50 px-3 py-2.5 text-sm text-orange-950" aria-label="Why it was escalated">
+      <p>
+        <span className="mr-1 inline-flex items-center gap-1 font-semibold text-orange-900"><ShieldAlert size={14} /> A person decides:</span>
+        {explainEscalation(f)}
+        {group.ticket?.reference && <span className="ml-1 inline-flex items-center gap-1 text-xs"><Ticket size={11} /> {group.ticket.reference}</span>}
+      </p>
       {canDecide && !group.decision && (
-        <p className="mt-2 text-xs text-orange-900">
-          Approve with your own explanation, reject with a reason, or ask the model to look again.
-        </p>
+        <p className="mt-0.5 text-xs text-orange-900">Approve with your own explanation, reject with a reason, or ask the model to look again.</p>
       )}
     </section>
   );

@@ -14,6 +14,7 @@ import LiveTail from "../components/mission-control/LiveTail";
 import McpServersPanel from "../components/mission-control/McpServersPanel";
 import ScanningStrip from "../components/mission-control/ScanningStrip";
 import { SchedulesPanel, SwitchesPanel } from "../components/ops/ControlsPanel";
+import SupportGuide from "../components/ops/SupportGuide";
 import StatusBadge from "../components/StatusBadge";
 import { ErrorState } from "../components/ui";
 
@@ -23,7 +24,6 @@ export default function Operations(): JSX.Element {
   const me = useMe(currentUser());
   // Platform support holds no data scope: say why case panels are empty.
   const support = !!me.data?.is_admin && Object.keys(me.data?.data_scopes ?? {}).length === 0;
-  const hidden = "Case data is hidden from platform support. Health, connectors and switches are below.";
 
   return (
     <div className="-m-3 flex min-h-[calc(100vh-3.5rem)] flex-col sm:-m-4 lg:-m-6">
@@ -32,8 +32,14 @@ export default function Operations(): JSX.Element {
       {ops.error && <div className="p-4"><ErrorState error={ops.error} /></div>}
 
       <div className="grid flex-1 grid-cols-12 gap-3 p-3 sm:gap-4 sm:p-4">
+        {support ? (
+          <div className="col-span-12 lg:col-span-9">
+            <SupportGuide what="Cases, reviews and their run figures" className="h-full" />
+          </div>
+        ) : (
+          <>
         <div className="col-span-12 lg:col-span-6">
-          <FleetTable agents={ops.data?.fleet} isLoading={ops.isLoading} isError={ops.isError} onRetry={() => ops.refetch()} emptyMessage={support ? hidden : undefined} />
+          <FleetTable agents={ops.data?.fleet} isLoading={ops.isLoading} isError={ops.isError} onRetry={() => ops.refetch()} />
         </div>
         <div className="col-span-12 lg:col-span-3">
           <section className="flex h-full flex-col rounded-xl border border-surface-200 bg-card">
@@ -54,12 +60,14 @@ export default function Operations(): JSX.Element {
               ))}
               {inbox.data?.length === 0 && (
                 <li className="px-4 py-6 text-center text-xs text-surface-400">
-                  {support ? "Reviews go to the business teams; platform support has none." : "Nothing waiting on you."}
+                  Nothing waiting on you.
                 </li>
               )}
             </ul>
           </section>
         </div>
+          </>
+        )}
         <div className="col-span-12 flex flex-col gap-3 lg:col-span-3">
           <div className="min-h-64 flex-1">
             <LiveTail feed={ops.data?.tail ?? []} subscribe={false} />

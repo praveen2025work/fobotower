@@ -430,7 +430,7 @@ function PlaybookPanel({ group }: { group: Group }) {
   const f = group.finding;
   if (!f?.category && !f?.verdict) return null;
   return (
-    <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 rounded-lg border border-surface-200 p-3 text-xs sm:grid-cols-4" aria-label="Playbook">
+    <div className="grid grid-cols-2 gap-x-4 gap-y-1 p-3 text-xs sm:grid-cols-4" aria-label="Playbook">
       {f.verdict && <div><span className="text-surface-500">Verdict</span><p className="font-semibold text-surface-900">{f.verdict.replace(/_/g, " ")}</p></div>}
       {f.category && <div><span className="text-surface-500">Category</span><p className="font-medium text-surface-800">{f.category} · {f.category_name}</p></div>}
       {(f.side_name ?? f.side) && <div><span className="text-surface-500">Side</span><p className="font-medium text-surface-800">{f.side_name ?? f.side}</p></div>}
@@ -494,20 +494,25 @@ function ProposalPanel({ c, group }: { c: CaseDetail; group: Group }) {
           {f && <DecidedBy by={f.decided_by} />}
           {sentBack > 0 && <span className="text-[11px] text-surface-500">re-investigated {sentBack}×</span>}
         </div>
-        <PlaybookPanel group={group} />
-        {f?.sections && f.sections.length > 0 ? (
-          <dl className="mt-3 space-y-2 rounded-lg border border-surface-200 bg-surface-50 p-3 text-sm">
-            {f.sections.map((sec) => (
-              <div key={sec.id}>
-                <dt className="text-xs font-semibold uppercase tracking-wide text-surface-500">{sec.label}</dt>
-                <dd className={clsx("whitespace-pre-line leading-relaxed", sec.text ? "text-surface-800" : "italic text-surface-400")}>{sec.text || "not answered"}</dd>
-              </div>
-            ))}
-          </dl>
-        ) : (
-          f?.comment && <p className="mt-3 rounded-lg border border-surface-200 bg-surface-50 p-3 text-sm leading-relaxed text-surface-800">{f.comment}</p>
+        {/* One card for the model's finding: why a person decides (if escalated), the verdict, the reasoning. */}
+        {f && (f.status === "escalated" || f.verdict || f.category || (f.sections?.length ?? 0) > 0 || f.comment) && (
+          <div className="mt-3 divide-y divide-surface-200 overflow-hidden rounded-lg border border-surface-200">
+            <EscalationCard group={group} canDecide={c.can_decide} />
+            <PlaybookPanel group={group} />
+            {f.sections && f.sections.length > 0 ? (
+              <dl className="space-y-2 bg-surface-50 p-3 text-sm">
+                {f.sections.map((sec) => (
+                  <div key={sec.id}>
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-surface-500">{sec.label}</dt>
+                    <dd className={clsx("whitespace-pre-line leading-relaxed", sec.text ? "text-surface-800" : "italic text-surface-400")}>{sec.text || "not answered"}</dd>
+                  </div>
+                ))}
+              </dl>
+            ) : (
+              f.comment && <p className="bg-surface-50 p-3 text-sm leading-relaxed text-surface-800">{f.comment}</p>
+            )}
+          </div>
         )}
-        <EscalationCard group={group} canDecide={c.can_decide} />
         <GroupSteps group={group} />
         {f?.previous && (
           <p className="mt-2 text-xs text-surface-500">

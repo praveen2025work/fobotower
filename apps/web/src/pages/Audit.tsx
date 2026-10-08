@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
-import { useAudit, useCapabilities, type AuditEvent } from "../api/aof";
+import { currentUser } from "../api/client";
+import { useAudit, useCapabilities, useMe, type AuditEvent } from "../api/aof";
+import SupportGuide from "../components/ops/SupportGuide";
 import StatusBadge from "../components/StatusBadge";
 import { Card, Empty, ErrorState, Loading, PageHeader, formatTime } from "../components/ui";
 
@@ -26,6 +28,8 @@ export default function Audit(): JSX.Element {
   const [kind, setKind] = useState<string>("");
   const caps = useCapabilities();
   const events = useAudit(capability || undefined);
+  const me = useMe(currentUser());
+  const support = !!me.data?.is_admin && Object.keys(me.data?.data_scopes ?? {}).length === 0;
   const rows = (events.data ?? []).filter((e) => !kind || e.kind === kind || (kind === "refused" && e.kind === "tool_call" && !e.allowed));
 
   return (
@@ -49,10 +53,11 @@ export default function Audit(): JSX.Element {
           </div>
         }
       />
+      {support && events.data && rows.length === 0 ? <SupportGuide what="Case events (connector calls, sign-offs, releases)" /> : (
       <Card>
         {events.isLoading && <Loading what="audit" />}
         {events.error && <ErrorState error={events.error} />}
-        {events.data && rows.length === 0 && <Empty>No events you may see for this filter. Case events are visible only to the people the case belongs to.</Empty>}
+        {events.data && rows.length === 0 && <Empty>No events for this filter. You see the events of the cases you may see.</Empty>}
         {rows.length > 0 && (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[40rem] text-left text-sm">
@@ -78,6 +83,7 @@ export default function Audit(): JSX.Element {
           </div>
         )}
       </Card>
+      )}
     </div>
   );
 }

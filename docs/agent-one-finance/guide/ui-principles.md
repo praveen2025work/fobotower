@@ -58,6 +58,13 @@ and keeps everything else one click away.
 14. **Plain words for time and things.** "15 days overdue", not "Overdue 15 days ago"; "1 break",
     "3 breaks", not "break(s)"; names, not ids ("Break investigation", not `break.investigation`).
 
+15. **One card for the decision.** On a case, "Your review" is one line, and the model's finding
+    is one card: why a person decides (when escalated), the verdict, then the reasoning.
+
+16. **Empty for a reason, said once.** Platform support holds no data scope, so Operations and
+    Audit show who the case data belongs to and what support can do instead (health, connectors,
+    off switches, Phoenix), not empty panels.
+
 Every screen, as it is now: `docs/agent-one-finance/demo/agent-one-finance-screens.html` (and `.pdf`).
 
 New panels start folded unless the person needs them for the decision on that screen.

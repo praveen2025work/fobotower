@@ -1,10 +1,14 @@
 import { screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 
+import { setCurrentUser } from "../../api/client";
 import { mockApi, renderAt } from "../../test/render";
 import Operations from "../Operations";
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  window.localStorage.clear();
+});
 
 it("shows platform health, connector probes, the fleet and incidents for run-the-bank", async () => {
   mockApi({
@@ -28,4 +32,21 @@ it("shows platform health, connector probes, the fleet and incidents for run-the
   expect(screen.getByText("CATS vs MOTIF (FOBO)")).toBeInTheDocument();
   expect(screen.getByText(/Connector errors from motif.positions/)).toBeInTheDocument();
   expect(screen.getByText(/ledger.postings refused/)).toBeInTheDocument();
+});
+
+it("tells platform support why case panels are empty and what they can do instead", async () => {
+  mockApi({
+    "GET /operations": { health: { status: "healthy", database: "connected", llm: "stub", tracing: "off", entitlement: "dev-stub" },
+      connectors: [], kpi: null, fleet: [], incidents: [], tail: [] },
+    "GET /inbox": [],
+    "GET /me": { user_id: "pat", roles: ["AOF_PLATFORM_ADMIN"], data_scopes: {}, is_admin: true },
+    "GET /schedules": [],
+    "GET /switches": [],
+  });
+  setCurrentUser("pat");
+  renderAt("/operations", "/operations", <Operations />);
+  const guide = await screen.findByRole("region", { name: "Platform support" });
+  expect(guide).toHaveTextContent("Cases, reviews and their run figures belong to the business teams");
+  expect(screen.getByRole("link", { name: "Connectors" })).toHaveAttribute("href", "/connectors");
+  expect(screen.queryByText("Waiting on people")).not.toBeInTheDocument();
 });

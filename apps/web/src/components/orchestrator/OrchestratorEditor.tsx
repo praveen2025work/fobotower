@@ -16,7 +16,7 @@ import { useConfigCheck, useDraftGroup, usePlatform, useSubmitDraft, type GroupC
 import { ErrorState } from "../ui";
 import { Field, type Ctx } from "./fields";
 import { allowed, changedPaths, get, groupSet, preview, setPath, type Json } from "./paths";
-import { STAGES, STEP_ORDER, stageOf, stagesFor, type Stage } from "./stages";
+import { SECTIONS, STAGES, STEP_ORDER, stageOf, stagesFor, type Stage } from "./stages";
 import PrepareSteps, { dataSteps } from "./PrepareSteps";
 
 type Mode = { kind: "capability" } | { kind: "group"; config: GroupConfig; configurable: string[] };
@@ -191,28 +191,42 @@ export default function OrchestratorEditor({ capabilityId, manifest, mode, canEd
       <div className="grid gap-3 lg:grid-cols-[17rem_minmax(0,1fr)]">
         {/* The pipeline */}
         <nav aria-label="Orchestrator steps" className="flex gap-1.5 overflow-x-auto rounded-xl border border-surface-200 bg-card p-2 lg:flex-col lg:overflow-visible">
-          {stages.map((s) => {
-            const on = isOn(working, s);
-            const n = byStage[s.id]?.length ?? 0;
-            return (
-              <button
-                key={s.id}
-                type="button"
-                aria-current={s.id === stage.id ? "step" : undefined}
-                onClick={() => setStageId(s.id)}
-                className={clsx("flex min-w-[10rem] shrink-0 items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm lg:min-w-0",
-                  s.id === stage.id ? "bg-primary-50 text-primary-900 ring-1 ring-primary-200" : "text-surface-700 hover:bg-surface-50",
-                  !on && "opacity-55")}
-              >
-                <span className={clsx("h-2 w-2 shrink-0 rounded-full", s.gate ? "bg-surface-500" : on ? "bg-green-500" : "bg-surface-300")} />
-                <span className="min-w-0 flex-1 truncate">{s.title}</span>
-                {s.step && pauses.includes(s.step) && <Hand size={12} className="shrink-0 text-primary-600" aria-label="stops for a person" />}
-                {s.gate && <Lock size={11} className="shrink-0 text-surface-400" aria-label="always on" />}
-                {changedIn(s) && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary-500" aria-label="changed" />}
-                {n > 0 && <span className="shrink-0 rounded-full bg-red-100 px-1.5 text-[10px] font-semibold text-red-700">{n}</span>}
-              </button>
+          {(() => {
+            const item = (s: Stage) => {
+              const on = isOn(working, s);
+              const n = byStage[s.id]?.length ?? 0;
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  aria-current={s.id === stage.id ? "step" : undefined}
+                  onClick={() => setStageId(s.id)}
+                  className={clsx("flex min-w-[10rem] shrink-0 items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm lg:min-w-0",
+                    s.id === stage.id ? "bg-primary-50 text-primary-900 ring-1 ring-primary-200" : "text-surface-700 hover:bg-surface-50",
+                    !on && "text-surface-500")}
+                >
+                  <span className={clsx("h-2 w-2 shrink-0 rounded-full", s.gate ? "bg-surface-500" : on ? "bg-green-500" : "bg-surface-300")} />
+                  <span className="min-w-0 flex-1 truncate">{s.title}</span>
+                  {s.step && pauses.includes(s.step) && <Hand size={12} className="shrink-0 text-primary-600" aria-label="stops for a person" />}
+                  {s.gate && <Lock size={11} className="shrink-0 text-surface-400" aria-label="always on" />}
+                  {changedIn(s) && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary-500" aria-label="changed" />}
+                  {n > 0 && <span className="shrink-0 rounded-full bg-red-100 px-1.5 text-[10px] font-semibold text-red-700">{n}</span>}
+                </button>
+              );
+            };
+            // In use, by section, in the order a person sets things up; then the steps not in use.
+            const off = stages.filter((s) => !isOn(working, s));
+            const heading = (t: string) => (
+              <p key={`h-${t}`} className="hidden px-2.5 pb-0.5 pt-2 text-[10px] font-semibold uppercase tracking-wide text-surface-400 first:pt-0 lg:block">{t}</p>
             );
-          })}
+            return [
+              ...SECTIONS.flatMap((sec) => {
+                const here = sec.ids.map((id) => stages.find((s) => s.id === id)).filter((s): s is Stage => !!s && isOn(working, s));
+                return here.length ? [heading(sec.title), ...here.map(item)] : [];
+              }),
+              ...(off.length ? [heading("Not in use"), ...off.map(item)] : []),
+            ];
+          })()}
         </nav>
 
         {/* The selected step */}

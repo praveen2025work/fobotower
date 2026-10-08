@@ -4,7 +4,8 @@
 // other setting; team groups may change the settings their capability allows.
 
 import { useState } from "react";
-import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
+import clsx from "clsx";
+import { ArrowDown, ArrowUp, ChevronRight, Plus, Trash2 } from "lucide-react";
 
 import { Field, type Ctx, type FieldSpec } from "./fields";
 import { get, setPath, type Json } from "./paths";
@@ -298,6 +299,9 @@ export default function PrepareSteps({ ctx, setWorking, stepsLocked }: {
   ctx: Ctx; setWorking: (f: (m: Json) => Json) => void; stepsLocked: string | null;
 }) {
   const [adding, setAdding] = useState("derive");
+  // Each step is one line until opened; a step just added opens straight away.
+  const [opened, setOpened] = useState<Set<string>>(new Set());
+  const toggle = (id: string) => setOpened((o) => { const n = new Set(o); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const m = ctx.m;
   const ids = dataSteps(m);
   const steps = (get(m, "steps") as string[]) ?? [];
@@ -307,6 +311,7 @@ export default function PrepareSteps({ ctx, setWorking, stepsLocked }: {
     let n = 1;
     while (all.includes(`${adding}_${n}`)) n += 1;
     const id = `${adding}_${n}`;
+    setOpened((o) => new Set(o).add(id));
     const t = TYPE[adding];
     const at = insertAt(all, w, t.place);
     let out = setPath(w, "steps", [...all.slice(0, at), id, ...all.slice(at)]);
@@ -334,14 +339,18 @@ export default function PrepareSteps({ ctx, setWorking, stepsLocked }: {
       {ids.length === 0 && <p className="text-sm text-surface-500">No configurable steps yet. Add one to prepare the data, act on the accounts, test controls, wait for others, read files and documents, or keep clocks and parties in view.</p>}
       {ids.map((id) => {
         const t = TYPE[typeOf(m, id)];
+        const open = opened.has(id);
         return (
           <section key={id} aria-label={`Step ${id}`} className="rounded-lg border border-surface-200 p-3">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded bg-primary-50 px-1.5 py-0.5 text-[11px] font-medium text-primary-800">{t.label}</span>
-              <span className="text-[11px] text-surface-400">{t.family}</span>
-              {t.person && <span className="rounded bg-primary-50 px-1.5 py-0.5 text-[11px] text-primary-800">a person approves first</span>}
-              <code className="text-[11px] text-surface-500">{id}</code>
-              <span className="text-[11px] text-surface-400">step {steps.indexOf(id) + 1} of {steps.length}</span>
+              <button type="button" onClick={() => toggle(id)} aria-expanded={open}
+                className="flex min-w-0 flex-1 items-center gap-2 text-left">
+                <ChevronRight size={14} className={clsx("shrink-0 text-surface-400 transition-transform", open && "rotate-90")} />
+                <span className="text-[11px] tabular-nums text-surface-400">{steps.indexOf(id) + 1}</span>
+                <span className="min-w-0 truncate text-sm font-medium text-surface-800">{String(get(m, `step_settings.${id}.label`) ?? "") || t.label}</span>
+                <span className="shrink-0 rounded bg-surface-100 px-1.5 py-0.5 text-[11px] text-surface-600">{t.label}</span>
+                {t.person && <span className="shrink-0 rounded bg-primary-50 px-1.5 py-0.5 text-[11px] text-primary-800">a person approves first</span>}
+              </button>
               {!stepsLocked && (
                 <span className="ml-auto flex gap-1">
                   <button type="button" aria-label={`Move ${id} earlier`} onClick={() => move(id, -1)} className="rounded p-1 text-surface-500 hover:bg-surface-100"><ArrowUp size={13} /></button>
@@ -350,6 +359,7 @@ export default function PrepareSteps({ ctx, setWorking, stepsLocked }: {
                 </span>
               )}
             </div>
+            {open && <>
             <p className="mt-1 text-xs text-surface-500">{t.says}</p>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <Field ctx={ctx} spec={{ kind: "text", path: `step_settings.${id}.label`, label: "Called" }} />
@@ -360,6 +370,8 @@ export default function PrepareSteps({ ctx, setWorking, stepsLocked }: {
                 </div>
               ))}
             </div>
+            <p className="mt-2 text-[11px] text-surface-400">Step id <code>{id}</code> · {t.family}</p>
+            </>}
           </section>
         );
       })}

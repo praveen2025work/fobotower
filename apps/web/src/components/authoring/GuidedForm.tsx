@@ -2,6 +2,7 @@
 // configuration. The platform's validator judges it exactly as it judges a
 // model's draft, and another owner approves it before it goes live.
 
+import { ToolSet } from "../orchestrator/fields";
 import { useState } from "react";
 import { ListChecks } from "lucide-react";
 
@@ -126,15 +127,7 @@ export default function GuidedForm({ onBuild, pending }: { onBuild: (answers: Re
         {a.decided_by === "model_then_person" && (
           <div className="mt-2 space-y-2">
             <p className="text-xs text-surface-600">Tools the model may read:</p>
-            <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
-              {readTools.map((t) => (
-                <label key={t.name} className="flex items-center gap-1">
-                  <input type="checkbox" checked={a.model_tools.includes(t.name)}
-                    onChange={(e) => set("model_tools", e.target.checked ? [...a.model_tools, t.name] : a.model_tools.filter((x) => x !== t.name))} />
-                  <span className="font-mono">{t.name}</span>
-                </label>
-              ))}
-            </div>
+            <ToolSet value={a.model_tools} onChange={(v) => set("model_tools", v)} choices={readTools} />
             <label className={label}>Instructions to the model (optional)<textarea value={a.instructions} onChange={(e) => set("instructions", e.target.value)} rows={3} className={input} /></label>
             <label className="flex items-center gap-1.5 text-xs text-surface-600">
               <input type="checkbox" checked={a.tollgate} onChange={(e) => set("tollgate", e.target.checked)} /> A person approves the work before the model is asked (tollgate)

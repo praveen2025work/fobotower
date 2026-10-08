@@ -5,6 +5,7 @@
 
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import clsx from "clsx";
 import { ArrowLeft, Save, Users } from "lucide-react";
 import { parse, stringify } from "yaml";
 
@@ -17,11 +18,12 @@ import DataContractPanel from "../components/capability/DataContractPanel";
 import VersionsPanel from "../components/capability/VersionsPanel";
 import OrchestratorEditor from "../components/orchestrator/OrchestratorEditor";
 import StatusBadge from "../components/StatusBadge";
-import { Card, Empty, ErrorState, Loading, PageHeader, formatTime } from "../components/ui";
+import { Card, Empty, ErrorState, Fold, Loading, PageHeader, formatTime } from "../components/ui";
 
 export default function GroupDetail(): JSX.Element {
   const { id = "", group = "" } = useParams();
   const detail = useGroup(id, group);
+  const [tab, setTab] = useState<"configure" | "insights" | "data" | "workflow" | "versions">("configure");
 
   if (detail.isLoading) return <Loading what="group" />;
   if (detail.error) return <ErrorState error={detail.error} />;
@@ -37,57 +39,67 @@ export default function GroupDetail(): JSX.Element {
         title={g.name}
         subtitle={<span>{g.description} <span className="font-mono text-xs text-surface-400">· {g.group} v{g.version}</span></span>}
       />
-      <div className="mb-4 grid gap-4 lg:grid-cols-3">
-        <Card title={<span className="flex items-center gap-2"><Users size={14} /> People</span>}>
-          <dl className="space-y-1.5 text-sm">
-            <div><dt className="text-xs text-surface-500">Owners (change this group)</dt><dd>{[...g.owners.people, g.owners.role].filter(Boolean).join(", ")}{g.owners.four_eyes && " · four-eyes"}</dd></div>
-            <div><dt className="text-xs text-surface-500">Reviewers (sign off its cases)</dt><dd>{g.review_roles.join(", ")}</dd></div>
-          </dl>
-        </Card>
-        <Card title="What this group sets" className="lg:col-span-2">
-          <div className="flex flex-wrap gap-1.5">
-            {g.sets.length === 0 ? <span className="text-sm text-surface-500">Nothing — it runs on the capability's defaults.</span> :
-              g.sets.map((p) => <code key={p} className="rounded bg-accent-50 px-1.5 py-0.5 text-xs text-accent-700">{p}</code>)}
-          </div>
-          <p className="mt-3 text-xs text-surface-500">
-            Everything else — workflow, gates, write-back, ownership — is the capability's. Allowed here: {g.configurable.join(", ")}.
-          </p>
-        </Card>
-      </div>
-
-      {!!(g.manifest as unknown as { insights?: { recurring?: unknown } }).insights?.recurring && (
-        <div className="mb-4"><RecurringPanel capabilityId={id} teamGroup={group} /></div>
-      )}
-      <div className="mb-4"><LearningPanel capabilityId={id} teamGroup={group} /></div>
-      <div className="mb-4"><DataContractPanel capabilityId={id} teamGroup={group} /></div>
-
-      <h2 className="mb-2 text-sm font-semibold text-surface-800">Configure this group's orchestrator</h2>
-      <p className="mb-2 text-xs text-surface-500">
-        Step by step, as its cases run today. {g.is_owner ? "Change what this group may set; the rest is the capability's and shown locked." : "Its owners change it."} Changes go to another owner for approval.
+      <p className="-mt-2 mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-surface-600">
+        <span className="inline-flex items-center gap-1.5"><Users size={14} className="text-surface-400" />
+          Owned by {[...g.owners.people, g.owners.role].filter(Boolean).join(", ")}{g.owners.four_eyes && " (a second owner approves changes)"}</span>
+        <span>Reviewed by {g.review_roles.join(", ")}</span>
+        <span>{g.sets.length ? `Changes ${g.sets.length} of the capability's settings` : "Runs on the capability's defaults"}</span>
       </p>
-      <OrchestratorEditor
-        capabilityId={id}
-        manifest={g.manifest as unknown as Record<string, unknown>}
-        mode={{ kind: "group", config: g.config, configurable: g.configurable }}
-        canEdit={g.is_owner}
-      />
 
-      <div className="mt-4">
-        <Card title="Workflow"><FlowDiagram capabilityId={id} teamGroup={group} /></Card>
+      <div className="mb-4 flex max-w-full overflow-x-auto rounded-lg border border-surface-200 bg-card p-1 sm:inline-flex" role="tablist">
+        {(["configure", "insights", "data", "workflow", "versions"] as const).map((t) => (
+          <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)}
+            className={clsx("shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium",
+              tab === t ? "bg-brand-accent text-brand-accent-fg" : "text-surface-600 hover:bg-surface-50")}>
+            {({ configure: "Configure", insights: "Insights", data: "Data needed", workflow: "Workflow", versions: "Versions" } as const)[t]}
+          </button>
+        ))}
       </div>
 
-      <div className="mt-4 grid gap-4 xl:grid-cols-2">
-        <Versions capabilityId={id} group={group} versions={g.versions} isOwner={g.is_owner} fourEyes={g.owners.four_eyes} />
-        <Card title="What changed between versions">
-          <VersionsPanel capabilityId={id} group={group} versions={g.versions} />
-        </Card>
-      </div>
-
+      {tab === "configure" && (
+        <>
+          <p className="mb-2 text-xs text-surface-500">
+            {g.is_owner ? "Change what this group may set; what the capability decides is shown locked." : "Its owners change it."} Changes go to another owner for approval.
+          </p>
+          <OrchestratorEditor
+            capabilityId={id}
+            manifest={g.manifest as unknown as Record<string, unknown>}
+            mode={{ kind: "group", config: g.config, configurable: g.configurable }}
+            canEdit={g.is_owner}
+          />
+          <Fold className="mt-4" title="What this group changes" summary={`${g.sets.length} settings`} remember="group-sets">
+            <div className="flex flex-wrap gap-1.5">
+              {g.sets.length === 0 ? <span className="text-sm text-surface-500">Nothing: it runs on the capability's defaults.</span> :
+                g.sets.map((p) => <code key={p} className="rounded bg-surface-100 px-1.5 py-0.5 text-xs text-surface-700">{p}</code>)}
+            </div>
+            <p className="mt-2 text-xs text-surface-500">Everything else (workflow, gates, write-back, ownership) is the capability's.</p>
+          </Fold>
       {g.is_owner && (
         <details className="mt-4 rounded-xl border border-surface-200 bg-card p-4">
           <summary className="cursor-pointer text-sm font-semibold text-surface-800">Advanced: edit this group as YAML</summary>
           <div className="mt-3"><EditGroup capabilityId={id} config={g.config} /></div>
         </details>
+      )}
+        </>
+      )}
+
+      {tab === "insights" && (
+        <div className="space-y-4">
+          {!!(g.manifest as unknown as { insights?: { recurring?: unknown } }).insights?.recurring && (
+            <RecurringPanel capabilityId={id} teamGroup={group} />
+          )}
+          <LearningPanel capabilityId={id} teamGroup={group} />
+        </div>
+      )}
+      {tab === "data" && <DataContractPanel capabilityId={id} teamGroup={group} />}
+      {tab === "workflow" && <Card title="Workflow"><FlowDiagram capabilityId={id} teamGroup={group} /></Card>}
+      {tab === "versions" && (
+        <div className="grid gap-4 xl:grid-cols-2">
+          <Versions capabilityId={id} group={group} versions={g.versions} isOwner={g.is_owner} fourEyes={g.owners.four_eyes} />
+          <Card title="What changed between versions">
+            <VersionsPanel capabilityId={id} group={group} versions={g.versions} />
+          </Card>
+        </div>
       )}
     </div>
   );

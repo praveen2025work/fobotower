@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Layers, ShieldCheck } from "lucide-react";
 
 import { useCapabilities } from "../api/aof";
-import { Empty, ErrorState, Loading, PageHeader, WorkflowStepper } from "../components/ui";
+import { Empty, ErrorState, Loading, PageHeader } from "../components/ui";
 
 /** The catalogue: every capability the user's roles allow — each one configuration only. */
 export default function Capabilities(): JSX.Element {
@@ -27,7 +27,7 @@ export default function Capabilities(): JSX.Element {
                 </div>
                 <div>
                   <h2 className="font-semibold text-surface-900 group-hover:text-primary-700">{c.name}</h2>
-                  <p className="font-mono text-[11px] text-surface-400">{c.id} · v{c.version}</p>
+                  <p className="text-[11px] text-surface-400">version {c.version}</p>
                 </div>
               </div>
               <div className="flex gap-1.5 text-[10px]">
@@ -52,9 +52,9 @@ export default function Capabilities(): JSX.Element {
                 ))}
               </div>
             )}
-            <div className="mt-3">
-              <WorkflowStepper steps={c.steps} />
-            </div>
+            <p className="mt-2 text-xs text-surface-400">
+              {c.steps.includes("agent") ? "One skill session, then people review" : `${c.steps.length} steps, then people review`}
+            </p>
           </Link>
         ))}
       </div>

@@ -110,27 +110,68 @@ function ToolPicker({ value, onChange, access, tools, disabled, multiple, id }: 
       </select>
     );
   }
-  const list = (value as string[] | null) ?? [];
+  return <ToolSet value={(value as string[] | null) ?? []} onChange={onChange} choices={choices} known={known} disabled={disabled} />;
+}
+
+/** Several tools: the chosen ones as chips, and "Add a tool" — a search over the
+ *  rest, grouped by the system they belong to — so a long catalogue never hides
+ *  what is actually selected. */
+export function ToolSet({ value, onChange, choices, known = new Set(choices.map((t) => t.name)), disabled = false }: {
+  value: string[]; onChange: (v: string[]) => void; choices: Ctx["tools"]; known?: Set<string>; disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const describe = (n: string) => choices.find((t) => t.name === n)?.description ?? "not an onboarded tool";
+  const rest = choices.filter((t) => !value.includes(t.name) &&
+    (!q || `${t.name} ${t.description}`.toLowerCase().includes(q.toLowerCase())));
+  const bySystem = rest.reduce<Record<string, Ctx["tools"]>>((acc, t) => {
+    const sys = t.name.split(".")[0];
+    (acc[sys] ??= []).push(t);
+    return acc;
+  }, {});
   return (
-    <div className="flex flex-wrap gap-1.5">
-      {[...choices.map((t) => t.name), ...list.filter((n) => !known.has(n))].map((n) => {
-        const on = list.includes(n);
-        return (
-          <button
-            key={n}
-            type="button"
-            disabled={disabled}
-            aria-pressed={on}
-            title={choices.find((t) => t.name === n)?.description ?? "not an onboarded tool"}
-            onClick={() => onChange(on ? list.filter((x) => x !== n) : [...list, n])}
-            className={clsx("rounded-full border px-2 py-0.5 font-mono text-[11px]",
-              on ? "border-primary-300 bg-primary-50 text-primary-800" : "border-surface-200 text-surface-500 hover:border-surface-300",
-              !known.has(n) && "border-red-300 text-red-700", disabled && "cursor-not-allowed opacity-70")}
-          >
+    <div>
+      <div className="flex flex-wrap items-center gap-1.5">
+        {value.length === 0 && <span className="text-xs text-surface-400">None chosen.</span>}
+        {value.map((n) => (
+          <span key={n} title={describe(n)}
+            className={clsx("inline-flex items-center gap-1 rounded-full border py-0.5 pl-2 pr-1 font-mono text-[11px]",
+              known.has(n) ? "border-primary-300 bg-primary-50 text-primary-800" : "border-red-300 text-red-700")}>
             {n}
+            {!disabled && (
+              <button type="button" aria-label={`Remove ${n}`} onClick={() => onChange(value.filter((x) => x !== n))}
+                className="rounded-full px-1 text-surface-500 hover:bg-surface-100 hover:text-surface-800">×</button>
+            )}
+          </span>
+        ))}
+        {!disabled && (
+          <button type="button" onClick={() => setOpen(!open)} aria-expanded={open}
+            className="rounded-full border border-dashed border-surface-300 px-2 py-0.5 text-[11px] font-medium text-surface-600 hover:border-primary-300 hover:text-primary-700">
+            + Add a tool
           </button>
-        );
-      })}
+        )}
+      </div>
+      {open && !disabled && (
+        <div className="mt-2 rounded-lg border border-surface-200 bg-card p-2 shadow-sm">
+          <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search tools, e.g. trades or MOTIF"
+            aria-label="Search tools" className={input} />
+          <div className="mt-2 max-h-64 space-y-2 overflow-y-auto">
+            {Object.keys(bySystem).length === 0 && <p className="px-1 text-xs text-surface-400">Nothing else matches.</p>}
+            {Object.entries(bySystem).map(([sys, tools]) => (
+              <div key={sys}>
+                <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-surface-400">{sys}</p>
+                {tools.map((t) => (
+                  <button key={t.name} type="button" onClick={() => onChange([...value, t.name])}
+                    className="flex w-full items-baseline gap-2 rounded px-1 py-1 text-left hover:bg-surface-50">
+                    <code className="shrink-0 text-[11px] text-surface-800">{t.name}</code>
+                    <span className="truncate text-[11px] text-surface-500">{t.description}</span>
+                  </button>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

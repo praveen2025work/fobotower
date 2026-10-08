@@ -153,7 +153,8 @@ export default function CaseWorkspace(): JSX.Element {
             </button>
           </div>
         </div>
-        {c.draft && <p className="mt-1 text-sm text-surface-500">{c.draft.headline}</p>}
+        {/* While people review, "Your review" below says what is left; the run's headline is for afterwards. */}
+        {c.draft && c.status !== "awaiting_review" && <p className="mt-1 text-sm text-surface-500">{c.draft.headline}</p>}
         {c.follow_up_of && (
           <p className="mt-1 text-sm text-surface-600">
             Late items for <Link to={`/cases/${encodeURIComponent(c.follow_up_of)}`} className="text-primary-700 hover:underline">the day's case</Link>:

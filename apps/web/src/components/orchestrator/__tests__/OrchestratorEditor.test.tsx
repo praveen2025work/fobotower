@@ -141,7 +141,7 @@ describe("Configurable steps", () => {
       "POST /authoring/submit": { capability_id: "recon.investigation", version: 9 },
     });
     renderAt("/", "/", <OrchestratorEditor capabilityId="recon.investigation" manifest={manifest} mode={{ kind: "capability" }} canEdit />);
-    await userEvent.click(await screen.findByRole("button", { name: /Configurable steps/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /Prepare the data/ }));
     await userEvent.selectOptions(screen.getByLabelText("Step type to add"), "filter");
     await userEvent.click(screen.getByRole("button", { name: "Add" }));
     const step = screen.getByRole("region", { name: "Step filter_1" });
@@ -163,7 +163,7 @@ describe("Configurable steps", () => {
       "POST /capabilities/recon.investigation/check": { ok: true, problems: [] },
     });
     renderAt("/", "/", <OrchestratorEditor capabilityId="recon.investigation" manifest={manifest} mode={{ kind: "capability" }} canEdit />);
-    await userEvent.click(await screen.findByRole("button", { name: /Configurable steps/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /Prepare the data/ }));
     for (const t of ["compose", "outreach", "report"]) {
       await userEvent.selectOptions(screen.getByLabelText("Step type to add"), t);
       await userEvent.click(screen.getByRole("button", { name: "Add" }));

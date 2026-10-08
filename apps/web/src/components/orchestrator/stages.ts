@@ -51,7 +51,7 @@ const hasPlaybook = (m: Json) => !!get(m, "playbook");
 export const STAGES: Stage[] = [
   {
     id: "case",
-    title: "Start: what a case is",
+    title: "What a case is",
     says: "What one unit of work is, who can see it, when it opens on its own, and when it is due.",
     owns: /^case\.|case\.(key|scopes|schedule|opens_as|due)|scheduled/,
     fields: [
@@ -92,7 +92,7 @@ export const STAGES: Stage[] = [
   },
   {
     id: "source",
-    title: "Get the items",
+    title: "Where the items come from",
     says: "Where the items come from: one system (load), or two systems matched to each other (match).",
     owns: /^items\.|^match|step `(load|match)`|`load` or `match`/,
     fields: [
@@ -116,7 +116,7 @@ export const STAGES: Stage[] = [
   },
   {
     id: "prepare", custom: "prepare",
-    title: "Configurable steps",
+    title: "Prepare the data",
     says: "Generic steps, in order: prepare the data, act on the accounts (journals, posting), test controls (sampling, attestation), wait for others or child cases, read files and documents, keep clocks and parties in view. Each can run only when something holds.",
     owns: /^step_settings|is not a core step|step type/,
     fields: [],
@@ -136,7 +136,7 @@ export const STAGES: Stage[] = [
   },
   {
     id: "enrich", step: "enrich", optional: true,
-    title: "Enrich",
+    title: "Enrich each item",
     says: "Reads more data for each case (e.g. dated snapshots) and joins it onto the items.",
     owns: /^enrich|`enrich`/,
     clears: [{ path: "enrich", value: [] }],
@@ -145,7 +145,7 @@ export const STAGES: Stage[] = [
   },
   {
     id: "resolve", step: "resolve", optional: true,
-    title: "Reference lookups",
+    title: "Look up owners",
     says: "Looks up reference data for each item in the knowledge graph, as of the business date — e.g. which desk owned a book on the COB.",
     owns: /^resolve|knowledge\.(reference|as_of)|`resolve`/,
     clears: [{ path: "resolve", value: [] }],
@@ -198,7 +198,7 @@ export const STAGES: Stage[] = [
   },
   {
     id: "group", step: "group",
-    title: "Group",
+    title: "Group for one decision",
     says: "Collapses items into groups so one decision covers many — e.g. by category and side.",
     owns: /^group_by|^group_label/,
     fields: [
@@ -249,14 +249,14 @@ export const STAGES: Stage[] = [
   },
   {
     id: "draft", step: "draft",
-    title: "Draft",
+    title: "Draft the summary",
     says: "Writes the case summary a reviewer reads first: what is in scope, what was proposed, what was escalated.",
     owns: /^draft/,
     fields: [{ kind: "number", path: "metrics.manual_minutes_per_item", label: "Manual minutes per item (for hours saved)", min: 1, help: "The declared basis for the efficiency figures; shown next to them." }],
   },
   {
     id: "validate", step: "validate", gate: true,
-    title: "Validate figures",
+    title: "Check every figure",
     says: "Every figure the model states must trace to the case's data or a tool result; anything that does not is escalated to a person. Always on.",
     owns: /^validate/,
     fields: [],
@@ -381,6 +381,15 @@ export const STAGES: Stage[] = [
       { kind: "list", path: "configurable", label: "Team groups may set", help: "Dotted paths; x.* = anything under x. The workflow, gates, write-back and ownership always stay here." },
     ],
   },
+];
+
+/** The editor's navigation, in the order a person sets a capability up. */
+export const SECTIONS: { title: string; ids: string[] }[] = [
+  { title: "The case", ids: ["case", "thresholds"] },
+  { title: "Data", ids: ["source", "prepare", "compare", "enrich", "resolve"] },
+  { title: "Decide", ids: ["classify", "group", "agent", "reason", "draft"] },
+  { title: "People and gates", ids: ["validate", "review", "record", "publish"] },
+  { title: "Ownership", ids: ["owners"] },
 ];
 
 /** Stages that do not apply to a skill session (the session finds the items and

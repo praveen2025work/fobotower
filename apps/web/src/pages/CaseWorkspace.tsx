@@ -486,7 +486,7 @@ function ProposalPanel({ c, group }: { c: CaseDetail; group: Group }) {
             {f.sections.map((sec) => (
               <div key={sec.id}>
                 <dt className="text-xs font-semibold uppercase tracking-wide text-surface-500">{sec.label}</dt>
-                <dd className={clsx("leading-relaxed", sec.text ? "text-surface-800" : "italic text-surface-400")}>{sec.text || "not answered"}</dd>
+                <dd className={clsx("whitespace-pre-line leading-relaxed", sec.text ? "text-surface-800" : "italic text-surface-400")}>{sec.text || "not answered"}</dd>
               </div>
             ))}
           </dl>

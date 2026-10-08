@@ -33,6 +33,7 @@ connectors:
     tools:
       positions: { description: "End-of-day FO positions and MTM per book and COB", scope: { arg: book, key: book } }
       trades:    { description: "FO trades per book and COB (skill §7 trade level)", scope: { arg: book, key: book } }
+      pnl_components: { description: "FO PnL decomposed per instrument (position, price, pull factor, MTM, trading PnL, redemption PnL)", scope: { arg: book, key: book } }
 
   # MB Rec: the breaks FOBO investigates, already reconciled (break.investigation).
   mbrec:
@@ -47,6 +48,7 @@ connectors:
       break_history_book: { description: "The last five COBs of every open break in a book", scope: { arg: book, key: book } }
       # No book argument: the cluster step keeps only a count of other books on the case.
       breaks_all:    { description: "Open breaks in every book for one COB (book, instrument, difference)" }
+      book_status:   { description: "Whether MB Rec has processed the book for the COB (skill R5)", scope: { arg: book, key: book } }
 
   motif:
     name: MOTIF — back-office positions and events
@@ -59,6 +61,18 @@ connectors:
       booking_events:  { description: "Booking and amendment events behind a book's breaks", scope: { arg: book, key: book } }
       break_snapshots: { description: "Dated FO/BO snapshots per instrument", scope: { arg: book, key: book } }
       trades:          { description: "BO trades per book and COB (skill §7 trade level)", scope: { arg: book, key: book } }
+      pnl_components:  { description: "BO PnL decomposed per instrument (position, accounting price, factor, settlement, cash, journal)", scope: { arg: book, key: book } }
+
+  # Security reference: corporate actions and bond metadata (skill FO-6, FO-7, §8 static).
+  secref:
+    name: Security reference
+    transport: http
+    url: https://secref-mcp.internal.example/mcp
+    headers_env: { Authorization: SECREF_MCP_AUTHORIZATION }
+    classification: internal
+    tools:
+      corporate_actions: { description: "Corporate actions for an instrument around a COB" }
+      bond_metadata:     { description: "Static and enrichment data for an instrument" }
 
   reporting:
     name: Management reporting pack

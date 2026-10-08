@@ -61,6 +61,15 @@ allowed tools; the platform adds the gates ([`../guide/skill-session.md`](../gui
 | Session in the Agent SDK adapter | `llm_agent_sdk.py` (`investigate`) | if the office replaced `_run` only, nothing; an office adapter without `investigate` runs the session as one group |
 | FOBO as a skill session | `capabilities/break-investigation-skill.yaml`, `skills/fobo-investigation-skill.md` | optional: approve it, and point MB Rec's event for a book at `break.investigation.skill` |
 
+## 1c. Added 2026-10-08: FOBO skill simulation
+
+| What | Files | Office action |
+|---|---|---|
+| New MCP tools for the skill's evidence: `mbrec.book_status`, `cats.pnl_components`, `motif.pnl_components`, `secref.corporate_actions`, `secref.bond_metadata` | `stub_connectors/finance.py`, `connectors.yaml`, `connectors.office.example.yaml` | ask MB Rec, CATS, MOTIF and the security reference team for them; the skill-session capability lists them |
+| Simulation books `PRIME-SIM-01/02` and the skill simulator | `stub_connectors/fobo_simulation.py`, `fobo_skill_simulator.py`, `demo/fobo-skill-simulation.html` | none (demo and eval data) |
+| Validation ignores identifiers and dates, reads k/m/bn amounts | `steps.py` (`ungrounded`) | none |
+| Skill-session capability: the skill's §12 sections and verdicts | `capabilities/break-investigation-skill.yaml` | approve the new version |
+
 ## 2. Features, and the files that carry them
 
 | Feature | Backend (`apps/backend/agent_one_finance/`) | Web (`apps/web/src/`) | Config / docs | Tests (`apps/backend/tests/agent_one_finance/`) |

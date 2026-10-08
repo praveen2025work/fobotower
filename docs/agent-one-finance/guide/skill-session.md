@@ -130,3 +130,24 @@ rules once the business is ready.
 
 Code: `steps.agent` (`agent_one_finance/steps.py`), `SessionRequest` and `run_session` (`llm.py`),
 `investigate` (`llm_agent_sdk.py`). Tests: `tests/agent_one_finance/test_skill_session.py`.
+
+## Simulation: your skill, both ways
+
+`docs/agent-one-finance/demo/fobo-skill-simulation.html` runs one data set built around the FOBO
+Investigation Skill v1.0 through this capability (one step) and through `break.investigation` with
+`fobo-prime` (many steps), and compares each break with the answer the skill gives when followed exactly.
+
+- **Data**: books `PRIME-SIM-01` (eight breaks, one per skill path: FO-6 finding A, FO-2, BO-6
+  posting failure, §8 static outlier, §8 reapplication, BO-4, FO-7 corporate action, §7 trade level)
+  and `PRIME-SIM-02` (book In Progress: R5), COB 2026-10-09 —
+  `stub_connectors/fobo_simulation.py`, served by the stub MCP tools.
+- **Tools the skill's evidence needs**: `mbrec.book_status`, `cats.pnl_components`,
+  `motif.pnl_components`, `secref.corporate_actions`, `secref.bond_metadata` (also in
+  `connectors.office.example.yaml`).
+- **Model**: `stub_connectors/fobo_skill_simulator.py`, a deterministic stand-in that follows the skill
+  through the same tools (`AOF_LLM_ADAPTER=agent_one_finance.stub_connectors.fobo_skill_simulator:FoboSkillSimulator`).
+  Its answers are the expected ones: the eval set a real model is scored against.
+- **Tests**: `tests/agent_one_finance/test_fobo_simulation.py`.
+
+Validation reads identifiers (FO-6, BO-4, R5, Section 12), dates and times as words, not figures,
+and "£247k" as 247,000, so a model can write the skill's output format without being escalated.

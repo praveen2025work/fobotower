@@ -185,6 +185,9 @@ connectors:
       trades:
         description: FO trades per book and COB (quantity, direction, consideration, price, pull factor, settlement)
         scope: { arg: book, key: book }
+      pnl_components:
+        description: FO PnL decomposed per instrument (position, price, pull factor, MTM, trading PnL, redemption PnL, holiday carry)
+        scope: { arg: book, key: book }
 
   mbrec:
     name: MB Rec — reconciled breaks (stub)
@@ -205,6 +208,9 @@ connectors:
         # Every book for one COB (book, instrument, difference). No book argument, so no
         # book scope: the cluster step reads it and keeps only a count on the case.
         description: Open breaks in every Prime and Rates book for one COB
+      book_status:
+        description: Whether MB Rec has processed the book for the COB (Complete, In Progress, Waiting, Failed)
+        scope: { arg: book, key: book }
 
   motif:
     name: MOTIF — back-office positions and events (stub)
@@ -224,6 +230,21 @@ connectors:
       trades:
         description: BO trades per book and COB (quantity, direction, consideration, price, pull factor, settlement)
         scope: { arg: book, key: book }
+      pnl_components:
+        description: BO PnL decomposed per instrument (position, accounting price and source, factor used, settlement, cash, journal)
+        scope: { arg: book, key: book }
+
+  # Security reference data: what the skill's FO-6, FO-7 and §8 static checks need.
+  secref:
+    name: Security reference — corporate actions and bond metadata (stub)
+    transport: inproc
+    target: agent_one_finance.stub_connectors.finance:build_secref
+    classification: internal
+    tools:
+      corporate_actions:
+        description: Corporate actions for an instrument around a COB (redemptions, pull factor changes, restructurings)
+      bond_metadata:
+        description: Static and enrichment data for an instrument (ISIN, issuer, currency, amortising, static present)
 
   # An Agent One Finance-provided service, not a stub: reads PDF and Excel files and writes
   # PDF reports (agent_one_finance/mcp_services/documents.py). Files are kept per entity;

@@ -791,9 +791,22 @@ async def grounded_figures(state: CaseState) -> set[float]:
     return grounded
 
 
+# What a figure in prose is NOT: a date or time, or the number inside an identifier
+# (FO-6, BO-4, C6, R5, Section 12, T-7718201). A figure may carry a k/m/bn suffix.
+_NOT_FIGURES = re.compile(r"\d{4}-\d{2}-\d{2}(?:T[\d:.]+Z?)?|\b\d{1,2}:\d{2}(?::\d{2})?\b"
+                          r"|\b[A-Za-z][A-Za-z_]*-?\d+(?:\.\d+)?\b|§\s?\d+|\b(?:Section|section|step|Step|Rule|rule)\s\d+\b")
+_FIGURE = re.compile(r"-?\d[\d,]*(?:\.\d+)?(?:\s?(k|m|mn|bn)\b)?")
+_SCALE = {"k": 1e3, "m": 1e6, "mn": 1e6, "bn": 1e9}
+
+
 def ungrounded(text: str, grounded: set[float]) -> list[float]:
-    cited = {round(float(n.replace(",", "")), 2) for n in _NUMBER.findall(text or "")}
-    return sorted(n for n in cited if n not in grounded)
+    prose = _NOT_FIGURES.sub(" ", text or "")
+    cited = set()
+    for m in _FIGURE.finditer(prose):
+        n = float(m.group(0).split()[0].rstrip("kmbn").replace(",", "")) if m.group(1) else float(
+            m.group(0).replace(",", ""))
+        cited.add(round(n * _SCALE.get(m.group(1) or "", 1), 2))
+    return sorted(n for n in cited if n not in grounded and -n not in grounded)
 
 
 async def validate(state: CaseState) -> dict:

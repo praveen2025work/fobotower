@@ -40,22 +40,32 @@ case:
 items:
   id_field: instrument
   amount_field: difference
-  display: [instrument, break_type, difference, category]
+  amount_unit: GBP
+  display: [instrument, isin, category, side, determinism, difference]
 
 steps: [agent]
 
 reasoning:
   reasoner: llm
   skill_file: skills/fobo-investigation-skill.md
-  tools: [mbrec.breaks, mbrec.break_history, motif.break_snapshots, motif.booking_events, motif.trades, cats.trades]
-  # The stub (no model) gives the first verdict for every break, so it lists ESCALATE first.
-  verdicts: [ESCALATE, MONITOR, POST, CORRECT_AND_REPOST, DO_NOT_POST]
+  # The evidence the skill asks for (§13), as MCP tools: book status (R5), the break
+  # universe, FO and BO PnL components (§5, §6), corporate actions and bond metadata
+  # (FO-6, FO-7, §8 static), break history (§8 reapplication), trades (§7).
+  tools: [mbrec.book_status, mbrec.breaks, mbrec.break_history, cats.pnl_components, motif.pnl_components,
+          secref.corporate_actions, secref.bond_metadata, cats.trades, motif.trades, motif.booking_events]
+  # The skill's verdicts (§10). The stub (no model) gives the first, so ESCALATE is first.
+  verdicts: [ESCALATE, POST, DO_NOT_POST, CORRECT_AND_REPOST]
   escalate_verdicts: [ESCALATE]
-  result_fields: [break_type, difference, category]
+  result_fields: [isin, category, side, determinism, difference]
+  # The skill's required output format (§12), one section each.
   sections:
-    - { id: root_cause, label: Root cause, hint: "The cause with its evidence: the tool and the figures", required: true }
-    - { id: evidence, label: Evidence, hint: "The checks and tests run and what each showed" }
-    - { id: not_performed, label: Tests not performed, hint: "Tests that could not run and why" }
+    - { id: break_summary, label: "1. Break summary", hint: "Instrument / ISIN, desk, book, date, FO value, BO value, break amount", required: true }
+    - { id: checks, label: "2. Checks performed", hint: "Test ID | What was checked | Result (Pass/Fail/Unable to test) | Evidence", required: true }
+    - { id: root_cause, label: "3. Root cause", hint: "Single clear statement; rank multiple causes; or say it cannot be established", required: true }
+    - { id: classification, label: "4. Classification", hint: "Category code + name. Deterministic or judgement-based", required: true }
+    - { id: verdict, label: "5. Verdict", hint: "POST / DO NOT POST / ESCALATE / CORRECT & RE-POST — with the reason", required: true }
+    - { id: remediation, label: "6. Remediation and follow-up", hint: "Who to engage, what to raise, what preventative control to propose", required: true }
+    - { id: end_state, label: "7. End-state validation", hint: "Confirm BO + Adjustments = FO, or that the investigation remains open", required: true }
 
 review:
   roles: [FOBO_CONTROLLER]

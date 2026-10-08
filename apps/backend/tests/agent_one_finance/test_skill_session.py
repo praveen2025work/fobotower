@@ -22,6 +22,12 @@ CAP = "break.investigation.skill"
 KEY = {"book": "PRIME-MB-04", "cob": "2026-09-24"}
 
 
+def _sections(root_cause: str) -> dict:
+    """The skill's §12 sections, all required by the capability."""
+    return {k: root_cause for k in ("break_summary", "checks", "root_cause", "classification", "verdict",
+                                    "remediation", "end_state")}
+
+
 def _base() -> dict:
     return next(m for m in seed_files() if m.id == CAP).model_dump(by_alias=True)
 
@@ -68,7 +74,7 @@ async def test_mb_recs_event_runs_the_skill_in_one_session(api, monkeypatch):
     # the stub gives the first verdict offered (ESCALATE), so every break goes to a person
     assert {g["finding"]["verdict"] for g in case["groups"]} == {"ESCALATE"}
     assert {g["finding"]["status"] for g in case["groups"]} == {"escalated"}
-    assert all(g["finding"]["sections"][0]["id"] == "root_cause" for g in case["groups"])
+    assert all(g["finding"]["sections"][0]["id"] == "break_summary" for g in case["groups"])
     assert "investigated" in case["draft"]["summary"]
     calls = [t for t in case["draft"]["session"]["transcript"] if t["kind"] == "tool_call"]
     assert [t["tool"] for t in calls] == [c["tool"] for c in case["tool_calls"]]   # every call, in one session
@@ -91,14 +97,14 @@ class _Model:
         rows = (await tools("mbrec.breaks", dict(request.case_key)))["rows"]
         a, b, c = rows[:3]
         return SessionResult(summary="Three breaks looked at.", model="fake", results=[
-            {"id": a["instrument"], "status": "proposed", "verdict": "MONITOR",
+            {"id": a["instrument"], "status": "proposed", "verdict": "DO_NOT_POST",
              "comment": f"Timing: difference {a['difference']:,.2f} clears next COB.",
-             "sections": {"root_cause": "Late booking."}, "fields": {"difference": a["difference"]}},
+             "sections": _sections("Late booking."), "fields": {"difference": a["difference"]}},
             {"id": b["instrument"], "status": "proposed", "verdict": "POST",
-             "comment": "Post 987,654.32.", "sections": {"root_cause": "Mapping."},
+             "comment": "Post 987,654.32.", "sections": _sections("Mapping."),
              "fields": {"difference": 123456.78}},
             {"id": c["instrument"], "status": "proposed", "verdict": "WRITE_OFF",
-             "comment": "Write it off.", "sections": {"root_cause": "Old."}}])
+             "comment": "Write it off.", "sections": _sections("Old.")}])
 
 
 async def test_figures_must_come_from_tools_and_verdicts_from_the_list(api, monkeypatch):
@@ -106,7 +112,7 @@ async def test_figures_must_come_from_tools_and_verdicts_from_the_list(api, monk
     case = await _event(api, monkeypatch)
     rows = finance.mbrec_breaks(**KEY)["rows"]
     f = {g["group_key"]["instrument"]: g["finding"] for g in case["groups"]}
-    assert (f[rows[0]["instrument"]]["status"], f[rows[0]["instrument"]]["verdict"]) == ("proposed", "MONITOR")
+    assert (f[rows[0]["instrument"]]["status"], f[rows[0]["instrument"]]["verdict"]) == ("proposed", "DO_NOT_POST")
     bad = f[rows[1]["instrument"]]
     assert bad["status"] == "escalated" and "987,654.32" in bad["reason"] and "123,456.78" in bad["reason"]
     assert f[rows[2]["instrument"]]["reason"].startswith("NO_VALID_VERDICT")
@@ -119,8 +125,8 @@ class _ReasonOnly:
 
     async def reason(self, request, tools):
         await tools("mbrec.breaks", dict(request.case_key))
-        return llm.ReasonResult(status="proposed", comment="All breaks are timing.", verdict="MONITOR",
-                                sections={"root_cause": "Late bookings."})
+        return llm.ReasonResult(status="proposed", comment="All breaks are timing.", verdict="DO_NOT_POST",
+                                sections=_sections("Late bookings."))
 
 
 async def test_an_adapter_without_sessions_answers_for_the_whole_case(api, monkeypatch):
@@ -128,7 +134,7 @@ async def test_an_adapter_without_sessions_answers_for_the_whole_case(api, monke
     case = await _event(api, monkeypatch)
     assert case["status"] == "awaiting_review", case.get("error")
     [g] = case["groups"]
-    assert (g["group_id"], g["finding"]["verdict"], g["finding"]["status"]) == ("all", "MONITOR", "proposed")
+    assert (g["group_id"], g["finding"]["verdict"], g["finding"]["status"]) == ("all", "DO_NOT_POST", "proposed")
 
 
 async def test_the_agent_sdk_runs_one_session_with_the_skill_and_the_gateway_tools(api, monkeypatch):
@@ -148,15 +154,15 @@ async def test_the_agent_sdk_runs_one_session_with_the_skill_and_the_gateway_too
         yield ResultMessage(subtype="success", duration_ms=1, duration_api_ms=1, is_error=False, num_turns=4,
                             session_id="s", total_cost_usd=0.02, usage={"input_tokens": 1, "output_tokens": 1},
                             structured_output={"summary": "One break.", "results": [
-                                {"id": first["instrument"], "status": "proposed", "verdict": "MONITOR",
+                                {"id": first["instrument"], "status": "proposed", "verdict": "DO_NOT_POST",
                                  "comment": f"Difference {first['difference']:,.2f} is timing.",
-                                 "sections": {"root_cause": "Timing."},
+                                 "sections": _sections("Timing."),
                                  "fields": {"difference": first["difference"]}}]})
 
     monkeypatch.setattr(llm, "_adapter", ClaudeAgentSdkAdapter(query_fn=fake))
     case = await _event(api, monkeypatch)
     [g] = case["groups"]
-    assert g["finding"]["verdict"] == "MONITOR" and g["finding"]["status"] == "proposed"
+    assert g["finding"]["verdict"] == "DO_NOT_POST" and g["finding"]["status"] == "proposed"
     opts = calls[0]["options"]
     assert "FO PnL = BO PnL" in opts.system_prompt and "one result per item" in opts.system_prompt
     assert opts.max_turns == 40 and opts.tools == []

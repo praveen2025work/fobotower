@@ -18,6 +18,8 @@ import zlib
 
 from mcp.server.mcpserver import MCPServer
 
+from agent_one_finance.stub_connectors import fobo_simulation as sim
+
 ACCOUNTS = {
     "4000": "Revenue", "5000": "Cost of sales", "6100": "Salaries", "6200": "Travel",
     "6300": "IT services", "7100": "FX revaluation", "7200": "Interest",
@@ -187,6 +189,8 @@ def _trades(book: str, cob: str, instrument: str | None) -> list[dict]:
 
 def cats_trades(book: str, cob: str, instrument: str | None = None) -> dict:
     """Front-office (CATS) trades for a book and COB (optionally one instrument)."""
+    if sim.is_sim(book, cob):
+        return {"rows": sim.trades(book, instrument, "cats")}
     return {"rows": _trades(book, cob, instrument)}
 
 
@@ -194,6 +198,8 @@ def motif_trades(book: str, cob: str, instrument: str | None = None) -> dict:
     """Back-office (MOTIF) trades for a book and COB (optionally one instrument):
     the same trades as booked in MOTIF — a missing trade, or a different
     quantity, price or pull factor, is what a trade-level investigation finds."""
+    if sim.is_sim(book, cob):
+        return {"rows": sim.trades(book, instrument, "motif")}
     r = _rng("motif-trades", book, cob)
     rows = []
     for t in _trades(book, cob, instrument):
@@ -271,6 +277,9 @@ def _scenario_instruments(book: str, cob: str) -> set[str]:
 
 def motif_positions(book: str, cob: str) -> dict:
     """Back-office (MOTIF) positions and MTM for one book and COB date."""
+    if sim.is_sim(book, cob):
+        return {"rows": [{"book": book, "instrument": c["instrument"], "quantity": c["position_quantity"],
+                          "mtm": c["bo_pnl"]} for c in sim.motif_components(book, None)]}
     rows = _motif_base(book, cob)
     sc = _scenario(book, cob)
     if not sc:
@@ -300,6 +309,8 @@ def break_snapshots(book: str, cob: str) -> dict:
     """Dated FO/BO snapshots per instrument — what FOBO's cause checks read:
     booking time vs ledger cut-off, static mapping, curve datasets, components,
     trade versions and adjustments on each side."""
+    if sim.is_sim(book, cob):
+        return {"rows": sim.snapshots(book)}
     rows = []
     scenario = _scenario_instruments(book, cob)
     for ins in INSTRUMENTS:
@@ -362,6 +373,8 @@ def booking_events(book: str, cob: str, break_type: str | None = None,
                    instrument: str | None = None) -> dict:
     """Back-office booking and amendment events behind a book's breaks
     (optionally of one type, or for one instrument)."""
+    if sim.is_sim(book, cob):
+        return {"rows": sim.booking_events(book, instrument)}
     r = _rng("events", book, cob, break_type or instrument or "all")
     kinds = ["late booking", "price amendment", "FX fixing", "cancel/rebook", "settlement fail"]
     rows = [{"event": r.choice(kinds), "instrument": r.choice(INSTRUMENTS),
@@ -379,10 +392,83 @@ def booking_events(book: str, cob: str, break_type: str | None = None,
     return {"rows": rows}
 
 
+def mbrec_book_status(book: str, cob: str) -> dict:
+    """Whether MB Rec has processed the book for the COB: Complete, In Progress,
+    Waiting or Failed (skill R5: investigate only Processed, Available, Complete books)."""
+    if sim.is_sim(book, cob):
+        return {"rows": [sim.book_status(book)]}
+    status = "In Progress" if _rng("book-status", book, cob).random() < 0.03 else "Complete"
+    return {"rows": [{"book": book, "cob": cob, "status": status, "processed": status == "Complete",
+                      "available": status == "Complete", "complete": status == "Complete"}]}
+
+
+def cats_pnl_components(book: str, cob: str, instrument: str | None = None) -> dict:
+    """FO (CATS) PnL decomposed per instrument: prior close and open position,
+    price and pull factor, MTM not explained by position x price movement, whether
+    trade economics explain Trading PnL, redemption PnL, holiday carry and FO PnL."""
+    if sim.is_sim(book, cob):
+        return {"rows": sim.cats_components(book, instrument)}
+    rows = []
+    for s in break_snapshots(book, cob)["rows"]:
+        if instrument and s["instrument"] != instrument:
+            continue
+        fo = next(p for p in _fo_positions(book, cob) if p["instrument"] == s["instrument"])
+        rows.append({"instrument": s["instrument"], "position_prev_close": s["fo_prev_close_position"],
+                     "position_open": s["fo_open_position"], "price_prev_close": s["fo_prev_close_price"],
+                     "price_open": s["fo_open_price"], "price": s["fo_price"],
+                     "pull_factor_prev": s["fo_prev_pull_factor"], "pull_factor_open": s["fo_open_pull_factor"],
+                     "mtm_unexplained": s["mtm_unexplained"], "trading_pnl_explained": s["trade_pnl_explained"],
+                     "redemption_pnl": 0.0, "holiday_carry_ok": s["holiday_carry_ok"], "fo_pnl": fo["mtm"]})
+    return {"rows": rows}
+
+
+def motif_pnl_components(book: str, cob: str, instrument: str | None = None) -> dict:
+    """BO (MOTIF) PnL decomposed per instrument: position balance and quantity,
+    accounting price and source, pull factor used, settlement (settled, quantity,
+    cash), cash movements, journal (generated, posted, rejected and why) and BO PnL."""
+    if sim.is_sim(book, cob):
+        return {"rows": sim.motif_components(book, instrument)}
+    bo = {p["instrument"]: p for p in motif_positions(book, cob)["rows"]}
+    rows = []
+    for s in break_snapshots(book, cob)["rows"]:
+        if instrument and s["instrument"] != instrument:
+            continue
+        rows.append({"instrument": s["instrument"], "position_balanced": s["bo_position_balanced"],
+                     "price_source_ok": s["bo_price_source_ok"], "factor_ok": s["bo_factor_ok"],
+                     "settled": s["bo_settled"], "cash_ok": s["bo_cash_ok"],
+                     "journal_posted": s.get("bo_journal_posted"), "settlement_refs": s["bo_adjustments"],
+                     "bo_pnl": bo[s["instrument"]]["mtm"] if s["instrument"] in bo else None})
+    return {"rows": rows}
+
+
+def corporate_actions(instrument: str, cob: str) -> dict:
+    """Corporate actions for an instrument around a COB: redemptions and pull factor
+    changes (factor from and to, expected PnL), restructurings, exchange offers."""
+    return {"rows": sim.corporate_actions(instrument)}
+
+
+def bond_metadata(instrument: str) -> dict:
+    """Static and enrichment data for an instrument: ISIN, issuer, currency,
+    amortising or not, and whether static data exists at all."""
+    found = sim.bond_metadata(instrument)
+    if found is None:
+        found = {"instrument": instrument, "isin": None, "static_present": instrument in INSTRUMENTS,
+                 "amortising": False}
+    return {"rows": [found]}
+
+
+def build_secref() -> MCPServer:
+    server = MCPServer(name="secref", instructions="Security reference: corporate actions and bond metadata (stub).")
+    server.add_tool(corporate_actions, name="corporate_actions", description=corporate_actions.__doc__)
+    server.add_tool(bond_metadata, name="bond_metadata", description=bond_metadata.__doc__)
+    return server
+
+
 def build_cats() -> MCPServer:
     server = MCPServer(name="cats", instructions="CATS front-office positions (stub).")
     server.add_tool(cats_positions, name="positions", description=cats_positions.__doc__)
     server.add_tool(cats_trades, name="trades", description=cats_trades.__doc__)
+    server.add_tool(cats_pnl_components, name="pnl_components", description=cats_pnl_components.__doc__)
     return server
 
 
@@ -392,6 +478,7 @@ def build_motif() -> MCPServer:
     server.add_tool(booking_events, name="booking_events", description=booking_events.__doc__)
     server.add_tool(motif_trades, name="trades", description=motif_trades.__doc__)
     server.add_tool(break_snapshots, name="break_snapshots", description=break_snapshots.__doc__)
+    server.add_tool(motif_pnl_components, name="pnl_components", description=motif_pnl_components.__doc__)
     return server
 
 
@@ -434,12 +521,16 @@ def _open_breaks(book: str, cob: str) -> list[dict]:
 def mbrec_breaks(book: str, cob: str) -> dict:
     """Open breaks MB Rec reconciled for one book and COB: CATS vs MOTIF amounts,
     the difference, the break type and how many COBs it has been open."""
+    if sim.is_sim(book, cob):
+        return {"rows": sim.mbrec_breaks(book)}
     return {"rows": _open_breaks(book, cob)}
 
 
 def mbrec_break_history(book: str, cob: str, instrument: str) -> dict:
     """The last five COBs of one instrument's break in MB Rec: open or cleared,
     and the difference — to tell a timing difference that clears from one that stays."""
+    if sim.is_sim(book, cob):
+        return {"rows": [{"instrument": instrument, **h} for h in sim.break_history(book, instrument)]}
     r = _rng("history", book, instrument)
     return {"rows": [{"instrument": instrument, "cobs_ago": n,
                       "status": r.choice(["open", "cleared", "cleared"]),
@@ -450,7 +541,7 @@ def mbrec_break_history_book(book: str, cob: str) -> dict:
     """The last five COBs of every open break in a book: one row per instrument
     and COB (cobs_ago 1 = the previous COB), open or cleared, and the difference."""
     rows = []
-    for b in _open_breaks(book, cob):
+    for b in mbrec_breaks(book, cob)["rows"]:
         rows += mbrec_break_history(book, cob, b["instrument"])["rows"]
     return {"rows": rows}
 
@@ -468,6 +559,7 @@ def build_mbrec() -> MCPServer:
     server.add_tool(mbrec_break_history, name="break_history", description=mbrec_break_history.__doc__)
     server.add_tool(mbrec_break_history_book, name="break_history_book", description=mbrec_break_history_book.__doc__)
     server.add_tool(mbrec_breaks_all, name="breaks_all", description=mbrec_breaks_all.__doc__)
+    server.add_tool(mbrec_book_status, name="book_status", description=mbrec_book_status.__doc__)
     return server
 
 
@@ -532,7 +624,8 @@ def build_ticketing() -> MCPServer:
 
 
 BUILDERS = {"ticketing": build_ticketing, "gl": build_gl, "budget": build_budget, "bank": build_bank, "ledger": build_ledger,
-            "reporting": build_reporting, "cats": build_cats, "motif": build_motif}
+            "reporting": build_reporting, "cats": build_cats, "motif": build_motif,
+            "mbrec": build_mbrec, "secref": build_secref}
 
 
 def main() -> None:

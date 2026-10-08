@@ -125,6 +125,12 @@ Fill in the three `<…>` and paste:
 If Claude proposes a database migration or a new environment setting for the 06–08 Oct updates,
 stop. None is needed. Check against `whats-new.md` first.
 
+## Known deployment issue: `greenlet` missing from the image
+
+If the image builds but the deployment fails on its first database call, see
+[`fix-greenlet-deploy.md`](fix-greenlet-deploy.md). It is a one-line dependency fix with steps for
+office Claude.
+
 ## How this was proved
 
 Four mock office copies were tested. They had no shared git history, were made at `e291591`,

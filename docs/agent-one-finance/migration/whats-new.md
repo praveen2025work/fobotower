@@ -1,4 +1,4 @@
-# What changed since the office guide (2026-10-04 → 2026-10-06)
+# What changed since the office guide (2026-10-04 → 2026-10-08)
 
 **For:** the office Claude Code running the [`upgrade-to-aof`](office-claude/upgrade-to-aof/SKILL.md)
 skill, and the engineer signing it off. It lists everything upstream (`praveen2025work/fobotower`,
@@ -69,6 +69,25 @@ allowed tools; the platform adds the gates ([`../guide/skill-session.md`](../gui
 | Simulation books `PRIME-SIM-01/02` and the skill simulator | `stub_connectors/fobo_simulation.py`, `fobo_skill_simulator.py`, `demo/fobo-skill-simulation.html` | none (demo and eval data) |
 | Validation ignores identifiers and dates, reads k/m/bn amounts | `steps.py` (`ungrounded`) | none |
 | Skill-session capability: the skill's §12 sections and verdicts | `capabilities/break-investigation-skill.yaml` | approve the new version |
+
+## 1d. Added 2026-10-08: simpler console, "How it runs", evals fixed
+
+No migration, no settings, no change to FOBO's answers. Upstream commits `0c808e3` to `ee5b2f0`.
+
+| What | Files | Office action |
+|---|---|---|
+| Show the next decision, fold the rest: `Fold`, `useRemembered` (browser keys `aof.fold.*`); case details panel off by default; one-line "Your review"; the finding, its verdict and why it was escalated in one card | web `components/ui.tsx`, `pages/CaseWorkspace.tsx`, `components/case/CaseActions.tsx`, `case/SignOffChecklist.tsx`, `case/SessionTranscript.tsx` | none |
+| Five colours, five meanings: yellow, amber, purple and sky are gone; the style check refuses them | web `scripts/check-styles.mjs` (`OFF_PALETTE`), `theme/style-manifest.json`, `StatusBadge.tsx`, mission-control badges | take upstream's style files and manifest; office screens using those colours move to `orange`, `surface` or `primary` ([`styles.md`](styles.md)) |
+| Configuration screens: steps grouped (The case, Data, Decide, People and gates, Ownership); rarely-changed settings under "More options"; tool picker; Authoring in four short steps | web `components/orchestrator/*`, `components/authoring/GuidedForm.tsx`, `pages/Authoring.tsx`, `pages/CapabilityDetail.tsx`, `pages/GroupDetail.tsx` | none |
+| Lists and wording: "15 days overdue", "1 break / 3 breaks", capability names instead of ids, compact capability list on the overview | web `components/Urgency.tsx`, `pages/Overview.tsx`, `pages/Inbox.tsx`, `pages/Capabilities.tsx`; backend `cases.py` (`labels.capability`) | none |
+| Platform support sees why case panels are empty and what they can do instead | web `components/ops/SupportGuide.tsx`, `pages/Operations.tsx`, `pages/Audit.tsx` | none |
+| "How it runs" (was Flow): the case in phases, who acts, plain step names, tollgates | web `components/capability/FlowDiagram.tsx` | none |
+| Evals screen: how it works, cases ready to replay, agreement and where it differed | web `components/capability/EvalsPanel.tsx`, `api/aof.ts`; backend `web/main.py` (`GET /api/capabilities/{id}/evals/available`) | if the reverse proxy allow-lists API paths, add the new one |
+| **Eval scoring fix**: a hidden copy no longer stops at a tollgate (it did, so nothing was proposed and every group counted as agreed); a group with no proposal is `missing`; escalating what people approved as an escalation is agreement | backend `evals.py`; tests `test_evals.py` | **re-run any eval of a capability with a tollgate** (FOBO): earlier results there were overstated |
+| Logo AOF; pitch page link fixed; pitch and overview say ten capabilities | web `components/Layout.tsx`, `App.tsx`, `public/pitch/index.html`; docs `pitch/…`, `platform-overview.md` | none |
+| Guides | `guide/ui-principles.md`, `guide/how-it-runs-and-evals.md`; screen book `demo/agent-one-finance-screens.{html,pdf}` | none |
+
+Proved here: backend 775 passed, web 93 passed, `tsc` clean, `npm run check:styles` clean.
 
 ## 2. Features, and the files that carry them
 

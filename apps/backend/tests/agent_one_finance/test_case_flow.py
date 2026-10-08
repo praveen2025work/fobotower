@@ -20,7 +20,7 @@ async def test_a_case_runs_to_the_review_pause(api):
     assert res.status_code == 201, res.text
     case = res.json()
     assert case["status"] == "awaiting_review"
-    assert case["labels"] == {"case": "Lane", "item": "Variance line"}
+    assert case["labels"] == {"case": "Lane", "item": "Variance line", "capability": "P&L variance commentary"}
     assert len(case["items"]) == 14
     in_scope = [i for i in case["items"] if i["in_scope"]]
     assert in_scope and all(abs(i["variance"]) >= 50000 for i in in_scope)
@@ -103,7 +103,7 @@ async def test_a_second_capability_runs_on_the_same_platform(api):
                       group=CASH)
     case = res.json()
     assert case["status"] == "awaiting_review", res.text
-    assert case["labels"] == {"case": "Rec run", "item": "Break"}
+    assert case["labels"] == {"case": "Rec run", "item": "Break", "capability": "Reconciliation investigation"}
     assert {i["break_type"] for i in case["items"]} <= {"missing_bank", "missing_ledger", "amount_break"}
     tools = {(c["tool"], c["requested_by"]) for c in case["tool_calls"]}
     assert {("bank.statement", "match"), ("ledger.postings", "match")} <= tools

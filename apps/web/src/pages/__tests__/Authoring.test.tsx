@@ -62,8 +62,11 @@ it("builds a capability from answers with no model, and says when no model is co
   renderAt("/authoring", "/authoring", <Authoring />);
   expect(screen.getByRole("tab", { name: /Answer questions/ })).toHaveAttribute("aria-selected", "true");
   await userEvent.type(screen.getByLabelText("Name"), "Equities breaks");
+  await userEvent.click(screen.getByRole("button", { name: /Next: Case and data/ }));          // a short step at a time
   await userEvent.selectOptions(await screen.findByLabelText("Items come from"), "mbrec.breaks");
+  await userEvent.click(screen.getByRole("button", { name: /Next: Who decides/ }));
   await userEvent.click(screen.getByLabelText("a person (no model)"));
+  await userEvent.click(screen.getByRole("button", { name: /Next: Checks/ }));
   await userEvent.type(screen.getByLabelText(/Sign-off checklist/), "Is the root cause evidenced?");
   await userEvent.click(screen.getByRole("button", { name: /Build the capability/ }));
   await waitFor(() => expect(calls.some((c) => c.path === "/authoring/guided")).toBe(true));

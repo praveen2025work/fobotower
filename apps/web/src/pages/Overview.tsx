@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { AlertTriangle, ArrowRight, Ban, Bot, Clock, Layers, Timer } from "lucide-react";
+import { AlertTriangle, ArrowRight, Ban, Bot, Clock, Timer } from "lucide-react";
 
 import { currentUser } from "../api/client";
 import { useInbox, useMe, useOverview } from "../api/aof";
@@ -33,19 +33,6 @@ function OverviewHero({ review, overdue, release }: { review?: number; overdue: 
         ))}
       </div>
     </section>
-  );
-}
-
-/** Share of a capability's cases that are finished, as a small ring. */
-function DoneRing({ statuses }: { statuses: Record<string, number> }) {
-  const total = Object.values(statuses).reduce((a, b) => a + b, 0);
-  if (!total) return null;
-  const done = Math.round(((statuses.completed ?? 0) / total) * 100);
-  return (
-    <span className="hx-ring-wrap shrink-0" title={`${done}% of cases completed`}>
-      <span className="hx-ring" style={{ ["--hx-target" as string]: done, ["--hx-size" as string]: "2.6rem" }} />
-      <span className="hx-ring-label text-surface-700" style={{ fontSize: "0.58rem" }}>{done}%</span>
-    </span>
   );
 }
 
@@ -94,24 +81,17 @@ export default function Overview(): JSX.Element {
               {overview.data.capabilities.length === 0 ? (
                 <Empty>No capabilities for your roles.</Empty>
               ) : (
-                <ul className="hx-stagger space-y-3">
-                  {overview.data.capabilities.map((c) => (
+                <ul className="-my-1 divide-y divide-surface-100">
+                  {[...overview.data.capabilities].map((c) => {
+                    const n = (pre: string[]) => Object.entries(c.statuses).filter(([k]) => pre.some((p) => k.startsWith(p))).reduce((a, [, v]) => a + v, 0);
+                    return { c, waiting: n(["awaiting", "paused"]), done: n(["completed"]) };
+                  }).sort((x, y) => y.waiting - x.waiting).map(({ c, waiting, done }) => (
                     <li key={c.id}>
-                      <Link to={`/capabilities/${encodeURIComponent(c.id)}`} className="hx-sheen group block rounded-lg border border-surface-200 p-3 hover:border-primary-300">
-                        <div className="flex items-center gap-2">
-                          <Layers size={14} className="text-accent-600" />
-                          <span className="min-w-0 flex-1 text-sm font-semibold text-surface-800 group-hover:text-primary-700">{c.name}</span>
-                          <DoneRing statuses={c.statuses} />
-                        </div>
-                        <p className="mt-1 text-xs text-surface-500">
-                          {(() => {
-                            const n = (pre: string[]) => Object.entries(c.statuses).filter(([k]) => pre.some((p) => k.startsWith(p))).reduce((a, [, v]) => a + v, 0);
-                            const waiting = n(["awaiting", "paused"]);
-                            const done = n(["completed"]);
-                            if (!waiting && !done) return `No ${c.case_label.toLowerCase()}s yet`;
-                            return [waiting && `${waiting} waiting on people`, done && `${done} completed`].filter(Boolean).join(" · ");
-                          })()}
-                        </p>
+                      <Link to={`/capabilities/${encodeURIComponent(c.id)}`} className="group flex items-baseline gap-3 py-2">
+                        <span className="min-w-0 flex-1 truncate text-sm font-medium text-surface-800 group-hover:text-primary-700">{c.name}</span>
+                        <span className="shrink-0 text-xs tabular-nums text-surface-500">
+                          {waiting ? <><b className="font-semibold text-surface-800">{waiting}</b> waiting</> : done ? `${done} done` : "–"}
+                        </span>
                       </Link>
                     </li>
                   ))}

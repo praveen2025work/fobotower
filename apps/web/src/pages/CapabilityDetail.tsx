@@ -60,23 +60,25 @@ export default function CapabilityDetail(): JSX.Element {
       </div>
       {tab === "groups" && <GroupsTab id={id} groups={groups.data ?? []} configurable={m.configurable} />}
       {tab === "cases" && <CasesTab id={id} manifest={m} groups={groups.data ?? []} />}
-      {tab === "cases" && (hasRecurring || (groups.data ?? []).length > 0) && (
-        <div className="mt-4"><RecurringPanel capabilityId={id} /></div>
-      )}
-      {tab === "cases" && <div className="mt-4"><LearningPanel capabilityId={id} /></div>}
-      {tab === "configure" && (
-        <Fold className="mb-3" remember="data-contract" title="Data and parameters" summary="the fields each check reads, and thresholds to confirm">
-          <DataContractPanel capabilityId={id} />
+      {tab === "cases" && (
+        <Fold className="mt-4" remember="capability-insights" title="Insights" summary="what keeps coming back, and what could become a rule">
+          <div className="space-y-4">
+            {(hasRecurring || (groups.data ?? []).length > 0) && <RecurringPanel capabilityId={id} />}
+            <LearningPanel capabilityId={id} />
+          </div>
         </Fold>
       )}
       {tab === "configure" && (
         <>
           <p className="mb-2 text-sm text-surface-500">
-            The orchestrator step by step: which steps run, where the run stops for a person, and each step's settings.
-            {hasGroups && " These are the defaults; each team group may change what is listed under its owners' settings."}
+            Pick a step on the left to change it.
             {isOwner ? " Changes become a draft that another owner approves." : " Its owners change it."}
+            {hasGroups && " Team groups may override what the owners allow."}
           </p>
           <OrchestratorEditor capabilityId={id} manifest={m as unknown as Record<string, unknown>} mode={{ kind: "capability" }} canEdit={isOwner} />
+          <Fold className="mt-4" remember="data-contract" title="Data and parameters" summary="the fields each check reads, and thresholds to confirm">
+            <DataContractPanel capabilityId={id} />
+          </Fold>
         </>
       )}
       {tab === "flow" && (

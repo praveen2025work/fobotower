@@ -13,8 +13,8 @@ import { stringify } from "yaml";
 import { AlertTriangle, CheckCircle2, Hand, Loader2, Lock, Power, Send, Undo2 } from "lucide-react";
 
 import { useConfigCheck, useDraftGroup, usePlatform, useSubmitDraft, type GroupConfig } from "../../api/aof";
-import { ErrorState } from "../ui";
-import { Field, type Ctx } from "./fields";
+import { ErrorState, Fold } from "../ui";
+import { Field, type Ctx, type FieldSpec } from "./fields";
 import { allowed, changedPaths, get, groupSet, preview, setPath, type Json } from "./paths";
 import { SECTIONS, STAGES, STEP_ORDER, stageOf, stagesFor, type Stage } from "./stages";
 import PrepareSteps, { dataSteps } from "./PrepareSteps";
@@ -298,9 +298,7 @@ export default function OrchestratorEditor({ capabilityId, manifest, mode, canEd
             stage.fields.length === 0 ? (
               <p className="mt-4 text-sm text-surface-500">Nothing to set: this gate works the same for every capability.</p>
             ) : stage.fields.some((f) => !f.when || f.when(working)) ? (
-              <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                {stage.fields.map((f) => <Field key={f.path} spec={f} ctx={ctx} />)}
-              </div>
+              <StageFields fields={stage.fields} ctx={ctx} />
             ) : (
               <div className="mt-4 text-sm text-surface-500">
                 <p>Nothing is set for this step here{isGroup ? "" : "; team groups may set it for themselves"}.</p>
@@ -344,5 +342,29 @@ export default function OrchestratorEditor({ capabilityId, manifest, mode, canEd
         </section>
       )}
     </div>
+  );
+}
+
+/** A stage's fields: the everyday ones first, the rest folded under "More options"
+ *  with what is already set named in the fold, so nothing is hidden silently. */
+function StageFields({ fields, ctx }: { fields: FieldSpec[]; ctx: Ctx }) {
+  const main = fields.filter((f) => !f.more);
+  const more = fields.filter((f) => f.more && (!f.when || f.when(ctx.m)));
+  const isSet = (v: unknown) => v != null && v !== "" && v !== false && !(Array.isArray(v) && v.length === 0);
+  const set = more.filter((f) => isSet(get(ctx.m, f.path)));
+  return (
+    <>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        {main.map((f) => <Field key={f.path} spec={f} ctx={ctx} />)}
+      </div>
+      {more.length > 0 && (
+        <Fold className="mt-5" title="More options"
+          summary={<span title={set.map((f) => f.label).join("\n")}>{set.length ? `${set.length} of ${more.length} in use` : `${more.length} more, none in use`}</span>}>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {more.map((f) => <Field key={f.path} spec={f} ctx={ctx} />)}
+          </div>
+        </Fold>
+      )}
+    </>
   );
 }

@@ -43,7 +43,7 @@ export function SignOffChecklist({ questions, answers, onChange }: {
                 ))}
               </span>
             </div>
-            {q.known && <p className="mt-0.5 text-surface-500">Agent One Finance: {q.known}</p>}
+            {q.known && <p className="mt-0.5 line-clamp-1 text-surface-500" title={q.known}>Found: {q.known}</p>}
             {answers[q.id]?.answer === "no" && (
               <input
                 aria-label={`Note for ${q.label}`}

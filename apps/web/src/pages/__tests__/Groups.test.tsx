@@ -69,6 +69,7 @@ it("lets a group owner change the group as a draft for another owner to approve"
     "POST /capabilities/recon.investigation/groups": { group_id: "cats-motif", version: 2 },
   });
   renderAt("/capabilities/recon.investigation/groups/cats-motif", "/capabilities/:id/groups/:group", <GroupDetail />);
+  await userEvent.click(await screen.findByRole("button", { name: /Edit as YAML/ }));     // folded until asked for
   const editor = await screen.findByLabelText(/Settings \(YAML\)/);
   expect((editor as HTMLTextAreaElement).value).toContain("auto_adjust_limit");
   await userEvent.clear(editor);

@@ -92,7 +92,7 @@ export function InboxTable({ rows }: { rows: InboxRow[] }) {
                 <Link to={`/cases/${encodeURIComponent(r.case_id)}`} className="font-medium text-primary-700 hover:underline">
                   {r.case_label}: {r.subject}
                 </Link>
-                {r.follow_up_of && (
+                {r.follow_up_of && !/late items/i.test(r.subject) && (
                   <Link to={`/cases/${encodeURIComponent(r.follow_up_of)}`} title="Late items for a book and date already worked — see the day's case"
                     className="ml-2 rounded bg-surface-100 px-1.5 py-0.5 text-[10px] font-semibold text-surface-800 hover:underline">late items</Link>
                 )}

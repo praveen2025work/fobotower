@@ -74,7 +74,7 @@ describe("Inbox on a phone", () => {
       renderAt("/inbox", "/inbox", <InboxPage />);
       const card = await screen.findByRole("link", { name: /PRIME-MB-04/ });
       expect(within(card).getByText("1 to confirm")).toBeInTheDocument();
-      expect(within(card).getByText(/Overdue/)).toBeInTheDocument();
+      expect(within(card).getByText(/overdue/)).toBeInTheDocument();
       expect(screen.queryByRole("table")).not.toBeInTheDocument();
     } finally {
       window.matchMedia = original;

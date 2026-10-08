@@ -27,6 +27,7 @@ interface Base {
   label: string;
   help?: string;
   when?: (m: Json) => boolean;          // shown only when this holds
+  more?: boolean;                       // folded under "More options" until asked for
 }
 export type FieldSpec =
   | (Base & { kind: "text" | "template" | "expr" | "textarea" | "cron" | "time"; placeholder?: string })

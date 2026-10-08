@@ -112,7 +112,7 @@ export default function CaseWorkspace(): JSX.Element {
     <div className="flex flex-col lg:h-full">
       <div className="mb-4">
         <Link to={`/capabilities/${encodeURIComponent(c.capability_id)}`} className="inline-flex items-center gap-1 text-xs text-surface-500 hover:text-primary-700">
-          <ArrowLeft size={12} /> {c.capability_id}
+          <ArrowLeft size={12} /> {c.labels.capability ?? c.capability_id}
         </Link>
         <div className="mt-1 flex flex-wrap items-center gap-3">
           <DecidedRing c={c} />
@@ -124,7 +124,7 @@ export default function CaseWorkspace(): JSX.Element {
               to={`/capabilities/${encodeURIComponent(c.capability_id)}/groups/${encodeURIComponent(c.team_group)}`}
               className="rounded-md bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700 hover:underline"
             >
-              group {c.team_group} v{c.team_group_version}
+              {c.team_group}
             </Link>
           )}
           {(c.attempt ?? 1) > 1 && <span className="rounded-md bg-surface-100 px-2 py-0.5 text-xs text-surface-600">attempt {c.attempt}</span>}
@@ -239,13 +239,10 @@ export default function CaseWorkspace(): JSX.Element {
                     <StatusBadge status={g.decision ? decidedLabel(g.decision.action) : g.finding?.status ?? "pending"} />
                   </div>
                   {!g.decision && <FlagChips flags={g.flags ?? []} />}
-                  <div className="mt-1 flex items-center justify-between gap-2">
-                    <span className="text-[11px] text-surface-500">
-                      {g.item_ids.length} {c.labels.item.toLowerCase()}(s)
-                      {g.finding?.verdict && <span className="ml-1.5 font-medium text-surface-700">{g.finding.verdict.replace(/_/g, " ")}</span>}
-                    </span>
-                    {g.finding && <DecidedBy by={g.finding.decided_by} />}
-                  </div>
+                  <p className="mt-1 text-[11px] text-surface-500">
+                    {g.item_ids.length} {c.labels.item.toLowerCase()}{g.item_ids.length === 1 ? "" : "s"}
+                    {g.finding?.verdict && <span className="ml-1.5 font-medium text-surface-700">{g.finding.verdict.replace(/_/g, " ")}</span>}
+                  </p>
                   {g.ticket?.reference && (
                     <span className="mt-1 inline-flex items-center gap-1 text-[11px] text-primary-700"><Ticket size={11} /> {g.ticket.reference}</span>
                   )}
@@ -448,7 +445,7 @@ function PlaybookPanel({ group }: { group: Group }) {
           <ShieldAlert size={12} className="mt-0.5 shrink-0" /> {f.guard}
         </p>
       )}
-      {f.sme_review && (
+      {f.sme_review && f.status !== "escalated" && (
         <p className="col-span-full mt-1 flex items-start gap-1.5 rounded-md bg-orange-50 px-2 py-1 font-medium text-orange-800">
           <Scale size={12} className="mt-0.5 shrink-0" /> Needs your judgement: the model investigated this one; check its reasoning before you decide.
         </p>

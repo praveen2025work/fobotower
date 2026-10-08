@@ -20,7 +20,7 @@ import {
   useTemplates,
   type DraftResult,
 } from "../api/aof";
-import { Card, Empty, ErrorState, Loading, PageHeader, WorkflowStepper, formatTime } from "../components/ui";
+import { Card, Empty, ErrorState, Fold, Loading, PageHeader, WorkflowStepper, formatTime } from "../components/ui";
 
 export default function Authoring(): JSX.Element {
   const [brd, setBrd] = useState("");
@@ -65,7 +65,7 @@ export default function Authoring(): JSX.Element {
     <div>
       <PageHeader
         title="Authoring"
-        subtitle="Answer a few questions, describe the work for the model, or start from a template. The platform checks it; another owner approves it."
+        subtitle="Build a capability in four short steps, from a BRD, or from a template. The platform checks it; another owner approves it."
       />
       <div className="grid gap-4 xl:grid-cols-2">
         <Card title={<span className="flex items-center gap-2"><FileText size={14} /> How do you want to start?</span>}>
@@ -119,17 +119,13 @@ export default function Authoring(): JSX.Element {
               </select>
             </label>
           )}
-          <p className="mt-4 text-xs text-surface-500">
-            Whichever way you start, the result is checked by the platform, can be edited here or in Configure, and goes live
-            only when another owner approves it.
-          </p>
         </Card>
 
         <Card
           title="Draft manifest"
           aside={result?.author && <span className="text-xs text-surface-500">drafted by {result.author}</span>}
         >
-          {!result && <Empty>Answer the questions, draft from a BRD, or pick a template to see the configuration here.</Empty>}
+          {!result && <Empty>Your draft appears here, checked by the platform, ready to edit and submit.</Empty>}
           {result && (
             <div className="space-y-3">
               {result.manifest && <WorkflowStepper steps={result.manifest.steps} pauseBefore={result.manifest.pause_before} />}
@@ -192,7 +188,7 @@ function PromoteIn() {
   const [text, setText] = useState("");
   const [bad, setBad] = useState<string | null>(null);
   return (
-    <Card title="Promote from another environment" className="mt-4">
+    <Fold className="mt-4" title="Promote from another environment" summary="paste a version exported elsewhere">
       <p className="mb-2 text-xs text-surface-500">
         Paste a version exported from another environment (its Versions tab, download icon). It arrives as a draft
         and goes live only when an owner here approves it. Its checksum (and signature, when this deployment has a
@@ -217,13 +213,14 @@ function PromoteIn() {
       {bad && <p className="mt-2 text-xs text-red-700">{bad}</p>}
       {imp.error && <div className="mt-2"><ErrorState error={imp.error} /></div>}
       {imp.data && <p className="mt-2 text-sm text-green-700">Drafted {imp.data.capability_id} v{imp.data.version} — {imp.data.note}</p>}
-    </Card>
+    </Fold>
   );
 }
 
 function PendingDrafts() {
   const drafts = useDrafts();
   const approve = useApproveVersion();
+  if (drafts.data?.length === 0 && !approve.data) return null;                  // nothing waiting: no empty card
   return (
     <Card title="Drafts awaiting approval" className="mt-4">
       {drafts.isLoading && <Loading what="drafts" />}

@@ -277,7 +277,7 @@ export interface SessionInfo {
 
 export interface CaseDetail extends CaseSummary {
   draft: { headline: string; summary?: string; skipped_steps?: string[]; session?: SessionInfo } | null;
-  labels: { case: string; item: string };
+  labels: { case: string; item: string; capability?: string };
   steps: string[];
   pause_before: string[];
   columns: string[];

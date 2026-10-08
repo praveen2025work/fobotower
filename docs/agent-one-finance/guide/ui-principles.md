@@ -43,6 +43,21 @@ and keeps everything else one click away.
     Decide, People and gates, Ownership; steps not in use are listed last. A long list of things
     (prepare-data steps, tools) shows what is chosen, one line each, and opens or adds on demand.
 
+11. **Say it once.** A message appears in one place: the case header does not repeat what "Your
+    review" says, an escalated group shows one escalation card (not also a judgement strip), a step's
+    description does not repeat its gate note, and a list chip does not repeat the title.
+
+12. **Everyday first, the rest under "More options".** A step's settings that most capabilities
+    never change (authority tiers, reserved decisions, who to ask for evidence, reminders) sit in a
+    "More options" fold whose summary says how many are in use, so nothing is hidden silently.
+
+13. **Long forms are short steps.** Authoring asks four short steps (The work, Case and data, Who
+    decides, Checks) with Back and Next; "Build now" works from any step and the platform's check
+    says what is missing.
+
+14. **Plain words for time and things.** "15 days overdue", not "Overdue 15 days ago"; "1 break",
+    "3 breaks", not "break(s)"; names, not ids ("Break investigation", not `break.investigation`).
+
 Every screen, as it is now: `docs/agent-one-finance/demo/agent-one-finance-screens.html` (and `.pdf`).
 
 New panels start folded unless the person needs them for the decision on that screen.

@@ -33,7 +33,7 @@ export default function GroupDetail(): JSX.Element {
   return (
     <div>
       <Link to={`/capabilities/${encodeURIComponent(id)}`} className="inline-flex items-center gap-1 text-xs text-surface-500 hover:text-primary-700">
-        <ArrowLeft size={12} /> {id}
+        <ArrowLeft size={12} /> {g.manifest?.name ?? id}
       </Link>
       <PageHeader
         title={g.name}
@@ -75,10 +75,9 @@ export default function GroupDetail(): JSX.Element {
             <p className="mt-2 text-xs text-surface-500">Everything else (workflow, gates, write-back, ownership) is the capability's.</p>
           </Fold>
       {g.is_owner && (
-        <details className="mt-4 rounded-xl border border-surface-200 bg-card p-4">
-          <summary className="cursor-pointer text-sm font-semibold text-surface-800">Advanced: edit this group as YAML</summary>
-          <div className="mt-3"><EditGroup capabilityId={id} config={g.config} /></div>
-        </details>
+        <Fold className="mt-4" title="Edit as YAML" summary="for owners who prefer text">
+          <EditGroup capabilityId={id} config={g.config} />
+        </Fold>
       )}
         </>
       )}

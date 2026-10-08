@@ -1,10 +1,11 @@
-// Authoring without a model: a few plain questions build a capability's
-// configuration. The platform's validator judges it exactly as it judges a
+// Authoring without a model: four short steps of plain questions build a
+// capability's configuration. The platform's validator judges it exactly as it judges a
 // model's draft, and another owner approves it before it goes live.
 
 import { ToolSet } from "../orchestrator/fields";
 import { useState } from "react";
-import { ListChecks } from "lucide-react";
+import clsx from "clsx";
+import { ArrowLeft, ArrowRight, ListChecks } from "lucide-react";
 
 import { usePlatform, type DraftResult } from "../../api/aof";
 
@@ -15,12 +16,15 @@ const KINDS = [
   { value: "review", label: "Review a list", help: "e.g. attestations or exceptions, one decision per group" },
 ] as const;
 
+const STEPS = ["The work", "Case and data", "Who decides", "Checks (optional)"] as const;
+
 const list = (s: string) => s.split(/[,\n]/).map((x) => x.trim()).filter(Boolean);
 const input = "mt-1 block w-full rounded-lg border border-surface-300 bg-card px-2 py-1.5 text-sm font-normal";
 const label = "block text-xs font-medium text-surface-600";
 
 export default function GuidedForm({ onBuild, pending }: { onBuild: (answers: Record<string, unknown>) => void; pending: boolean }) {
   const platform = usePlatform();
+  const [step, setStep] = useState(0);
   const readTools = (platform.data?.connectors ?? []).flatMap((c) => c.tools).filter((t) => t.access === "read");
   const [a, setA] = useState({
     name: "", description: "", kind: "investigate", case_key: "book, cob", scope_field: "", case_label: "Run", item_label: "Item",
@@ -56,6 +60,17 @@ export default function GuidedForm({ onBuild, pending }: { onBuild: (answers: Re
 
   return (
     <div className="space-y-3">
+      <ol aria-label="Steps" className="grid grid-cols-4 gap-1">
+        {STEPS.map((t, i) => (
+          <li key={t}>
+            <button type="button" onClick={() => setStep(i)} aria-current={step === i ? "step" : undefined}
+              className={clsx("w-full border-t-2 pt-1.5 text-left text-[11px]", i === step ? "border-primary-600 font-semibold text-primary-700" : i < step ? "border-primary-300 text-surface-600" : "border-surface-200 text-surface-400")}>
+              {i + 1}. {t}
+            </button>
+          </li>
+        ))}
+      </ol>
+      {step === 0 && <>
       <label className={label}>Name<input value={a.name} onChange={(e) => set("name", e.target.value)} placeholder="Equities breaks" className={input} /></label>
       <label className={label}>What it is for<input value={a.description} onChange={(e) => set("description", e.target.value)} className={input} /></label>
 
@@ -71,6 +86,8 @@ export default function GuidedForm({ onBuild, pending }: { onBuild: (answers: Re
         </div>
       </fieldset>
 
+      </>}
+      {step === 1 && <>
       <div className="grid gap-3 sm:grid-cols-2">
         <label className={label}>One case is one… (key fields)<input value={a.case_key} onChange={(e) => set("case_key", e.target.value)} placeholder="book, cob" className={input} /></label>
         <label className={label}>Who sees a case is limited by
@@ -118,6 +135,8 @@ export default function GuidedForm({ onBuild, pending }: { onBuild: (answers: Re
         <label className={label}>Columns reviewers see<input value={a.display} onChange={(e) => set("display", e.target.value)} placeholder="instrument, desk, difference" className={input} /></label>
       </div>
 
+      </>}
+      {step === 2 && <>
       <fieldset className="rounded-lg border border-surface-200 p-2">
         <legend className={`${label} px-1`}>What rules cannot settle goes to</legend>
         <div className="flex flex-wrap gap-4 text-xs">
@@ -156,6 +175,8 @@ export default function GuidedForm({ onBuild, pending }: { onBuild: (answers: Re
           )}
         </div>
       </div>
+      </>}
+      {step === 3 && <>
       <label className={label}>Who reviewers may ask for evidence (one per line: Name: ROLE)
         <textarea value={a.ask} onChange={(e) => set("ask", e.target.value)} rows={2} placeholder={"Desk (trader): EQ_DESK\nOperations: OPS"} className={input} />
       </label>
@@ -202,10 +223,25 @@ export default function GuidedForm({ onBuild, pending }: { onBuild: (answers: Re
           )}
         </div>
       </fieldset>
-      <button onClick={build} disabled={pending || !a.name.trim()}
-        className="inline-flex items-center gap-2 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-brand-fg hover:bg-brand-strong disabled:opacity-50">
-        <ListChecks size={14} /> {pending ? "Building…" : "Build the capability"}
-      </button>
+      </>}
+      <div className="flex items-center gap-2 border-t border-surface-100 pt-3">
+        {step > 0 && (
+          <button type="button" onClick={() => setStep(step - 1)} className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm text-surface-600 hover:bg-surface-100">
+            <ArrowLeft size={14} /> Back
+          </button>
+        )}
+        {step < STEPS.length - 1 && (
+          <button type="button" onClick={() => setStep(step + 1)} disabled={step === 0 && !a.name.trim()}
+            className="inline-flex items-center gap-1 rounded-lg border border-primary-300 px-3 py-2 text-sm font-medium text-primary-700 hover:bg-primary-50 disabled:opacity-50">
+            Next: {STEPS[step + 1].replace(" (optional)", "")} <ArrowRight size={14} />
+          </button>
+        )}
+        <button onClick={build} disabled={pending || !a.name.trim()}
+          className={clsx("ml-auto inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-50",
+            step === STEPS.length - 1 ? "bg-brand text-brand-fg hover:bg-brand-strong" : "text-primary-700 hover:bg-primary-50")}>
+          <ListChecks size={14} /> {pending ? "Building…" : step === STEPS.length - 1 ? "Build the capability" : "Build now"}
+        </button>
+      </div>
     </div>
   );
 }

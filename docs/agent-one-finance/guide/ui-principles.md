@@ -39,4 +39,10 @@ and keeps everything else one click away.
    no meaning and have no dark-mode version in the Barclays theme. In lists, an urgency is coloured text,
    not a filled badge, so one red row still stands out.
 
+10. **Configuration in the order a person thinks.** The editor groups steps as The case, Data,
+    Decide, People and gates, Ownership; steps not in use are listed last. A long list of things
+    (prepare-data steps, tools) shows what is chosen, one line each, and opens or adds on demand.
+
+Every screen, as it is now: `docs/agent-one-finance/demo/agent-one-finance-screens.html` (and `.pdf`).
+
 New panels start folded unless the person needs them for the decision on that screen.

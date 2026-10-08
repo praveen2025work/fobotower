@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import clsx from "clsx";
-import { AlertTriangle, Check, Loader2, Pause } from "lucide-react";
+import { AlertTriangle, Check, ChevronRight, Loader2, Pause } from "lucide-react";
 
 import { ApiError } from "../api/client";
 
@@ -27,6 +27,46 @@ export function Card({ title, aside, children, className }: { title?: ReactNode;
       )}
       <div className="p-3 sm:p-4">{children}</div>
     </section>
+  );
+}
+
+/** Whether a fold is open, remembered per person in this browser (a convenience only). */
+export function useRemembered(key: string | undefined, initial: boolean): [boolean, (v: boolean) => void] {
+  const read = () => {
+    if (!key) return initial;
+    try {
+      const v = localStorage.getItem(`aof.fold.${key}`);
+      return v == null ? initial : v === "1";
+    } catch {
+      return initial;
+    }
+  };
+  const [open, setOpen] = useState(read);
+  const set = (v: boolean) => {
+    setOpen(v);
+    if (key) {
+      try { localStorage.setItem(`aof.fold.${key}`, v ? "1" : "0"); } catch { /* storage blocked: keep it for this visit */ }
+    }
+  };
+  return [open, set];
+}
+
+/** Progressive disclosure: secondary information folded away until asked for.
+ *  `summary` stays visible when closed (e.g. "5 system calls"), so nothing is hidden silently. */
+export function Fold({ title, summary, children, defaultOpen = false, remember, className }: {
+  title: ReactNode; summary?: ReactNode; children: ReactNode; defaultOpen?: boolean; remember?: string; className?: string;
+}) {
+  const [open, setOpen] = useRemembered(remember, defaultOpen);
+  return (
+    <div className={className}>
+      <button type="button" aria-expanded={open} onClick={() => setOpen(!open)}
+        className="group flex w-full items-center gap-1.5 py-1 text-left text-xs font-semibold uppercase tracking-wide text-surface-500 hover:text-surface-800">
+        <ChevronRight size={13} className={clsx("shrink-0 transition-transform", open && "rotate-90")} />
+        <span>{title}</span>
+        {summary != null && !open && <span className="ml-1 truncate font-normal normal-case tracking-normal text-surface-400">{summary}</span>}
+      </button>
+      {open && <div className="mt-1.5">{children}</div>}
+    </div>
   );
 }
 

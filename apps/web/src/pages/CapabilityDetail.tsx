@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import clsx from "clsx";
-import { Play } from "lucide-react";
+import { Play, Plus } from "lucide-react";
 
 import { Users } from "lucide-react";
 
@@ -14,7 +14,7 @@ import FlowDiagram from "../components/capability/FlowDiagram";
 import VersionsPanel from "../components/capability/VersionsPanel";
 import OrchestratorEditor from "../components/orchestrator/OrchestratorEditor";
 import StatusBadge from "../components/StatusBadge";
-import { Card, Empty, ErrorState, Loading, PageHeader, WorkflowStepper, formatTime } from "../components/ui";
+import { Card, Empty, ErrorState, Fold, Loading, PageHeader, formatTime } from "../components/ui";
 
 type Tab = "groups" | "cases" | "configure" | "flow" | "evals" | "versions";
 
@@ -25,7 +25,8 @@ export default function CapabilityDetail(): JSX.Element {
   const groups = useGroups(id);
   const hasGroups = (groups.data?.length ?? 0) > 0;
   const [chosen, setTab] = useState<Tab | null>(null);
-  const tab: Tab = chosen ?? (hasGroups ? "groups" : "cases");
+  // What most visitors come for: the cases. Owners go to Groups or Configure when they need to.
+  const tab: Tab = chosen ?? "cases";
 
   if (cap.isLoading) return <Loading what="capability" />;
   if (cap.error) return <ErrorState error={cap.error} />;
@@ -40,11 +41,12 @@ export default function CapabilityDetail(): JSX.Element {
         title={m.name}
         subtitle={<span>{m.description} <span className="font-mono text-xs text-surface-400">· {m.id} v{cap.data.version}</span></span>}
       />
-      <div className="mb-4 rounded-xl border border-surface-200 bg-card p-4">
-        <WorkflowStepper steps={m.steps} pauseBefore={m.pause_before} />
-      </div>
+      <p className="-mt-2 mb-4 text-sm text-surface-500">
+        {m.steps.length} steps{m.pause_before.length > 0 && <> · stops for a person before {m.pause_before.join(" and ")}</>} ·{" "}
+        <button type="button" onClick={() => setTab("flow")} className="font-medium text-primary-700 hover:underline">see the workflow</button>
+      </p>
       <div className="mb-4 flex max-w-full overflow-x-auto rounded-lg border border-surface-200 bg-card p-1 sm:inline-flex" role="tablist">
-        {((hasGroups ? ["groups"] : []).concat(["cases", "configure", "flow", "evals", "versions"]) as Tab[]).map((t) => (
+        {(["cases", ...(hasGroups ? ["groups"] : []), "configure", "flow", "evals", "versions"] as Tab[]).map((t) => (
           <button
             key={t}
             role="tab"
@@ -62,7 +64,11 @@ export default function CapabilityDetail(): JSX.Element {
         <div className="mt-4"><RecurringPanel capabilityId={id} /></div>
       )}
       {tab === "cases" && <div className="mt-4"><LearningPanel capabilityId={id} /></div>}
-      {tab === "configure" && <div className="mt-4"><DataContractPanel capabilityId={id} /></div>}
+      {tab === "configure" && (
+        <Fold className="mb-3" remember="data-contract" title="Data and parameters" summary="the fields each check reads, and thresholds to confirm">
+          <DataContractPanel capabilityId={id} />
+        </Fold>
+      )}
       {tab === "configure" && (
         <>
           <p className="mb-2 text-sm text-surface-500">
@@ -96,8 +102,7 @@ function GroupsTab({ id, groups, configurable }: { id: string; groups: TeamGroup
   return (
     <div>
       <p className="mb-3 text-sm text-surface-500">
-        Each group is one team's configuration of this capability — its own sources, keys, thresholds, rules, instructions and
-        reviewers, within what the capability allows ({configurable.length} settings). Its owners change it; another owner approves.
+        Each team runs this capability with its own settings, within the {configurable.length} the capability allows.
       </p>
       <div className="grid gap-4 lg:grid-cols-2">
         {groups.map((g) => (
@@ -123,13 +128,9 @@ function GroupsTab({ id, groups, configurable }: { id: string; groups: TeamGroup
             <p className="mt-3 text-xs text-surface-500">
               {g.case_label} per {g.case_key.join(" × ")} · reviewed by {g.review_roles.join(", ")}
             </p>
-            <div className="mt-2 flex flex-wrap gap-1">
-              {g.sets.length === 0 ? (
-                <span className="text-xs text-surface-400">uses the capability's defaults</span>
-              ) : (
-                g.sets.map((p) => <code key={p} className="rounded bg-surface-100 px-1.5 py-0.5 text-[11px] text-surface-600">{p}</code>)
-              )}
-            </div>
+            <p className="mt-1 text-xs text-surface-400">
+              {g.sets.length === 0 ? "Uses the capability's defaults" : `Sets ${g.sets.length} of the capability's settings`}
+            </p>
           </Link>
         ))}
       </div>
@@ -149,6 +150,7 @@ function CasesTab({ id, manifest, groups }: { id: string; manifest: Manifest; gr
   const label = chosen ? chosen.case_label : manifest.case.label;
   const [values, setValues] = useState<Record<string, string>>({});
   const names = Object.fromEntries(groups.map((g) => [g.group, g.name]));
+  const [opening, setOpening] = useState(false);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -158,13 +160,35 @@ function CasesTab({ id, manifest, groups }: { id: string; manifest: Manifest; gr
     });
   };
 
+  const canOpen = !(groups.length > 0 && openable.length === 0);
   return (
-    <div className="grid gap-4 xl:grid-cols-3">
-      <Card title={`Open a ${label.toLowerCase()}`}>
+    <div>
+      <Card
+        title="Cases"
+        aside={
+          <div className="flex items-center gap-2">
+            {groups.length > 0 && (
+              <select aria-label="Filter by group" value={filter} onChange={(e) => setFilter(e.target.value)} className="rounded-lg border border-surface-300 bg-card px-2 py-1 text-xs">
+                <option value="">All groups</option>
+                {groups.map((g) => <option key={g.group} value={g.group}>{g.name}</option>)}
+              </select>
+            )}
+            {canOpen && (
+              <button type="button" onClick={() => setOpening(!opening)} aria-expanded={opening}
+                className="inline-flex items-center gap-1 rounded-lg border border-surface-300 px-2.5 py-1 text-xs font-medium text-surface-700 hover:bg-surface-50">
+                <Plus size={12} /> Open a {label.toLowerCase()}
+              </button>
+            )}
+          </div>
+        }
+      >
+        {opening && (
+          <div className="mb-4 rounded-lg border border-surface-200 bg-surface-50 p-3">
+            <p className="mb-2 text-xs text-surface-500">Cases usually open by themselves (an event or a schedule). Open one by hand here.</p>
         {groups.length > 0 && openable.length === 0 ? (
           <Empty>None of this capability's groups lets you open cases.</Empty>
         ) : (
-          <form onSubmit={submit} className="space-y-3">
+          <form onSubmit={submit} className="grid gap-3 sm:grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] sm:items-end">
             {groups.length > 0 && (
               <label className="block text-xs font-medium text-surface-600">
                 Group
@@ -198,17 +222,8 @@ function CasesTab({ id, manifest, groups }: { id: string; manifest: Manifest; gr
             {open.error && <ErrorState error={open.error} />}
           </form>
         )}
-      </Card>
-      <Card
-        title="Cases"
-        className="xl:col-span-2"
-        aside={groups.length > 0 && (
-          <select aria-label="Filter by group" value={filter} onChange={(e) => setFilter(e.target.value)} className="rounded-lg border border-surface-300 bg-card px-2 py-1 text-xs">
-            <option value="">All groups</option>
-            {groups.map((g) => <option key={g.group} value={g.group}>{g.name}</option>)}
-          </select>
+          </div>
         )}
-      >
         {cases.isLoading && <Loading what="cases" />}
         {cases.error && <ErrorState error={cases.error} />}
         {cases.data?.length === 0 && <Empty>No cases yet.</Empty>}

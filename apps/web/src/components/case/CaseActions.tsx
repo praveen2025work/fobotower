@@ -304,27 +304,13 @@ export function EscalationCard({ group, canDecide }: { group: Group; canDecide: 
         <ShieldAlert size={15} /> Escalated — a person decides
       </h3>
       <p className="mt-1">{explainEscalation(f)}</p>
-      <dl className="mt-2 grid gap-x-4 gap-y-1 text-xs sm:grid-cols-2">
-        {f.escalate_to && (
-          <div><dt className="inline text-orange-800">Owning team: </dt><dd className="inline font-medium">{f.escalate_to}</dd></div>
-        )}
-        {f.verdict && (
-          <div><dt className="inline text-orange-800">Verdict: </dt><dd className="inline font-medium">{f.verdict.replace(/_/g, " ")}</dd></div>
-        )}
-        {group.ticket?.reference && (
-          <div className="flex items-center gap-1"><Ticket size={11} /> Ticket {group.ticket.reference}</div>
-        )}
-      </dl>
+      {group.ticket?.reference && (
+        <p className="mt-1 flex items-center gap-1 text-xs"><Ticket size={11} /> Ticket {group.ticket.reference}</p>
+      )}
       {canDecide && !group.decision && (
-        <div className="mt-2 border-t border-orange-200 pt-2 text-xs">
-          <p className="font-medium text-orange-900">What you can do</p>
-          <ul className="mt-0.5 list-disc space-y-0.5 pl-4">
-            <li><strong>Approve</strong> with your own explanation if you are satisfied — it is recorded with your name.</li>
-            <li><strong>Reject</strong> and say why — it goes back as not accepted.</li>
-            <li><strong>Investigate again</strong> — tell the model what to check (below).</li>
-            <li>Attach supporting evidence on the Case side.</li>
-          </ul>
-        </div>
+        <p className="mt-2 text-xs text-orange-900">
+          Approve with your own explanation, reject with a reason, or ask the model to look again.
+        </p>
       )}
     </section>
   );

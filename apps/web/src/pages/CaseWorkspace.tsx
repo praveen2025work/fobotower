@@ -10,6 +10,7 @@ import {
   BookOpen,
   Bot,
   FileSpreadsheet,
+  PanelRight,
   Repeat,
   Scale,
   Ticket,
@@ -58,7 +59,7 @@ import CaseHistory from "../components/case/CaseHistory";
 import SessionTranscript from "../components/case/SessionTranscript";
 import StatusBadge from "../components/StatusBadge";
 import { DueBadge } from "../components/Urgency";
-import { Empty, ErrorState, Loading, WorkflowStepper, currentStep, formatTime, formatValue } from "../components/ui";
+import { Empty, ErrorState, Fold, Loading, WorkflowStepper, currentStep, formatTime, formatValue, useRemembered } from "../components/ui";
 
 // Set in the office to link a case to its Phoenix trace, e.g.
 // https://phoenix.internal/projects/<project>/traces/{traceId}
@@ -91,6 +92,8 @@ export default function CaseWorkspace(): JSX.Element {
   const openedAt = useRef(Date.now());
   // Phones show one pane at a time; wide screens show all three side by side.
   const [pane, setPane] = useState<"list" | "detail" | "case">("detail");
+  // Case details (key, workflow, evidence, questions, write-back) stay folded away unless asked for.
+  const [details, setDetails] = useRemembered("case-details", false);
 
   if (detail.isLoading) return <Loading what="case" />;
   if (detail.error) return <ErrorState error={detail.error} />;
@@ -103,6 +106,7 @@ export default function CaseWorkspace(): JSX.Element {
     c.groups.find((g) => g.group_id === selected) ??
     firstWith("escalated") ?? firstWith("confirmation") ?? firstWith("judgement") ?? undecided[0] ?? c.groups[0];
   const decided = c.groups.filter((g) => g.decision).length;
+  const openQuestions = (c.requests ?? []).filter((r) => r.status === "open").length;
 
   return (
     <div className="flex flex-col lg:h-full">
@@ -130,12 +134,24 @@ export default function CaseWorkspace(): JSX.Element {
             </span>
           )}
           <DueBadge dueAt={c.due_at} state={c.due_state ?? null} />
-          <button
-            onClick={() => void download(`/cases/${encodeURIComponent(c.case_id)}/export.xlsx`, `${c.case_id}.xlsx`)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-surface-300 px-2.5 py-1 text-xs font-medium text-surface-700 hover:bg-surface-50 sm:ml-auto"
-          >
-            <FileSpreadsheet size={13} /> Download Excel
-          </button>
+          <div className="flex items-center gap-1.5 sm:ml-auto">
+            <button
+              onClick={() => void download(`/cases/${encodeURIComponent(c.case_id)}/export.xlsx`, `${c.case_id}.xlsx`)}
+              title="Download the case as Excel"
+              className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-surface-600 hover:bg-surface-100"
+            >
+              <FileSpreadsheet size={13} /> Excel
+            </button>
+            <button
+              onClick={() => setDetails(!details)}
+              aria-pressed={details}
+              className={clsx("hidden items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium lg:inline-flex",
+                details ? "bg-primary-50 text-primary-700" : "text-surface-600 hover:bg-surface-100")}
+            >
+              <PanelRight size={13} /> Case details
+              {openQuestions > 0 && <span className="rounded-full bg-orange-100 px-1.5 text-[10px] font-semibold text-orange-800">{openQuestions}</span>}
+            </button>
+          </div>
         </div>
         {c.draft && <p className="mt-1 text-sm text-surface-500">{c.draft.headline}</p>}
         {c.follow_up_of && (
@@ -193,7 +209,7 @@ export default function CaseWorkspace(): JSX.Element {
         </div>
       </div>
 
-      <div className="grid gap-0 rounded-xl border border-surface-200 bg-card lg:min-h-0 lg:flex-1 lg:grid-cols-[18rem_1fr_19rem] lg:overflow-hidden">
+      <div className={clsx("grid gap-0 rounded-xl border border-surface-200 bg-card lg:min-h-0 lg:flex-1 lg:overflow-hidden", details ? "lg:grid-cols-[18rem_1fr_19rem]" : "lg:grid-cols-[18rem_1fr]")}>
         <aside className={clsx("border-surface-200 lg:block lg:border-r", pane !== "list" && "hidden")} aria-label="Proposals">
           <div className="flex items-center justify-between border-b border-surface-100 px-4 py-3">
             <h2 className="text-sm font-semibold text-surface-800">Proposals</h2>
@@ -265,7 +281,7 @@ export default function CaseWorkspace(): JSX.Element {
           </div>
         </section>
 
-        <aside className={clsx("bg-surface-50/60 lg:block lg:overflow-y-auto lg:border-l lg:border-surface-200", pane !== "case" && "hidden")} aria-label="Case context">
+        <aside className={clsx("bg-surface-50/60 lg:overflow-y-auto lg:border-l lg:border-surface-200", details ? "lg:block" : "lg:hidden", pane !== "case" && "hidden")} aria-label="Case details">
           <ContextPanel c={c} />
         </aside>
       </div>
@@ -417,10 +433,10 @@ function PlaybookPanel({ group }: { group: Group }) {
   if (!f?.category && !f?.verdict) return null;
   return (
     <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 rounded-lg border border-surface-200 p-3 text-xs sm:grid-cols-4" aria-label="Playbook">
-      <div><span className="text-surface-500">Category</span><p className="font-medium text-surface-800">{f.category} · {f.category_name}</p></div>
-      <div><span className="text-surface-500">Side</span><p className="font-medium text-surface-800">{f.side_name ?? f.side}</p></div>
-      <div><span className="text-surface-500">Verdict</span><p className="font-semibold text-surface-900">{f.verdict?.replace(/_/g, " ") ?? "—"}</p></div>
-      <div><span className="text-surface-500">Owner</span><p className="font-medium text-surface-800">{f.escalate_to ?? "—"}</p></div>
+      {f.verdict && <div><span className="text-surface-500">Verdict</span><p className="font-semibold text-surface-900">{f.verdict.replace(/_/g, " ")}</p></div>}
+      {f.category && <div><span className="text-surface-500">Category</span><p className="font-medium text-surface-800">{f.category} · {f.category_name}</p></div>}
+      {(f.side_name ?? f.side) && <div><span className="text-surface-500">Side</span><p className="font-medium text-surface-800">{f.side_name ?? f.side}</p></div>}
+      {f.escalate_to && <div><span className="text-surface-500">Owner</span><p className="font-medium text-surface-800">{f.escalate_to}</p></div>}
       {f.requires_confirmation && (
         <p className="col-span-full mt-1 flex items-start gap-1.5 text-yellow-700">
           <AlertTriangle size={12} className="mt-0.5 shrink-0" /> Requires controller confirmation: {f.requires_confirmation}
@@ -614,9 +630,9 @@ function ProposalPanel({ c, group }: { c: CaseDetail; group: Group }) {
             <p className="mt-2 text-[11px] text-surface-500">Large groups need two approvers ({c.review.dual_review_when}).</p>
           )}
           {canSendBack && (
-            <div className="mt-3 border-t border-surface-100 pt-3">
+            <Fold title="Ask the model to look again" remember="reinvestigate" className="mt-3 border-t border-surface-100 pt-2">
               <label className="block text-xs font-medium text-surface-600">
-                Not convinced? Ask the model to look again
+                What should it check?
                 <input
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
@@ -632,7 +648,7 @@ function ProposalPanel({ c, group }: { c: CaseDetail; group: Group }) {
                 <RefreshCw size={12} /> Investigate again
               </button>
               {reinvestigate.error && <div className="mt-2"><ErrorState error={reinvestigate.error} /></div>}
-            </div>
+            </Fold>
           )}
         </div>
       ) : null}
@@ -696,8 +712,7 @@ function ProposalPanel({ c, group }: { c: CaseDetail; group: Group }) {
         </div>
       </div>
 
-      <div>
-        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-surface-500">Data used ({evidence.length} system calls)</h3>
+      <Fold title="Data used" summary={`${evidence.length} system call${evidence.length === 1 ? "" : "s"}${evidence.some((t) => !t.allowed) ? ", some refused" : ""}`} remember="data-used">
         <ul className="space-y-1 text-xs">
           {evidence.map((t) => (
             <li key={t.call_id} className="flex flex-wrap items-center gap-x-3 gap-y-0.5 rounded-md border border-surface-100 px-2 py-1.5">
@@ -713,7 +728,7 @@ function ProposalPanel({ c, group }: { c: CaseDetail; group: Group }) {
             </li>
           ))}
         </ul>
-      </div>
+      </Fold>
     </div>
   );
 }
@@ -771,56 +786,11 @@ function ContextPanel({ c }: { c: CaseDetail }) {
   const release = useRelease(c.case_id);
   const retry = useRetryPublish(c.case_id);
 
-  const byWho = c.tool_calls.reduce<Record<string, number>>((acc, t) => ({ ...acc, [t.requested_by]: (acc[t.requested_by] ?? 0) + 1 }), {});
   const refused = c.tool_calls.filter((t) => !t.allowed).length;
   const attempts = c.attempts ?? [];
 
   return (
     <div className="space-y-5 p-4 text-sm">
-      <div>
-        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-surface-500">Case</h2>
-        <dl className="space-y-1">
-          {Object.entries(c.case_key).map(([k, v]) => (
-            <div key={k} className="flex justify-between gap-2"><dt className="text-surface-500">{k}</dt><dd className="font-medium">{v}</dd></div>
-          ))}
-          <div className="flex justify-between gap-2"><dt className="text-surface-500">Opened</dt><dd>{formatTime(c.opened_at)} · {c.opened_by}</dd></div>
-          <div className="flex justify-between gap-2"><dt className="text-surface-500">Manifest</dt><dd>v{c.manifest_version}</dd></div>
-          <div className="flex justify-between gap-2">
-            <dt className="text-surface-500">Trace</dt>
-            <dd className="truncate">
-              {c.trace_id && TRACE_URL ? (
-                <a href={TRACE_URL.replace("{traceId}", c.trace_id)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary-700 hover:underline">
-                  Phoenix <ExternalLink size={11} />
-                </a>
-              ) : (
-                <span className="font-mono text-[11px] text-surface-500">{c.trace_id ? `${c.trace_id.slice(0, 12)}…` : "tracing off"}</span>
-              )}
-            </dd>
-          </div>
-        </dl>
-      </div>
-
-      {attempts.length > 1 && (
-        <div>
-          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-surface-500">Attempts</h2>
-          <ul className="space-y-1">
-            {attempts.map((a) => (
-              <li key={a.case_id} className="flex items-center justify-between gap-2 text-xs">
-                <Link to={`/cases/${encodeURIComponent(a.case_id)}`} className={clsx("hover:underline", a.case_id === c.case_id ? "font-semibold text-surface-900" : "text-primary-700")}>
-                  attempt {a.attempt}
-                </Link>
-                <StatusBadge status={a.status} />
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      <div>
-        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-surface-500">Workflow</h2>
-        <WorkflowStepper steps={c.steps} pauseBefore={c.pause_before} current={currentStep(c.status)} />
-      </div>
-
       {c.publish && (
         <div className="rounded-lg border border-surface-200 bg-card p-3">
           <h2 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-surface-500"><Send size={12} /> Write-back</h2>
@@ -878,15 +848,55 @@ function ContextPanel({ c }: { c: CaseDetail }) {
 
       <LegalHold c={c} />
 
+      <Fold title="Case record" summary={`opened ${formatTime(c.opened_at)}`} remember="case-record">
+        <div className="space-y-4">
       <div>
-        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-surface-500">Data used</h2>
+        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-surface-500">Case</h2>
         <dl className="space-y-1">
-          {Object.entries(byWho).map(([who, n]) => (
-            <div key={who} className="flex justify-between"><dt className="text-surface-500">calls by {who}</dt><dd>{n}</dd></div>
+          {Object.entries(c.case_key).map(([k, v]) => (
+            <div key={k} className="flex justify-between gap-2"><dt className="text-surface-500">{k}</dt><dd className="font-medium">{v}</dd></div>
           ))}
-          <div className="flex justify-between"><dt className="text-surface-500">refused</dt><dd className={refused ? "font-medium text-red-700" : ""}>{refused}</dd></div>
+          <div className="flex justify-between gap-2"><dt className="text-surface-500">Opened</dt><dd>{formatTime(c.opened_at)} · {c.opened_by}</dd></div>
+          <div className="flex justify-between gap-2"><dt className="text-surface-500">Manifest</dt><dd>v{c.manifest_version}</dd></div>
+          <div className="flex justify-between gap-2">
+            <dt className="text-surface-500">Trace</dt>
+            <dd className="truncate">
+              {c.trace_id && TRACE_URL ? (
+                <a href={TRACE_URL.replace("{traceId}", c.trace_id)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary-700 hover:underline">
+                  Phoenix <ExternalLink size={11} />
+                </a>
+              ) : (
+                <span className="font-mono text-[11px] text-surface-500">{c.trace_id ? `${c.trace_id.slice(0, 12)}…` : "tracing off"}</span>
+              )}
+            </dd>
+          </div>
         </dl>
       </div>
+
+      {attempts.length > 1 && (
+        <div>
+          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-surface-500">Attempts</h2>
+          <ul className="space-y-1">
+            {attempts.map((a) => (
+              <li key={a.case_id} className="flex items-center justify-between gap-2 text-xs">
+                <Link to={`/cases/${encodeURIComponent(a.case_id)}`} className={clsx("hover:underline", a.case_id === c.case_id ? "font-semibold text-surface-900" : "text-primary-700")}>
+                  attempt {a.attempt}
+                </Link>
+                <StatusBadge status={a.status} />
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div>
+        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-surface-500">Workflow</h2>
+        <WorkflowStepper steps={c.steps} pauseBefore={c.pause_before} current={currentStep(c.status)} />
+      </div>
+
+          {refused > 0 && <p className="text-xs font-medium text-red-700">{refused} system call{refused === 1 ? "" : "s"} refused by the gateway.</p>}
+        </div>
+      </Fold>
     </div>
   );
 }

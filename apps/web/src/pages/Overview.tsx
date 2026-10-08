@@ -1,39 +1,28 @@
 import { Link } from "react-router-dom";
-import { AlertTriangle, Ban, Bot, Clock, Inbox, Layers, Send, Timer } from "lucide-react";
+import { AlertTriangle, ArrowRight, Ban, Bot, Clock, Layers, Timer } from "lucide-react";
 
 import { currentUser } from "../api/client";
 import { useInbox, useMe, useOverview } from "../api/aof";
 import StatCard from "../components/StatCard";
-import StatusBadge from "../components/StatusBadge";
 import { urgency } from "../components/Urgency";
-import { Card, CountUp, Empty, ErrorState, Loading } from "../components/ui";
+import { Card, CountUp, Empty, ErrorState, Fold, Loading } from "../components/ui";
 import { InboxTable } from "./Inbox";
 
-const PATH = ["Get the items", "Prepare", "Propose", "People decide", "Record", "Release"];
-
-/** The banner: what is waiting on me, the governed path every case takes, and counts. */
-function OverviewHero({ waiting, review, release, escalated, capabilities }: {
-  waiting: number; review?: number; release?: number; escalated?: number; capabilities?: number;
-}) {
-  const tiles: [string, number | undefined][] = [["to review", review], ["to release", release], ["escalated to people", escalated]];
+/** The banner: what is waiting on me, in three numbers, and the way in. */
+function OverviewHero({ review, overdue, release }: { review?: number; overdue: number; release?: number }) {
+  const waiting = (review ?? 0) + (release ?? 0);
+  const tiles: [string, number | undefined][] = [["to review", review], ["overdue", overdue], ["to release", release]];
   return (
-    <section aria-label="Overview" className="hx-hero hx-rise mb-5 grid gap-5 p-5 sm:p-7 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+    <section aria-label="Overview" className="hx-hero hx-rise mb-5 grid gap-5 p-5 sm:p-7 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
       <div className="min-w-0">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-nav-mark">Agent One Finance · Governed AI</p>
-        <h1 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
           {waiting ? `${waiting} ${waiting === 1 ? "case is" : "cases are"} waiting on you` : "Nothing is waiting on you"}
         </h1>
-        <p className="mt-1.5 max-w-xl text-sm text-nav-fg">
-          Across {capabilities ?? 0} {capabilities === 1 ? "capability" : "capabilities"} you can use. Every case takes the same governed path:
-        </p>
-        <ol className="hx-path mt-4" aria-label="The governed path">
-          {PATH.map((step, i) => (
-            <li key={step} className="contents">
-              {i > 0 && <span className="hx-link" aria-hidden="true" />}
-              <span className={i === 3 ? "rounded-full bg-nav-mark px-2.5 py-1 text-[11px] font-semibold text-nav-bg" : "hx-glass rounded-full px-2.5 py-1 text-[11px] font-medium"}>{step}</span>
-            </li>
-          ))}
-        </ol>
+        {waiting > 0 && (
+          <Link to="/inbox" className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-nav-mark px-3.5 py-2 text-sm font-semibold text-nav-bg hover:opacity-90">
+            Start with the most urgent <ArrowRight size={14} />
+          </Link>
+        )}
       </div>
       <div className="grid grid-cols-3 gap-2 lg:w-80">
         {tiles.map(([label, n]) => (
@@ -72,40 +61,27 @@ export default function Overview(): JSX.Element {
 
   return (
     <div>
-      <OverviewHero waiting={(overview.data?.awaiting_my_review ?? 0) + (overview.data?.awaiting_my_release ?? 0)}
-        review={overview.data?.awaiting_my_review} release={overview.data?.awaiting_my_release}
-        escalated={overview.data?.escalated_groups} capabilities={overview.data?.capabilities.length} />
+      <OverviewHero review={overview.data?.awaiting_my_review} overdue={overdue} release={overview.data?.awaiting_my_release} />
       {overview.isLoading && <Loading what="overview" />}
       {overview.error && <ErrorState error={overview.error} />}
       {overview.data && (
         <>
-          <div className="hx-stagger mb-5 grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-3 xl:grid-cols-6">
-            {overview.data.hours_saved_30d && (
-              <div title={overview.data.hours_saved_30d.basis}>
-                <StatCard icon={Clock} value={`${overview.data.hours_saved_30d.value} h`} label="Hours saved (30 days)" />
+          {(overview.data.hours_saved_30d || (measured && measured.decisions > 0) || admin) && (
+            <Fold className="mb-4" remember="overview-impact" title="Impact"
+              summary={[overview.data.hours_saved_30d && `${overview.data.hours_saved_30d.value} h saved in 30 days`,
+                measured && measured.decisions > 0 && `${measured.hours_saved} h measured`].filter(Boolean).join(" · ")}>
+              <div className="hx-stagger grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-4">
+                {overview.data.hours_saved_30d && <StatCard icon={Clock} value={`${overview.data.hours_saved_30d.value} h`} label="Hours saved (30 days)" />}
+                {measured && measured.decisions > 0 && <StatCard icon={Timer} value={`${measured.hours_saved} h`} label="Hours saved (measured)" />}
+                <StatCard icon={AlertTriangle} value={overview.data.escalated_groups} label="Escalated to people" />
+                {admin && <StatCard icon={Bot} value={overview.data.model_calls_24h} label="Model tool calls (24h)" />}
+                {admin && <StatCard icon={Ban} value={overview.data.refused_calls_24h} label="Refused calls (24h)" />}
               </div>
-            )}
-            {measured && measured.decisions > 0 && (
-              <div title={measured.basis}>
-                <StatCard icon={Timer} value={`${measured.hours_saved} h`} label="Hours saved (measured)" />
-              </div>
-            )}
-            <StatCard icon={Inbox} value={overview.data.awaiting_my_review} label="Awaiting my review" />
-            <StatCard icon={Clock} value={overdue} label="Overdue" />
-            <StatCard icon={Send} value={overview.data.awaiting_my_release} label="Awaiting my release" />
-            <StatCard icon={AlertTriangle} value={overview.data.escalated_groups} label="Escalated to people" />
-            {admin && <StatCard icon={Bot} value={overview.data.model_calls_24h} label="Model tool calls (24h)" />}
-            {admin && <StatCard icon={Ban} value={overview.data.refused_calls_24h} label="Refused calls (24h)" />}
-          </div>
-
-          {overview.data.hours_saved_30d && (
-            <p className="-mt-3 mb-1 text-[11px] text-surface-500">Hours saved (declared): {overview.data.hours_saved_30d.basis}.</p>
-          )}
-          {measured && (
-            <p className="mb-5 text-[11px] text-surface-500">
-              Measured: {measured.basis}
-              {measured.median_seconds != null && ` · median ${Math.round(measured.median_seconds)} s per decision`}.
-            </p>
+              <p className="mt-2 text-[11px] text-surface-500">
+                {overview.data.hours_saved_30d && <>Declared: {overview.data.hours_saved_30d.basis}. </>}
+                {measured && <>Measured: {measured.basis}{measured.median_seconds != null && ` · median ${Math.round(measured.median_seconds)} s per decision`}.</>}
+              </p>
+            </Fold>
           )}
           <div className="grid gap-4 xl:grid-cols-3">
             <Card title="My inbox" className="xl:col-span-2" aside={<Link to="/inbox" className="text-xs font-medium text-primary-600 hover:underline">Open inbox</Link>}>
@@ -127,14 +103,15 @@ export default function Overview(): JSX.Element {
                           <span className="min-w-0 flex-1 text-sm font-semibold text-surface-800 group-hover:text-primary-700">{c.name}</span>
                           <DoneRing statuses={c.statuses} />
                         </div>
-                        <div className="mt-2 flex flex-wrap gap-1.5">
-                          {Object.entries(c.statuses).map(([status, n]) => (
-                            <span key={status} className="inline-flex items-center gap-1 text-xs text-surface-500">
-                              <StatusBadge status={status} /> {n}
-                            </span>
-                          ))}
-                          {Object.keys(c.statuses).length === 0 && <span className="text-xs text-surface-400">No {c.case_label.toLowerCase()}s yet</span>}
-                        </div>
+                        <p className="mt-1 text-xs text-surface-500">
+                          {(() => {
+                            const n = (pre: string[]) => Object.entries(c.statuses).filter(([k]) => pre.some((p) => k.startsWith(p))).reduce((a, [, v]) => a + v, 0);
+                            const waiting = n(["awaiting", "paused"]);
+                            const done = n(["completed"]);
+                            if (!waiting && !done) return `No ${c.case_label.toLowerCase()}s yet`;
+                            return [waiting && `${waiting} waiting on people`, done && `${done} completed`].filter(Boolean).join(" · ");
+                          })()}
+                        </p>
                       </Link>
                     </li>
                   ))}

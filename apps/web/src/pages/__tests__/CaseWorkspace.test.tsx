@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { CaseDetail, Group } from "../../api/aof";
 import { mockApi, renderAt } from "../../test/render";
@@ -67,12 +67,16 @@ afterEach(() => vi.unstubAllGlobals());
 const open = () => renderAt("/cases/fin.c1", "/cases/:caseId", <CaseWorkspace />);
 
 describe("CaseWorkspace", () => {
+  beforeEach(() => localStorage.clear());   // folds remember their state per browser
+
   it("shows the proposal, who reached it, and only this group's evidence", async () => {
     mockApi({ "GET /cases/fin.c1": detail() });
     open();
     expect(await screen.findByText("Account 6100 explained.")).toBeInTheDocument();
     expect(screen.getByText(/claude-opus-5-5 · 3 turns · \$0.0123/)).toBeInTheDocument();
-    const evidence = screen.getByText(/Data used \(2 system calls\)/).parentElement!;
+    const fold = screen.getByRole("button", { name: /Data used.*2 system calls/ });   // folded until asked for
+    await userEvent.click(fold);
+    const evidence = fold.parentElement!;
     expect(within(evidence).getByText("gl.balances")).toBeInTheDocument();          // case-wide load
     expect(within(evidence).queryByText(/refused/)).not.toBeInTheDocument();        // 7200's refusal is not 6100's
   });
@@ -83,6 +87,7 @@ describe("CaseWorkspace", () => {
     await userEvent.click(await screen.findByRole("button", { name: /account 7200/ }));
     const why = screen.getByRole("region", { name: "Why it was escalated" });
     expect(within(why).getByText(/quoted figures that are not in the data \(4,444.00\)/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /Data used/ }));
     expect(screen.getByText(/refused: alice is not entitled to entity=US01/)).toBeInTheDocument();
   });
 
@@ -214,7 +219,8 @@ describe("CaseWorkspace", () => {
       "POST /cases/fin.c1/groups/6100/reinvestigate": { case: detail(), replayed: false, status: "awaiting_review" },
     });
     open();
-    await userEvent.type(await screen.findByLabelText(/Ask the model to look again/), "Check the October reversal");
+    await userEvent.click(await screen.findByRole("button", { name: /Ask the model to look again/ }));
+    await userEvent.type(screen.getByLabelText(/What should it check/), "Check the October reversal");
     await userEvent.click(screen.getByRole("button", { name: /Investigate again/ }));
     await waitFor(() => expect(calls.some((c) => c.path.endsWith("/reinvestigate"))).toBe(true));
     expect(calls.find((c) => c.path.endsWith("/reinvestigate"))!.body).toMatchObject({ note: "Check the October reversal" });

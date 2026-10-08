@@ -27,14 +27,7 @@ function InboxCards({ rows }: { rows: InboxRow[] }) {
               <StatusBadge status={r.action} />
             </div>
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-surface-600">
-              <span>{r.gate ? `Approve the work so far before ${r.gate}` : `${r.decided}/${r.groups} decided`}</span>
-              {r.escalated > 0 && <span className="font-medium text-orange-700">{r.escalated} escalated</span>}
-              {(r.needs_confirmation ?? 0) > 0 && (
-                <span className="rounded bg-yellow-100 px-1.5 text-[11px] font-semibold text-yellow-800">{r.needs_confirmation} to confirm</span>
-              )}
-              {(r.judgement_calls ?? 0) > 0 && (
-                <span className="rounded bg-purple-100 px-1.5 text-[11px] font-semibold text-purple-800">{r.judgement_calls} judgement</span>
-              )}
+              <WhatsLeft r={r} />
               {r.acting_for && (
                 <span className="inline-flex items-center gap-1 rounded bg-accent-50 px-1.5 text-[11px] font-medium text-accent-800">
                   <UserCheck size={10} /> for {r.acting_for}
@@ -46,12 +39,30 @@ function InboxCards({ rows }: { rows: InboxRow[] }) {
               {r.exposure != null && (
                 <span className="tabular-nums text-surface-700">{formatValue(r.exposure)}{r.unit ? ` ${r.unit}` : ""} at stake</span>
               )}
-              <span>{ageText(r.age_hours)}</span>
             </div>
           </Link>
         </li>
       ))}
     </ul>
+  );
+}
+
+/** What is left to do on a case, in one line, with the one flag that matters most. */
+export function WhatsLeft({ r }: { r: InboxRow }) {
+  if (r.gate) return <span>Approve the work so far</span>;
+  const open = r.groups - r.decided;
+  const flags: [number, string, string][] = [
+    [r.escalated, "escalated", "bg-orange-100 text-orange-800"],
+    [r.needs_confirmation ?? 0, "to confirm", "bg-yellow-100 text-yellow-800"],
+    [r.judgement_calls ?? 0, "judgement", "bg-purple-100 text-purple-800"],
+  ];
+  const shown = flags.filter(([n]) => n > 0);
+  const top = shown[0];
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1.5" title={shown.map(([n, l]) => `${n} ${l}`).join(" · ") || undefined}>
+      <span>{open} of {r.groups} to decide</span>
+      {top && <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${top[2]}`}>{top[0]} {top[1]}</span>}
+    </span>
   );
 }
 
@@ -68,7 +79,7 @@ export function InboxTable({ rows }: { rows: InboxRow[] }) {
             <th scope="col" className="px-2 py-2 font-medium">Needs</th>
             <th scope="col" className="px-2 py-2 font-medium">Case</th>
             <th scope="col" className="px-2 py-2 font-medium">Capability</th>
-            <th scope="col" className="px-2 py-2 font-medium">Proposals</th>
+            <th scope="col" className="px-2 py-2 font-medium">What's left</th>
             {money && <th scope="col" className="px-2 py-2 text-right font-medium">At stake</th>}
             <th scope="col" className="px-2 py-2 font-medium">When</th>
           </tr>
@@ -92,26 +103,14 @@ export function InboxTable({ rows }: { rows: InboxRow[] }) {
                 )}
               </td>
               <td className="px-2 py-2 text-surface-600">{r.capability_name}</td>
-              <td className="px-2 py-2 text-xs text-surface-600">
-                {r.gate ? `Approve the work so far before ${r.gate} · ${r.groups} groups` : `${r.decided}/${r.groups} decided · ${r.proposed} proposed`}
-                {r.escalated > 0 && <span className="ml-1 font-medium text-orange-700">· {r.escalated} escalated</span>}
-                {(r.needs_confirmation ?? 0) > 0 && (
-                  <span className="ml-1 rounded bg-yellow-100 px-1 text-[10px] font-semibold text-yellow-800">{r.needs_confirmation} to confirm</span>
-                )}
-                {(r.judgement_calls ?? 0) > 0 && (
-                  <span className="ml-1 rounded bg-purple-100 px-1 text-[10px] font-semibold text-purple-800">{r.judgement_calls} judgement</span>
-                )}
-              </td>
+              <td className="px-2 py-2 text-xs text-surface-600"><WhatsLeft r={r} /></td>
               {money && (
                 <td className="whitespace-nowrap px-2 py-2 text-right text-xs tabular-nums text-surface-700">
                   {r.exposure != null ? `${formatValue(r.exposure)}${r.unit ? ` ${r.unit}` : ""}` : "—"}
                 </td>
               )}
-              <td className="px-2 py-2 text-xs text-surface-500">
-                <div className="flex flex-col items-start gap-0.5">
-                  <DueBadge dueAt={r.due_at} state={r.due_state} compact />
-                  <span title={`${formatTime(r.opened_at)} · ${r.opened_by}`}>{ageText(r.age_hours) || formatTime(r.opened_at)}</span>
-                </div>
+              <td className="px-2 py-2 text-xs text-surface-500" title={`Opened ${formatTime(r.opened_at)} by ${r.opened_by}${ageText(r.age_hours) ? ` · ${ageText(r.age_hours)}` : ""}`}>
+                <DueBadge dueAt={r.due_at} state={r.due_state} compact />
               </td>
             </tr>
           ))}

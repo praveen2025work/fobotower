@@ -39,8 +39,10 @@ it("shows each team's group, and opens a case under the chosen group with its ow
     "POST /capabilities/recon.investigation/cases": { case_id: "recon.c1" },
   });
   renderAt("/capabilities/recon.investigation", "/capabilities/:id", <CapabilityDetail />);
-  expect(await screen.findByText("CATS vs MOTIF (FOBO)")).toBeInTheDocument();       // Groups tab first
+  await userEvent.click(await screen.findByRole("tab", { name: "groups" }));        // Cases open first
+  expect(await screen.findByText("CATS vs MOTIF (FOBO)")).toBeInTheDocument();
   await userEvent.click(screen.getByRole("tab", { name: "Cases" }));
+  await userEvent.click(screen.getByRole("button", { name: /Open a/ }));          // folded until asked for
   // only groups the user may open are offered; the key fields are that group's
   const picker = within(screen.getByLabelText("Group"));
   expect(picker.getByRole("option", { name: "CATS vs MOTIF (FOBO)" })).toBeInTheDocument();

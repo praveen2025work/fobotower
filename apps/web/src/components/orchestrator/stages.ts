@@ -37,6 +37,15 @@ const verdictOptions = (m: Json): Opt[] => {
   const used = Object.values((get(m, "playbook.verdicts") as Record<string, Record<string, string>>) ?? {}).flatMap((r) => Object.values(r));
   return [...new Set([...VERDICTS.map((v) => v.value), ...used])].map((v) => ({ value: v, label: v.replace(/_/g, " ") }));
 };
+/** The answer's sections and the subagents: the same settings for a skill session and for "Rules, then the model". */
+const SECTIONS_FIELD: FieldSpec = { kind: "rows", path: "reasoning.sections", label: "The model answers in these sections", addLabel: "Add a section", when: (m) => get(m, "reasoning.reasoner") === "llm",
+        help: "Each section is its own field: shown to the reviewer, checked, and reported on. A required section missing from an answer sends the group to a person.",
+        newRow: { id: "", label: "", hint: "", required: false },
+        columns: [{ key: "id", label: "Id" }, { key: "label", label: "Shown as", wide: true }, { key: "hint", label: "What it must say", kind: "textarea", wide: true }, { key: "required", label: "Required", kind: "bool" }] };
+const SPECIALISTS_FIELD: FieldSpec = { kind: "rows", path: "reasoning.specialists", label: "Specialists (subagents)", addLabel: "Add a specialist", when: (m) => get(m, "reasoning.reasoner") === "llm",
+        newRow: { name: "", description: "", instructions: "", tools: [] },
+        columns: [{ key: "name", label: "Name" }, { key: "description", label: "When to use it", wide: true }, { key: "instructions", label: "Instructions", kind: "textarea", wide: true }, { key: "tools", label: "Tools (from the model's)", kind: "tools", within: "reasoning.tools" }] };
+
 const hasPlaybook = (m: Json) => !!get(m, "playbook");
 
 export const STAGES: Stage[] = [
@@ -201,15 +210,20 @@ export const STAGES: Stage[] = [
     id: "agent", step: "agent",
     title: "Skill session",
     says: "One model session runs the skill: it reads what it needs with the tools listed here (through the gateway) and returns a result per item. Validate, review and record follow, as for every capability.",
-    owns: /`agent`|^reasoning\.(skill_file|verdicts|escalate_verdicts|result_fields|max_turns)/,
+    owns: /`agent`|^reasoning\.(skill_file|verdicts|escalate_verdicts|result_fields|max_turns)|`load`, `match` or `agent`/,
     fields: [
       { kind: "tools", path: "reasoning.tools", label: "Tools the model may call (read only)", access: "read" },
       { kind: "text", path: "reasoning.skill_file", label: "Skill file", help: "Under the config folder, e.g. skills/fobo.md; read in when the file is synced, so each version keeps its text." },
       { kind: "textarea", path: "reasoning.skill", label: "The skill (instructions to the model)" },
       { kind: "list", path: "reasoning.verdicts", label: "Verdicts it may give each result" },
       { kind: "list", path: "reasoning.escalate_verdicts", label: "Verdicts that go to a person as escalated" },
+      { kind: "text", path: "items.id_field", label: "Each result is identified by", placeholder: "instrument" },
+      { kind: "text", path: "items.amount_field", label: "Amount field" },
       { kind: "list", path: "reasoning.result_fields", label: "Fields each result carries", help: "Shown as columns; every figure in them must come from a tool result." },
+      { kind: "list", path: "items.display", label: "Columns shown to reviewers" },
       { kind: "number", path: "reasoning.max_turns", label: "Turn limit for the session", min: 1, max: 200 },
+      SECTIONS_FIELD,
+      SPECIALISTS_FIELD,
     ],
   },
   {
@@ -227,13 +241,8 @@ export const STAGES: Stage[] = [
       { kind: "select", path: "reasoning.output", label: "The model writes", options: [{ value: "verdict", label: "a verdict" }, { value: "commentary", label: "commentary" }, { value: "classification", label: "a classification" }], when: (m) => get(m, "reasoning.reasoner") === "llm" },
       { kind: "tools", path: "reasoning.tools", label: "Tools the model may call (read only)", access: "read", when: (m) => get(m, "reasoning.reasoner") === "llm" },
       { kind: "textarea", path: "reasoning.skill", label: "Instructions to the model", when: (m) => get(m, "reasoning.reasoner") === "llm" },
-      { kind: "rows", path: "reasoning.sections", label: "The model answers in these sections", addLabel: "Add a section", when: (m) => get(m, "reasoning.reasoner") === "llm",
-        help: "Each section is its own field: shown to the reviewer, checked, and reported on. A required section missing from an answer sends the group to a person.",
-        newRow: { id: "", label: "", hint: "", required: false },
-        columns: [{ key: "id", label: "Id" }, { key: "label", label: "Shown as", wide: true }, { key: "hint", label: "What it must say", kind: "textarea", wide: true }, { key: "required", label: "Required", kind: "bool" }] },
-      { kind: "rows", path: "reasoning.specialists", label: "Specialists (subagents)", addLabel: "Add a specialist", when: (m) => get(m, "reasoning.reasoner") === "llm",
-        newRow: { name: "", description: "", instructions: "", tools: [] },
-        columns: [{ key: "name", label: "Name" }, { key: "description", label: "When to use it", wide: true }, { key: "instructions", label: "Instructions", kind: "textarea", wide: true }, { key: "tools", label: "Tools (from the model's)", kind: "tools", within: "reasoning.tools" }] },
+      SECTIONS_FIELD,
+      SPECIALISTS_FIELD,
       { kind: "number", path: "limits.max_cost_usd_per_case", label: "Model spend cap per case (USD)", min: 0, nullable: true, when: (m) => get(m, "reasoning.reasoner") === "llm" },
       { kind: "number", path: "limits.max_cost_usd_per_day", label: "Model spend cap per day (USD)", min: 0, nullable: true, when: (m) => get(m, "reasoning.reasoner") === "llm" },
     ],
@@ -373,6 +382,15 @@ export const STAGES: Stage[] = [
     ],
   },
 ];
+
+/** Stages that do not apply to a skill session (the session finds the items and
+ *  decides them itself), and the session's own stage, which only a skill session shows. */
+const NOT_IN_SESSION = new Set(["source", "compare", "enrich", "resolve", "classify", "group", "reason"]);
+
+export function stagesFor(stages: Stage[], m: Json): Stage[] {
+  const session = ((get(m, "steps") as string[]) ?? []).includes("agent");
+  return stages.filter((s) => (session ? !NOT_IN_SESSION.has(s.id) : s.id !== "agent"));
+}
 
 /** Steps in the engine's order (load and match are the item source). */
 export const STEP_ORDER = ["load", "match", "agent", "enrich", "resolve", "classify", "compare", "group", "reason", "draft", "validate", "review", "record", "publish"];

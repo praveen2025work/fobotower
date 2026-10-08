@@ -16,7 +16,7 @@ import { useConfigCheck, useDraftGroup, usePlatform, useSubmitDraft, type GroupC
 import { ErrorState } from "../ui";
 import { Field, type Ctx } from "./fields";
 import { allowed, changedPaths, get, groupSet, preview, setPath, type Json } from "./paths";
-import { STAGES, STEP_ORDER, stageOf, type Stage } from "./stages";
+import { STAGES, STEP_ORDER, stageOf, stagesFor, type Stage } from "./stages";
 import PrepareSteps, { dataSteps } from "./PrepareSteps";
 
 type Mode = { kind: "capability" } | { kind: "group"; config: GroupConfig; configurable: string[] };
@@ -101,7 +101,7 @@ export default function OrchestratorEditor({ capabilityId, manifest, mode, canEd
   useEffect(() => setWorking(manifest), [manifest]);
 
   const isGroup = mode.kind === "group";
-  const stages = STAGES.filter((s) => !(isGroup && s.capabilityOnly));
+  const stages = stagesFor(STAGES.filter((s) => !(isGroup && s.capabilityOnly)), working);
   const stage = stages.find((s) => s.id === stageId) ?? stages[0];
 
   const locked = (path: string): string | null => {

@@ -22,6 +22,12 @@ What goes with them:
 - [`../../renaming.md`](../../renaming.md): the names in a table, and the release order.
 - [`../README.md`](../README.md): the FOBO change guide (for `fobo-to-aof`).
 
+## Already on Agent One Finance? Update with a patch
+
+An office copy that already has the new names (06 Oct onwards) does not need these skills. Follow
+[`../office-update/README.md`](../office-update/README.md): it finds the office's exact version,
+applies one patch, and gives the prompt for office Claude Code.
+
 ## Getting upstream into the office
 
 `upgrade-to-aof` needs upstream `main` (`praveen2025work/fobotower`) inside the office repo.

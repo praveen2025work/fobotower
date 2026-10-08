@@ -23,6 +23,9 @@ and the files that carry it. All paths use the **new** names.
 - **FOBO's answers did not change.** The FOBO playbook tests are unchanged and green. The new FOBO
   work is configuration: the MB Rec group, trade-level tools, and a Rates group.
 
+**Office copy already on Agent One Finance?** Find its version and apply one patch:
+[`office-update/README.md`](office-update/README.md).
+
 ## 1. Database migrations (run in this order by `alembic upgrade head`)
 
 | Revision | After | What it adds |

@@ -19,7 +19,7 @@ from agent_one_finance import asks, controls, follow_through, gateway, knowledge
 from agent_one_finance.db import get_session
 from agent_one_finance.entitlement import Caller
 from agent_one_finance.governance import Protector, fields_for
-from agent_one_finance.llm import ReasonRequest, llm
+from agent_one_finance.llm import ReasonRequest, SessionRequest, llm, run_session
 from agent_one_finance.manifest import Manifest, ToolCallSpec
 from agent_one_finance.models import Case, CaseItem, ProposalGroup, ToolCall
 from agent_one_finance.observability import span
@@ -53,6 +53,7 @@ class CaseState(TypedDict, total=False):
     events: dict[str, dict]           # what each `await` step received (an event, child outcomes, a timeout)
     spawned: bool                     # a `spawn` step opened child cases
     model_context: list[dict]         # data sets the model sees when it investigates (e.g. a timeline)
+    session_summary: str              # what the `agent` step's session said about the whole case
     outcome: str | None
     escalation_reason: str | None
 
@@ -581,6 +582,135 @@ async def reason(state: CaseState) -> dict:
     return {"findings": dict(results)}
 
 
+def _session_finding(m: Manifest, r: dict, adapter_name: str, model: str | None, guard) -> dict:
+    """One result of a skill session as a finding: its verdict must be one the
+    capability offers, an escalating verdict sends it to a person, and a
+    required section that is missing does too."""
+    rs = m.reasoning
+    status = r.get("status") if r.get("status") in ("proposed", ESCALATED) else ESCALATED
+    verdict = r.get("verdict") or None
+    reason = guard.reveal(r["reason"]) if r.get("reason") else None
+    if rs.verdicts and verdict not in rs.verdicts:
+        status, reason = ESCALATED, f"NO_VALID_VERDICT: {verdict!r}"
+        verdict = None
+    elif verdict and verdict in rs.escalate_verdicts:
+        status, reason = ESCALATED, reason or f"Verdict {verdict}"
+    finding = {"status": status, "decided_by": f"llm:{adapter_name}", "comment": guard.reveal(r.get("comment") or ""),
+               "reason": reason, "model": model}
+    if verdict:
+        finding["verdict"] = verdict
+    if rs.sections:
+        res = type("R", (), {"sections": r.get("sections") or {}})
+        finding = _with_sections(m, finding, res, guard)
+    return finding
+
+
+def _merged(findings: list[dict], labels: list[str]) -> dict:
+    """Several results in one group (group_by): one finding a person decides."""
+    if len(findings) == 1:
+        return findings[0]
+    verdicts = {f.get("verdict") for f in findings}
+    out = {"status": ESCALATED if any(f["status"] == ESCALATED for f in findings) else "proposed",
+           "decided_by": findings[0]["decided_by"], "model": findings[0].get("model"),
+           "comment": "\n".join(f"{lbl}: {f['comment']}" for lbl, f in zip(labels, findings) if f["comment"]),
+           "reason": "; ".join(sorted({f["reason"] for f in findings if f.get("reason")})) or None}
+    if len(verdicts) == 1 and None not in verdicts:
+        out["verdict"] = verdicts.pop()
+    return out
+
+
+async def agent(state: CaseState) -> dict:
+    """A skill session: the capability's skill, the case key and its allowed
+    tools go to the model in ONE session. The model reads what it needs through
+    the gateway (allow-list, book scope, masking, an audit row per call) and
+    returns a result per item it investigated. Each result becomes an item and
+    a finding; the gates that follow (validate, review, record) are the same as
+    for any capability."""
+    m = _manifest(state)
+    rs = m.reasoning
+    guard = Protector.for_tools(m.tools_used(), state["case_id"])
+    ctx = _ctx(state, "agent", set(rs.tools))
+    ctx.protector = guard
+    adapter = llm()
+    summary, results, model, usage = "", [], None, {}
+    with span("agent.session", case_id=state["case_id"], tools=",".join(rs.tools)) as sp:
+        failure = await controls.over_budget(m, state["case_id"])
+        if failure is None:
+            request = SessionRequest(
+                capability_id=state["capability_id"], case_id=state["case_id"],
+                case_key=guard.protect(state["case_key"]), skill=rs.skill, allowed_tools=list(rs.tools),
+                id_field=m.items.id_field, item_label=m.case.item_label,
+                amount_field=m.items.amount_field, result_fields=list(rs.result_fields),
+                verdicts=list(rs.verdicts), sections=[x.model_dump() for x in rs.sections],
+                specialists=[x.model_dump() for x in rs.specialists],
+                notes=[f"{n['by']} (tollgate before {n['step']}): {n['comment']}"
+                       for n in state.get("gate_notes", []) if n.get("comment")],
+                max_turns=rs.max_turns)
+            try:
+                res = await run_session(adapter, request, gateway.invoker(ctx))
+                summary, results, model, usage = guard.reveal(res.summary or ""), res.results, res.model, res.usage
+            except (gateway.ToolDenied, gateway.ToolFailed) as e:
+                failure = f"TOOL_ERROR: {e}"
+            except Exception as e:  # the model must never fail the run silently
+                failure = f"REASONER_ERROR: {type(e).__name__}: {e}"
+        sp.set_attribute("aof.results", len(results))
+    id_field = m.items.id_field
+    items, found = [], []
+    for r in results:
+        rid = guard.reveal(str(r.get("id") or "")).strip() or f"result-{len(items) + 1}"
+        fields = {k: (guard.reveal(v) if isinstance(v, str) else v) for k, v in (r.get("fields") or {}).items()}
+        items.append({**fields, id_field: rid, "item_id": rid})
+        found.append(_session_finding(m, r, adapter.name, model, guard))
+    if failure or not results:
+        # Nothing per item: the whole case is one group — escalated on a failure,
+        # else the session's summary for a person to accept or send back.
+        whole = {"status": ESCALATED if failure or not summary else "proposed",
+                 "decided_by": f"llm:{adapter.name}", "comment": summary, "model": model,
+                 "reason": failure or (None if summary else "NO_RESULTS")}
+        buckets = {("all",): ([], [whole], ["Whole case"])}
+    else:
+        buckets = {}
+        for it, f in zip(items, found):
+            key = tuple(str(it.get(k)) for k in m.group_by) if m.group_by else (it["item_id"],)
+            b = buckets.setdefault(key, ([], [], []))
+            b[0].append(it)
+            b[1].append(f)
+            b[2].append(it["item_id"])
+    if usage:
+        next(iter(buckets.values()))[1][0]["usage"] = usage     # the session's cost, once
+    await _save_items(state["case_id"], items)
+    mask_f, pseudo_f = fields_for(m.tools_used())
+    groups, findings = [], {}
+    async with get_session() as s:
+        for values, (members, fs, labels) in sorted(buckets.items()):
+            fields_ = m.group_by or [id_field]
+            group_key = dict(zip(fields_, values)) if values != ("all",) else {}
+            group_id = _group_id(values, fields_, mask_f | pseudo_f) if group_key else "all"
+            label = group_label(m, group_key) if m.group_by else (
+                f"{m.case.item_label} {values[0]}" if group_key else "Whole case")
+            total = round(sum(_num(it.get(m.items.amount_field)) for it in members), 2) \
+                if m.items.amount_field and members else None
+            finding = _merged(fs, labels)
+            from agent_one_finance import authority
+            finding = authority.apply(m, {"group_id": group_id, "group_key": group_key, "items_view": members,
+                                          "total": total, "count": len(members), "label": label},
+                                      finding, state.get("datasets") or {})
+            priors = await knowledge.similar_decisions(
+                state["capability_id"], group_key, exclude_case=state["case_id"],
+                lookback_days=m.knowledge.priors_lookback_days,
+                entities=knowledge.entity_values(m.knowledge.entities, group_key, members)) if group_key else []
+            g = {"group_id": group_id, "label": label, "group_key": group_key,
+                 "item_ids": [it["item_id"] for it in members], "count": len(members),
+                 "total": total, "priors": priors}
+            groups.append(g)
+            findings[group_id] = finding
+            await s.merge(ProposalGroup(case_id=state["case_id"], group_id=group_id, label=label,
+                                        group_key=group_key, item_ids=g["item_ids"], priors=priors,
+                                        finding=finding))
+        await s.commit()
+    return {"items": items, "groups": groups, "findings": findings, "session_summary": summary}
+
+
 async def draft(state: CaseState) -> dict:
     m = _manifest(state)
     findings = state.get("findings", {})
@@ -603,6 +733,8 @@ async def draft(state: CaseState) -> dict:
         d["exposure"] = round(sum(abs(_num(it.get(m.items.amount_field)))
                                   for it in state["items"] if it["item_id"] in in_ids), 2)
         d["unit"] = m.items.amount_unit
+    if state.get("session_summary"):
+        d["summary"] = state["session_summary"]     # the skill session's own words on the case
     if state.get("skipped"):
         d["skipped_steps"] = list(state["skipped"])    # steps whose `when` did not hold this run
     async with get_session() as s:
@@ -631,11 +763,17 @@ def _numbers_in(value: Any, out: set[float]) -> None:
             _numbers_in(v, out)
 
 
+def _session_run(state: CaseState) -> bool:
+    return "agent" in (state.get("manifest") or {}).get("steps", [])
+
+
 async def grounded_figures(state: CaseState) -> set[float]:
     """Every figure the run has read: the case key, its items and groups, and
-    every allowed tool result recorded for the case."""
+    every allowed tool result recorded for the case. In a skill session the
+    items are the model's own answer, so only the tools' results count."""
     grounded: set[float] = set()
-    _numbers_in([state["case_key"], state["items"], state["groups"], state.get("datasets") or {}], grounded)
+    own = [] if _session_run(state) else [state["items"], state["groups"]]
+    _numbers_in([state["case_key"], *own, state.get("datasets") or {}], grounded)
     async with get_session() as s:
         results = (await s.execute(select(ToolCall.result).where(
             ToolCall.case_id == state["case_id"], ToolCall.allowed.is_(True),
@@ -654,12 +792,19 @@ async def validate(state: CaseState) -> dict:
     grounded = await grounded_figures(state)
 
     findings = dict(state.get("findings", {}))
+    groups_by_id = {g["group_id"]: g for g in state.get("groups", [])}
     errors = []
     for group_id, f in findings.items():
         if f["status"] != "proposed":
             continue
         text = " ".join([f["comment"], *(x.get("text", "") for x in f.get("sections") or [])])
         missing = ungrounded(text, grounded)
+        if _session_run(state):
+            # the figures a session put on its results (e.g. a break's difference) are checked too
+            members = set(groups_by_id.get(group_id, {}).get("item_ids", []))
+            cited = {round(abs(float(v)), 2) for it in state.get("items", []) if it["item_id"] in members
+                     for v in it.values() if isinstance(v, (int, float)) and not isinstance(v, bool)}
+            missing = sorted(set(missing) | {n for n in cited if n not in grounded})
         if missing:
             f = {**f, "status": ESCALATED,
                  "reason": f"UNGROUNDED_FIGURE: {', '.join(f'{n:,.2f}' for n in missing)}"}

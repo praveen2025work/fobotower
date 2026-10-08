@@ -198,6 +198,21 @@ export const STAGES: Stage[] = [
     ],
   },
   {
+    id: "agent", step: "agent",
+    title: "Skill session",
+    says: "One model session runs the skill: it reads what it needs with the tools listed here (through the gateway) and returns a result per item. Validate, review and record follow, as for every capability.",
+    owns: /`agent`|^reasoning\.(skill_file|verdicts|escalate_verdicts|result_fields|max_turns)/,
+    fields: [
+      { kind: "tools", path: "reasoning.tools", label: "Tools the model may call (read only)", access: "read" },
+      { kind: "text", path: "reasoning.skill_file", label: "Skill file", help: "Under the config folder, e.g. skills/fobo.md; read in when the file is synced, so each version keeps its text." },
+      { kind: "textarea", path: "reasoning.skill", label: "The skill (instructions to the model)" },
+      { kind: "list", path: "reasoning.verdicts", label: "Verdicts it may give each result" },
+      { kind: "list", path: "reasoning.escalate_verdicts", label: "Verdicts that go to a person as escalated" },
+      { kind: "list", path: "reasoning.result_fields", label: "Fields each result carries", help: "Shown as columns; every figure in them must come from a tool result." },
+      { kind: "number", path: "reasoning.max_turns", label: "Turn limit for the session", min: 1, max: 200 },
+    ],
+  },
+  {
     id: "reason", step: "reason",
     title: "Rules, then the model",
     says: "Rules settle what they can; the rest goes to the model with only the tools listed here — or straight to people.",
@@ -360,7 +375,7 @@ export const STAGES: Stage[] = [
 ];
 
 /** Steps in the engine's order (load and match are the item source). */
-export const STEP_ORDER = ["load", "match", "enrich", "resolve", "classify", "compare", "group", "reason", "draft", "validate", "review", "record", "publish"];
+export const STEP_ORDER = ["load", "match", "agent", "enrich", "resolve", "classify", "compare", "group", "reason", "draft", "validate", "review", "record", "publish"];
 
 /** The stage a server problem belongs to (the first that owns it). */
 export function stageOf(problem: string): string {

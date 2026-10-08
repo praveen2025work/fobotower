@@ -38,7 +38,7 @@ from claude_agent_sdk import (
 )
 
 from agent_one_finance import gateway
-from agent_one_finance.llm import ReasonRequest, ReasonResult, ToolInvoker
+from agent_one_finance.llm import ReasonRequest, ReasonResult, SessionRequest, SessionResult, ToolInvoker
 from agent_one_finance.observability import AGENT, set_output, span
 
 SERVER = "aof"
@@ -245,6 +245,85 @@ class ClaudeAgentSdkAdapter:
                                 verdict=out.get("verdict") or None,
                                 sections={k: v for k, v in (out.get("sections") or {}).items() if isinstance(v, str)})
 
+
+SESSION_RULES = """
+You are working inside Agent One Finance, a governed workflow. Rules that override anything above:
+- Find the data yourself with the tools provided; use no other source. Every figure you
+  state, in a comment, a section or a field, must come from a tool result; figures that
+  cannot be traced are rejected and that result goes to a person.
+- Return one result per item you investigated, identified by `id`. Give a verdict only
+  from the list offered. If the evidence does not support a conclusion, set the result's
+  status to "escalated" and say why in `reason`. Do not guess.
+- `summary` is a short account of the whole case for the reviewer.
+- Reply with the structured result only.
+""".strip()
+
+
+def _session_schema(request: SessionRequest) -> dict:
+    result = {"id": {"type": "string", "description": f"The {request.id_field} of the {request.item_label.lower()}"},
+              "status": {"type": "string", "enum": ["proposed", "escalated"]},
+              "comment": {"type": "string"}, "reason": {"type": "string"}}
+    required = ["id", "status", "comment"]
+    if request.verdicts:
+        result["verdict"] = {"type": "string", "enum": list(request.verdicts)}
+        required.append("verdict")
+    if request.sections:
+        result["sections"] = {
+            "type": "object", "additionalProperties": False,
+            "properties": {x["id"]: {"type": "string", "description": f"{x['label']}. {x.get('hint', '')}".strip()}
+                           for x in request.sections},
+            "required": [x["id"] for x in request.sections if x.get("required")]}
+        required.append("sections")
+    if request.result_fields:
+        result["fields"] = {"type": "object", "additionalProperties": False,
+                            "properties": {f: {"type": ["string", "number", "null"]} for f in request.result_fields}}
+    return {"type": "object", "additionalProperties": False, "required": ["summary", "results"],
+            "properties": {"summary": {"type": "string"},
+                           "results": {"type": "array", "items": {
+                               "type": "object", "additionalProperties": False,
+                               "properties": result, "required": required}}}}
+
+
+def _session_prompt(request: SessionRequest) -> str:
+    return json.dumps({
+        "capability": request.capability_id,
+        "case": request.case_key,
+        "investigate": f"each {request.item_label.lower()} for this case; identify each by {request.id_field}",
+        **({"verdicts_you_may_give": request.verdicts} if request.verdicts else {}),
+        **({"fields_for_each_result": request.result_fields} if request.result_fields else {}),
+        **({"answer_in_sections": [{"id": x["id"], "label": x["label"], "what_it_must_say": x.get("hint", ""),
+                                    "required": bool(x.get("required"))} for x in request.sections]}
+           if request.sections else {}),
+        **({"notes_from_people": request.notes} if request.notes else {}),
+    }, default=str, indent=1)
+
+
+async def _investigate(self: "ClaudeAgentSdkAdapter", request: SessionRequest, tools: ToolInvoker) -> SessionResult:
+    """One skill session: one Agent SDK `query()` for the whole case, with the
+    same gateway-backed tools and subagents as `reason`."""
+    as_reason = ReasonRequest(capability_id=request.capability_id, case_id=request.case_id,
+                              case_key=request.case_key, skill=request.skill, group={},
+                              allowed_tools=request.allowed_tools, output="", specialists=request.specialists)
+    options = await self._options(as_reason, tools)
+    options.system_prompt = f"{request.skill.strip()}\n\n{SESSION_RULES}" + (
+        f"\n\n{_specialists_note(request.specialists)}" if request.specialists else "")
+    options.output_format = {"type": "json_schema", "schema": _session_schema(request)}
+    options.max_turns = request.max_turns or int(os.getenv("AOF_LLM_SESSION_MAX_TURNS") or 40)
+    prompt = _session_prompt(request)
+    with span("llm.agent_sdk.session", kind=AGENT, input=prompt, case_id=request.case_id,
+              capability_id=request.capability_id, model=self.model, tools=",".join(request.allowed_tools)) as sp:
+        result = await self._run(prompt, options)
+        out = _parse_any(result)
+        set_output(sp, out)
+        usage = {"input_tokens": (result.usage or {}).get("input_tokens"),
+                 "output_tokens": (result.usage or {}).get("output_tokens"),
+                 "cost_usd": result.total_cost_usd, "turns": result.num_turns,
+                 "duration_ms": result.duration_ms, "session_id": result.session_id}
+        results = [r for r in out.get("results") or [] if isinstance(r, dict)]
+        return SessionResult(results=results, summary=str(out.get("summary") or ""), model=self.model, usage=usage)
+
+
+ClaudeAgentSdkAdapter.investigate = _investigate
 
 ASK_RULES = """
 You are answering a reviewer's question about one case inside Agent One Finance, a governed

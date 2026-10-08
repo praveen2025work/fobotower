@@ -331,6 +331,7 @@ Tool arguments can use `$case.<field>`, `$case_id` and `$subject`.
 | `compare` | items | items | `compare` |
 | `group` | items | groups | `group_by` |
 | `reason` | items, groups | findings | playbook table → rules → model (in parallel per group) → guards |
+| `agent` | case key | items, groups, findings | a skill session: the skill, the case key and `reasoning.tools` go to the model in one session; one result per item ([skill-session.md](skill-session.md)). `steps: [agent]` alone is a whole workflow: draft and the gates are added |
 | `draft` | groups, findings | draft | headline and summary |
 | `validate` ◆ | findings | findings, validation_errors | every figure must trace to the run's data or tool results; otherwise escalated |
 | `review` ◆ ⏸ | findings, draft | decisions | people |

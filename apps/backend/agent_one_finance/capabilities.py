@@ -26,10 +26,30 @@ class CapabilityError(ValueError):
         self.problems = problems or []
 
 
+def with_skill_file(reasoning: dict | None) -> dict | None:
+    """`reasoning.skill_file` read into `reasoning.skill`. The path is relative
+    to the config folder and must stay inside it. A file that is missing leaves
+    `skill` empty, which `problems` reports."""
+    if not isinstance(reasoning, dict) or not reasoning.get("skill_file"):
+        return reasoning
+    root = settings().config_dir.resolve()
+    path = (root / reasoning["skill_file"]).resolve()
+    if root not in path.parents or not path.is_file():
+        return {**reasoning, "skill": ""}
+    return {**reasoning, "skill": path.read_text(encoding="utf-8")}
+
+
+def read_file(path) -> dict:
+    """A capability file, with its skill file (if it names one) read in."""
+    data = yaml.safe_load(path.read_text()) or {}
+    if "reasoning" in data:
+        data["reasoning"] = with_skill_file(data["reasoning"])
+    return data
+
+
 def seed_files() -> list[Manifest]:
     folder = settings().config_dir / "capabilities"
-    return [Manifest.model_validate(yaml.safe_load(p.read_text()))
-            for p in sorted(folder.glob("*.yaml"))]
+    return [Manifest.model_validate(read_file(p)) for p in sorted(folder.glob("*.yaml"))]
 
 
 async def seed() -> list[str]:

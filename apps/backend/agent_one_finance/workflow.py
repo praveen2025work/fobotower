@@ -42,6 +42,8 @@ STEPS: dict[str, Step] = {s.name: s for s in [
     Step("compare", steps.compare, "Compare to baseline", _s("items"), _s("items")),
     Step("group", steps.group, "Group", _s("items"), _s("groups")),
     Step("reason", steps.reason, "Rules, then model", _s("items", "groups"), _s("findings")),
+    Step("agent", steps.agent, "Skill session (the model, with the allowed tools)", _s("case_key"),
+         _s("items", "groups", "findings")),
     Step("draft", steps.draft, "Draft", _s("groups", "findings"), _s("draft")),
     Step("validate", steps.validate, "Validate figures", _s("findings", "groups"),
          _s("findings", "validation_errors"), gate=True),

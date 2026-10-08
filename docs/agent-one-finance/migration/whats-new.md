@@ -50,6 +50,17 @@ These are no migration and no setting changes; they are new code and configurati
 | *Break investigation* runs the algorithm steps; FOBO checks N, O, S, Y | `capabilities/break-investigation.yaml`, `groups/break.investigation/fobo-*.yaml` | approve the new versions; log category changes (H or M to N, O, S or Y) as accepted parity differences; verdicts unchanged |
 | New MB Rec tools `break_history_book`, `breaks_all` | `connectors.yaml`, `connectors.office.example.yaml`, `fobo-skill/mbrec-data-contract.md` | ask MB Rec for them; until then, leave those two steps out of the capability's `steps`, and their fields stay empty |
 
+## 1b. Added 2026-10-08: skill session
+
+No migration. A capability can be `steps: [agent]`: the skill runs in one model session with the
+allowed tools; the platform adds the gates ([`../guide/skill-session.md`](../guide/skill-session.md)).
+
+| What | Files | Office action |
+|---|---|---|
+| `agent` step, `reasoning.skill_file`, `verdicts`, `escalate_verdicts`, `result_fields`, `max_turns` | `steps.py`, `workflow.py`, `manifest.py`, `capabilities.py`, `groups.py`, `config_sync.py`, `devtools.py`, `llm.py` (`SessionRequest`, `run_session`), web `orchestrator/stages.ts` | none (engine) |
+| Session in the Agent SDK adapter | `llm_agent_sdk.py` (`investigate`) | if the office replaced `_run` only, nothing; an office adapter without `investigate` runs the session as one group |
+| FOBO as a skill session | `capabilities/break-investigation-skill.yaml`, `skills/fobo-investigation-skill.md` | optional: approve it, and point MB Rec's event for a book at `break.investigation.skill` |
+
 ## 2. Features, and the files that carry them
 
 | Feature | Backend (`apps/backend/agent_one_finance/`) | Web (`apps/web/src/`) | Config / docs | Tests (`apps/backend/tests/agent_one_finance/`) |

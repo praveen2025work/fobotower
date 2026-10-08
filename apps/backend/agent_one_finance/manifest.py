@@ -9,9 +9,13 @@ expression parses. A manifest with problems is never stored as active.
 import re
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from agent_one_finance import rules
+
+
+# What the platform adds after an `agent` step when a manifest leaves it out.
+AGENT_FOLLOWS = ("draft", "validate", "review", "record")
 
 
 class Strict(BaseModel):
@@ -68,7 +72,7 @@ class ToolCallSpec(Strict):
 
 class ItemsSpec(Strict):
     load: ToolCallSpec | None = None   # used by the `load` step
-    id_field: str
+    id_field: str = "id"
     amount_field: str | None = None
     amount_unit: str | None = None     # e.g. GBP: how amounts and exposure are labelled
     display: list[str] = Field(default_factory=list)  # columns in the generic UI
@@ -270,11 +274,22 @@ class SectionSpec(Strict):
 class ReasoningSpec(Strict):
     reasoner: Literal["llm", "none"] = "llm"
     skill: str = ""                    # instructions to the model
+    # Or the instructions as a file under the config folder (e.g. skills/fobo.md):
+    # read into `skill` when the file is loaded, so every version stores the text
+    # it ran with. The name is kept to show where it came from.
+    skill_file: str | None = None
     tools: list[str] = Field(default_factory=list)   # tools the model may call
     specialists: list[SpecialistSpec] = Field(default_factory=list)
     output: Literal["verdict", "commentary", "classification"] = "commentary"
     # The parts the model's answer is returned in; empty = one free-text comment.
     sections: list[SectionSpec] = Field(default_factory=list)
+    # The `agent` step (a skill session): verdicts the model may give each result,
+    # those that send a result to a person as escalated, the fields each result
+    # carries (shown as columns), and the session's turn limit.
+    verdicts: list[str] = Field(default_factory=list)
+    escalate_verdicts: list[str] = Field(default_factory=list)
+    result_fields: list[str] = Field(default_factory=list)
+    max_turns: int | None = Field(default=None, ge=1, le=200)
 
 
 class PublishSpec(Strict):
@@ -495,7 +510,7 @@ class Manifest(Strict):
     description: str = ""
     owners: Owners
     case: CaseSpec
-    items: ItemsSpec
+    items: ItemsSpec = Field(default_factory=ItemsSpec)
     match: MatchSpec | None = None
     compare: CompareSpec | None = None
     policy: dict[str, PolicyValue] = Field(default_factory=dict)
@@ -536,6 +551,17 @@ class Manifest(Strict):
     # What a group (a team's configuration of this capability, e.g. one rec group)
     # may set: dotted paths; "x.*" = anything under x. Owners stay the capability's.
     configurable: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _session_gates(cls, data: Any) -> Any:
+        """`steps: [agent]` is a whole workflow: the platform adds draft and
+        the gates (validate, review, record), which no capability can drop."""
+        if isinstance(data, dict) and "agent" in (data.get("steps") or []):
+            steps = list(data["steps"])
+            steps += [s for s in AGENT_FOLLOWS if s not in steps]
+            data = {**data, "steps": steps}
+        return data
 
     def policy_values(self) -> dict[str, Any]:
         return {k: v.value for k, v in self.policy.items()}
@@ -821,8 +847,8 @@ def problems(m: Manifest) -> list[str]:
         out.append(f"knowledge.as_of: `{m.knowledge.as_of}` is not in case.key")
     if "compare" in m.steps and m.compare is None:
         out.append("step `compare` needs a `compare` section")
-    if "load" not in m.steps and "match" not in m.steps:
-        out.append("a workflow needs `load` or `match` to have items")
+    if not {"load", "match", "agent"} & set(m.steps):
+        out.append("a workflow needs `load`, `match` or `agent` to have items")
 
     onboarded = set(registry().all_tools())
     for tool in sorted(m.tools_used() - onboarded):
@@ -870,5 +896,16 @@ def problems(m: Manifest) -> list[str]:
         if extra:
             out.append(f"reasoning.specialists[{sp.name}]: tools not in reasoning.tools: {', '.join(extra)}")
     if m.reasoning.reasoner == "llm" and not m.reasoning.skill.strip():
-        out.append("reasoning.skill: an llm reasoner needs instructions")
+        out.append("reasoning.skill: an llm reasoner needs instructions"
+                   + (f" (skill_file `{m.reasoning.skill_file}` was not read)" if m.reasoning.skill_file else ""))
+    if "agent" in m.steps:
+        if m.reasoning.reasoner != "llm":
+            out.append("steps: `agent` is a model session; reasoning.reasoner must be llm")
+        clash = [n for n in m.steps if m.step_type(n) in ("load", "match", "group", "reason")]
+        if clash:
+            out.append(f"steps: `agent` finds the items and their findings itself; "
+                       f"remove {', '.join(f'`{n}`' for n in clash)}")
+        unknown = sorted(set(m.reasoning.escalate_verdicts) - set(m.reasoning.verdicts))
+        if unknown:
+            out.append(f"reasoning.escalate_verdicts: not in reasoning.verdicts: {', '.join(unknown)}")
     return out

@@ -80,12 +80,13 @@ async def draft_instructions(capability_id: str, skill: str, note: str, caller: 
         body = cfg.model_dump()
         reasoning = dict(body["set"].get("reasoning") or {})
         reasoning["skill"] = skill
+        reasoning.pop("skill_file", None)       # edited here: no longer the file's text
         body["set"] = {**body["set"], "reasoning": reasoning}
         out = await team_groups.draft(capability_id, body, note or "instructions changed", caller)
         return {"team_group": team_group, "version": out["version"]}
     _, m = await capabilities.active(capability_id)
     manifest = m.model_dump(by_alias=True)
-    manifest["reasoning"] = {**manifest["reasoning"], "skill": skill}
+    manifest["reasoning"] = {**manifest["reasoning"], "skill": skill, "skill_file": None}
     return {"version": await capabilities.draft(capability_id, manifest, note or "instructions changed", caller)}
 
 

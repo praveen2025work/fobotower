@@ -92,7 +92,7 @@ async def _groups(dry_run: bool) -> list[str]:
                     for p in sorted(folder.glob("*.yaml"))]
             continue
         for path in sorted(folder.glob("*.yaml")):
-            cfg = team_groups.GroupConfig.model_validate(yaml.safe_load(path.read_text()))
+            cfg = team_groups.GroupConfig.model_validate(team_groups.read_file(path))
             body = cfg.model_dump()
             async with get_session() as s:
                 rows = (await s.execute(select(GroupVersion).where(

@@ -1,0 +1,69 @@
+# FOBO as a skill session: the simplest way to run a skill on Agent One Finance.
+#
+# MB Rec's end-of-day event opens a case for a book and COB. ONE step, `agent`,
+# gives the model the FOBO skill (read from skills/fobo-investigation-skill.md),
+# the case key and the tools below, in one session. The model reads the breaks,
+# snapshots and trades itself and returns a result per break: a verdict, the
+# answer in the skill's sections, and the figures it found.
+#
+# The platform adds the gates after `agent` (draft, validate, review, record);
+# no capability can drop them. So even here:
+#   - the model can call only the tools listed, through the MCP gateway: allow-list,
+#     book scope, masking, an audit row per call;
+#   - every figure in a result must appear in a tool result, or the break goes to a person;
+#   - a controller decides every break; nothing is written to a bank system.
+#
+# Compare break-investigation.yaml with the FOBO groups: the same skill as rules
+# in code (deterministic, cheaper), with the model for judgement only.
+# MB Rec chooses which one a book uses by the capability_id in its event.
+
+id: break.investigation.skill
+name: Break investigation (skill session)
+description: FOBO's skill run as one model session per book and COB, with MB Rec, MOTIF and CATS tools; a controller signs off every break.
+
+owners:
+  people: [erin]
+  role: AOF_RECON_OWNER
+  four_eyes: true
+
+case:
+  label: Break run
+  item_label: Break
+  key: [book, cob]
+  subject: "{book} · COB {cob}"
+  scopes: { book: book }
+  opens_on: event
+  events: true
+  opens_as: aof-scheduler
+  due: { from: cob, business_days: 1, at: "11:00", warn_hours: 2 }
+
+items:
+  id_field: instrument
+  amount_field: difference
+  display: [instrument, break_type, difference, category]
+
+steps: [agent]
+
+reasoning:
+  reasoner: llm
+  skill_file: skills/fobo-investigation-skill.md
+  tools: [mbrec.breaks, mbrec.break_history, motif.break_snapshots, motif.booking_events, motif.trades, cats.trades]
+  # The stub (no model) gives the first verdict for every break, so it lists ESCALATE first.
+  verdicts: [ESCALATE, MONITOR, POST, CORRECT_AND_REPOST, DO_NOT_POST]
+  escalate_verdicts: [ESCALATE]
+  result_fields: [break_type, difference, category]
+  sections:
+    - { id: root_cause, label: Root cause, hint: "The cause with its evidence: the tool and the figures", required: true }
+    - { id: evidence, label: Evidence, hint: "The checks and tests run and what each showed" }
+    - { id: not_performed, label: Tests not performed, hint: "Tests that could not run and why" }
+
+review:
+  roles: [FOBO_CONTROLLER]
+  require_comment: [reject, escalated]
+
+limits:
+  max_cost_usd_per_case: 10
+  max_cost_usd_per_day: 200
+
+retention:
+  days: 2555

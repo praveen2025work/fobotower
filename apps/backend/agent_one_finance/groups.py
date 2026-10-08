@@ -42,6 +42,15 @@ class GroupConfig(Strict):
     set: dict[str, Any] = Field(default_factory=dict)   # manifest fields this team sets
 
 
+def read_file(path) -> dict:
+    """A group file, with a skill file it names under `set.reasoning` read in."""
+    data = yaml.safe_load(path.read_text()) or {}
+    reasoning = (data.get("set") or {}).get("reasoning")
+    if reasoning:
+        data["set"]["reasoning"] = capabilities.with_skill_file(reasoning)
+    return data
+
+
 class GroupError(ValueError):
     def __init__(self, message: str, problems: list[str] | None = None):
         super().__init__(message)
@@ -127,7 +136,7 @@ async def seed() -> list[str]:
         capability_id = folder.name
         _, base = await capabilities.active(capability_id)
         for path in sorted(folder.glob("*.yaml")):
-            cfg = GroupConfig.model_validate(yaml.safe_load(path.read_text()))
+            cfg = GroupConfig.model_validate(read_file(path))
             async with get_session() as s:
                 if await s.get(GroupVersion, (capability_id, cfg.group, 1)) is None:
                     # Only a new group is seeded (and checked) from its file; a

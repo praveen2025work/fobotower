@@ -92,7 +92,7 @@ section { padding-block: 88px; }
 .mast::before { content: ""; position: absolute; inset: 0; background-image: radial-gradient(color-mix(in srgb, var(--band-ink) 14%, transparent) 1px, transparent 1px); background-size: 22px 22px; -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,.6), transparent 80%); mask-image: linear-gradient(180deg, rgba(0,0,0,.6), transparent 80%); pointer-events: none; }
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 64px; position: relative; }
 .mark { display: flex; align-items: center; gap: 10px; font: 760 1.08rem/1 var(--display); }
-.mark b { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; background: var(--cyan); color: var(--band); font-size: 0.82rem; }
+.mark b { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; background: var(--cyan); color: var(--band); font-size: 0.66rem; letter-spacing: -0.01em; }
 .topbar nav { display: flex; gap: 6px 20px; flex-wrap: wrap; font-size: 0.9rem; }
 .topbar nav a { color: var(--band-muted); text-decoration: none; }
 .topbar nav a:hover { color: var(--band-ink); }
@@ -408,7 +408,7 @@ footer { padding-block: 24px; font-size: 0.8rem; color: var(--muted); }
 <header class="mast">
   <div class="wrap">
     <div class="topbar">
-      <div class="mark"><b>A1</b>Agent One Finance</div>
+      <div class="mark"><b>AOF</b>Agent One Finance</div>
       <nav aria-label="Sections">
         <a href="#summary">Summary</a>
         <a href="#value">Value</a>
@@ -837,19 +837,19 @@ curl -X POST localhost:8300/api/capabilities/fin.accruals/cases \
       text: "Alice opens the September run for UK01, or a schedule opens it. Agent One Finance loads every purchase-order line received but not yet invoiced.",
       pill: ["blue", "Running"],
       card: `<dl class="kv"><dt>Case</dt><dd>fin.accruals · UK01 · 2026-09</dd><dt>Opened by</dt><dd>alice</dd><dt>Items</dt><dd>purchase-order lines, received not invoiced</dd></dl><div class="row">${P("good", "load ✓")}</div>` },
-    { who: ["A1", "#007eb6", "Agent One Finance"], title: "Is the period open?", uses: ["journals.period_status"],
+    { who: ["AOF", "#007eb6", "Agent One Finance"], title: "Is the period open?", uses: ["journals.period_status"],
       text: "Before any work, the ledger is asked whether September is open for UK01. A closed period stops the run and sends it to a person.",
       pill: ["blue", "Running"],
       card: `<div class="row">${P("good", "period 2026-09 open")}</div><p style="color:var(--muted);font-size:.84rem">If it were closed: the case is escalated with reason PERIOD_CLOSED and nothing is proposed.</p>` },
-    { who: ["A1", "#007eb6", "Agent One Finance"], title: "Reference data, kept on the case", uses: ["journals.chart_of_accounts", "authority.delegated_authority"],
+    { who: ["AOF", "#007eb6", "Agent One Finance"], title: "Reference data, kept on the case", uses: ["journals.chart_of_accounts", "authority.delegated_authority"],
       text: "The chart of accounts and the bank's delegated-authority matrix are read as named data sets, visible to the reviewer and the auditor.",
       pill: ["blue", "Running"],
       card: `<table class="tbl"><thead><tr><th>Authority band</th><th>Approvers</th><th>Bulk</th></tr></thead><tbody><tr><td>up to 50k</td><td>1</td><td>yes</td></tr><tr><td>50k to 250k</td><td>1 reviewer</td><td>yes</td></tr><tr><td>over 250k</td><td>2 reviewers</td><td>no</td></tr></tbody></table>` },
-    { who: ["A1", "#007eb6", "Agent One Finance"], title: "Compute, filter, group", uses: ["derive", "filter", "group"],
+    { who: ["AOF", "#007eb6", "Agent One Finance"], title: "Compute, filter, group", uses: ["derive", "filter", "group"],
       text: "Accrual = received − invoiced, per line. Lines below the 5,000 GBP materiality threshold stay on the case, marked. The rest are grouped by account.",
       pill: ["blue", "Running"],
       card: `<table class="tbl"><thead><tr><th>Account</th><th class="r">Lines</th><th class="r">Accrual GBP</th></tr></thead><tbody><tr><td>6100</td><td class="r">3</td><td class="r">292,523.00</td></tr><tr><td>6200</td><td class="r">4</td><td class="r">244,055.80</td></tr><tr><td>6300</td><td class="r">1</td><td class="r">140,495.31</td></tr></tbody></table>` },
-    { who: ["A1", "#007eb6", "Agent One Finance"], title: "Balanced journals, checked first", uses: ["propose_entries", "rules"],
+    { who: ["AOF", "#007eb6", "Agent One Finance"], title: "Balanced journals, checked first", uses: ["propose_entries", "rules"],
       text: "A rule proposes the accrual and a journal per account: debit the expense account, credit 2150 accruals. Each is checked for balance and against the chart before anyone sees it.",
       pill: ["warn", "Awaiting review"],
       card: `<div style="font-weight:600">Account 6100 · journal JE-57fc391f7e</div><table class="tbl"><thead><tr><th>Account</th><th class="r">Debit</th><th class="r">Credit</th></tr></thead><tbody><tr><td>6100</td><td class="r">292,523.00</td><td></td></tr><tr><td>2150</td><td></td><td class="r">292,523.00</td></tr></tbody></table><div class="row">${P("good", "balanced")}${P("good", "accounts in chart")}</div>` },
@@ -865,14 +865,14 @@ curl -X POST localhost:8300/api/capabilities/fin.accruals/cases \
       text: "Bob reviewed, so he cannot release. Fiona, who did not review, releases. The ledger's own check runs first, then each journal is posted once, whatever the retries.",
       pill: ["warn", "Awaiting release"],
       card: `<div class="row">${P("bad", "bob: you reviewed this case")}</div><div class="row">${P("good", "fiona releases")}${P("good", "ledger check passed")}</div>` },
-    { who: ["A1", "#007eb6", "Agent One Finance"], title: "Posted, recorded, evidenced", uses: ["journals.post_journal", "audit"],
+    { who: ["AOF", "#007eb6", "Agent One Finance"], title: "Posted, recorded, evidenced", uses: ["journals.post_journal", "audit"],
       text: "Three journals posted, each with its reference. The case keeps the data sets, every tool call, every decision and the configuration version it ran on.",
       pill: ["good", "Done · posted to the ledger"],
       card: `<table class="tbl"><thead><tr><th>Journal</th><th>Status</th></tr></thead><tbody><tr><td>JE-57fc391f7e</td><td>posted</td></tr><tr><td>JE-c1a1c76d67</td><td>posted</td></tr><tr><td>JE-2937d03788</td><td>posted</td></tr></tbody></table><div class="row">${P("good", "audit trail")}${P("good", "evidence pack")}</div>` },
   ];
   $("#steps").innerHTML = STORY.map((s, i) => `
     <article class="step-card" data-i="${i}">
-      <div class="who"><span class="avatar" style="background:${s.who[1]}">${s.who[0]}</span>${esc(s.who[2])} · step ${i + 1} of ${STORY.length}</div>
+      <div class="who"><span class="avatar" style="background:${s.who[1]}${s.who[0].length > 2 ? ";font-size:0.6rem" : ""}">${s.who[0]}</span>${esc(s.who[2])} · step ${i + 1} of ${STORY.length}</div>
       <h3>${esc(s.title)}</h3><p>${esc(s.text)}</p>
       <div class="uses">${s.uses.map((u) => `<code>${esc(u)}</code>`).join("")}</div>
       <div class="mini"><div class="console"><div class="c-head"><b style="font-size:.9rem">Case state</b>${P(s.pill[0], s.pill[1])}</div><div class="c-body" style="min-height:0">${s.card}</div></div></div>

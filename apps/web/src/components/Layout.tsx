@@ -145,7 +145,7 @@ function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
       >
         <div className={clsx("flex h-14 items-center border-b border-nav-line", compact ? "justify-center px-2" : "px-4")}>
           <div className="flex items-center gap-2.5">
-            <div className="hx-mark flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold text-nav-bg">A1</div>
+            <div className="hx-mark flex h-8 w-8 items-center justify-center rounded-lg text-[10.5px] font-bold tracking-tight text-nav-bg">AOF</div>
             {!compact && (
               <div>
                 <h1 className="text-base font-bold leading-none tracking-tight">Agent One Finance</h1>
@@ -229,7 +229,7 @@ function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
               <Menu size={18} className="text-surface-500" />
             </button>
             <span className="flex items-center gap-1.5 lg:hidden">
-              <span className="flex h-7 w-7 items-center justify-center rounded-md bg-nav-bg text-[11px] font-bold text-white">A1</span>
+              <span className="flex h-7 w-7 items-center justify-center rounded-md bg-nav-bg text-[9.5px] font-bold tracking-tight text-white">AOF</span>
               <span className="text-sm font-bold text-surface-900">Agent One Finance</span>
             </span>
             {platform.data && me.data?.is_admin && (

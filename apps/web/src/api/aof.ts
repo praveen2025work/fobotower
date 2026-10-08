@@ -948,6 +948,31 @@ export const useEvals = (id: string) =>
     refetchInterval: (q) => (q.state.data?.some((r) => r.status === "running") ? 2000 : false),
   });
 
+/** How many past settled cases an eval would replay. */
+export const useEvalAvailable = (id: string, teamGroup: string | null) =>
+  useQuery({
+    queryKey: ["evals-available", id, teamGroup ?? ""],
+    queryFn: () => api.get<{ cases: number; limit: number }>(`/capabilities/${enc(id)}/evals/available${teamGroup ? `?team_group=${enc(teamGroup)}` : ""}`),
+    retry: false,
+  });
+
+export interface EvalGroupRow {
+  group: string;
+  outcome: "agree" | "disagree" | "escalated" | "missing" | "new";
+  verdict_match?: boolean | null;
+  wording?: number | null;
+  expected?: { label: string; action: string; words: string; verdict: string | null; decided_by: string };
+  now?: { status?: string; comment?: string; reason?: string; verdict?: string | null };
+}
+
+/** One eval run with what each replayed case produced. */
+export const useEvalRun = (runId: string | null) =>
+  useQuery({
+    queryKey: ["eval", runId],
+    queryFn: () => api.get<EvalRunRow & { results: { case_id: string; groups: EvalGroupRow[] }[] | null }>(`/evals/${enc(runId!)}`),
+    enabled: !!runId,
+  });
+
 export function useStartEval(id: string) {
   const qc = useQueryClient();
   return useMutation({
@@ -961,6 +986,8 @@ export function useStartEval(id: string) {
 
 export interface FlowNode {
   id: string;
+  type?: string;
+  label?: string | null;
   gate: boolean;
   pause: boolean;
   tools: string[];

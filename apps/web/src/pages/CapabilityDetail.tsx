@@ -43,7 +43,7 @@ export default function CapabilityDetail(): JSX.Element {
       />
       <p className="-mt-2 mb-4 text-sm text-surface-500">
         {m.steps.length} steps{m.pause_before.length > 0 && <> · stops for a person before {m.pause_before.join(" and ")}</>} ·{" "}
-        <button type="button" onClick={() => setTab("flow")} className="font-medium text-primary-700 hover:underline">see the workflow</button>
+        <button type="button" onClick={() => setTab("flow")} className="font-medium text-primary-700 hover:underline">see how a case runs</button>
       </p>
       <div className="mb-4 flex max-w-full overflow-x-auto rounded-lg border border-surface-200 bg-card p-1 sm:inline-flex" role="tablist">
         {(["cases", ...(hasGroups ? ["groups"] : []), "configure", "flow", "evals", "versions"] as Tab[]).map((t) => (
@@ -54,7 +54,7 @@ export default function CapabilityDetail(): JSX.Element {
             onClick={() => setTab(t)}
             className={clsx("shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium capitalize", tab === t ? "bg-brand-accent text-brand-accent-fg" : "text-surface-600 hover:bg-surface-50")}
           >
-            {t === "cases" ? "Cases" : t}
+            {t === "cases" ? "Cases" : t === "flow" ? <span className="normal-case">How it runs</span> : t}
           </button>
         ))}
       </div>
@@ -82,11 +82,13 @@ export default function CapabilityDetail(): JSX.Element {
         </>
       )}
       {tab === "flow" && (
-        <Card title="Workflow"><FlowDiagram capabilityId={id} /></Card>
+        <Card title="How a case runs"><FlowDiagram capabilityId={id} /></Card>
       )}
       {tab === "evals" && (
-        <Card title="Evals — try a version on past decisions">
-          <EvalsPanel capabilityId={id} versions={cap.data.versions.map((v) => v.version)} groups={(groups.data ?? []).map((g) => g.group)} />
+        <Card title="Evals: try a version on past decisions">
+          <EvalsPanel capabilityId={id} versions={cap.data.versions.map((v) => v.version)} groups={(groups.data ?? []).map((g) => g.group)}
+            statuses={Object.fromEntries(cap.data.versions.map((v) => [v.version, v.status]))}
+            groupNames={Object.fromEntries((groups.data ?? []).map((g) => [g.group, g.name]))} />
         </Card>
       )}
       {tab === "versions" && (

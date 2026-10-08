@@ -16,7 +16,8 @@ Score, per group matched by its key:
   verdict     the same playbook verdict
   wording     a judge's 0–1 similarity of the new explanation to the
               approved one (the model when there is one; word overlap otherwise)
-plus groups that went missing or are new. Each run is a span in Phoenix
+plus groups that went missing (or were grouped with no proposal) or are new. A hidden copy
+runs through tollgates (no one is there to pass them) and stops at review. Each run is a span in Phoenix
 (`eval.run`, one `eval.case` per case) with the scores as attributes.
 
     POST /api/capabilities/{id}/evals   {version?, team_group?, group_version?, limit?}
@@ -129,9 +130,10 @@ async def _judge(expected: str, actual: str) -> float:
         return _overlap(expected, actual)
 
 
-def _outcome(expected_action: str, status: str) -> str:
+def _outcome(expected_action: str, status: str, same_verdict: bool = False) -> str:
     if status == "escalated":
-        return "agree" if expected_action == "reject" else "escalated"
+        # people rejecting it, or approving the very escalation verdict, is agreement
+        return "agree" if expected_action == "reject" or (expected_action == "approve" and same_verdict) else "escalated"
     return "agree" if expected_action == "approve" else "disagree"
 
 
@@ -139,6 +141,11 @@ async def _shadow(run_id: str, src: dict, version: int, group_version: int | Non
                   starter: Caller) -> dict:
     """Replay one past case on the version under test; compare at the review pause."""
     shadow_id = f"{src['case_id']}.shadow.{run_id[:8]}"
+    # A hidden copy has no one to pass its tollgates: it runs through them to the review pause,
+    # so there is a proposal to compare (people still approved the real case's tollgates).
+    # Steps that need a person's own act (an attestation, a send, a write-back) keep their pause.
+    keep = {"review", "attest", "outreach", "post", "publish"}
+    m = m.model_copy(update={"pause_before": [p for p in m.pause_before if p in keep or m.step_type(p) in keep]})
     async with get_session() as s:
         s.add(Case(case_id=shadow_id, root_case_id=shadow_id, shadow_of=src["case_id"], eval_run_id=run_id,
                    capability_id=m.id, manifest_version=version, team_group=src["team_group"],
@@ -162,8 +169,12 @@ async def _shadow(run_id: str, src: dict, version: int, group_version: int | Non
             rows.append({"group": e["label"], "outcome": "missing", "expected": e})
             continue
         f = g.finding or {}
+        if not f.get("status"):                # grouped, but nothing proposed: nothing to compare
+            rows.append({"group": g.label, "outcome": "missing", "expected": e, "now": {"status": None}})
+            continue
         cost += float((f.get("usage") or {}).get("cost_usd") or 0)
-        rows.append({"group": g.label, "outcome": _outcome(e["action"], f.get("status", "")),
+        rows.append({"group": g.label, "outcome": _outcome(e["action"], f.get("status", ""),
+                                                          bool(e.get("verdict")) and f.get("verdict") == e["verdict"]),
                      "verdict_match": (f.get("verdict") == e["verdict"]) if e.get("verdict") else None,
                      "wording": await _judge(e["words"], f.get("comment", "")),
                      "expected": e, "now": {k: f.get(k) for k in ("status", "comment", "reason", "verdict", "decided_by")}})

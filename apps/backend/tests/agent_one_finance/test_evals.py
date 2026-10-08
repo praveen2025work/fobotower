@@ -61,3 +61,38 @@ def test_word_overlap_judge():
     from agent_one_finance.evals import _overlap
     assert _overlap("payroll accrual for October", "October payroll accrual") == 0.75
     assert _overlap("", "") == 1.0
+
+
+async def test_a_tollgate_does_not_stop_the_hidden_copy_and_nothing_proposed_never_agrees(api, monkeypatch):
+    """A capability with a tollgate before the model: the shadow runs through it to
+    review, so its proposals are compared; a group with no proposal is `missing`."""
+    from agent_one_finance import evals
+    await _decided_cases(api)
+    real = evals.runner.run_case
+    seen = []
+
+    async def spy(case_id, *a, **k):
+        from agent_one_finance.db import get_session
+        from agent_one_finance.models import Case
+        async with get_session() as s:
+            seen.append((await s.get(Case, case_id)).manifest["pause_before"])
+        return await real(case_id, *a, **k)
+    monkeypatch.setattr(evals.runner, "run_case", spy)
+    tollgated = evals._target
+    async def with_tollgate(*a, **k):
+        v, gv, m = await tollgated(*a, **k)
+        return v, gv, m.model_copy(update={"pause_before": ["reason", "review"]})
+    monkeypatch.setattr(evals, "_target", with_tollgate)
+    run = (await api.post(f"/api/capabilities/{VARIANCE}/evals", headers=api.as_user("carol"), json={})).json()
+    assert seen and all(p == ["review"] for p in seen)                       # through the tollgate
+    assert all(r["reached"] == "awaiting_review" for r in run["results"])
+    assert run["summary"]["groups_compared"] > 0
+    # scoring: grouped but nothing proposed is never counted as agreement
+    assert evals.summarise([{"cost_usd": 0, "groups": [{"group": "g", "outcome": "missing"}]}])["agreement_rate"] is None
+
+
+def test_escalating_what_people_approved_as_an_escalation_is_agreement():
+    from agent_one_finance.evals import _outcome
+    assert _outcome("approve", "escalated", same_verdict=True) == "agree"       # people approved ESCALATE
+    assert _outcome("approve", "escalated") == "escalated"                     # people approved a proposal
+    assert _outcome("reject", "escalated") == "agree" and _outcome("reject", "proposed") == "disagree"

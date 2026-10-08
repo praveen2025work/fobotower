@@ -777,6 +777,18 @@ async def list_evals(capability_id: str, c: Caller = Depends(caller)) -> list[di
     return await evals.runs(capability_id)
 
 
+@app.get("/api/capabilities/{capability_id}/evals/available")
+@_errors
+async def evals_available(capability_id: str, team_group: str | None = None, c: Caller = Depends(caller)) -> dict:
+    """How many past cases people settled an eval would replay (at most `limit`)."""
+    from agent_one_finance import groups as team_groups
+    _, m = await capabilities.active(capability_id)
+    if not await team_groups.visible(c, capability_id, m):
+        raise PermissionError(f"{c.user_id} has no role for {capability_id}")
+    limit = 20
+    return {"cases": len(await evals.test_set(capability_id, team_group, limit)), "limit": limit}
+
+
 @app.get("/api/evals/{run_id}")
 @_errors
 async def get_eval(run_id: str, c: Caller = Depends(caller)) -> dict:

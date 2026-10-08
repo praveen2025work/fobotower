@@ -17,6 +17,7 @@ Agent One Finance is the governed AI platform for Finance; FOBO is one of its us
 | [Features by capability](features-by-capability.md) | Owners, architects | Every feature (sections, checklist, follow-through, insights, data contract, questions…) and how FOBO, cash, variance and report validation each configure it. |
 | [FOBO Prime data contract and parameters](../fobo-skill/mbrec-data-contract.md) | MB Rec, MOTIF, Product Control | The fields each check and test reads, and the thresholds still to confirm, derived from the configuration. |
 | [Questions by Teams or email](questions-by-teams-or-email.md) | Integration | The webhook payload, answering for someone with the event secret, files, chasing; a Power Automate recipe. |
+| [How it runs, and evals](how-it-runs-and-evals.md) | Owners, reviewers | Reading a capability's "How it runs" tab (phases, who acts, tollgates), and running an eval: what it replays, how to start one, how to read agreement, escalations and differences. |
 | [Real-model evals (office)](real-model-evals.md) | Agent One Finance team, owners | Running evals on the Agent SDK before go-live and after every change; what to look for; go/no-go. |
 | [Worked examples](../examples.md) | Both | FOBO CATS vs MOTIF Prime vs Rates with real runs; accruals, substantiation, intercompany, journal controls and suspense examples. |
 

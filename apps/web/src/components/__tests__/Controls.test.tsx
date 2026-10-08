@@ -72,6 +72,8 @@ describe("developer tools", () => {
     renderAt("/", "/", <FlowDiagram capabilityId="fin" />);
     const review = await screen.findByTestId("flow-review");
     expect(within(review).getByText("FIN_REVIEWER")).toBeInTheDocument();
+    expect(within(review).getByText("People decide")).toBeInTheDocument();             // plain words, not step ids
+    expect(within(screen.getByLabelText("At a glance")).getByText(/Get the data/)).toBeInTheDocument();
     expect(within(screen.getByTestId("flow-load")).getByText("gl.balances")).toBeInTheDocument();
     expect(screen.getByText("0 7 2 * *")).toBeInTheDocument();
   });
@@ -83,7 +85,8 @@ describe("developer tools", () => {
       "POST /capabilities/fin/evals": {},
     });
     renderAt("/", "/", <EvalsPanel capabilityId="fin" versions={[1, 2]} groups={[]} />);
-    expect(await screen.findByText("agree 75%")).toBeInTheDocument();
+    expect(await screen.findByText("75%")).toBeInTheDocument();                       // agree with people
+    expect(screen.getByText(/12 decisions in 4 past cases/)).toBeInTheDocument();
     await userEvent.selectOptions(screen.getByLabelText("Eval version"), "2");
     await userEvent.click(screen.getByRole("button", { name: "Run eval" }));
     await waitFor(() => expect(calls.find((c) => c.method === "POST")?.body).toEqual({ version: 2, team_group: null }));

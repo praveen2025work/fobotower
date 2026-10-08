@@ -39,7 +39,7 @@ function Prompt({ text }: { text?: string }) {
 }
 
 function Entry({ t }: { t: SessionTurn }) {
-  const who = t.role === "user" ? "Agent One Finance" : t.role === "tool" ? "Tool (through the gateway)" : "Model";
+  const who = t.role === "user" ? "Agent One Finance" : t.role === "tool" ? "Tool" : "Model";
   const Icon = t.role === "user" ? User : t.role === "tool" ? Wrench : Bot;
   return (
     <li className="relative">
@@ -60,7 +60,7 @@ function Entry({ t }: { t: SessionTurn }) {
         )}
         {t.kind === "tool_result" && (
           <p className={clsx("text-xs", t.error ? "text-red-700" : "text-surface-600")}>
-            {t.error ? `refused: ${t.text ?? ""}` : t.rows == null ? "answered" : `returned ${t.rows} row(s)`}
+            {t.error ? `refused: ${t.text ?? ""}` : t.rows == null ? "answered" : `returned ${t.rows} row${t.rows === 1 ? "" : "s"}`}
             {t.tool && <span className="font-mono"> · {t.tool}</span>}
           </p>
         )}

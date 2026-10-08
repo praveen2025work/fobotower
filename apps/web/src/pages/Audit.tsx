@@ -52,7 +52,7 @@ export default function Audit(): JSX.Element {
       <Card>
         {events.isLoading && <Loading what="audit" />}
         {events.error && <ErrorState error={events.error} />}
-        {events.data && rows.length === 0 && <Empty>No events.</Empty>}
+        {events.data && rows.length === 0 && <Empty>No events you may see for this filter. Case events are visible only to the people the case belongs to.</Empty>}
         {rows.length > 0 && (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[40rem] text-left text-sm">

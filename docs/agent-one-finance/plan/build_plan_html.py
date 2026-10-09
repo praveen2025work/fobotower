@@ -182,7 +182,7 @@ footer {{ color:var(--muted); font-size:.8rem }}
 <header>
   <p class="eyebrow">Delivery plan · prepared {dt.date(2026,10,9).strftime("%d %b %Y").lstrip("0")}</p>
   <h1>Agent One Finance with the FOBO (Helix) use case</h1>
-  <p class="lede">Core Agent One Finance, integrated with Agent One, delivering FOBO break investigation for Product Control: a working version in UAT by the end of November and go-live in mid-January, across Dev, UAT and Prod.</p>
+  <p class="lede">Core Agent One Finance, integrated with Agent One, investigating FOBO breaks from MB Rec for Product Control and posting approved adjustments to MOTIF through FAS. A working version in UAT by the end of November; go-live in mid-January.</p>
   <dl class="keys">
     <div><dt>Working version</dt><dd class="big">30 Nov 2026</dd></div>
     <div><dt>Go-live</dt><dd class="big">14 Jan 2027</dd></div>
@@ -212,21 +212,23 @@ footer {{ color:var(--muted); font-size:.8rem }}
 <section aria-labelledby="t-crit">
   <h2 id="t-crit">What the dates depend on</h2>
   <div class="cols">
-    <div class="panel"><h3>Long-lead items to raise in S0</h3><ul>
-      <li>UAT and Prod namespaces on Rhodium</li><li>Firewall rules to MB Rec, CATS, MOTIF and the LLM gateway</li>
-      <li>Approved model and data classification for the LLM gateway</li><li>DPIA and AI / model risk assessment</li>
-      <li>Penetration test slot; CAB dates and change-freeze window</li><li>MB Rec new tools and end-of-day event; hosting for Diagnostics outside AWS/BCP</li></ul></div>
+    <div class="panel"><h3>Raise these now (long lead)</h3><ul>
+      <li>UAT and Prod platform requests (Prod needed by 11 Dec)</li>
+      <li>Network access to MB Rec, MOTIF, FAS and the LLM gateway</li>
+      <li>Model and data approval for the LLM gateway</li>
+      <li>DPIA, AI risk assessment and penetration test slot</li>
+      <li>MB Rec extra data and end-of-day trigger; FAS test access</li>
+      <li>Diagnostics hosting outside AWS/BCP</li></ul></div>
     <div class="panel"><h3>Assumptions</h3><ul>
-      <li>Team: 2 backend, 1 frontend (part-time), 1 DevOps, 1 QA, 1 BA, PM and architect; Product Control SME part-time</li>
-      <li>Diagnostics has its own developer or agreed DevOps time (S1 and S2 are the heaviest sprints)</li>
-      <li>Product Control available for configuration in S1–S2 and UAT in S4–S5</li>
-      <li>Change freeze 11 Dec – 4 Jan (confirmed): Prod environment built before it, application deployed to Prod on 5 Jan</li><li>Users are already provisioned and testing their skill in finance agent chat</li></ul></div>
+      <li>Team: 2 backend, 1 DevOps, 1 QA, 1 BA, PM and architect; frontend part-time; Product Control SME part-time</li>
+      <li>Product Control available for set-up in S1–S2 and UAT in S4–S5</li>
+      <li>Change freeze 11 Dec – 4 Jan: Prod built before it, released on 5 Jan</li>
+      <li>Users are already provisioned and testing their skill in finance agent chat</li></ul></div>
     <div class="panel"><h3>Top risks</h3><ul>
-      <li>Prod environment must be ready by 11 Dec: the Prod namespace and firewall requests are on the critical path</li>
-      <li>Foundational build: Dev deployment is failing today (dependency in the image)</li>
-      <li>MB Rec tool delivery slips: the dependent checks stay off; go-live is not blocked</li>
-      <li>Approvals (model, DPIA, pen test, CAB) run late: each week late moves go-live by about a week</li>
-      <li>Console is a port of the AOF reference screens: needs a manual check until it runs the reference build</li></ul></div>
+      <li>Prod not ready by 11 Dec: platform and network requests are the critical path</li>
+      <li>The build deployment is failing today; fix in progress</li>
+      <li>Posting adjustments to MOTIF through FAS needs controls sign-off and FAS access in UAT</li>
+      <li>Late approvals (model, DPIA, penetration test, CAB): each week late moves go-live by about a week</li></ul></div>
   </div>
 </section>
 

@@ -131,6 +131,11 @@ If the image builds but the deployment fails on its first database call, see
 [`fix-greenlet-deploy.md`](fix-greenlet-deploy.md). It is a one-line dependency fix with steps for
 office Claude.
 
+## `apps/console` is not part of AOF
+
+`apps/console` is the original FOBO console. Leave it out of every AOF comparison and update, and do not port its
+components. See [`fobo-console-not-part-of-aof.md`](fobo-console-not-part-of-aof.md).
+
 ## How this was proved
 
 Four mock office copies were tested. They had no shared git history, were made at `e291591`,

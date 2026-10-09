@@ -151,30 +151,68 @@ EPIC_STATUS={"E02":"In Progress","E06":"In Progress","E09":"In Progress"}
 CURRENT={"E02":"Build set up; deployment failing on a missing package, fix in progress; latest AOF version applied",
  "E06":"Partially built; quality review and separate hosting to do",
  "E09":"MB Rec and BA engagement starting; users testing their skill in finance agent chat"}
+import os as _o0, sys as _s0
+_s0.path.insert(0, _o0.path.dirname(_o0.path.abspath(__file__)))
+from standards import COMPONENT
 with open("AOF-FOBO-L1-plan.csv","w",newline="",encoding="utf-8-sig") as f:
     w=csv.writer(f)
-    w.writerow(["Type","ID","Name","Objective / description","Team","Start","End","Sprints","Key deliverables","Exit criteria","Dependencies","Status","Current state"])
+    w.writerow(["Type","ID","Name","Objective / description","Team","Start","End","Sprints","Key deliverables","Exit criteria","Dependencies","Status","Current state","Component"])
     for e in EPICS:
-        a,b=e[4].split("-"); w.writerow(["Epic",e[0],e[1],e[2],e[3],SPR[a][0],SPR[b][1],e[4],e[5],e[6],e[7],EPIC_STATUS.get(e[0],"To Do"),CURRENT.get(e[0],"")])
+        a,b=e[4].split("-"); w.writerow(["Epic",e[0],e[1],e[2],e[3],SPR[a][0],SPR[b][1],e[4],e[5],e[6],e[7],EPIC_STATUS.get(e[0],"To Do"),CURRENT.get(e[0],""),COMPONENT[e[0]]])
     for m in MILESTONES:
         w.writerow(["Milestone",m[0],m[1],m[3],"",m[2],m[2],"","","",""])
     w.writerow([]); w.writerow(["Sprint","","Name","","","Start","End"])
     for k,(a,b) in SPR.items(): w.writerow(["Sprint",k,SNAME[k],"","",a,b])
     w.writerow(["Freeze","","Bank change freeze (confirmed)","No Production changes; UAT work continues","","2026-12-11","2027-01-04"])
 
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from standards import US, COMPONENT, RELEASE_OF, RELEASES, DOR, DOD
+
+# check the story wording covers every story and every link points at a story
+_names = {x[1] for x in S}
+assert set(US) == _names, (set(US) ^ _names)
+for _k, _v in US.items():
+    for _b in _v[4]:
+        assert _b in _names, (_k, _b)
+
+def gwt_lines(summ):
+    role, want, why, gwt, _ = US[summ]
+    return [f"Given {g}, when {w}, then {t}." for g, w, t in (gwt or [])]
+
+def user_story(summ):
+    role, want, why, _, _ = US[summ]
+    article = "an" if role[0].lower() in "aeiou" else "a"
+    return f"As {article} {role}, I want {want}, so that {why}."
+
+STORIES = []
+for _n, x in enumerate(S, 1):
+    ep, summ, desc, acc, pri, pts, spr, team, env, dep = x[:10]
+    STORIES.append(dict(id=f"{ep}-S{_n:02d}", ep=ep, summ=summ, desc=desc, acc=acc, pri=pri, pts=pts, spr=spr,
+                        team=team, env=env, st=x[10] if len(x) > 10 else "To Do", story=user_story(summ),
+                        gwt=gwt_lines(summ), blocked=US[summ][4]))
+ID_OF = {s["summ"]: s["id"] for s in STORIES}
+for s in STORIES:
+    s["blocked_ids"] = [ID_OF[b] for b in s["blocked"]]
+
+def ac_text(s):
+    return "\n".join(["- " + g for g in s["gwt"]] + ["- Done when: " + s["acc"]])
+
 with open("AOF-FOBO-stories.csv","w",newline="",encoding="utf-8-sig") as f:
     w=csv.writer(f)
-    w.writerow(["Issue ID","Issue Type","Summary","Description","Acceptance Criteria","Parent ID","Epic Name","Priority","Story Points","Sprint","Start Date","Due Date","Team","Environment","Depends On","Labels","Status"])
+    MAXB = max(len(s["blocked_ids"]) for s in STORIES)
+    w.writerow(["Issue ID","Issue Type","Summary","Description","Acceptance Criteria","Parent","Epic Name","Epic Link",
+                "Priority","Story Points","Sprint","Start Date","Due Date","Fix Version","Component","Labels","Labels","Labels",
+                "Team","Environment"] + ["Blocked By"]*MAXB + ["Status"])
     names={e[0]:e[1] for e in EPICS}
-    for i,e in enumerate(EPICS,1):
+    for e in EPICS:
         a,b=e[4].split("-")
-        w.writerow([e[0],"Epic",e[1],e[2],e[6],"",e[1],"High","",SNAME[a],SPR[a][0],SPR[b][1],e[3],"",e[7],"AOF;FOBO",EPIC_STATUS.get(e[0],"To Do")])
-    n=0
-    for s in S:
-        ep,summ,desc,acc,pri,pts,spr,team,env,dep=s[:10]; st=s[10] if len(s)>10 else "To Do"; n+=1
-        w.writerow([f"{ep}-S{n:02d}","Story",summ,desc,acc,ep,names[ep],pri,pts,SNAME[spr],SPR[spr][0],SPR[spr][1],team,env,dep,"AOF;FOBO"+(";long-lead" if "long lead" in summ.lower() else "")+(";diagnostics" if ep=="E06" else ""),st])
-    print(n,"stories", sum(s[5] for s in S),"points")
-    from collections import defaultdict
-    d=defaultdict(int)
-    for s in S: d[s[6]]+=s[5]
-    print(dict(d))
+        w.writerow([e[0],"Epic",e[1],f"{e[2]}\n\nDeliverables: {e[5]}\n\nDependencies: {e[7]}",f"- Done when: {e[6]}","",e[1],"",
+                    "High","",SNAME[a],SPR[a][0],SPR[b][1],"",COMPONENT[e[0]],"AOF","FOBO","",e[3],""] + [""]*MAXB + [EPIC_STATUS.get(e[0],"To Do")])
+    for s in STORIES:
+        desc = f"{s['story']}\n\nDetails: {s['desc']}\n\nAcceptance criteria:\n{ac_text(s)}"
+        third = "long-lead" if "long lead" in s["summ"].lower() else ("diagnostics" if s["ep"]=="E06" else "")
+        w.writerow([s["id"],"Story",s["summ"],desc,ac_text(s),s["ep"],"",names[s["ep"]],
+                    s["pri"],s["pts"],SNAME[s["spr"]],SPR[s["spr"]][0],SPR[s["spr"]][1],RELEASE_OF[s["spr"]],COMPONENT[s["ep"]],
+                    "AOF","FOBO",third,s["team"],s["env"]] + (s["blocked_ids"]+[""]*MAXB)[:MAXB] + [s["st"]])
+    print(len(STORIES),"stories", sum(s["pts"] for s in STORIES),"points")

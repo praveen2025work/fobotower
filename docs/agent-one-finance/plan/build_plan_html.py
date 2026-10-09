@@ -9,10 +9,8 @@ def fmt(x): return d(x).strftime("%d %b").lstrip("0")
 def fmty(x): return d(x).strftime("%d %b %Y").lstrip("0")
 
 # stories with ids (same numbering as the CSV)
-stories=[]; n=0
-for s in S:
-    n+=1; ep,summ,desc,acc,pri,pts,spr,team,env,dep=s[:10]; st=s[10] if len(s)>10 else "To Do"
-    stories.append(dict(id=f"{ep}-S{n:02d}",ep=ep,summ=summ,desc=desc,acc=acc,pri=pri,pts=pts,spr=spr,team=team,env=env,dep=dep,st=st))
+stories=g["STORIES"]
+COMPONENT, RELEASE_OF, RELEASES, DOR, DOD = g["COMPONENT"], g["RELEASE_OF"], g["RELEASES"], g["DOR"], g["DOD"]
 by_ep={x[0]:[s for s in stories if s["ep"]==x[0]] for x in EPICS}
 tot_pts=sum(s["pts"] for s in stories)
 
@@ -60,15 +58,18 @@ sections=""
 for ep in EPICS:
     a,b=ep[4].split("-"); st=EST.get(ep[0],"To Do"); items=by_ep[ep[0]]
     trs="".join(
-        f'<tr data-spr="{s["spr"]}"><td class="mono nowrap">{s["id"]}</td><td><b>{e(s["summ"])}</b><p class="sub">{e(s["desc"])}</p>'
-        f'<p class="acc"><span>Done when</span> {e(s["acc"])}</p>{"<p class=dep><span>Depends on</span> "+e(s["dep"])+"</p>" if s["dep"] else ""}</td>'
-        f'<td class="mono nowrap">{s["spr"]}<span class="sub2">{fmt(SPR[s["spr"]][0])}–{fmt(SPR[s["spr"]][1])}</span></td>'
+        f'<tr data-spr="{s["spr"]}" id="{s["id"]}"><td class="mono nowrap">{s["id"]}</td><td><b>{e(s["summ"])}</b>'
+        f'<p class="us">{e(s["story"])}</p><p class="sub">{e(s["desc"])}</p>'
+        + ('<ul class="gwt">'+"".join(f'<li>{e(x)}</li>' for x in s["gwt"])+'</ul>' if s["gwt"] else '')
+        + f'<p class="acc"><span>Done when</span> {e(s["acc"])}</p>'
+        + ('<p class="dep"><span>Blocked by</span> '+", ".join(f'<a href="#{i}" class="mono">{i}</a>' for i in s["blocked_ids"])+'</p>' if s["blocked_ids"] else '')
+        + f'</td><td class="mono nowrap">{s["spr"]}<span class="sub2">{fmt(SPR[s["spr"]][0])}–{fmt(SPR[s["spr"]][1])}</span><span class="sub2">{e(RELEASE_OF[s["spr"]].split(" ")[0])}</span></td>'
         f'<td class="num mono">{s["pts"]}</td><td>{e(s["team"])}</td><td>{e(s["env"]) or "–"}</td>'
         f'<td><span class="pri {s["pri"].lower()}">{e(s["pri"])}</span></td><td>{chip(s["st"])}</td></tr>' for s in items)
     sections+=(f'<details class="epic" id="{ep[0]}"><summary><span class="mono eid">{ep[0]}</span><span class="et">{e(ep[1])}</span>'
                f'<span class="em mono">{fmt(SPR[a][0])} – {fmt(SPR[b][1])} · {len(items)} stories · {sum(s["pts"] for s in items)} pts</span>{chip(st)}</summary>'
                f'<div class="eb"><dl><div><dt>Objective</dt><dd>{e(ep[2])}</dd></div><div><dt>Deliverables</dt><dd>{e(ep[5])}</dd></div>'
-               f'<div><dt>Exit criteria</dt><dd>{e(ep[6])}</dd></div><div><dt>Dependencies</dt><dd>{e(ep[7])}</dd></div><div><dt>Team</dt><dd>{e(ep[3])}</dd></div></dl>'
+               f'<div><dt>Exit criteria</dt><dd>{e(ep[6])}</dd></div><div><dt>Dependencies</dt><dd>{e(ep[7])}</dd></div><div><dt>Team</dt><dd>{e(ep[3])}</dd></div><div><dt>Jira component</dt><dd>{e(COMPONENT[ep[0]])}</dd></div></dl>'
                f'<div class="tw"><table class="st"><thead><tr><th>ID</th><th>Story</th><th>Sprint</th><th class="num">Pts</th><th>Team</th><th>Env</th><th>Priority</th><th>Status</th></tr></thead>'
                f'<tbody>{trs}</tbody></table></div></div></details>')
 
@@ -146,6 +147,9 @@ td a {{ color:var(--ink); text-decoration:none }} td a:hover b {{ color:var(--ac
 .sub {{ color:var(--muted); margin:.2rem 0 0; font-size:.82rem; max-width:62ch }}
 .sub2 {{ display:block; color:var(--muted); font-size:.72rem }}
 .cur {{ margin:.3rem 0 0; font-size:.8rem; color:var(--warn) }}
+.us {{ margin:.25rem 0 0; font-style:italic; max-width:70ch }}
+ul.gwt {{ margin:.35rem 0 0; padding-left:1.1rem; font-size:.8rem; color:var(--ink) }} ul.gwt li {{ margin:.1rem 0 }}
+.dep a {{ color:var(--accent-2); text-decoration:none }}
 .acc,.dep {{ margin:.3rem 0 0; font-size:.8rem }} .acc span,.dep span {{ font:600 .66rem var(--mono); letter-spacing:.06em; text-transform:uppercase; color:var(--accent-2); margin-right:.3rem }}
 .dep span {{ color:var(--warn) }}
 .chip {{ display:inline-block; font:600 .7rem var(--body); padding:.15rem .5rem; border-radius:999px; white-space:nowrap }}
@@ -232,6 +236,20 @@ footer {{ color:var(--muted); font-size:.8rem }}
   </div>
 </section>
 
+<section aria-labelledby="t-ww">
+  <h2 id="t-ww">Ways of working</h2>
+  <div class="cols">
+    <div class="panel"><h3>Definition of Ready</h3><ul>{''.join(f"<li>{e(x)}</li>" for x in DOR)}</ul></div>
+    <div class="panel"><h3>Definition of Done</h3><ul>{''.join(f"<li>{e(x)}</li>" for x in DOD)}</ul></div>
+    <div class="panel"><h3>Jira conventions</h3><ul>
+      <li>Stories are written as user stories with acceptance criteria; Given / When / Then where there is behaviour to test</li>
+      <li>Releases: {''.join(f"<b>{e(r[0])}</b> ({fmty(r[1])}) " for r in RELEASES)}</li>
+      <li>Components: {e(", ".join(dict.fromkeys(COMPONENT.values())))}</li>
+      <li>Dependencies are “is blocked by” links between stories</li>
+      <li>Points on the Fibonacci scale (1, 2, 3, 5, 8); two-week sprints</li></ul></div>
+  </div>
+</section>
+
 <section aria-labelledby="t-l2">
   <h2 id="t-l2">Level 2: stories by epic</h2>
   <div class="tools" role="group" aria-label="Show stories for a sprint">
@@ -262,7 +280,9 @@ footer {{ color:var(--muted); font-size:.8rem }}
   }});
   var saved = ""; try {{ saved = localStorage.getItem("aofplan.f") || ""; }} catch (e) {{}}
   if (saved) apply(saved);
-  if (location.hash) {{ var t = document.getElementById(location.hash.slice(1)); if (t && t.tagName === "DETAILS") t.open = true; }}
+  function reveal(id) {{ var t = document.getElementById(id); if (!t) return; var d = t.tagName === "DETAILS" ? t : t.closest("details"); if (d) {{ d.hidden = false; d.open = true; }} if (t.tagName === "TR") {{ t.classList.remove("hide"); t.scrollIntoView({{ block: "center" }}); }} }}
+  if (location.hash) reveal(location.hash.slice(1));
+  document.querySelectorAll('.dep a').forEach(function (a) {{ a.addEventListener("click", function () {{ reveal(a.getAttribute("href").slice(1)); }}); }});
 }})();
 </script>
 '''

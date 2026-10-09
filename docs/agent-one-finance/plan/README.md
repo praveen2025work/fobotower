@@ -1,19 +1,28 @@
 # Delivery plan: Agent One Finance with the FOBO (Helix) use case
 
-Core Agent One Finance, integrated with Agent One. It investigates FOBO breaks from MB Rec for
-Product Control and posts approved adjustments to MOTIF through FAS. The working version is in UAT by 30 Nov 2026, and go-live is 14 Jan 2027,
-across Dev, UAT and Prod.
+Core Agent One Finance, integrated with Agent One. It investigates FOBO breaks from MB Rec for Product
+Control and posts approved adjustments to MOTIF through FAS. The working version is in UAT by
+30 Nov 2026, and go-live is 14 Jan 2027.
 
 | File | For |
 |---|---|
-| [`aof-fobo-plan.html`](aof-fobo-plan.html) | PMO and stakeholders: timeline, milestones, level 1 (epics), what the dates depend on, and level 2 (stories by epic, filterable by sprint). Open it in a browser. |
-| [`AOF-FOBO-L1-plan.csv`](AOF-FOBO-L1-plan.csv) | Level 1: epics, milestones, sprint calendar, status and current state. Opens in Excel. |
-| [`AOF-FOBO-stories.csv`](AOF-FOBO-stories.csv) | Level 2: 84 stories for Jira import. They are linked to their epics by `Issue ID` and `Parent ID`. |
-| `plan_data.py`, `build_plan_html.py` | The single source of the plan. Edit `plan_data.py`, then run `python build_plan_html.py` in this folder. It writes both CSVs and the HTML. |
+| [`aof-fobo-plan.html`](aof-fobo-plan.html) | PMO and stakeholders. It shows the timeline, milestones, epics, ways of working, and stories by epic (filter by sprint). Open it in a browser. |
+| [`AOF-FOBO-stories.csv`](AOF-FOBO-stories.csv) | The Jira import: 10 epics and 88 stories, as user stories with acceptance criteria. |
+| [`AOF-FOBO-L1-plan.csv`](AOF-FOBO-L1-plan.csv) | Level 1: epics, milestones, sprints and the freeze, for Excel. |
+| [`confluence/`](confluence/00-index.md) | Pages for the project space: overview, delivery plan, ways of working, requirements per epic, decision log, RAID log. |
+| `plan_data.py`, `standards.py` | The single source for the plan. `standards.py` holds the story wording, releases, components, and the Definitions of Ready and Done. |
+| `build_plan_html.py`, `build_confluence.py` | Run both in this folder after any change. They rebuild the page, both CSVs and the Confluence pages. |
 
-**Assumptions to confirm:**
-- the team as listed on the page;
-- Product Control availability for configuration (S1–S2) and UAT (S4–S5);
-- the change freeze is confirmed for 11 Dec to 4 Jan: Prod is built before it, and the application goes to Prod on 5 Jan.
+## Importing into Jira (System → External system import → CSV)
+
+1. Create the sprints, the releases (**R1 Working version**, **R2 Go-live**) and the components first.
+2. Map the columns:
+   - **Jira Cloud:** `Issue ID` → Issue ID, `Parent` → Parent.
+   - **Jira Data Center:** `Issue ID` → Issue ID, `Epic Name` → Epic Name, `Epic Link` → Epic Link.
+   - Map `Labels` (three columns) to Labels, `Fix Version` to Fix Version/s, and `Component` to Component/s.
+   - Map each `Blocked By` column to the issue link *is blocked by*.
+   - Map `Team`, `Environment` and `Status` to your fields.
+3. `Acceptance Criteria` is also inside the description. Map the column only if your Jira has that field.
+4. Add any fields your project requires (for example an application ID) to the file before importing.
 
 Users are already provisioned for interim skill testing, so the plan has no user-access stories.

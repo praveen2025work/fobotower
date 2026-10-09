@@ -221,6 +221,82 @@ review: { roles: [FOBO_CONTROLLER], require_comment: [reject, escalated] }</pre>
   </div></details>
 </section>
 
+<section class="stack" aria-labelledby="h-flow">
+  <div><p class="q">Configuring the flow</p><h2 id="h-flow">You write the checklist; AOF builds the LangGraph flow from it</h2></div>
+  <p>Nobody writes LangGraph code to make a capability. You write (or click together) the checklist: the list of steps, each step's settings, and where a person must stop the run. Every time a case runs, AOF turns that checklist into a LangGraph graph, runs it, and saves its progress in the database after every step.</p>
+  <div class="tw"><table>
+    <thead><tr><th>You configure</th><th>AOF makes it in LangGraph</th><th>What it means</th></tr></thead>
+    <tbody>
+      <tr><td><code>steps: [load, enrich, …, record]</code></td><td>One node per step, joined in list order; the first is the entry, the last goes to the end</td><td>The order of the checklist is the flow</td></tr>
+      <tr><td><code>step_settings.history.type: dataset</code></td><td>Which code the node runs, and with which settings</td><td>Built-in steps need no settings; configurable steps (data sets, patterns, posting) do</td></tr>
+      <tr><td><code>pause_before: [reason, review]</code></td><td>An interrupt before those nodes</td><td>The case stops and waits for a person. It continues only with what that stop needs (a confirmation, decisions, a release); a restart never skips it.</td></tr>
+      <tr><td><code>when: "break_type == 'amount_break'"</code></td><td>The node checks the condition and skips itself if false; the skip is recorded</td><td>A step that runs only sometimes</td></tr>
+      <tr><td>Nothing (automatic)</td><td>After every step before review, a branch to an <code>escalate</code> node if the run was escalated</td><td>Anything AOF cannot handle safely goes straight to a person</td></tr>
+      <tr><td><code>type: await</code> step</td><td>An interrupt that waits for an event, such as all child cases finishing</td><td>Waiting for something other than a person</td></tr>
+      <tr><td><code>type: spawn</code> step</td><td>Child cases, each with its own graph</td><td>Splitting work, for example one child per book</td></tr>
+      <tr><td>Each step's needs and outputs</td><td>The shared case state that nodes read and add to</td><td>A step can only use what an earlier step produced; Check refuses anything else</td></tr>
+      <tr><td>Nothing (automatic)</td><td>A Postgres checkpointer, one thread per case</td><td>A case survives a restart and carries on from where it stopped</td></tr>
+    </tbody>
+  </table></div>
+  <p>The flow is a straight line on purpose: a controller, an auditor or a regulator can read it top to bottom. Work runs in parallel inside steps (each group of breaks is investigated at the same time) and across child cases, not as side branches. Going round again is a person's choice: a reviewer can send one group back to the AI ("ask the model to look again"), and that group re-runs from the reasoning step.</p>
+  <figure class="stack" style="margin:0">
+    <figcaption class="sub">The FOBO capability as the LangGraph graph AOF builds (stages grouped for reading):</figcaption>
+    <div class="tw"><pre class="mermaid">
+flowchart TD
+  start((case opens)) --> load
+  subgraph G1 [Get the work and gather evidence]
+    load --> enrich --> history --> events --> bo_positions
+  end
+  subgraph G2 [Known patterns]
+    offsets --> split_bookings --> systemic --> near_refs --> trend --> unusual
+  end
+  subgraph G3 [Team rules]
+    resolve --> classify --> group
+  end
+  bo_positions --> offsets
+  unusual --> resolve
+  group --> P1{{"stop: a FOBO controller confirms"}}
+  P1 --> reason --> draft --> validate
+  validate --> P2{{"stop: a FOBO controller reviews"}}
+  P2 --> review --> record --> finish((case done))
+  load -. escalated .-> esc[escalate to a person]
+  classify -. escalated .-> esc
+  validate -. escalated .-> esc
+</pre></div>
+  </figure>
+  <h3>Changing a flow, step by step</h3>
+  <ol class="clicks">
+    <li><b>Open the capability → Configure</b> (or edit its YAML file). Add, remove or move a step; give it its settings; tick where a person must stop.</li>
+    <li><b>Check.</b> AOF builds the flow without running it and lists any problem in plain words, for example "<code>split_bookings</code> needs data set <code>events</code>, produced by no earlier step".</li>
+    <li><b>Save as a new version.</b> A second owner approves it (four eyes). Only then does it go live.</li>
+    <li><b>New cases use the new version;</b> cases already running finish on the version they started with.</li>
+    <li><b>Run an evaluation</b> on cases people already decided, to see whether the change made AOF agree with them more or less.</li>
+  </ol>
+  <details class="tech"><summary>For the tech team: adding two steps to the FOBO flow</summary><div>
+    <p>Put each break in an age band, and flag the breaks at or above the team's materiality threshold, so the playbook and the reviewer can use both. Two names in the step list, two settings. This exact change passes the engine's checks:</p>
+<pre>steps: [load, enrich, history, events, bo_positions, offsets, split_bookings,
+        systemic, near_refs, trend, unusual,
+        age_band, material,                                  # new
+        resolve, classify, group, reason, draft, validate, review, record]
+
+step_settings:
+  age_band:
+    type: bucket
+    label: How old each break is
+    with:
+      field: age_days
+      as: age_band
+      bands: [{ label: 0-1 days, upto: 1 }, { label: 2-5 days, upto: 5 }, { label: over 5 days }]
+  material:
+    type: derive
+    label: Breaks at or above the materiality threshold
+    with:
+      fields: { material: "abs(difference) >= policy.materiality_threshold" }
+    # add  when: "count > 20"  to run a step only on busy days</pre>
+    <p>Put <code>material</code> first in the list and Check answers: "<code>material</code> needs items, produced by no earlier step". The step picker in the Configure screen lists every step type with its settings: data sets, filters, bands, roll-ups, the pattern checks, journals, posting, waiting, child cases and reports.</p>
+  </div></details>
+</section>
+
 <section class="stack" aria-labelledby="h-mcp">
   <div><p class="q">Connections</p><h2 id="h-mcp">How AOF gets data: MCP in plain words</h2></div>
   <p>Each bank system offers AOF a short menu of questions it will answer, through a standard plug called MCP. AOF keeps an allow-list: which systems, which questions, and whether a question only reads or also writes. A step asks a question by name, such as <code>mbrec.breaks</code> or <code>motif.positions</code>.</p>

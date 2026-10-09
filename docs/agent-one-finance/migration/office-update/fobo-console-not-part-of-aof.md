@@ -17,13 +17,14 @@ The repository has two applications, built at different times:
 | Backend | `apps/backend/fobo` | `apps/backend/agent_one_finance` |
 | FOBO is… | code: its own workflow, board and screens | configuration: the `break.investigation` capability, with its playbook and groups |
 
-The original FOBO app stays in the repository for three reasons:
+It is not needed by Agent One Finance:
 
-1. **It is the parity baseline.** The parity check (`apps/backend/scripts/fobo_aof_parity.py`) runs the same books and dates through the original FOBO app and through AOF, and compares the answers. That needs the original app.
-2. **It shows the "before" picture for the FOBO migration.** It mirrors the FOBO the office runs today. The `fobo-to-aof` skill and the change guide (`docs/agent-one-finance/migration/README.md`) map each of its parts to AOF, as configuration.
-3. **It still runs beside AOF** for demonstrations and comparison, as the main `README.md` says.
+- AOF does not import or call any FOBO code.
+- The parity check (`apps/backend/scripts/fobo_aof_parity.py`) compares an **exported run from the office's FOBO**
+  (a CSV or JSON file) with AOF. It does not use this repository's FOBO app.
 
-**It is retired once FOBO runs on AOF.** None of the AOF updates since 6 Oct have changed it; `whats-new.md` says the FOBO console "changed only in name".
+It was kept as the "before" picture for the FOBO migration. Upstream is removing it. The office keeps its own FOBO
+running until AOF goes live, and the AOF update packages never touch the office's FOBO code.
 
 ## The rule
 

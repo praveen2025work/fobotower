@@ -20,14 +20,20 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-from fobo.db.base import DATABASE_URL, Base
-from fobo.db import models_graph, models_ops, models_session, models_workflow  # noqa: F401  register tables
 from agent_one_finance import models as aof_models  # noqa: F401  register aof_* tables
+from agent_one_finance.config import settings as aof_settings
 from agent_one_finance.db import AofBase
-target_metadata = [Base.metadata, AofBase.metadata]
+target_metadata = [AofBase.metadata]
+DATABASE_URL = aof_settings().database_url
+# The first migrations (aa1b933c1055 … e5a7c3d9f1b2) created the original FOBO app's tables.
+# They stay in the history so existing databases upgrade cleanly; those tables are not
+# in this metadata, so autogenerate must not drop them (see include_object below).
+LEGACY_FOBO_TABLES = {"session_message", "source_call", "controller_decision", "pattern_group", "evidence_item",
+                      "analysis_version", "agent_session", "investigation_session", "workflow_version",
+                      "break_embedding", "break_event", "edge", "node", "run", "reconciliation"}
 
-# Migrate the same database the app uses: FOBO_DATABASE_URL when set, else the
-# local dev default. `%` is doubled because the ini parser interpolates it.
+# Migrate the same database the app uses (AOF_DATABASE_URL, else FOBO_DATABASE_URL,
+# else the local dev default). `%` is doubled because the ini parser interpolates it.
 config.set_main_option("sqlalchemy.url", DATABASE_URL.replace("%", "%%"))
 
 # LangGraph's Postgres checkpointer creates and owns these. They are not in
@@ -41,10 +47,11 @@ CHECKPOINTER_TABLES = {
 
 
 def include_object(object, name, type_, reflected, compare_to):
-    if type_ == "table" and name in CHECKPOINTER_TABLES:
+    keep_out = CHECKPOINTER_TABLES | LEGACY_FOBO_TABLES
+    if type_ == "table" and name in keep_out:
         return False
     if type_ == "index" and getattr(object, "table", None) is not None:
-        return object.table.name not in CHECKPOINTER_TABLES
+        return object.table.name not in keep_out
     return True
 
 

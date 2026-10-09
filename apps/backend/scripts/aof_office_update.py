@@ -18,6 +18,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 KIT = ROOT / "docs/agent-one-finance/migration/office-update"
 EXCLUDE = ":!docs/agent-one-finance/demo"
+# The original FOBO app is not part of AOF: never add, change or delete it in the office through a patch.
+FOBO_PATHS = [":!apps/console", ":!apps/backend/fobo", ":!config/playbook", ":!config/workflow",
+              ":!skills/fobo-investigation", ":!docs/superpowers", ":!docs/ARCHITECTURE.md", ":!docs/DEPLOYMENT.md",
+              ":!docs/skills", ":!apps/backend/scripts/demo_investigation.py", ":!apps/backend/scripts/run_investigation.py",
+              ":!apps/backend/scripts/reset_e2e_db.py", ":!apps/backend/scripts/stub_harness.py",
+              ":!apps/backend/seed_data/catalogue.py", ":!apps/backend/seed_data/history.py",
+              ":!apps/backend/seed_data/loader.py", ":!apps/backend/seed_data/data"]
 WHATS_NEW = "docs/agent-one-finance/migration/whats-new.md"
 
 
@@ -47,7 +54,8 @@ def main() -> None:
     (out / "patches").mkdir(parents=True)
     to = git("rev-parse", "--short=7", a.to).strip()
     commits = git("rev-list", "--first-parent", "--reverse", f"{a.since}^..{to}").split()
-    files = git("diff", "--name-only", f"{a.since}^", to, "--", ".", EXCLUDE).split()
+    files = git("diff", "--name-only", f"{a.since}^", to, "--", ".", EXCLUDE, *FOBO_PATHS).split()
+    files = [f for f in files if not (f.startswith("apps/backend/tests/test_") and f.endswith(".py"))]
     versions = {}
     for c in commits:
         short = c[:7]
@@ -59,7 +67,7 @@ def main() -> None:
                            "title": git("log", "-1", "--format=%s", c).strip(), "section": section(c),
                            "blobs": {f: blobs.get(f) for f in files}}
         if short != to:
-            (out / "patches" / f"from-{short}.patch").write_text(git("diff", "--binary", c, to, "--", ".", EXCLUDE))
+            (out / "patches" / f"from-{short}.patch").write_text(git("diff", "--binary", c, to, "--", ".", EXCLUDE, *FOBO_PATHS, ":!apps/backend/tests/test_*.py"))
     (out / "versions.json").write_text(json.dumps({"latest": to, "order": [c[:7] for c in commits], "versions": versions}))
     shutil.copy(KIT / "which-version.py", out / "which-version.py")
     shutil.copy(KIT / "README.md", out / "README.md")

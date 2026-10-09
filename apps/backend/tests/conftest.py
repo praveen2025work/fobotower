@@ -5,7 +5,7 @@ test, and pointing that at the development database destroys whatever the
 dev server was serving — the schedule, the seeded history, everything.
 
 The environment variable is set before any application module is imported,
-because fobo.db.base builds its engine at import time.
+because the database engine is built at import time.
 """
 
 import os
@@ -22,28 +22,8 @@ import asyncpg  # noqa: E402
 import pytest  # noqa: E402
 from sqlalchemy import text  # noqa: E402
 
-from fobo.web.dependencies import setup_checkpointer  # noqa: E402
-from fobo.db import models_graph, models_ops, models_session, models_workflow  # noqa: E402,F401
-from fobo.db.base import Base, engine, get_session  # noqa: E402
-
-# Child tables first.
-TABLES = [
-    "session_message",
-    "source_call",
-    "controller_decision",
-    "pattern_group",
-    "evidence_item",
-    "analysis_version",
-    "agent_session",
-    "investigation_session",
-    "workflow_version",
-    "break_embedding",
-    "break_event",
-    "edge",
-    "node",
-    "run",
-    "reconciliation",
-]
+from agent_one_finance.db import engine, get_session  # noqa: E402
+from agent_one_finance.workflow import setup_checkpointer  # noqa: E402
 
 
 def _admin_dsn() -> str:
@@ -67,36 +47,24 @@ async def _create_database_if_missing() -> None:
 
 @pytest.fixture(scope="session", autouse=True)
 async def prepare_database():
-    """Create the test database and its schema once per session.
-
-    create_all rather than alembic: migrations are exercised against the
-    development database, and tests want a fast, exact mirror of the models.
-    """
+    """Create the test database once per session, with LangGraph's checkpoint
+    tables (the Agent One Finance tables are created by tests/agent_one_finance/conftest.py)."""
     await _create_database_if_missing()
     async with engine.begin() as conn:
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-        await conn.run_sync(Base.metadata.create_all)
-    # httpx's ASGITransport never runs the app's lifespan, so the tests that
-    # go through it (most of them) would otherwise never create the
-    # checkpoint tables at all. Doing it once, here, keeps every test's
-    # first checkpointer() call — whichever test that happens to be — fast
-    # and outside of an open transaction, same as the app's lifespan does.
     await setup_checkpointer()
     yield
     await engine.dispose()
 
 
-# LangGraph owns these and creates them lazily. They outlive a truncation of
-# the application tables, and a stale checkpoint makes a route think an
-# investigation already ran — so the session row it would have created never
-# appears, and later inserts fail their foreign key.
+# LangGraph owns these and creates them lazily. A stale checkpoint makes a
+# case think it already ran, so they are emptied before each test.
 CHECKPOINT_TABLES = ["checkpoints", "checkpoint_blobs", "checkpoint_writes"]
 
 
 @pytest.fixture(autouse=True)
 async def clean_tables(prepare_database):
     async with get_session() as s:
-        await s.execute(text(f"TRUNCATE {', '.join(TABLES)} CASCADE"))
         for name in CHECKPOINT_TABLES:
             await s.execute(
                 text(

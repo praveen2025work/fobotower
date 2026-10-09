@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"></head>
+<body>
+<title>AOF in Plain Words</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column, ~46rem; each section answers one question a newcomer asks, in the order they ask it */
+:root {
+  --bg: #f4f7fa; --surface: #ffffff; --ink: #0b2236; --muted: #4f6275; --line: #d6dfe8;
+  --accent: #00639a; --accent-soft: #e2f1fa; --person: #8a4b00; --person-soft: #fbefdf;
+  --ok: #1d6b45; --ok-soft: #e3f3ea; --code-bg: #0e2233; --code-fg: #d6e6f2;
+  --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #08141f; --surface: #0f2030; --ink: #e5eef6; --muted: #9db0c2; --line: #213749;
+  --accent: #5cc3f2; --accent-soft: #10324a; --person: #f2b46b; --person-soft: #3a2a16;
+  --ok: #78d3a4; --ok-soft: #15372a; --code-bg: #050e16; --code-fg: #d6e6f2; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #08141f; --surface: #0f2030; --ink: #e5eef6; --muted: #9db0c2; --line: #213749;
+  --accent: #5cc3f2; --accent-soft: #10324a; --person: #f2b46b; --person-soft: #3a2a16;
+  --ok: #78d3a4; --ok-soft: #15372a; --code-bg: #050e16; --code-fg: #d6e6f2; color-scheme: dark }
+
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--ink); font: 17px/1.6 var(--body) }
+.wrap { max-width: 50rem; margin: 0 auto; padding-inline: 16px; padding-block: 2.5rem 4rem; display: grid; gap: 3.2rem }
+.wrap > * { min-width: 0 }
+h1, h2, h3 { font-family: var(--display); margin: 0; text-wrap: balance; letter-spacing: -0.01em }
+h1 { font-size: clamp(2rem, 5vw, 2.9rem); font-weight: 800; line-height: 1.1 }
+h2 { font-size: 1.55rem; font-weight: 700; margin-bottom: .35rem }
+h3 { font-size: 1.05rem; font-weight: 700 }
+p { margin: 0; max-width: 65ch }
+.q { font: 500 .78rem var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin-bottom: .4rem }
+.lede { font-size: 1.2rem; color: var(--ink); margin-top: 1rem }
+.sub { color: var(--muted) }
+.stack { display: grid; gap: 1rem }
+code, .mono { font-family: var(--mono); font-size: .86em }
+a { color: var(--accent) }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+
+/* the one-line promise */
+.promise { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1.4rem }
+.promise span { font-weight: 700; padding: .35rem .75rem; border-radius: 6px; background: var(--accent-soft); color: var(--accent) }
+.promise span.p { background: var(--person-soft); color: var(--person) }
+
+/* five words */
+.words { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: .8rem }
+.word { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: .9rem 1rem; display: grid; gap: .25rem; align-content: start }
+.word b { font-family: var(--display); font-size: 1.1rem }
+.word i { font-style: normal; color: var(--muted); font-size: .95rem }
+.word .eg { font: .8rem var(--mono); color: var(--accent) }
+
+/* nesting picture */
+.nest { border: 2px solid var(--accent); border-radius: 10px; padding: .9rem; display: grid; gap: .7rem; background: var(--surface) }
+.nest > .lbl { font: 700 .95rem var(--display); color: var(--accent) }
+.nest .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: .7rem }
+.grp { border: 1.5px dashed var(--accent); border-radius: 8px; padding: .7rem; display: grid; gap: .5rem }
+.grp > .lbl { font-weight: 700 }
+.case { background: var(--accent-soft); border-radius: 6px; padding: .4rem .6rem; font: .82rem var(--mono) }
+
+/* the morning */
+ol.day { list-style: none; margin: 0; padding: 0; display: grid; gap: 0 }
+ol.day li { display: grid; grid-template-columns: 4.2rem 1fr; gap: 1rem; padding: .85rem 0; border-top: 1px solid var(--line) }
+ol.day li:first-child { border-top: 0 }
+ol.day time { font: 500 .9rem var(--mono); color: var(--muted); padding-top: .1rem }
+ol.day li.person time { color: var(--person) }
+ol.day li > div { min-width: 0; display: grid; gap: .3rem }
+.who { font: 700 .72rem var(--mono); letter-spacing: .06em; text-transform: uppercase }
+.who.aof { color: var(--accent) } .who.per { color: var(--person) }
+.found { display: grid; grid-template-columns: auto 1fr; gap: .25rem .7rem; font-size: .95rem; margin-top: .2rem }
+.found b { font-variant-numeric: tabular-nums; text-align: right }
+.example { font-size: .85rem; color: var(--muted) }
+
+/* phases */
+.phases { display: grid; gap: .55rem }
+.phase { display: grid; grid-template-columns: 2.2rem 1fr; gap: .9rem; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: .85rem 1rem }
+.phase.gate { border-color: var(--person); background: var(--person-soft) }
+.phase.act { border-style: dashed }
+.phase .n { font: 800 1.3rem var(--display); color: var(--accent); line-height: 1.2 }
+.phase.gate .n { color: var(--person) }
+.phase > div { min-width: 0; display: grid; gap: .35rem }
+.phase h3 small { font: 500 .78rem var(--body); color: var(--muted); margin-left: .4rem }
+.chips { display: flex; flex-wrap: wrap; gap: .35rem }
+.chip { font: .8rem var(--mono); padding: .15rem .5rem; border-radius: 4px; background: var(--accent-soft); color: var(--ink); border: 1px solid transparent }
+.chip.p { background: transparent; border-color: var(--person); color: var(--person) }
+.arrow { text-align: center; color: var(--muted); font-size: .9rem; line-height: 1 }
+
+/* callouts */
+.key { border-left: 4px solid var(--person); padding: .2rem 0 .2rem 1rem; display: grid; gap: .4rem }
+.key b { font-family: var(--display) }
+
+/* connections picture */
+.plug { display: grid; grid-template-columns: 1fr minmax(9rem, 12rem) 1fr; gap: .8rem; align-items: center }
+.plug .hub { background: var(--accent); color: var(--surface); border-radius: 10px; padding: 1rem; text-align: center; font: 700 1rem var(--display) }
+.plug .hub small { display: block; font: 400 .8rem var(--body); opacity: .9; margin-top: .3rem }
+.plug .side { display: grid; gap: .5rem }
+.sys { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: .55rem .7rem; display: grid; gap: .15rem; min-width: 0 }
+.sys b { font-size: .95rem }
+.sys span { font: .76rem var(--mono); color: var(--muted); overflow-wrap: anywhere }
+.sys.w { border-color: var(--person) }
+.sys.w span { color: var(--person) }
+@media (max-width: 640px) { .plug { grid-template-columns: 1fr } .plug .hub { order: -1 } }
+
+/* posting timeline */
+.track { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .5rem }
+.stage { border-radius: 8px; padding: .75rem; display: grid; gap: .3rem; align-content: start; background: var(--surface); border: 1px solid var(--line) }
+.stage b { font-family: var(--display); font-size: .98rem }
+.stage span { font-size: .86rem; color: var(--muted) }
+.stage.p { background: var(--person-soft); border-color: var(--person) }
+.stage.go { background: var(--ok-soft); border-color: var(--ok) }
+.stage.go b { color: var(--ok) }
+@media (max-width: 640px) { .track { grid-template-columns: 1fr 1fr } }
+
+/* tables */
+.tw { overflow-x: auto }
+table { border-collapse: collapse; width: 100%; font-size: .95rem; min-width: 36rem }
+th { text-align: left; font: 600 .74rem var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: .5rem .6rem; border-bottom: 1px solid var(--line) }
+td { padding: .6rem; border-bottom: 1px solid var(--line); vertical-align: top }
+tbody tr:last-child td { border-bottom: 0 }
+
+/* tech folds */
+details.tech { border: 1px solid var(--line); border-radius: 8px; background: var(--surface) }
+details.tech > summary { cursor: pointer; padding: .7rem 1rem; font: 600 .9rem var(--body); color: var(--accent) }
+details.tech > div { padding: 0 1rem 1rem; display: grid; gap: .7rem }
+pre { margin: 0; background: var(--code-bg); color: var(--code-fg); border-radius: 6px; padding: .8rem 1rem; overflow-x: auto; font: .8rem/1.55 var(--mono) }
+
+/* scripts */
+.say { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: .8rem }
+.say > div { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 1rem; display: grid; gap: .5rem; align-content: start }
+.say blockquote { margin: 0; font-size: 1rem }
+ol.clicks { margin: 0; padding-left: 1.2rem; display: grid; gap: .3rem }
+ul.rules { margin: 0; padding-left: 1.2rem; display: grid; gap: .45rem }
+footer { color: var(--muted); font-size: .85rem }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important } }
+</style>
+
+<div class="wrap">
+
+<header>
+  <p class="q">Agent One Finance · FOBO</p>
+  <h1>AOF is a fast new team member that follows your checklist and never acts alone.</h1>
+  <p class="lede">Every morning it picks up the work, pulls the facts from the bank's systems, sorts out what the team's rules can settle, writes up the rest, and waits for a FOBO controller to decide. Nothing changes in any bank system until a controller approves and a second person releases it.</p>
+  <div class="promise" aria-label="The promise in three parts"><span>AOF prepares</span><span class="p">A FOBO controller decides</span><span class="p">A second person releases</span></div>
+</header>
+
+<section class="stack" aria-labelledby="h-words">
+  <div><p class="q">The words</p><h2 id="h-words">Six words explain the whole product</h2></div>
+  <div class="words">
+    <div class="word"><b>Capability</b><i>The checklist for one kind of work.</i><span class="eg">Break investigation</span></div>
+    <div class="word"><b>Group</b><i>One team's own version of the checklist: its books, limits and reviewers.</i><span class="eg">FOBO Prime · FOBO Rates</span></div>
+    <div class="word"><b>Case</b><i>One piece of work, done once.</i><span class="eg">Book PRIME-MB-01, business date 8 Oct</span></div>
+    <div class="word"><b>Step</b><i>One line of the checklist. Steps run in order.</i><span class="eg">read breaks → find patterns → …</span></div>
+    <div class="word"><b>Connection</b><i>A bank system AOF may ask questions of, through MCP.</i><span class="eg">MB Rec · MOTIF · FAS</span></div>
+    <div class="word"><b>Gate</b><i>A point where a person must decide before AOF goes on.</i><span class="eg">Controller review</span></div>
+  </div>
+  <div class="nest" aria-label="How the words fit together">
+    <div class="lbl">Capability: Break investigation (the checklist, the same for everyone)</div>
+    <div class="row">
+      <div class="grp"><div class="lbl">Group: FOBO Prime</div><div class="case">Case: PRIME-MB-01 · 8 Oct</div><div class="case">Case: PRIME-MB-04 · 8 Oct</div></div>
+      <div class="grp"><div class="lbl">Group: FOBO Rates</div><div class="case">Case: RATES-LN-02 · 8 Oct</div></div>
+    </div>
+  </div>
+  <p class="sub">One checklist, many teams, a new case every day. A new kind of work (month-end accruals, payment exceptions) is a new capability on the same engine, not a new application.</p>
+</section>
+
+<section class="stack" aria-labelledby="h-day">
+  <div><p class="q">The use case</p><h2 id="h-day">One morning for a FOBO controller</h2></div>
+  <p class="example">An example of the target morning. The counts are illustrative; the 120.00 SOFR future break is a real case from the demo. Posting through FAS is being added in the plan.</p>
+  <ol class="day">
+    <li><time>06:30</time><div><span class="who aof">AOF</span><p>MB Rec finishes reconciling book PRIME-MB-01 for 8 Oct. AOF opens a case on its own and reads the <b>12 open breaks</b>.</p></div></li>
+    <li><time>06:31</time><div><span class="who aof">AOF</span><p>It gathers the evidence: each break's last five days in MB Rec, and the book's positions and booking events in MOTIF.</p></div></li>
+    <li><time>06:33</time><div><span class="who aof">AOF</span><p>It runs the known checks, plain arithmetic with no AI, then applies the FOBO playbook:</p>
+      <div class="found"><b>5</b><span>timing differences that will clear tomorrow (watch, no action)</span><b>2</b><span>equal and opposite: booked to the wrong instrument (to the desk)</span><b>1</b><span>a split booking whose pieces add up to the break (explained)</span><b>1</b><span>SOFR future, MTM difference of 120.00, inside the auto-adjust limit (propose an adjustment)</span><b>3</b><span>not settled by any rule (need judgement)</span></div></div></li>
+    <li class="person"><time>07:45</time><div><span class="who per">FOBO controller</span><p><b>First stop.</b> Frank checks these are today's breaks and the playbook's sorting is right, and adds what the desk told him. Only then is the AI asked anything.</p></div></li>
+    <li><time>07:47</time><div><span class="who aof">AOF</span><p>For the 3 open breaks, the AI reads the evidence and writes why it thinks each happened. Every figure it quotes is checked against the source; a proposal with a figure that cannot be traced goes to a person instead.</p></div></li>
+    <li class="person"><time>08:00</time><div><span class="who per">FOBO controller</span><p><b>Second stop.</b> Frank opens his inbox: 5 groups to decide, each with its evidence, instead of 12 raw breaks. He approves 4 and rejects 1 with a comment, working from the evidence instead of starting each break from scratch.</p></div></li>
+    <li class="person"><time>08:15</time><div><span class="who per">Second controller</span><p>A different controller releases the 120.00 adjustment. FAS posts it to MOTIF once, and AOF reads it back to confirm it landed.</p></div></li>
+    <li><time>Next day</time><div><span class="who aof">AOF</span><p>It checks whether the 5 timing differences cleared, and flags any that did not.</p></div></li>
+  </ol>
+</section>
+
+<section class="stack" aria-labelledby="h-steps">
+  <div><p class="q">The steps</p><h2 id="h-steps">What each step does, and why they are in this order</h2></div>
+  <p>A capability is an assembly line. Each step takes what the earlier steps produced and adds one thing. That is how steps relate: a step can only use what came before it. The configuration screen checks this for you and refuses a step that needs something nothing earlier made.</p>
+  <div class="phases">
+    <div class="phase"><span class="n">1</span><div><h3>Get the work<small>what are we looking at?</small></h3><p>Read today's open breaks for the book from MB Rec.</p><div class="chips"><span class="chip">load</span></div></div></div>
+    <div class="arrow" aria-hidden="true">↓</div>
+    <div class="phase"><span class="n">2</span><div><h3>Gather the evidence<small>what do the systems say?</small></h3><p>Add more facts to each break: MOTIF's view of it, the last five days of history, the book's booking events and positions.</p><div class="chips"><span class="chip">enrich</span><span class="chip">history</span><span class="chip">events</span><span class="chip">bo_positions</span></div></div></div>
+    <div class="arrow" aria-hidden="true">↓</div>
+    <div class="phase"><span class="n">3</span><div><h3>Look for known patterns<small>arithmetic, no AI</small></h3><p>Equal and opposite breaks. Bookings that add up to a break. The same instrument breaking in other books. The instrument in MOTIF under a slightly different name. How the break moved over five days. A break unusually large for its instrument.</p><div class="chips"><span class="chip">offsets</span><span class="chip">split_bookings</span><span class="chip">systemic</span><span class="chip">near_refs</span><span class="chip">trend</span><span class="chip">unusual</span></div></div></div>
+    <div class="arrow" aria-hidden="true">↓</div>
+    <div class="phase"><span class="n">4</span><div><h3>Apply the team's rules<small>the FOBO playbook</small></h3><p>Look up who owns the book, run the cause checks, put each break in a category, and gather similar breaks into groups so a person decides once per group.</p><div class="chips"><span class="chip">resolve</span><span class="chip">classify</span><span class="chip">group</span></div></div></div>
+    <div class="arrow" aria-hidden="true">↓</div>
+    <div class="phase gate"><span class="n">5</span><div><h3>Explain and propose<small>rules first, then AI</small></h3><p>A controller first confirms the sorting. Then rules settle what they can, and the AI explains only what is left, citing only figures from the systems. AOF writes a proposal for each group.</p><div class="chips"><span class="chip p">person: confirm before the AI</span><span class="chip">reason</span><span class="chip">draft</span></div></div></div>
+    <div class="arrow" aria-hidden="true">↓</div>
+    <div class="phase gate"><span class="n">6</span><div><h3>Check, then a person decides<small>three gates, always in this order</small></h3><p>Every figure is checked against its source; anything that cannot be traced goes to a person. A FOBO controller approves, rejects or escalates each group. The decision is recorded with who, when and why.</p><div class="chips"><span class="chip">validate</span><span class="chip p">review</span><span class="chip">record</span></div></div></div>
+    <div class="arrow" aria-hidden="true">↓</div>
+    <div class="phase gate act"><span class="n">7</span><div><h3>Act, after a second person releases<small>FOBO: being added</small></h3><p>Post the approved adjustment to MOTIF through FAS. This step can only come last, and the case stops before it until a different person releases it.</p><div class="chips"><span class="chip p">person: release</span><span class="chip">post</span></div></div></div>
+  </div>
+  <details class="tech"><summary>For the tech team: how a capability is written</summary><div>
+    <p>A capability is a YAML file. The steps are a list. Built-in steps need no settings; configurable steps say what they read and produce. This is the FOBO file, shortened:</p>
+<pre>id: break.investigation
+items:
+  load: { tool: mbrec.breaks, args: { book: $case.book, cob: $case.cob } }
+steps: [load, enrich, history, events, bo_positions, offsets, split_bookings,
+        systemic, near_refs, trend, unusual, resolve, classify, group,
+        reason, draft, validate, review, record]
+step_settings:
+  history:
+    type: dataset
+    with: { name: history, tool: mbrec.break_history_book, args: { book: $case.book, cob: $case.cob } }
+  offsets:
+    type: offsets
+    with: { amount: difference, within: [book], tolerance: 0.01 }
+pause_before: [reason, review]        # the two stops for a person
+review: { roles: [FOBO_CONTROLLER], require_comment: [reject, escalated] }</pre>
+    <p>The engine refuses a capability that breaks the rules: <code>validate → review → record</code> must all be there in that order, a step may only use data an earlier step produced, at most one posting step comes after <code>record</code>, and the run must pause before it.</p>
+  </div></details>
+</section>
+
+<section class="stack" aria-labelledby="h-mcp">
+  <div><p class="q">Connections</p><h2 id="h-mcp">How AOF gets data: MCP in plain words</h2></div>
+  <p>Each bank system offers AOF a short menu of questions it will answer, through a standard plug called MCP. AOF keeps an allow-list: which systems, which questions, and whether a question only reads or also writes. A step asks a question by name, such as <code>mbrec.breaks</code> or <code>motif.positions</code>.</p>
+  <div class="plug" aria-label="Systems connected to AOF">
+    <div class="side">
+      <div class="sys"><b>MB Rec</b><span>breaks · break history · book status</span></div>
+      <div class="sys"><b>MOTIF</b><span>positions · booking events · break snapshots</span></div>
+      <div class="sys"><b>Reference data</b><span>instruments · corporate actions</span></div>
+    </div>
+    <div class="hub">AOF gateway<small>checks every question against the person's books</small></div>
+    <div class="side">
+      <div class="sys"><b>Documents</b><span>read PDF and Excel · write reports</span></div>
+      <div class="sys w"><b>FAS</b><span>post adjustment to MOTIF · write · release step only</span></div>
+      <div class="sys w"><b>Messages and tickets</b><span>ask the desk · raise a ticket · after a person approves</span></div>
+    </div>
+  </div>
+  <div class="key"><b>Three rules on every call</b><p>1. Only questions on the allow-list can be asked. 2. Every question carries who is asking, and the gateway checks that person may see that book. 3. A question that writes is never given to the AI; only the release step can use it, and each write happens once.</p></div>
+  <details class="tech"><summary>For the tech team: connecting a new system</summary><div>
+    <ol class="clicks">
+      <li>The system's team publishes an MCP server for it (http).</li>
+      <li>The AOF team adds it to <code>config/agent-one-finance/connectors.yaml</code>: its address, the allowed tools, which argument carries the data scope, and <code>access: write</code> on any tool that changes something.</li>
+      <li>A step uses it by name: <code>tool: motif.positions</code>. The AI can only use tools listed for it in <code>reasoning.tools</code>.</li>
+      <li>Test against the stub first, then switch the entry to the real address. No code change.</li>
+    </ol>
+<pre>connectors:
+  motif:
+    name: MOTIF
+    transport: http
+    url: https://motif-mcp.internal/mcp
+    headers_env: { Authorization: MOTIF_MCP_AUTH }   # value from a secret
+    tools:
+      positions:      { scope: { arg: book, key: book } }
+      booking_events: { scope: { arg: book, key: book } }
+  fas:
+    tools:
+      post_adjustment:
+        access: write                 # never offered to the AI; release step only
+        idempotency_arg: idempotency_key
+        scope: { arg: book, key: book }</pre>
+  </div></details>
+</section>
+
+<section class="stack" aria-labelledby="h-post">
+  <div><p class="q">Posting</p><h2 id="h-post">Can AOF post at each step, or only at the end?</h2></div>
+  <p><b>Only at the end, once, and only after two people.</b> Every step before the decision only reads and proposes. This is deliberate: nothing reaches MOTIF that a FOBO controller did not approve and a second person did not release, and the audit trail shows both names.</p>
+  <div class="track" aria-label="When a posting can happen">
+    <div class="stage"><b>Steps 1–5</b><span>Read, check, propose. No writes.</span></div>
+    <div class="stage p"><b>Review</b><span>A FOBO controller approves the adjustment.</span></div>
+    <div class="stage p"><b>Release</b><span>A different person releases it.</span></div>
+    <div class="stage go"><b>Post</b><span>FAS posts it to MOTIF once, then AOF confirms it landed.</span></div>
+  </div>
+  <div class="tw"><table>
+    <thead><tr><th>If you need…</th><th>Do this</th></tr></thead>
+    <tbody>
+      <tr><td>To post in stages (for example each book, or each group, as soon as it is decided)</td><td>Split the work into <b>child cases</b>: a parent case opens one child per book or group. Each child has its own review, release and posting, so each part posts when it is ready.</td></tr>
+      <tr><td>To ask the desk or a trader something in the middle</td><td>An <b>outreach</b> step sends the question after a person approves sending it. The answer comes back into the case. This is a message, not a posting.</td></tr>
+      <tr><td>To raise a ticket for another team</td><td>The <b>record</b> step raises it after review, one ticket per case and group, however often it is retried.</td></tr>
+      <tr><td>A report or evidence pack</td><td>A <b>report</b> step after the decision writes a PDF. It can sit next to the posting.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="stack" aria-labelledby="h-same">
+  <div><p class="q">One engine</p><h2 id="h-same">The same seven stages fit other finance work</h2></div>
+  <p>This is why AOF is a product and not a FOBO tool. A new use case is a new checklist: the stages, the gates and the controls stay the same.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Stage</th><th>FOBO breaks</th><th>Month-end accruals</th><th>Payment exceptions</th></tr></thead>
+    <tbody>
+      <tr><td>Get the work</td><td>Open breaks from MB Rec</td><td>Accruals due this period</td><td>Payments stuck in the queue</td></tr>
+      <tr><td>Gather evidence</td><td>MOTIF positions and bookings</td><td>Invoices, POs, last month</td><td>Payment and client details</td></tr>
+      <tr><td>Known patterns</td><td>Offsets, split bookings, trends</td><td>Unusual amounts, duplicates</td><td>Repeat failures, screening hits</td></tr>
+      <tr><td>Propose</td><td>Explanation and adjustment</td><td>Accrual or reversal</td><td>Repair or return</td></tr>
+      <tr><td>A person decides</td><td>FOBO controller</td><td>Finance controller</td><td>Payments operations</td></tr>
+      <tr><td>Act after release</td><td>Post to MOTIF through FAS</td><td>Post the journal</td><td>Release or return the payment</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="stack" aria-labelledby="h-say">
+  <div><p class="q">Saying it</p><h2 id="h-say">How to explain AOF to anyone</h2></div>
+  <div class="say">
+    <div><h3>To a business person, in 30 seconds</h3><blockquote>"Every morning our FOBO controllers investigate breaks by hand. AOF does the legwork first: it pulls the facts, settles what our rules can settle, and writes up the rest. The controller reviews groups with the evidence attached and decides. Nothing is posted until a second person releases it."</blockquote></div>
+    <div><h3>To a tech person, in 2 minutes</h3><blockquote>"It is a workflow engine for governed AI. A capability is a YAML checklist of steps; each step reads what earlier steps produced. Data comes in through MCP servers on an allow-list, checked against the user's entitlements on every call. Rules run before the model, the model sees only allowed tools, every figure is validated against source, and there are three fixed gates. Writes happen once, after review and a second person's release."</blockquote></div>
+  </div>
+  <div class="stack">
+    <h3>A demo in six clicks</h3>
+    <ol class="clicks">
+      <li><b>Inbox:</b> "This is Frank's morning. Five groups waiting, oldest first."</li>
+      <li><b>Open a case:</b> "Twelve breaks for one book and one day, already sorted."</li>
+      <li><b>Open a group:</b> "The evidence: MB Rec, MOTIF, and the checks that ran."</li>
+      <li><b>The proposal:</b> "What AOF thinks, and every figure traced to its source."</li>
+      <li><b>Approve:</b> "Frank decides. The adjustment now waits for a second person."</li>
+      <li><b>How it runs:</b> "The checklist, the stops for a person, and the one place anything is posted."</li>
+    </ol>
+  </div>
+</section>
+
+<section class="stack" aria-labelledby="h-dir">
+  <div><p class="q">Direction</p><h2 id="h-dir">How we present AOF from now on</h2></div>
+  <ul class="rules">
+    <li><b>Start with Frank's morning, not the platform.</b> Show the FOBO use case end to end before any configuration screen.</li>
+    <li><b>Use the six words, and only those:</b> capability, group, case, step, connection, gate.</li>
+    <li><b>Show the seven stages picture</b> whenever steps come up. Name the stage before the step.</li>
+    <li><b>Repeat the promise:</b> AOF prepares, a FOBO controller decides, a second person releases.</li>
+    <li><b>Show reuse last:</b> one table of another use case on the same stages, so the audience sees a product, not a tool.</li>
+  </ul>
+</section>
+
+<footer>Agent One Finance · the FOBO break investigation capability, as configured in the AOF repository (config/agent-one-finance). Counts in the morning example are illustrative.</footer>
+</div>
+</body></html>

@@ -1,0 +1,97 @@
+# Example team group: the Prime controllers' rules on the FOBO price and
+# position check. The capability (capability.yaml) is the shape; this is what
+# the team decides: the data joined to each break, the checks and tests, what
+# each category means, the verdicts, and the sign-off questions.
+
+group: prime
+name: Prime books
+description: Prime books' MB Rec breaks, checked for price and position continuity and the common causes.
+owners:
+  people: [frank]
+  role: AOF_FOBO_RECON_OWNER
+  four_eyes: true
+set:
+  items:
+    display: [instrument, desk, break_type, category, side, cause_reason, cats_amount, motif_amount, difference]
+
+  # Step 2 (enrich): join MOTIF's dated FO/BO snapshot to each break, by instrument.
+  enrich:
+    - tool: motif.break_snapshots
+      args: { book: $case.book, cob: $case.cob }
+      keys: [instrument]
+
+  # Rule P1: a threshold Product Control has not confirmed stays empty, and a
+  # test that needs it shows as "not run". It is never guessed.
+  policy:
+    mtm_market_movement_tolerance: { value: null, unit: GBP }
+
+  # Step 3 (classify): the playbook. The first check that is true gives the
+  # break its category and side; every test runs on every break.
+  playbook:
+    checks:
+      - { id: R5, when: "book_status != 'Complete'", category: W, side: UNKNOWN,
+          reason: "Book is {book_status} in MB Rec; start only on complete books" }
+      - { id: POSTING_FAILED, when: "journal_status == 'rejected'", category: R, side: BO,
+          reason: "MOTIF rejected the posting; correct the rejection and re-post" }
+      - { id: STATIC_OUTLIER, when: "not static_present", category: F, side: BO,
+          reason: "No static data for the instrument; a false break until validated" }
+      - { id: LATE_BOOKING, when: "fo_booking_ts > bo_cutoff_ts", category: T, side: BO,
+          reason: "Booked after the MOTIF cut-off; expected to clear on the next COB" }
+      - { id: CURVE, when: "fo_dataset_id != bo_dataset_id", category: A, side: UNKNOWN,
+          reason: "FO and BO priced from different curve datasets ({fo_dataset_id} vs {bo_dataset_id})" }
+      - { id: VERSION, when: "fo_version != bo_version", category: E, side: FO,
+          reason: "FO trade is version {fo_version}, MOTIF has version {bo_version}" }
+    tests:
+      - { id: FO-1, side: FO, validates: Position, check: "Prior day close position = current day open position",
+          fails_when: "fo_prev_close_position != fo_open_position", needs: [fo_prev_close_position, fo_open_position],
+          evidence: [Position file], on_fail: "Hold adjustment; escalate position issue", blocks_post: true }
+      - { id: FO-2, side: FO, validates: Price, check: "Yesterday close price = today open price",
+          fails_when: "fo_prev_close_price != fo_open_price", needs: [fo_prev_close_price, fo_open_price],
+          evidence: [Pricing file], on_fail: "Hold adjustment; raise market-data DQ", blocks_post: true }
+      - { id: FO-4, side: FO, validates: MTM, check: "Does position x price movement explain MTM?",
+          fails_when: "abs(mtm_unexplained) > policy.mtm_market_movement_tolerance", needs: [mtm_unexplained],
+          policy: [mtm_market_movement_tolerance], on_fail: "Isolate which of the three; escalate", blocks_post: true }
+    categories:
+      A: { name: Price break,          determinism: deterministic, escalate_to: Market data }
+      E: { name: Trade booking break,  determinism: deterministic, escalate_to: Desk }
+      F: { name: Data quality break,   determinism: deterministic, escalate_to: Technology }
+      H: { name: Novel break,          determinism: judgement,     escalate_to: Product Control }
+      R: { name: Rejected posting,     determinism: deterministic, escalate_to: Operations }
+      T: { name: Timing difference,    determinism: deterministic, escalate_to: Operations }
+      W: { name: Books not complete,   determinism: deterministic, escalate_to: Operations, any_side: true }
+    default_category: H
+    sides: [FO, BO]
+    verdicts:
+      A: { FO: DO_NOT_POST, BO: POST }
+      E: { FO: DO_NOT_POST, BO: POST }
+      F: { FO: DO_NOT_POST, BO: DO_NOT_POST }
+      H: { FO: ESCALATE,    BO: ESCALATE }
+      R: { FO: CORRECT_AND_REPOST, BO: CORRECT_AND_REPOST }
+      T: { FO: MONITOR,     BO: MONITOR }
+      W: { FO: ESCALATE,    BO: ESCALATE }
+    guards:
+      - { verdict: POST, when: "side == 'FO'", instead: ESCALATE,
+          reason: "R2: a cause originating in FO never posts" }
+    blocked_verdict: ESCALATE
+    escalate_verdicts: [ESCALATE]
+    confirm_verdicts: [POST]
+    comment: "{category_name} ({side_name}): {reasons}. Verdict per playbook; owner {escalate_to}."
+    side_names: { FO: front office, BO: back office, UNKNOWN: side not proven }
+
+  # Step 4 (group): one group per category and side, named in business words.
+  group_by: [category, side]
+  group_label: "{category_name} · {side_name}"
+
+  # Step 5 (reason): what the model must write for each group it investigates.
+  reasoning:
+    sections:
+      - { id: root_cause, label: Root cause, required: true, hint: "One clear statement, or say it is not established" }
+      - { id: verdict_reason, label: Verdict and why, required: true, hint: "The verdict and the reason" }
+
+  # Step 8 (review): the controller answers these before approving.
+  review:
+    roles: [FOBO_CONTROLLER]
+    checklist:
+      - { id: what_checked, label: "What did I check?",               prefill: tests }
+      - { id: root_cause,   label: "What root cause was identified?", prefill: root_cause }
+      - { id: adjustment,   label: "Should an adjustment be posted?", prefill: verdict }

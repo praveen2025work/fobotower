@@ -1,0 +1,59 @@
+# Example capability: FOBO price and position check.
+#
+# A small slice of the FOBO Investigation Skill, set up for real through the
+# product (README.md in this folder shows every step and what came back).
+# The capability is the shape of the work: what one case is, where the breaks
+# come from, the steps in order, where a person must approve, and who signs off.
+# The team's rules (playbook, data joins, instructions) are in group.yaml.
+
+id: fobo.price.position
+name: FOBO price and position check
+description: Check each MB Rec break on a Prime book for price and position continuity and the common causes, settle what the playbook can, and have a FOBO controller sign off.
+
+# Who may change it. Four eyes: the person who submits a change cannot approve it.
+owners:
+  people: [frank]
+  role: AOF_FOBO_RECON_OWNER
+  four_eyes: true
+
+# One case = one book on one COB.
+case:
+  label: Price and position run
+  item_label: Break
+  key: [book, cob]
+  subject: "{book} · COB {cob}"
+  scopes: { book: book }          # a controller sees only the books they are entitled to
+
+# Step 1 reads MB Rec's open breaks through the MB Rec MCP tool.
+items:
+  load: { tool: mbrec.breaks, args: { book: $case.book, cob: $case.cob } }
+  id_field: instrument
+  amount_field: difference
+  amount_unit: GBP
+  display: [instrument, desk, break_type, cats_amount, motif_amount, difference]
+
+# The flow. The engine builds the LangGraph graph from this list, in this order.
+steps: [load, enrich, classify, group, reason, draft, validate, review, record]
+
+# The run stops before these steps until a person lets it go on.
+pause_before: [reason, review]
+tollgates:
+  reason:
+    check: "Are these the breaks MB Rec reported for this book and COB, and is the playbook's classification right? Add anything the desk told you."
+
+# The model only sees what the playbook could not settle.
+reasoning:
+  reasoner: llm
+  output: verdict
+  tools: [mbrec.break_history, motif.booking_events]
+  skill: |
+    You are a Product Controller investigating FOBO breaks (CATS vs MOTIF).
+    Cite only figures from the tools or the breaks. Never assume FO is correct.
+    If you cannot evidence a cause, say so and escalate.
+
+review:
+  roles: [FOBO_CONTROLLER]
+  require_comment: [reject, escalated]
+
+# What a team group may set for its own books.
+configurable: [items.display, enrich, policy.*, playbook, group_by, group_label, reasoning.skill, reasoning.tools, reasoning.sections, review.roles, review.checklist]

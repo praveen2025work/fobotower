@@ -44,12 +44,12 @@ MILESTONES = [
 S = [
  # E01 Programme and governance
  ("E01","Set up Jira, sprint calendar and weekly status","Load this plan into Jira; two-week sprints; weekly status to stakeholders.","Board live; first status sent","High",1,"S0","PM","",""),
- ("E01","Agree scope with the sponsor","In: FOBO Prime and Rates on AOF, MB Rec and MOTIF data, approved adjustments posted to MOTIF through FAS, Diagnostics. Out: other use cases.","Scope signed","Highest",2,"S0","PM","",""),
+ ("E01","Agree scope with the Business","In: FOBO Prime and Rates on AOF, MB Rec and MOTIF data, approved adjustments posted to MOTIF through FAS, Diagnostics. Out: other use cases.","Scope signed by the Business","Highest",2,"S0","PM","",""),
  ("E01","Confirm the CAB deadline for a 5 Jan release","Change freeze confirmed: 11 Dec to 4 Jan.","CAB deadline in the plan","Highest",1,"S0","PM","","","In Progress"),
  ("E01","RAID log and fortnightly steerco","Risks, assumptions, issues and dependencies tracked weekly.","RAID log live","High",1,"S0","PM","",""),
  ("E01","Architecture review (ARB)","Present the architecture and controls; record conditions.","ARB approval; conditions added as stories","Highest",3,"S1","Architect","",""),
  ("E01","Agree success and go/no-go criteria","For example: agreement with reviewers, no unverified figures, hours saved, no open Sev1/Sev2.","Criteria agreed","High",2,"S1","PM / BA","",""),
- ("E01","Go/no-go sign-off list","Who signs: Product Control, Risk, Security, Operations, sponsor.","List agreed","High",1,"S4","PM","",""),
+ ("E01","Go/no-go sign-off list","Who signs: the Business (Product Control), Risk, Security, Operations.","List agreed","High",1,"S4","PM","",""),
  # E02 Build and environments (UAT, Prod)
  ("E02","Fix the build and deploy (deployment currently failing)","The build is set up; the deployment fails because a Python package is missing from the image. Fix it in the build and redeploy.","Deployment healthy","Highest",3,"S0","DevOps / Backend","UAT","","In Progress"),
  ("E02","Bring the codebase to the latest AOF version and keep it current","Latest AOF update applied; apply each new update as it arrives and keep our own changes.","On the latest version; tests pass","Highest",2,"S0","Backend","","","In Progress"),

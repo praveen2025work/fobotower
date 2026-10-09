@@ -37,8 +37,8 @@ migration builds on.
 
 ## Converting an office copy
 
-The names above are also in [`migration/rename-map.json`](migration/rename-map.json), and
-`apps/backend/scripts/aof_convert.py` applies them to any repo (a dry run unless you pass `--apply`).
+The names above are also in [`archive/migration/rename-map.json`](archive/migration/rename-map.json), and
+`archive/migration/aof_convert.py` applied them to any repo (a dry run unless you pass `--apply`).
 Office Claude Code has a skill for the whole upgrade:
-[`migration/office-claude/upgrade-to-aof`](migration/office-claude/upgrade-to-aof/SKILL.md).
+[`archive/migration/office-claude/upgrade-to-aof`](archive/migration/office-claude/upgrade-to-aof/SKILL.md).
 

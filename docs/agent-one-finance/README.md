@@ -19,9 +19,8 @@ taken and why.
 FOBO's behaviour on Agent One Finance — its playbook as configuration of the CATS vs MOTIF rec groups:
 [`fobo-on-agent-one-finance.md`](fobo-on-agent-one-finance.md).
 
-**Moving the office FOBO (on Agent One) onto Agent One Finance** — change guide, office Claude Code skill and
-parity script: [`migration/`](migration/README.md). **Upgrading an office copy still named Helix:** <!-- aof-convert: keep -->
-[`migration/office-claude/`](migration/office-claude/README.md) (skill, rename map, converter, what changed).
+**Bringing AOF into the office repos (aos-frontend, aos-backend), and hosting it on AWS:** one guide,
+[`office/conversion-guide.md`](office/conversion-guide.md). Earlier guides are in [`archive/`](archive/README.md), for the record only.
 
 **Executive demo video (3 min) and presenter notes:** [`demo/`](demo/README.md).
 

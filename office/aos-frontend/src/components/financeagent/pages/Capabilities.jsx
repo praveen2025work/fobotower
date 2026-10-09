@@ -1,0 +1,74 @@
+// Generated from apps/web/src/pages/Capabilities.tsx by apps/web/office/convert.mjs. Office changes to this file are
+// kept by aof_sync.py on the next update; see docs/agent-one-finance/office/conversion-guide.md.
+import { Link } from "../office/router";
+import { Layers, ShieldCheck } from "lucide-react";
+
+import { useCapabilities } from "../api/aof";
+import { Empty, ErrorState, Loading, PageHeader } from "../components/ui";
+
+/** The catalogue: every capability the user's roles allow — each one configuration only. */
+export default function Capabilities() {
+  const caps = useCapabilities();
+  return (
+    <div>
+      <PageHeader
+        title="Capabilities"
+        subtitle="Each capability is a versioned manifest over onboarded connectors — no code per use case."
+      />
+      {caps.isLoading && <Loading what="capabilities" />}
+      {caps.error && <ErrorState error={caps.error} />}
+      {caps.data?.length === 0 && <Empty>No capabilities for your roles.</Empty>}
+      <div className="hx-stagger grid gap-4 lg:grid-cols-2">
+        {caps.data?.map((c) => (
+          <Link
+            key={c.id}
+            to={`/capabilities/${encodeURIComponent(c.id)}`}
+            className="hx-card hx-sheen group rounded-xl p-5"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent-50 text-accent-600">
+                  <Layers size={18} />
+                </div>
+                <div>
+                  <h2 className="font-semibold text-surface-900 group-hover:text-primary-700">{c.name}</h2>
+                  <p className="text-[11px] text-surface-400">version {c.version}</p>
+                </div>
+              </div>
+              <div className="flex gap-1.5 text-[10px]">
+                {c.is_owner && (
+                  <span className="rounded bg-primary-50 px-1.5 py-0.5 font-medium text-primary-700">Owner</span>
+                )}
+                {c.can_decide && (
+                  <span className="inline-flex items-center gap-1 rounded bg-accent-50 px-1.5 py-0.5 font-medium text-accent-700">
+                    <ShieldCheck size={10} /> Reviewer
+                  </span>
+                )}
+              </div>
+            </div>
+            {c.description && <p className="mt-3 text-sm text-surface-600">{c.description}</p>}
+            <p className="mt-3 text-xs text-surface-500">
+              One <span className="font-medium text-surface-700">{c.case_label}</span> per {c.case_key.join(" × ")} ·
+              items are <span className="font-medium text-surface-700">{c.item_label.toLowerCase()}s</span>
+            </p>
+            {c.groups.length > 0 && (
+              <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs text-surface-500">
+                Configured by
+                {c.groups.map((g) => (
+                  <span key={g.group} className="rounded bg-primary-50 px-1.5 py-0.5 font-medium text-primary-700">
+                    {g.name}
+                  </span>
+                ))}
+              </div>
+            )}
+            <p className="mt-2 text-xs text-surface-400">
+              {c.steps.includes("agent")
+                ? "One skill session, then people review"
+                : `${c.steps.length} steps, then people review`}
+            </p>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}

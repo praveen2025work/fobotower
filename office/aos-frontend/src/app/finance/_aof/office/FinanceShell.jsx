@@ -1,5 +1,5 @@
 // Generated from apps/web/office/templates/FinanceShell.jsx by apps/web/office/convert.mjs. Office changes to this file are
-// kept by aof_sync.py on the next update; see docs/agent-one-finance/office/conversion-guide.md.
+// kept by aof_sync.py on the next update; see office/README.md.
 "use client";
 // The console's frame inside Agent One: its query cache, its Layout (sidebar,
 // top bar, theme) and the page Next.js routed to. Mirrors the upstream

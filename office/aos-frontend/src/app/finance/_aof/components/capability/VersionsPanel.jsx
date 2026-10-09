@@ -1,5 +1,5 @@
 // Generated from apps/web/src/components/capability/VersionsPanel.tsx by apps/web/office/convert.mjs. Office changes to this file are
-// kept by aof_sync.py on the next update; see docs/agent-one-finance/office/conversion-guide.md.
+// kept by aof_sync.py on the next update; see office/README.md.
 // Versions: who drafted and approved each, what changed between any two
 // (the diff an approver reads), and export for promotion to another environment.
 

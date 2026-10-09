@@ -1,5 +1,5 @@
 // Generated from apps/web/src/components/StatCard.tsx by apps/web/office/convert.mjs. Office changes to this file are
-// kept by aof_sync.py on the next update; see docs/agent-one-finance/office/conversion-guide.md.
+// kept by aof_sync.py on the next update; see office/README.md.
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import clsx from "clsx";
 import { CountUp } from "./ui";

@@ -1,5 +1,5 @@
 // Generated from apps/web/src/components/case/CaseChat.tsx by apps/web/office/convert.mjs. Office changes to this file are
-// kept by aof_sync.py on the next update; see docs/agent-one-finance/office/conversion-guide.md.
+// kept by aof_sync.py on the next update; see office/README.md.
 // Ask about a case — aria-ai's chat idea, scoped to one case. Answers come
 // from the case's own data and its capability's read tools (through the
 // gateway), and any figure the answer cannot trace is flagged under it.

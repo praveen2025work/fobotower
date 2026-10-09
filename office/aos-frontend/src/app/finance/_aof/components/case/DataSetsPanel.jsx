@@ -1,5 +1,5 @@
 // Generated from apps/web/src/components/case/DataSetsPanel.tsx by apps/web/office/convert.mjs. Office changes to this file are
-// kept by aof_sync.py on the next update; see docs/agent-one-finance/office/conversion-guide.md.
+// kept by aof_sync.py on the next update; see office/README.md.
 // What the run's data steps did: the named data sets it used (FX rates, limits,
 // roll-ups), the items it set aside and why, and steps skipped this time.
 

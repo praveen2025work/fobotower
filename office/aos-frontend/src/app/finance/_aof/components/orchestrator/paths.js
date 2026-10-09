@@ -1,5 +1,5 @@
 // Generated from apps/web/src/components/orchestrator/paths.ts by apps/web/office/convert.mjs. Office changes to this file are
-// kept by aof_sync.py on the next update; see docs/agent-one-finance/office/conversion-guide.md.
+// kept by aof_sync.py on the next update; see office/README.md.
 // Dotted-path helpers over a manifest held as plain JSON, and the rules for
 // what a team group may set (its capability's `configurable` paths).
 

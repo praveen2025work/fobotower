@@ -1,5 +1,5 @@
 // Generated from apps/web/src/components/capability/FlowDiagram.tsx by apps/web/office/convert.mjs. Office changes to this file are
-// kept by aof_sync.py on the next update; see docs/agent-one-finance/office/conversion-guide.md.
+// kept by aof_sync.py on the next update; see office/README.md.
 // A capability's workflow as a short story, drawn from the manifest (GET /flow):
 // how a case opens, then phases in order — get the data, find the cause,
 // propose, check, a person decides, record — each saying who acts, with its

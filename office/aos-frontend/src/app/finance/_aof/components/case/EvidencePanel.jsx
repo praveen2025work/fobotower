@@ -1,5 +1,5 @@
 // Generated from apps/web/src/components/case/EvidencePanel.tsx by apps/web/office/convert.mjs. Office changes to this file are
-// kept by aof_sync.py on the next update; see docs/agent-one-finance/office/conversion-guide.md.
+// kept by aof_sync.py on the next update; see office/README.md.
 // Evidence attached to the case (readable by the capability's document tools
 // and the model), and the case's evidence pack for an auditor.
 

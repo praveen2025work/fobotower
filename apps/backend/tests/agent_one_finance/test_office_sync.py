@@ -97,13 +97,39 @@ def test_later_syncs_update_keep_merge_clash_and_remove(tmp_path):
     assert "changed only in the office" in report(tmp_path)
 
 
-def test_first_sync_with_base_from_merges_instead_of_replacing(tmp_path):
-    old = upstream(tmp_path, "old", {"llm.py": LLM, "env.py": "e1\n"})
-    new = upstream(tmp_path, "new", {"llm.py": LLM, "env.py": "e2\n"})
-    write(tmp_path / "aos-backend", {"agent_one_finance/llm.py": "# office\n" + LLM, "agent_one_finance/env.py": "e1\n"})
-    assert sync(tmp_path, new, "--apply", "--base-from", str(old), "--only", "backend") == 0
+def history(up: Path, *releases: dict[str, str]) -> None:
+    """office/aof-history.*: earlier releases of the backend files, as the download carries them."""
+    import io
+    import tarfile
+
+    versions, blobs = [], {}
+    for n, files in enumerate(releases):
+        hashed = {}
+        for k, v in files.items():
+            h = aof_sync.sha(v.encode())
+            blobs[h] = v.encode()
+            hashed[f"apps/backend/agent_one_finance/{k}"] = h
+        versions.append({"version": f"v{n}", "date": f"2026-10-0{n + 1}", "files": hashed})
+    (up / "office/aof-history.json").write_text(json.dumps({"versions": versions}))
+    with tarfile.open(up / "office/aof-history.tar.gz", "w:gz") as tar:
+        for h, data in blobs.items():
+            info = tarfile.TarInfo(h)
+            info.size = len(data)
+            tar.addfile(info, io.BytesIO(data))
+
+
+def test_first_sync_from_the_download_alone_updates_untouched_files_and_merges_edits(tmp_path):
+    old = {"llm.py": LLM, "env.py": "e1\n", "same.py": "s\n"}
+    up = upstream(tmp_path, "fobotower-main", {"llm.py": LLM.replace("line 6", "line 6 v2"), "env.py": "e2\n", "same.py": "s\n"})
+    history(up, {"llm.py": "older\n", "env.py": "e0\n", "same.py": "s\n"}, old)
+    # the office copied release v1 and edited llm.py
+    write(tmp_path / "aos-backend", {"agent_one_finance/llm.py": "# office\n" + LLM, "agent_one_finance/env.py": "e1\n",
+                                     "agent_one_finance/same.py": "s\n"})
+    assert sync(tmp_path, up, "--apply", "--only", "backend") == 0
     office = tmp_path / "aos-backend/agent_one_finance"
-    assert (office / "llm.py").read_text().startswith("# office") and (office / "env.py").read_text() == "e2\n"
+    assert (office / "env.py").read_text() == "e2\n"  # untouched old release: updated
+    assert (office / "llm.py").read_text() == "# office\n" + LLM.replace("line 6", "line 6 v2")  # edit kept, update merged
+    assert "matches the AOF release of v1" in report(tmp_path)
 
 
 def test_office_owned_file_is_added_once_then_kept(tmp_path):
@@ -116,3 +142,11 @@ def test_office_owned_file_is_added_once_then_kept(tmp_path):
     up2 = upstream(tmp_path, "up2", {}, {"office/auth.js": "// upstream example changed\n"})
     assert sync(tmp_path, up2, "--apply", "--only", "frontend") == 0
     assert auth.read_text() == "// office sign-on\n"
+
+
+@pytest.mark.skipif(not (ROOT / ".git").exists(), reason="needs the AOF repository's git history")
+def test_the_history_in_the_pack_is_up_to_date():
+    import sys
+
+    r = subprocess.run([sys.executable, str(ROOT / "office" / "build_history.py"), "--check"], capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr

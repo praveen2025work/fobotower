@@ -1,5 +1,5 @@
 // Generated from apps/web/src/components/orchestrator/stages.ts by apps/web/office/convert.mjs. Office changes to this file are
-// kept by aof_sync.py on the next update; see docs/agent-one-finance/office/conversion-guide.md.
+// kept by aof_sync.py on the next update; see office/README.md.
 // The orchestrator, stage by stage: what each step does, the settings that
 // belong to it, and how a problem the server reports is filed under it.
 // The editor renders this description; adding a setting is one entry here.

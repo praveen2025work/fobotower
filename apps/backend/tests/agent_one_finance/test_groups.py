@@ -3,6 +3,7 @@
 import yaml
 
 from agent_one_finance.capabilities import seed_files
+from agent_one_finance.config import settings
 from agent_one_finance.groups import GroupConfig, effective, set_paths
 from tests.agent_one_finance.conftest import CASH, FOBO, RECON
 
@@ -93,7 +94,7 @@ async def test_only_a_groups_owners_change_it(api):
 def test_group_settings_replace_at_the_configurable_path():
     base = _recon()
     cfg = GroupConfig.model_validate(yaml.safe_load(open(
-        "/home/user/fobotower/config/agent-one-finance/groups/recon.investigation/cats-motif.yaml")))
+        settings().config_dir / "groups" / "recon.investigation" / "cats-motif.yaml")))
     m, found = effective(base, cfg)
     assert found == []
     assert m.case.scopes == {"book": "book"}                    # replaced, not merged with entity

@@ -36,6 +36,13 @@ from functools import lru_cache
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
+# The folder that holds the agent_one_finance package: apps/backend here, the repo root in
+# aos-backend. Defaults are looked for in both layouts.
+PACKAGE_HOME = Path(__file__).resolve().parents[1]
+
+
+def _default(*candidates: Path) -> Path:
+    return next((c for c in candidates if c.exists()), candidates[0])
 
 
 def _database_url_from_parts() -> str | None:
@@ -90,7 +97,8 @@ def settings() -> AofSettings:
         or _database_url_from_parts()
         or env("FOBO_DATABASE_URL")
         or "postgresql+asyncpg://fobo:fobo@localhost:5433/fobo",
-        config_dir=Path(env("AOF_CONFIG_DIR") or REPO_ROOT / "config" / "agent-one-finance"),
+        config_dir=Path(env("AOF_CONFIG_DIR") or _default(REPO_ROOT / "config" / "agent-one-finance",
+                                                           PACKAGE_HOME / "config" / "agent-one-finance")),
         llm_adapter=env("AOF_LLM_ADAPTER") or "stub",
         tracing_setup=env("AOF_TRACING_SETUP") or None,
         phoenix_endpoint=env("PHOENIX_COLLECTOR_ENDPOINT") or None,
@@ -125,7 +133,7 @@ def settings() -> AofSettings:
         # a Teams incoming webhook, or a Power Automate flow that emails or posts it.
         notify_webhook_url=env("AOF_NOTIFY_WEBHOOK_URL") or None,
         # The documents service: what it reads, and where its reports go.
-        documents_dir=Path(env("AOF_DOCUMENTS_DIR") or REPO_ROOT / "apps" / "backend" / "seed_data" / "aof_documents"),
+        documents_dir=Path(env("AOF_DOCUMENTS_DIR") or _default(PACKAGE_HOME / "seed_data" / "aof_documents")),
         reports_dir=Path(env("AOF_REPORTS_DIR") or REPO_ROOT / "var" / "agent-one-finance" / "reports"),
         # db: reports live in the shared database (every API instance serves them);
         # fs: in AOF_REPORTS_DIR (one server, or a shared mount)

@@ -1,5 +1,5 @@
 // Generated from apps/web/src/components/orchestrator/fields.tsx by apps/web/office/convert.mjs. Office changes to this file are
-// kept by aof_sync.py on the next update; see docs/agent-one-finance/office/conversion-guide.md.
+// kept by aof_sync.py on the next update; see office/README.md.
 // Reusable form controls for configuration, driven by a field description
 // (stages.ts). Each control reads and writes one dotted path of the working
 // manifest; a control the owner may not change is shown, locked, with why.

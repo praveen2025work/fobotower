@@ -1,5 +1,5 @@
 // Generated from apps/web/src/components/orchestrator/OrchestratorEditor.tsx by apps/web/office/convert.mjs. Office changes to this file are
-// kept by aof_sync.py on the next update; see docs/agent-one-finance/office/conversion-guide.md.
+// kept by aof_sync.py on the next update; see office/README.md.
 // Configure the orchestrator, step by step: the pipeline on the left (each
 // step on or off, where the run stops for a person, the gates locked on), the
 // selected step's settings on the right. Every edit is checked by the server

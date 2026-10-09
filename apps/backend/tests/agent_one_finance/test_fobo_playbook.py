@@ -1,5 +1,5 @@
 """FOBO's behaviour on Agent One Finance: the CATS vs MOTIF rec group runs FOBO's playbook
-(config/playbook/fobo-cats-vs-motif.yaml) as configuration — cause checks,
+as configuration — cause checks,
 categories, the verdict table, the FO-never-posts guard, unset-policy
 confirmation, escalation teams and book lineage as of the COB."""
 
@@ -7,10 +7,11 @@ import yaml
 
 from agent_one_finance import steps
 from agent_one_finance.capabilities import seed_files
+from agent_one_finance.config import settings
 from agent_one_finance.groups import GroupConfig, effective
 from tests.agent_one_finance.conftest import FOBO, RECON
 
-GROUP = "/home/user/fobotower/config/agent-one-finance/groups/recon.investigation/cats-motif.yaml"
+GROUP = settings().config_dir / "groups" / "recon.investigation" / "cats-motif.yaml"
 
 
 async def _run(api, book, cob, user="frank"):

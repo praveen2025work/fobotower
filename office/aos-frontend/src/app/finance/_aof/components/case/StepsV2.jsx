@@ -1,5 +1,5 @@
 // Generated from apps/web/src/components/case/StepsV2.tsx by apps/web/office/convert.mjs. Office changes to this file are
-// kept by aof_sync.py on the next update; see docs/agent-one-finance/office/conversion-guide.md.
+// kept by aof_sync.py on the next update; see office/README.md.
 // What steps v2 add to a case, where people look for it: on a group, who may
 // approve it (authority tier, reserved decisions), the journals proposed and
 // the messages drafted or sent; beside the case, the case that opened it, the

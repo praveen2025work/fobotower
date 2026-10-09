@@ -1,5 +1,5 @@
 // Generated from apps/web/src/components/mission-control/ScanningStrip.tsx by apps/web/office/convert.mjs. Office changes to this file are
-// kept by aof_sync.py on the next update; see docs/agent-one-finance/office/conversion-guide.md.
+// kept by aof_sync.py on the next update; see office/README.md.
 import KpiTile from "./KpiTile";
 function formatCurrency(value) {
   return value < 1 ? `$${value.toFixed(3)}` : `$${value.toFixed(2)}`;

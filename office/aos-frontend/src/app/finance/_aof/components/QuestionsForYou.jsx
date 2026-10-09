@@ -1,5 +1,5 @@
 // Generated from apps/web/src/components/QuestionsForYou.tsx by apps/web/office/convert.mjs. Office changes to this file are
-// kept by aof_sync.py on the next update; see docs/agent-one-finance/office/conversion-guide.md.
+// kept by aof_sync.py on the next update; see office/README.md.
 // Questions controllers asked you for evidence (the desk, a trader,
 // Operations): the question, the breaks it is about — only those, not the
 // whole case — and a box to answer. The answer goes back to the case and to

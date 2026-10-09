@@ -1,5 +1,5 @@
 // Generated from apps/web/src/pages/CaseWorkspace.tsx by apps/web/office/convert.mjs. Office changes to this file are
-// kept by aof_sync.py on the next update; see docs/agent-one-finance/office/conversion-guide.md.
+// kept by aof_sync.py on the next update; see office/README.md.
 // The case workspace — aria-ai's 3-pane Run layout for an Agent One Finance case:
 // proposals | the selected proposal (or Ask, or the run's history) | case context.
 

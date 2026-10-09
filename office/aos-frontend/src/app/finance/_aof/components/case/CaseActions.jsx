@@ -1,5 +1,5 @@
 // Generated from apps/web/src/components/case/CaseActions.tsx by apps/web/office/convert.mjs. Office changes to this file are
-// kept by aof_sync.py on the next update; see docs/agent-one-finance/office/conversion-guide.md.
+// kept by aof_sync.py on the next update; see office/README.md.
 // What a case needs from the person looking at it, said once at the top:
 // their review, their release, or who else it waits on and why not them —
 // plus the release summary and the plain-words escalation card.

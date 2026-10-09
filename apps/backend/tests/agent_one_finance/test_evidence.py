@@ -6,11 +6,12 @@ import io
 from pypdf import PdfReader
 
 from agent_one_finance import gateway
+from agent_one_finance.config import settings
 from agent_one_finance.entitlement import Caller
 from tests.agent_one_finance.conftest import VARIANCE
 
 KEY = {"entity": "UK01", "period": "2026-09"}
-PDF = open("/home/user/fobotower/apps/backend/seed_data/aof_documents/UK01/mgmt-commentary-2026-09.pdf", "rb").read()
+PDF = (settings().documents_dir / "UK01" / "mgmt-commentary-2026-09.pdf").read_bytes()
 
 
 async def _case(api):

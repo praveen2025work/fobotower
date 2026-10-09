@@ -9,6 +9,7 @@ the desk said before the model is asked anything."""
 
 import uuid
 
+from agent_one_finance.config import settings
 from agent_one_finance.stub_connectors import finance
 
 CAP, GROUP = "break.investigation", "fobo-prime"
@@ -84,7 +85,7 @@ def test_a_category_settled_whatever_the_side_needs_one_verdict_for_every_side()
     from agent_one_finance.capabilities import seed_files
     from agent_one_finance.groups import GroupConfig, effective
     base = next(m for m in seed_files() if m.id == CAP)
-    raw = yaml.safe_load(open(f"{__file__.rsplit('/apps/', 1)[0]}/config/agent-one-finance/groups/{CAP}/{GROUP}.yaml"))
+    raw = yaml.safe_load(open(settings().config_dir / "groups" / CAP / f"{GROUP}.yaml"))
     raw["set"]["playbook"]["verdicts"]["W"] = {"FO": "ESCALATE", "BO": "POST"}
     _, found = effective(base, GroupConfig.model_validate(raw))
     assert "playbook.categories.W: any_side needs one verdict for every side in the table" in found

@@ -1,5 +1,5 @@
 // Generated from apps/web/src/api/aof.ts by apps/web/office/convert.mjs. Office changes to this file are
-// kept by aof_sync.py on the next update; see docs/agent-one-finance/office/conversion-guide.md.
+// kept by aof_sync.py on the next update; see office/README.md.
 // Types and TanStack Query hooks for the Agent One Finance API (apps/backend/agent_one_finance/web/main.py).
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";

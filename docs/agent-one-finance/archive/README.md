@@ -1,7 +1,7 @@
 # Archive: earlier ways of moving AOF into the office
 
 Kept for the record only. **Do not use these.** They are replaced by one guide:
-[`../office/conversion-guide.md`](../office/conversion-guide.md).
+the conversion pack, [`office/README.md`](../../../office/README.md).
 
 | Here | What it was |
 |---|---|

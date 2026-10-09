@@ -1,5 +1,5 @@
 // Generated from apps/web/src/components/Urgency.tsx by apps/web/office/convert.mjs. Office changes to this file are
-// kept by aof_sync.py on the next update; see docs/agent-one-finance/office/conversion-guide.md.
+// kept by aof_sync.py on the next update; see office/README.md.
 // How urgent a case is: its deadline (manifest case.due) and its age, shown
 // the same way wherever cases are listed.
 

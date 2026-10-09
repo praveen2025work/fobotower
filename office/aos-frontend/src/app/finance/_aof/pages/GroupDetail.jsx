@@ -1,5 +1,5 @@
 // Generated from apps/web/src/pages/GroupDetail.tsx by apps/web/office/convert.mjs. Office changes to this file are
-// kept by aof_sync.py on the next update; see docs/agent-one-finance/office/conversion-guide.md.
+// kept by aof_sync.py on the next update; see office/README.md.
 // One team group — a team's configuration of a capability (e.g. the CATS vs
 // MOTIF rec group): what it sets, its orchestrator step by step (editable by
 // its owners where the capability allows), its version history, and YAML for

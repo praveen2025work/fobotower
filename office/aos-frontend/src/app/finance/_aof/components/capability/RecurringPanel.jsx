@@ -1,5 +1,5 @@
 // Generated from apps/web/src/components/capability/RecurringPanel.tsx by apps/web/office/convert.mjs. Office changes to this file are
-// kept by aof_sync.py on the next update; see docs/agent-one-finance/office/conversion-guide.md.
+// kept by aof_sync.py on the next update; see office/README.md.
 // Items that keep coming back (manifest insights.recurring): the same item on
 // the same book / entity, run after run — a root cause to fix upstream.
 

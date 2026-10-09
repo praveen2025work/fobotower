@@ -1,5 +1,5 @@
 // Generated from apps/web/src/components/authoring/GuidedForm.tsx by apps/web/office/convert.mjs. Office changes to this file are
-// kept by aof_sync.py on the next update; see docs/agent-one-finance/office/conversion-guide.md.
+// kept by aof_sync.py on the next update; see office/README.md.
 // Authoring without a model: four short steps of plain questions build a
 // capability's configuration. The platform's validator judges it exactly as it judges a
 // model's draft, and another owner approves it before it goes live.

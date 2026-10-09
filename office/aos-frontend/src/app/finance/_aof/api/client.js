@@ -1,5 +1,5 @@
 // Generated from apps/web/src/api/client.ts by apps/web/office/convert.mjs. Office changes to this file are
-// kept by aof_sync.py on the next update; see docs/agent-one-finance/office/conversion-guide.md.
+// kept by aof_sync.py on the next update; see office/README.md.
 // The Agent One Finance API client. Identity is one header: in the office the SSO proxy
 // sets it and this module sends nothing; in development the user switcher
 // picks a fixture user. Roles and data scopes are always the server's call.

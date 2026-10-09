@@ -10,10 +10,8 @@ because the database engine is built at import time.
 
 import os
 
-TEST_DATABASE_URL = os.getenv(
-    "FOBO_TEST_DATABASE_URL",
-    "postgresql+asyncpg://fobo:fobo@localhost:5433/fobo_test",
-)
+TEST_DATABASE_URL = (os.getenv("AOF_TEST_DATABASE_URL") or os.getenv("FOBO_TEST_DATABASE_URL")
+                     or "postgresql+asyncpg://fobo:fobo@localhost:5433/fobo_test")
 os.environ["FOBO_DATABASE_URL"] = TEST_DATABASE_URL
 # Agent One Finance case runs finish before the call returns, unless a test asks otherwise.
 os.environ.setdefault("AOF_RUN_MODE", "inline")

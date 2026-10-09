@@ -1,5 +1,5 @@
 // Generated from apps/web/src/components/ops/ControlsPanel.tsx by apps/web/office/convert.mjs. Office changes to this file are
-// kept by aof_sync.py on the next update; see docs/agent-one-finance/office/conversion-guide.md.
+// kept by aof_sync.py on the next update; see office/README.md.
 // Run-the-bank controls: off switches (capability, team group, connector) and
 // the schedules in force. The server decides who may switch what.
 

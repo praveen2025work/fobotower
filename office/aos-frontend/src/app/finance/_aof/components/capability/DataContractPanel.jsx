@@ -1,5 +1,5 @@
 // Generated from apps/web/src/components/capability/DataContractPanel.tsx by apps/web/office/convert.mjs. Office changes to this file are
-// kept by aof_sync.py on the next update; see docs/agent-one-finance/office/conversion-guide.md.
+// kept by aof_sync.py on the next update; see office/README.md.
 // What the configuration needs: the data fields it reads (and what reads
 // each), and the parameters still to confirm — derived from the configuration,
 // so it is always the contract the next run will hold the data to.

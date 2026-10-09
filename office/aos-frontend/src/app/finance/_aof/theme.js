@@ -1,5 +1,5 @@
 // Generated from apps/web/office/templates/theme.js (in place of src/theme.ts) by apps/web/office/convert.mjs. Office changes to this file are
-// kept by aof_sync.py on the next update; see docs/agent-one-finance/office/conversion-guide.md.
+// kept by aof_sync.py on the next update; see office/README.md.
 "use client";
 // Office build: the console follows Agent One's light / dark theme (next-themes), so there
 // is one theme switch for the whole page. Same exports as upstream src/theme.ts.

@@ -24,9 +24,11 @@ and the office's file.
 Files the office added itself are never touched; they are listed.
 
 The base is kept in <workspace>/aof-sync-base, and each repo gets .aof-sync.json (what was synced,
-with hashes). The first sync has no base: use --baseline once, after reviewing the report (see the
-conversion guide, docs/agent-one-finance/office/conversion-guide.md). For the backend, --base-from
-<download of the upstream version the office copied> lets the first sync merge instead.
+with hashes). On the first sync there is no base yet; the download itself carries every earlier
+release (office/aof-history.*), so the tool finds which release the office copied, updates the files
+the office never touched, and merges the ones it edited. What is still different after that (the
+hand-converted console) is replaced with --baseline once, after reviewing the report (see the
+pack's README, office/README.md).
 """
 
 from __future__ import annotations
@@ -36,9 +38,9 @@ import fnmatch
 import hashlib
 import json
 import re
-import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 import time
 from pathlib import Path
@@ -91,6 +93,41 @@ def files_under(root: Path) -> list[str]:
     return sorted(out)
 
 
+class History:
+    """Every earlier release of the synced files, shipped in the download (office/aof-history.*)."""
+
+    def __init__(self, upstream: Path):
+        index, blobs = upstream / "office/aof-history.json", upstream / "office/aof-history.tar.gz"
+        self.versions = json.loads(index.read_text())["versions"] if index.is_file() else []
+        self._tar = tarfile.open(blobs) if blobs.is_file() else None
+        self.known: dict[str, set[str]] = {}
+        for v in self.versions:
+            for path, h in v["files"].items():
+                self.known.setdefault(path, set()).add(h)
+
+    def content(self, h: str) -> bytes | None:
+        if self._tar is None:
+            return None
+        try:
+            return self._tar.extractfile(h).read()
+        except KeyError:
+            return None
+
+    def office_version(self, cfg: dict, repo: Path) -> dict | None:
+        """The release the office copied: the one most of the office's files match (latest on a tie)."""
+        best, best_n = None, 0
+        for v in self.versions:
+            n = 0
+            for src, dst in cfg["roots"]:
+                for path, h in v["files"].items():
+                    if path.startswith(src + "/"):
+                        office = read(repo / dst / path[len(src) + 1:])
+                        n += office is not None and sha(office) == h
+            if n >= best_n and n:
+                best, best_n = v, n
+        return best
+
+
 def merge3(office: bytes, base: bytes, upstream: bytes) -> tuple[bytes, bool]:
     """git merge-file: (merged text, clean?)."""
     with tempfile.TemporaryDirectory() as d:
@@ -106,7 +143,7 @@ def merge3(office: bytes, base: bytes, upstream: bytes) -> tuple[bytes, bool]:
         return r.stdout, r.returncode == 0
 
 
-def plan_repo(name: str, cfg: dict, upstream: Path, ws: Path, baseline: bool, prune: bool, base_from: Path | None) -> dict:
+def plan_repo(name: str, cfg: dict, upstream: Path, ws: Path, baseline: bool, prune: bool, history: History) -> dict:
     repo = ws / cfg["repo"]
     if not repo.is_dir():
         return {"name": name, "repo": cfg["repo"], "missing": True, "actions": []}
@@ -114,6 +151,7 @@ def plan_repo(name: str, cfg: dict, upstream: Path, ws: Path, baseline: bool, pr
     state = json.loads(state_path.read_text()) if state_path.is_file() else {"files": {}}
     known = state["files"]
     base_root = ws / BASE_DIR / cfg["repo"]
+    copied = history.office_version(cfg, repo) if not known else None
     actions = []  # (kind, office path, upstream bytes or None, detail)
     seen = set()
     for src, dst in cfg["roots"]:
@@ -124,10 +162,14 @@ def plan_repo(name: str, cfg: dict, upstream: Path, ws: Path, baseline: bool, pr
             office = read(repo / o_path)
             base_sha = known.get(o_path)
             base = read(base_root / o_path)
-            if base_sha is None and base_from is not None:
-                # first sync: the upstream version the office copied stands in as the base
-                base = read(base_from / src / rel)
-                base_sha = sha(base) if base is not None else None
+            if base_sha is None and office is not None:
+                # first sync: an earlier release the office file matches is its base (untouched);
+                # otherwise the release the office copied is (the office edited the file)
+                if sha(office) in history.known.get(f"{src}/{rel}", ()):
+                    base, base_sha = office, sha(office)
+                elif copied and f"{src}/{rel}" in copied["files"]:
+                    base = history.content(copied["files"][f"{src}/{rel}"])
+                    base_sha = sha(base) if base is not None else None
             if o_path in cfg["keep"]:
                 if office is None:
                     actions.append(("add", o_path, new, "office file: added once, then the office's"))
@@ -184,7 +226,8 @@ def plan_repo(name: str, cfg: dict, upstream: Path, ws: Path, baseline: bool, pr
                 actions.append(("office-only", o_path, None, "not upstream: leftover of an earlier conversion?" if leftover else "the office's own file"))
     # office files the map does not cover are not looked at; the report says which folders were synced
     return {"name": name, "repo": cfg["repo"], "missing": False, "actions": actions, "state": state, "repo_path": repo,
-            "base_root": base_root, "upstream_roots": cfg["roots"]}
+            "base_root": base_root, "upstream_roots": cfg["roots"],
+            "copied": f"{copied['version']} ({copied['date']})" if copied else None}
 
 
 def apply(plan: dict, upstream: Path, label: str) -> None:
@@ -250,7 +293,6 @@ def main() -> int:
     ap.add_argument("--apply", action="store_true", help="write the changes (default: report only)")
     ap.add_argument("--baseline", action="store_true", help="first sync only: take upstream for every file that differs")
     ap.add_argument("--prune", action="store_true", help="with --baseline: remove leftovers of an earlier conversion in AOF-only folders")
-    ap.add_argument("--base-from", help="first sync: a download of the upstream version the office copied last, used as the base")
     ap.add_argument("--label", default="", help="the upstream version, for the record (e.g. the commit id on GitHub)")
     a = ap.parse_args()
     upstream, ws = Path(a.upstream).resolve(), Path(a.workspace).resolve()
@@ -259,8 +301,8 @@ def main() -> int:
         return 2
     cfg_file = ws / "aof-sync.json"
     mapping = json.loads(cfg_file.read_text()) if cfg_file.is_file() else MAP
-    base_from = Path(a.base_from).resolve() if a.base_from else None
-    plans = [plan_repo(n, c, upstream, ws, a.baseline, a.prune, base_from) for n, c in mapping.items() if not a.only or a.only == n]
+    history = History(upstream)
+    plans = [plan_repo(n, c, upstream, ws, a.baseline, a.prune, history) for n, c in mapping.items() if not a.only or a.only == n]
 
     lines = [f"# AOF sync report ({'applied' if a.apply else 'dry run'}, {time.strftime('%Y-%m-%d %H:%M')})", "",
              f"Upstream: `{upstream}` {a.label}", ""]
@@ -272,6 +314,8 @@ def main() -> int:
             lines += [f"Not found in {ws}: skipped.", ""]
             continue
         lines += ["Synced folders: " + ", ".join(f"`{s}` → `{d}`" for s, d in p["upstream_roots"]), ""]
+        if p["copied"]:
+            lines += [f"First sync: the office copy matches the AOF release of {p['copied']} most closely.", ""]
         counts = {k: sum(1 for x in p["actions"] if x[0] == k) for k in order}
         lines += ["| " + " | ".join(k for k in order if counts[k]) + " |", "|" + "---|" * sum(1 for k in order if counts[k]),
                   "| " + " | ".join(str(counts[k]) for k in order if counts[k]) + " |", ""]

@@ -1,5 +1,5 @@
 // Generated from apps/web/src/pages/Overview.tsx by apps/web/office/convert.mjs. Office changes to this file are
-// kept by aof_sync.py on the next update; see docs/agent-one-finance/office/conversion-guide.md.
+// kept by aof_sync.py on the next update; see office/README.md.
 import { Link } from "../office/router";
 import { AlertTriangle, ArrowRight, Ban, Bot, Clock, Timer } from "lucide-react";
 

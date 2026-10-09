@@ -8,6 +8,7 @@ next day's run is not written off twice. Both by configuration
 
 import uuid
 
+from agent_one_finance.config import settings
 from tests.agent_one_finance.conftest import CASH, RECON
 
 CAP, GROUP = "break.investigation", "fobo-prime"
@@ -72,7 +73,7 @@ def test_an_adjustment_that_did_not_clear_keeps_the_investigation_open():
     from agent_one_finance.capabilities import seed_files
     from agent_one_finance.groups import GroupConfig, effective
     base = next(m for m in seed_files() if m.id == CAP)
-    raw = yaml.safe_load(open(f"{__file__.rsplit('/apps/', 1)[0]}/config/agent-one-finance/groups/{CAP}/{GROUP}.yaml"))
+    raw = yaml.safe_load(open(settings().config_dir / "groups" / CAP / f"{GROUP}.yaml"))
     m, found = effective(base, GroupConfig.model_validate(raw))
     assert not found, found
     check = next(c for c in m.playbook.checks if c.id == "ADJUSTMENT_NOT_CLEARED")

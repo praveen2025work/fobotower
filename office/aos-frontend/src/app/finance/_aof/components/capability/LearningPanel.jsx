@@ -1,5 +1,5 @@
 // Generated from apps/web/src/components/capability/LearningPanel.tsx by apps/web/office/convert.mjs. Office changes to this file are
-// kept by aof_sync.py on the next update; see docs/agent-one-finance/office/conversion-guide.md.
+// kept by aof_sync.py on the next update; see office/README.md.
 // Learning from the work (manifest insights): items nothing explained — for
 // the playbook's or the rules' owners to turn into new checks — and groups
 // the model proposed that reviewers keep approving unchanged: candidates for

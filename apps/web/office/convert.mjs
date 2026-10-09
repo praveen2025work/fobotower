@@ -78,7 +78,7 @@ async function toJs(source, file) {
 
 const header = (from) =>
   `// Generated from apps/web/${from} by apps/web/office/convert.mjs. Office changes to this file are\n` +
-  `// kept by aof_sync.py on the next update; see docs/agent-one-finance/office/conversion-guide.md.\n`;
+  `// kept by aof_sync.py on the next update; see office/README.md.\n`;
 // Console code is linted and type-checked upstream, in TypeScript. The office's lint ignores
 // src/app/finance/_aof (one line in its eslint config; see the conversion guide).
 const generated = header;

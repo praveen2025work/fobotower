@@ -1,5 +1,5 @@
 // Generated from apps/web/src/components/case/FollowThroughPanel.tsx by apps/web/office/convert.mjs. Office changes to this file are
-// kept by aof_sync.py on the next update; see docs/agent-one-finance/office/conversion-guide.md.
+// kept by aof_sync.py on the next update; see office/README.md.
 // Follow-through: what became of this case's decisions in the next run of
 // its series — cleared, or still open (and so carried into that run).
 

@@ -1,5 +1,5 @@
 // Generated from apps/web/src/components/orchestrator/PrepareSteps.tsx by apps/web/office/convert.mjs. Office changes to this file are
-// kept by aof_sync.py on the next update; see docs/agent-one-finance/office/conversion-guide.md.
+// kept by aof_sync.py on the next update; see office/README.md.
 // "Prepare the data": the capability's configurable steps (steps v2) — add one
 // of the generic types, set it up with a form, run it only `when` something
 // holds, put it in order, remove it. Each is checked by the server like any

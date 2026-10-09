@@ -1,5 +1,5 @@
 // Generated from apps/web/src/components/Layout.tsx by apps/web/office/convert.mjs. Office changes to this file are
-// kept by aof_sync.py on the next update; see docs/agent-one-finance/office/conversion-guide.md.
+// kept by aof_sync.py on the next update; see office/README.md.
 // The app shell — aria-ai's Layout (Barclays navy collapsible sidebar, top bar, error
 // boundary per page), wired to Agent One Finance: navigation for the unified case view,
 // the signed-in user from the Agent One Finance API, and the dev user switcher only when

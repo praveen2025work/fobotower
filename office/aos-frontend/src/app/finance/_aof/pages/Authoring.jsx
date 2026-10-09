@@ -1,5 +1,5 @@
 // Generated from apps/web/src/pages/Authoring.tsx by apps/web/office/convert.mjs. Office changes to this file are
-// kept by aof_sync.py on the next update; see docs/agent-one-finance/office/conversion-guide.md.
+// kept by aof_sync.py on the next update; see office/README.md.
 // Authoring, three ways in: answer a few questions (no model), describe the
 // work in a BRD (a model drafts it when one is connected), or start from a
 // template. Whichever way, the platform's own validator judges the draft, the

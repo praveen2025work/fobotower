@@ -11,6 +11,8 @@ from agent_one_finance.groups import GroupConfig, effective
 from agent_one_finance.manifest import Manifest, problems
 
 EXAMPLES = Path(__file__).resolve().parents[4] / "docs" / "agent-one-finance" / "examples"
+# The examples live in the AOF repository's docs; a repo that takes only the code skips this file.
+pytestmark = pytest.mark.skipif(not EXAMPLES.is_dir(), reason="no docs/agent-one-finance/examples here")
 # example -> tools it needs onboarded (none = runs on today's connectors)
 NEEDS = {
     "accruals-review.yaml": set(),

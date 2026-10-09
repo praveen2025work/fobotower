@@ -23,7 +23,7 @@ The same platform runs work beyond Finance too (complaint handling is the
 example in this repo).
 
 - **Renamed from Helix:** [`docs/agent-one-finance/renaming.md`](docs/agent-one-finance/renaming.md) — the old → new names for an office deployment <!-- aof-convert: keep -->
-- **Bringing AOF into the office repos (aos-frontend, aos-backend):** [`docs/agent-one-finance/office/conversion-guide.md`](docs/agent-one-finance/office/conversion-guide.md) — one guide, one converter, one sync tool
+- **Bringing AOF into the office repos (aos-frontend, aos-backend):** [`office/README.md`](office/README.md) — the conversion pack: one guide, the converted console, the sync tool and the hosting templates
 - **Start here:** [`docs/agent-one-finance/README.md`](docs/agent-one-finance/README.md) — what runs where, how to run it, the guides
 - **Platform overview:** [`docs/agent-one-finance/platform-overview.md`](docs/agent-one-finance/platform-overview.md) · **pitch page:** [`docs/agent-one-finance/pitch/agent-one-finance-pitch.html`](docs/agent-one-finance/pitch/agent-one-finance-pitch.html) (open in a browser)
 - **Run Agent One Finance locally:** API on :8300 (`uvicorn agent_one_finance.web.main:app`), console on :5180 (`apps/web`, `npm run dev`); see the [developer guide](docs/agent-one-finance/guide/developer-guide.md#3-run-it-locally)

@@ -1,5 +1,5 @@
 // Generated from apps/web/src/components/case/SessionTranscript.tsx by apps/web/office/convert.mjs. Office changes to this file are
-// kept by aof_sync.py on the next update; see docs/agent-one-finance/office/conversion-guide.md.
+// kept by aof_sync.py on the next update; see office/README.md.
 // The skill session behind a case (the `agent` step), turn by turn: what the
 // platform asked, what the model said, every tool it called and with what,
 // what came back, and its final answer. Every tool call here is also an audit

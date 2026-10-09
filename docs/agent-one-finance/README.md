@@ -20,7 +20,7 @@ FOBO's behaviour on Agent One Finance — its playbook as configuration of the C
 [`fobo-on-agent-one-finance.md`](fobo-on-agent-one-finance.md).
 
 **Bringing AOF into the office repos (aos-frontend, aos-backend), and hosting it on AWS:** one guide,
-[`office/conversion-guide.md`](office/conversion-guide.md). Earlier guides are in [`archive/`](archive/README.md), for the record only.
+the conversion pack, [`office/README.md`](../../office/README.md). Earlier guides are in [`archive/`](archive/README.md), for the record only.
 
 **Executive demo video (3 min) and presenter notes:** [`demo/`](demo/README.md).
 

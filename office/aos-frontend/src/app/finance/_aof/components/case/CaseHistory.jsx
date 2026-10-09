@@ -1,5 +1,5 @@
 // Generated from apps/web/src/components/case/CaseHistory.tsx by apps/web/office/convert.mjs. Office changes to this file are
-// kept by aof_sync.py on the next update; see docs/agent-one-finance/office/conversion-guide.md.
+// kept by aof_sync.py on the next update; see office/README.md.
 // The run, step by step — aria-ai's run history, from the case's LangGraph
 // checkpoints: when each step ran and for how long, what it left behind, and
 // where people came in. "As it was" opens the state at that point.

@@ -1,5 +1,5 @@
 // Generated from apps/web/src/components/case/RequestsPanel.tsx by apps/web/office/convert.mjs. Office changes to this file are
-// kept by aof_sync.py on the next update; see docs/agent-one-finance/office/conversion-guide.md.
+// kept by aof_sync.py on the next update; see office/README.md.
 // Asking for evidence instead of assuming it (FOBO skill §13): the questions
 // asked about this case, their answers, and a form to ask one of the
 // capability's targets (the desk, a trader, Operations) about a group or the

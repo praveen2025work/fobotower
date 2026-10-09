@@ -1,5 +1,5 @@
 // Generated from apps/web/src/components/capability/EvalsPanel.tsx by apps/web/office/convert.mjs. Office changes to this file are
-// kept by aof_sync.py on the next update; see docs/agent-one-finance/office/conversion-guide.md.
+// kept by aof_sync.py on the next update; see office/README.md.
 // Evals: try a version (a draft before approving it, or the live one after a
 // model or instruction change) on cases people already decided. Each is
 // replayed in a hidden copy — same connectors, nothing written, nobody

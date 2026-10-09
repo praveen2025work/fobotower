@@ -14,6 +14,6 @@ across Dev, UAT and Prod.
 **Assumptions to confirm:**
 - the team as listed on the page;
 - Product Control availability for configuration (S1–S2) and UAT (S4–S5);
-- a change freeze from 24 Dec to 3 Jan.
+- the change freeze is confirmed for 11 Dec to 4 Jan: Prod is built before it, and the application goes to Prod on 5 Jan.
 
 Users are already provisioned for interim skill testing, so the plan has no user-access stories.

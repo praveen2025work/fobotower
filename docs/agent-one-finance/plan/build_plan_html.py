@@ -26,8 +26,8 @@ def chip(st):
     return f'<span class="chip {cls}">{e(st)}</span>'
 
 head_cells="".join(
-    f'<div class="gh{" fz" if c=="FZ" else ""}" style="grid-column:{colidx[c]}"><b>{"Freeze" if c=="FZ" else e(c)}</b>'
-    f'<span>{"24 Dec–3 Jan" if c=="FZ" else fmt(SPR[c][0])+"–"+fmt(SPR[c][1])}</span></div>' for c,_ in cols)
+    f'<div class="gh{" fz" if c in ("FZ","S5") else ""}" style="grid-column:{colidx[c]}"><b>{"Holidays" if c=="FZ" else e(c)}</b>'
+    f'<span>{"24 Dec–4 Jan" if c=="FZ" else fmt(SPR[c][0])+"–"+fmt(SPR[c][1])}</span></div>' for c,_ in cols)
 rows=""
 for ep in EPICS:
     a,b=ep[4].split("-"); st=EST.get(ep[0],"To Do")
@@ -196,7 +196,7 @@ footer {{ color:var(--muted); font-size:.8rem }}
   <div class="panel"><div class="tw"><div class="gantt">
     <div class="gh" style="grid-column:1;border-left:0"><b>Epic</b><span>Sprint dates</span></div>{head_cells}{rows}{mrow}
   </div></div>
-  <div class="legend"><span>Planned</span><span class="lp">In progress now</span><span class="lf">Assumed change freeze (to confirm)</span><span class="lm">Milestone</span></div></div>
+  <div class="legend"><span>Planned</span><span class="lp">In progress now</span><span class="lf">Change freeze 11 Dec – 4 Jan: no Production changes</span><span class="lm">Milestone</span></div></div>
 </section>
 
 <section aria-labelledby="t-ms">
@@ -220,8 +220,9 @@ footer {{ color:var(--muted); font-size:.8rem }}
       <li>Team: 2 backend, 1 frontend (part-time), 1 DevOps, 1 QA, 1 BA, PM and architect; Product Control SME part-time</li>
       <li>Diagnostics has its own developer or agreed DevOps time (S1 and S2 are the heaviest sprints)</li>
       <li>Product Control available for configuration in S1–S2 and UAT in S4–S5</li>
-      <li>Change freeze 24 Dec – 3 Jan, to be confirmed</li><li>Users are already provisioned and testing their skill in finance agent chat</li></ul></div>
+      <li>Change freeze 11 Dec – 4 Jan (confirmed): Prod environment built before it, application deployed to Prod on 5 Jan</li><li>Users are already provisioned and testing their skill in finance agent chat</li></ul></div>
     <div class="panel"><h3>Top risks</h3><ul>
+      <li>Prod environment must be ready by 11 Dec: the Prod namespace and firewall requests are on the critical path</li>
       <li>Foundational build: Dev deployment is failing today (dependency in the image)</li>
       <li>MB Rec tool delivery slips: the dependent checks stay off; go-live is not blocked</li>
       <li>Approvals (model, DPIA, pen test, CAB) run late: each week late moves go-live by about a week</li>

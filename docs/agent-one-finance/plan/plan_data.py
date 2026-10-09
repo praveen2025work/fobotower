@@ -42,9 +42,10 @@ MILESTONES = [
  ("M1","Dev green","2026-10-30","Repository on the latest AOF version; Dev deployed; tests in CI; Agent One adapter connected in Dev"),
  ("M2","FOBO Prime end to end in Dev; UAT ready","2026-11-13","Real MB Rec (read-only) data in Dev; UAT environment built"),
  ("M3","Working version showcase (UAT)","2026-11-30","FOBO Prime and Rates on AOF in UAT, demonstrated end to end"),
- ("M4","UAT, security and parity sign-off; CAB submitted","2026-12-18","UAT signed, pen test closed, parity accepted, CAB request in"),
- ("M5","Production deployed (dark) and parallel run","2027-01-07","Prod deployed and smoke-tested; parallel run with today's process starts"),
- ("M6","Go-live","2027-01-14","Go/no-go passed; Product Control uses AOF for FOBO Prime and Rates"),
+ ("M4","Prod environment ready, before the freeze","2026-12-11","Prod environment and connectors in place before the change freeze starts; no application deployed yet"),
+ ("M5","UAT, security and parity sign-off; CAB submitted","2026-12-18","UAT signed, pen test closed, parity accepted, CAB request in for 5 Jan"),
+ ("M6","Production deployed and parallel run","2027-01-06","Deployed 5 Jan after the freeze ends; smoke-tested; parallel run with today's process from 6 Jan"),
+ ("M7","Go-live","2027-01-14","Go/no-go passed; Product Control uses AOF for FOBO Prime and Rates"),
 ]
 
 # id, epic, summary, description, acceptance, priority, points, sprint, team, env, depends
@@ -52,7 +53,7 @@ S = [
  # E01
  ("E01","Set up Jira project, boards and sprint calendar","Create the Jira project, epics and stories from this plan; two-week sprints S0-S6.","Board live; all epics and stories imported; sprint dates agreed","High",1,"S0","PM","",""),
  ("E01","Confirm scope and out-of-scope","Scope: AOF core + Agent One integration + FOBO Prime and Rates. Out: other capabilities, SIEM integration (post go-live), skill-session variant in prod (optional).","Scope statement signed by sponsor","Highest",2,"S0","PM","",""),
- ("E01","Confirm change-freeze dates and CAB calendar","Get the bank's December/January change-freeze window and CAB submission deadlines; adjust S5-S6 if needed.","Freeze dates and CAB deadline recorded in the plan","Highest",1,"S0","PM","",""),
+ ("E01","Confirm CAB deadline for the January window","Change freeze confirmed: 11 Dec to 4 Jan, no Production changes. Confirm the CAB submission deadline for a deployment on 5 Jan.","CAB deadline recorded in the plan","Highest",1,"S0","PM","","","In Progress"),
  ("E01","RAID log, weekly status and steerco cadence","Risks, assumptions, issues, dependencies tracked weekly; steerco fortnightly.","RAID log live; first status sent","High",2,"S0","PM","",""),
  ("E01","ARB review of AOF and FOBO architecture","Present the C4 model (docs/agent-one-finance/architecture) and the governance controls; record conditions.","ARB approval with conditions logged as stories","Highest",3,"S1","Architect","","Architecture docs"),
  ("E01","Define success and go/no-go criteria","Measures: agreement with people (evals), zero unverified figures, hours saved, Sev1/Sev2 count, parity accepted.","Criteria agreed by sponsor and Product Control","High",2,"S1","PM / BA","",""),
@@ -69,7 +70,7 @@ S = [
  ("E02","Build UAT environment","Namespace, database, secrets, SSO proxy, DNS/TLS, connectors.","Pipeline deploys to UAT; smoke test passes","Highest",5,"S2","DevOps","UAT","UAT namespace approved"),
  ("E02","Promotion pipeline Dev -> UAT -> Prod with approvals","Same image promoted; manual approval gates for UAT and Prod.","One image tag runs in Dev and UAT","High",3,"S2","DevOps","All",""),
  ("E02","Backup, restore and DR for PostgreSQL","Backups, a tested restore, RPO/RTO agreed.","Restore tested in UAT","High",3,"S4","DevOps / DBA","UAT/Prod",""),
- ("E02","Build Prod environment","Namespace, database, secrets, SSO proxy, DNS/TLS, connectors, monitoring.","Prod smoke test passes (no business use yet)","Highest",5,"S5","DevOps","Prod","Prod namespace approved"),
+ ("E02","Build Prod environment","Before the change freeze starts on 11 Dec: namespace, database, secrets, SSO proxy, DNS/TLS. The application is deployed after the freeze.","Prod smoke test passes (no business use yet)","Highest",5,"S4","DevOps","Prod","Prod namespace approved"),
  # E03
  ("E03","Verify the repository is on the latest AOF version","AOF update applied; run which-version.py; resolve any differences; keep our own files (connectors, LLM adapter).","Report shows the latest version; only our own files differ","Highest",1,"S0","Backend","Dev","","In Progress"),
  ("E03","Remove remaining helix references","Search code, tests, config, Dockerfile for helix; rename per the rename map.","grep finds no helix in code/config/tests","Highest",3,"S0","Backend","Dev",""),
@@ -94,7 +95,7 @@ S = [
  ("E05","Connectors in UAT","All connectors configured and reachable in UAT.","Operations page shows all connectors up in UAT","Highest",3,"S2","DevOps","UAT",""),
  ("E05","Security reference data (corporate_actions, bond_metadata)","Optional for go-live; needed for some skill checks.","Tools answer, or deferred with a decision","Medium",3,"S3","Backend","Dev",""),
  ("E05","Ticketing for escalations","Escalated groups raise tickets to owning teams.","Ticket raised from an approved escalation in UAT","Medium",3,"S3","Backend","UAT",""),
- ("E05","Connectors in Prod","All connectors configured and reachable in Prod.","Operations page shows all connectors up in Prod","Highest",3,"S5","DevOps","Prod",""),
+ ("E05","Connectors in Prod","All connectors configured and reachable in Prod, before the freeze starts on 11 Dec.","Operations page shows all connectors up in Prod","Highest",3,"S4","DevOps","Prod",""),
  # E06
  ("E06","Confirm thresholds and parameters with Product Control","Data contract: materiality, tolerances, ageing; replace placeholders.","Data contract signed","Highest",3,"S1","BA / Product Control","",""),
  ("E06","Configure FOBO Prime group on real data","Books, keys, reviewers, owners; approve versions four-eyes.","Prime case runs end to end in Dev","Highest",5,"S2","BA / Backend","Dev",""),
@@ -134,9 +135,9 @@ S = [
  # E11
  ("E11","Runbook and rollback plan","Deploy, smoke test, rollback, connector failure, model outage (groups go to people).","Runbook reviewed by Operations","Highest",3,"S5","DevOps / Backend","Prod",""),
  ("E11","Support model: L1, L2, L3 and on-call","Who answers what; platform support vs business.","Support model signed; BAU support from go-live","Highest",2,"S5","PM / Operations","Prod",""),
- ("E11","Monitoring and alerts","Health, connector down, refused-call spikes, spend limit reached, eval drop.","Alerts reach on-call in a test","Highest",3,"S5","DevOps","Prod",""),
+ ("E11","Monitoring and alerts","Set up in Prod on 4–5 Jan, after the freeze and before go-live: health, connector down, refused-call spikes, spend limit reached, eval drop.","Alerts reach on-call in a test","Highest",3,"S6","DevOps","Prod",""),
  ("E11","CAB submission","Change request with evidence: UAT, pen test, risk, runbook.","CAB approved for the January window","Highest",2,"S5","PM","Prod","M4 sign-offs"),
- ("E11","Production deploy and smoke test","Deploy the signed-off image; smoke test; no business use yet.","Smoke test passes in Prod","Highest",2,"S6","DevOps","Prod","CAB approval"),
+ ("E11","Production deploy and smoke test","5 Jan, the first working day after the freeze: deploy the signed-off image; smoke test; no business use yet.","Smoke test passes in Prod","Highest",2,"S6","DevOps","Prod","CAB approval"),
  ("E11","Parallel run with today's process","Product Control works both ways for agreed books; compare.","Parallel-run report","Highest",3,"S6","Product Control / BA","Prod",""),
  ("E11","Go/no-go and go-live","Go/no-go on 13 Jan; go-live 14 Jan.","Go decision recorded; users live","Highest",1,"S6","PM","Prod",""),
 
@@ -174,6 +175,11 @@ S = [
  ("E12","Benefits tracking","Hours saved (declared and measured), agreement, escalations.","Benefits reported after go-live","Medium",2,"S6","PM / BA","Prod",""),
 ]
 
+ORDER=["S0","S1","S2","S3","S4","S5","S6"]
+def _span(eid):
+    sp=sorted({x[6] for x in S if x[0]==eid}, key=ORDER.index)
+    return f"{sp[0]}-{sp[-1]}"
+EPICS=[(x[0],x[1],x[2],x[3],_span(x[0]),*x[5:]) for x in EPICS]
 EPIC_STATUS={"E02":"In Progress","E03":"In Progress","E13":"In Progress","E14":"In Progress"}
 CURRENT={"E02":"Foundational build set up; Dev deployment failing (greenlet), fix in progress","E03":"Latest AOF update applied; verification in progress",
  "E13":"Partially built; quality review and separate deployment outside AWS/BCP to do","E14":"MB Rec and BA engagement starting",
@@ -187,7 +193,7 @@ with open("AOF-FOBO-L1-plan.csv","w",newline="",encoding="utf-8-sig") as f:
         w.writerow(["Milestone",m[0],m[1],m[3],"",m[2],m[2],"","","",""])
     w.writerow([]); w.writerow(["Sprint","","Name","","","Start","End"])
     for k,(a,b) in SPR.items(): w.writerow(["Sprint",k,SNAME[k],"","",a,b])
-    w.writerow(["Freeze","","Assumed bank change freeze (confirm)","No production changes","","2026-12-24","2027-01-03"])
+    w.writerow(["Freeze","","Bank change freeze (confirmed)","No Production changes; UAT work continues","","2026-12-11","2027-01-04"])
 
 with open("AOF-FOBO-stories.csv","w",newline="",encoding="utf-8-sig") as f:
     w=csv.writer(f)

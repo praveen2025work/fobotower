@@ -1,0 +1,39 @@
+group: price-prime
+name: Price breaks — Prime
+owners: { people: [frank], role: AOF_FOBO_RECON_OWNER, four_eyes: true }
+set:
+  enrich:
+    - { tool: motif.break_snapshots, args: { book: $case.book, cob: $case.cob }, keys: [instrument] }
+  policy:
+    mtm_market_movement_tolerance: { value: null, unit: GBP }
+  playbook:
+    checks:
+      - { id: R5, when: "book_status != 'Complete'", category: W, side: UNKNOWN, reason: "Book is {book_status}; start only on complete books" }
+    tests:
+      - { id: FO-2, side: FO, validates: Price, check: "Yesterday close price = today open price",
+          fails_when: "fo_prev_close_price != fo_open_price", needs: [fo_prev_close_price, fo_open_price],
+          evidence: [Pricing file], on_fail: "Hold adjustment; raise market-data DQ", blocks_post: true }
+    categories:
+      A: { name: Price break, determinism: deterministic, escalate_to: Market data }
+      H: { name: Novel break, determinism: judgement, escalate_to: Product Control }
+      W: { name: Books not complete, determinism: deterministic, escalate_to: Operations, any_side: true }
+    default_category: H
+    sides: [FO, BO]
+    verdicts:
+      A: { FO: DO_NOT_POST, BO: POST }
+      H: { FO: ESCALATE, BO: ESCALATE }
+      W: { FO: ESCALATE, BO: ESCALATE }
+    guards:
+      - { verdict: POST, when: "side == 'FO'", instead: ESCALATE, reason: "R2: a cause in FO never posts" }
+    blocked_verdict: ESCALATE
+    escalate_verdicts: [ESCALATE]
+    confirm_verdicts: [POST]
+  reasoning:
+    sections:
+      - { id: root_cause, label: Root cause, required: true, hint: "One clear statement, or say it is not established" }
+      - { id: verdict_reason, label: Verdict and why, required: true, hint: "The verdict and the reason" }
+  review:
+    roles: [FOBO_CONTROLLER]
+    checklist:
+      - { id: what_checked, label: "What did I check?", prefill: tests }
+      - { id: root_cause, label: "What root cause was identified?", prefill: root_cause }

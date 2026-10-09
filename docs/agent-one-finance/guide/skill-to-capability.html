@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"></head>
+<body>
+<title>Skill to Capability</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column, ~46rem; each section answers one question a newcomer asks, in the order they ask it */
+:root {
+  --bg: #f4f7fa; --surface: #ffffff; --ink: #0b2236; --muted: #4f6275; --line: #d6dfe8;
+  --accent: #00639a; --accent-soft: #e2f1fa; --person: #8a4b00; --person-soft: #fbefdf;
+  --ok: #1d6b45; --ok-soft: #e3f3ea; --code-bg: #0e2233; --code-fg: #d6e6f2;
+  --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #08141f; --surface: #0f2030; --ink: #e5eef6; --muted: #9db0c2; --line: #213749;
+  --accent: #5cc3f2; --accent-soft: #10324a; --person: #f2b46b; --person-soft: #3a2a16;
+  --ok: #78d3a4; --ok-soft: #15372a; --code-bg: #050e16; --code-fg: #d6e6f2; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #08141f; --surface: #0f2030; --ink: #e5eef6; --muted: #9db0c2; --line: #213749;
+  --accent: #5cc3f2; --accent-soft: #10324a; --person: #f2b46b; --person-soft: #3a2a16;
+  --ok: #78d3a4; --ok-soft: #15372a; --code-bg: #050e16; --code-fg: #d6e6f2; color-scheme: dark }
+
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--ink); font: 17px/1.6 var(--body) }
+.wrap { max-width: 50rem; margin: 0 auto; padding-inline: 16px; padding-block: 2.5rem 4rem; display: grid; gap: 3.2rem }
+.wrap > * { min-width: 0 }
+h1, h2, h3 { font-family: var(--display); margin: 0; text-wrap: balance; letter-spacing: -0.01em }
+h1 { font-size: clamp(2rem, 5vw, 2.9rem); font-weight: 800; line-height: 1.1 }
+h2 { font-size: 1.55rem; font-weight: 700; margin-bottom: .35rem }
+h3 { font-size: 1.05rem; font-weight: 700 }
+p { margin: 0; max-width: 65ch }
+.q { font: 500 .78rem var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin-bottom: .4rem }
+.lede { font-size: 1.2rem; color: var(--ink); margin-top: 1rem }
+.sub { color: var(--muted) }
+.stack { display: grid; gap: 1rem }
+code, .mono { font-family: var(--mono); font-size: .86em }
+a { color: var(--accent) }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+
+/* the one-line promise */
+.promise { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1.4rem }
+.promise span { font-weight: 700; padding: .35rem .75rem; border-radius: 6px; background: var(--accent-soft); color: var(--accent) }
+.promise span.p { background: var(--person-soft); color: var(--person) }
+
+/* five words */
+.words { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: .8rem }
+.word { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: .9rem 1rem; display: grid; gap: .25rem; align-content: start }
+.word b { font-family: var(--display); font-size: 1.1rem }
+.word i { font-style: normal; color: var(--muted); font-size: .95rem }
+.word .eg { font: .8rem var(--mono); color: var(--accent) }
+
+/* nesting picture */
+.nest { border: 2px solid var(--accent); border-radius: 10px; padding: .9rem; display: grid; gap: .7rem; background: var(--surface) }
+.nest > .lbl { font: 700 .95rem var(--display); color: var(--accent) }
+.nest .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: .7rem }
+.grp { border: 1.5px dashed var(--accent); border-radius: 8px; padding: .7rem; display: grid; gap: .5rem }
+.grp > .lbl { font-weight: 700 }
+.case { background: var(--accent-soft); border-radius: 6px; padding: .4rem .6rem; font: .82rem var(--mono) }
+
+/* the morning */
+ol.day { list-style: none; margin: 0; padding: 0; display: grid; gap: 0 }
+ol.day li { display: grid; grid-template-columns: 4.2rem 1fr; gap: 1rem; padding: .85rem 0; border-top: 1px solid var(--line) }
+ol.day li:first-child { border-top: 0 }
+ol.day time { font: 500 .9rem var(--mono); color: var(--muted); padding-top: .1rem }
+ol.day li.person time { color: var(--person) }
+ol.day li > div { min-width: 0; display: grid; gap: .3rem }
+.who { font: 700 .72rem var(--mono); letter-spacing: .06em; text-transform: uppercase }
+.who.aof { color: var(--accent) } .who.per { color: var(--person) }
+.found { display: grid; grid-template-columns: auto 1fr; gap: .25rem .7rem; font-size: .95rem; margin-top: .2rem }
+.found b { font-variant-numeric: tabular-nums; text-align: right }
+.example { font-size: .85rem; color: var(--muted) }
+
+/* phases */
+.phases { display: grid; gap: .55rem }
+.phase { display: grid; grid-template-columns: 2.2rem 1fr; gap: .9rem; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: .85rem 1rem }
+.phase.gate { border-color: var(--person); background: var(--person-soft) }
+.phase.act { border-style: dashed }
+.phase .n { font: 800 1.3rem var(--display); color: var(--accent); line-height: 1.2 }
+.phase.gate .n { color: var(--person) }
+.phase > div { min-width: 0; display: grid; gap: .35rem }
+.phase h3 small { font: 500 .78rem var(--body); color: var(--muted); margin-left: .4rem }
+.chips { display: flex; flex-wrap: wrap; gap: .35rem }
+.chip { font: .8rem var(--mono); padding: .15rem .5rem; border-radius: 4px; background: var(--accent-soft); color: var(--ink); border: 1px solid transparent }
+.chip.p { background: transparent; border-color: var(--person); color: var(--person) }
+.arrow { text-align: center; color: var(--muted); font-size: .9rem; line-height: 1 }
+
+/* callouts */
+.key { border-left: 4px solid var(--person); padding: .2rem 0 .2rem 1rem; display: grid; gap: .4rem }
+.key b { font-family: var(--display) }
+
+/* connections picture */
+.plug { display: grid; grid-template-columns: 1fr minmax(9rem, 12rem) 1fr; gap: .8rem; align-items: center }
+.plug .hub { background: var(--accent); color: var(--surface); border-radius: 10px; padding: 1rem; text-align: center; font: 700 1rem var(--display) }
+.plug .hub small { display: block; font: 400 .8rem var(--body); opacity: .9; margin-top: .3rem }
+.plug .side { display: grid; gap: .5rem }
+.sys { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: .55rem .7rem; display: grid; gap: .15rem; min-width: 0 }
+.sys b { font-size: .95rem }
+.sys span { font: .76rem var(--mono); color: var(--muted); overflow-wrap: anywhere }
+.sys.w { border-color: var(--person) }
+.sys.w span { color: var(--person) }
+@media (max-width: 640px) { .plug { grid-template-columns: 1fr } .plug .hub { order: -1 } }
+
+/* posting timeline */
+.track { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .5rem }
+.stage { border-radius: 8px; padding: .75rem; display: grid; gap: .3rem; align-content: start; background: var(--surface); border: 1px solid var(--line) }
+.stage b { font-family: var(--display); font-size: .98rem }
+.stage span { font-size: .86rem; color: var(--muted) }
+.stage.p { background: var(--person-soft); border-color: var(--person) }
+.stage.go { background: var(--ok-soft); border-color: var(--ok) }
+.stage.go b { color: var(--ok) }
+@media (max-width: 640px) { .track { grid-template-columns: 1fr 1fr } }
+
+/* tables */
+.tw { overflow-x: auto }
+table { border-collapse: collapse; width: 100%; font-size: .95rem; min-width: 36rem }
+th { text-align: left; font: 600 .74rem var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: .5rem .6rem; border-bottom: 1px solid var(--line) }
+td { padding: .6rem; border-bottom: 1px solid var(--line); vertical-align: top }
+tbody tr:last-child td { border-bottom: 0 }
+
+/* tech folds */
+details.tech { border: 1px solid var(--line); border-radius: 8px; background: var(--surface) }
+details.tech > summary { cursor: pointer; padding: .7rem 1rem; font: 600 .9rem var(--body); color: var(--accent) }
+details.tech > div { padding: 0 1rem 1rem; display: grid; gap: .7rem }
+pre { margin: 0; background: var(--code-bg); color: var(--code-fg); border-radius: 6px; padding: .8rem 1rem; overflow-x: auto; font: .8rem/1.55 var(--mono) }
+
+/* scripts */
+.say { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: .8rem }
+.say > div { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 1rem; display: grid; gap: .5rem; align-content: start }
+.say blockquote { margin: 0; font-size: 1rem }
+ol.clicks { margin: 0; padding-left: 1.2rem; display: grid; gap: .3rem }
+ul.rules { margin: 0; padding-left: 1.2rem; display: grid; gap: .45rem }
+footer { color: var(--muted); font-size: .85rem }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important } }
+</style>
+<style>
+.split { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: .8rem }
+.bucket { border-radius: 8px; padding: 1rem; display: grid; gap: .4rem; align-content: start; border: 1px solid var(--line); background: var(--surface) }
+.bucket b { font-family: var(--display); font-size: 1.05rem }
+.bucket .goes { font: .78rem var(--mono); color: var(--accent) }
+.bucket.ai { border-color: var(--accent) }
+.bucket.pp { border-color: var(--person); background: var(--person-soft) }
+.bucket.pp .goes { color: var(--person) }
+.bucket.nn { border-style: dashed }
+.bucket q { font-style: italic; color: var(--muted); quotes: "\201C" "\201D" }
+td code { overflow-wrap: anywhere }
+td:nth-child(2) { min-width: 9rem }
+td.sec { font: 600 .82rem var(--mono); color: var(--accent); white-space: nowrap }
+ol.build { list-style: none; margin: 0; padding: 0; display: grid; gap: .6rem; counter-reset: b }
+ol.build > li { counter-increment: b; display: grid; grid-template-columns: 2.4rem 1fr; gap: .9rem; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: .9rem 1rem }
+ol.build > li::before { content: counter(b); font: 800 1.35rem var(--display); color: var(--accent); line-height: 1.15 }
+ol.build > li > div { min-width: 0; display: grid; gap: .35rem }
+ol.build .meta { font: .78rem var(--mono); color: var(--muted) }
+ol.build .meta b { color: var(--ink); font-weight: 500 }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: .8rem }
+.two > div { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 1rem; display: grid; gap: .5rem; align-content: start; min-width: 0 }
+.two ul { margin: 0; padding-left: 1.1rem; display: grid; gap: .25rem; font-size: .95rem }
+</style>
+<div class="wrap">
+
+<header>
+  <p class="q">Agent One Finance · building capabilities</p>
+  <h1>How the FOBO skill became a capability, and how to build the next one</h1>
+  <p class="lede">A skill document is written for a person. AOF needs the same knowledge in four different places, because each kind of sentence is run differently: by code, by the AI, by a person, or not yet at all. This page shows where every section of the FOBO Investigation Skill v1.0 went, then the steps to do the same for a new skill, with all data coming from MCP tool calls.</p>
+</header>
+
+<section class="stack" aria-labelledby="h-basis">
+  <div><p class="q">The basis</p><h2 id="h-basis">Sort every sentence of the skill into one of four kinds</h2></div>
+  <p>This one sorting decides everything else. Read the skill line by line and ask: can this be checked by a formula on the data? If yes, it is a rule. If it needs reading and weighing evidence, it is judgement. If it says a person must do or confirm something, it is a people step. If it names a number nobody has agreed yet, it is a parameter.</p>
+  <div class="split">
+    <div class="bucket"><b>1. Mechanical rules</b><q>FO-2: yesterday close price = today open price</q><span>Run as code on every break, before any AI. Same answer every time.</span><span class="goes">→ the playbook: checks, tests, categories, verdict table, guards</span></div>
+    <div class="bucket ai"><b>2. Judgement</b><q>Complex corporate actions, novel events, multiple root causes</q><span>The AI reads the evidence the tools return and writes hypotheses, never an assertion.</span><span class="goes">→ AI instructions, its tools, its output sections, specialists</span></div>
+    <div class="bucket pp"><b>3. People</b><q>Mark it for SME review rather than asserting it</q><span>A stop where a person confirms, decides, answers or releases.</span><span class="goes">→ stops, review, checklist, questions to the desk, tickets</span></div>
+    <div class="bucket nn"><b>4. Numbers not agreed yet</b><q>Materiality threshold: TO BE CONFIRMED</q><span>Left empty on purpose. A rule that needs an empty number does not run and says so (rule P1).</span><span class="goes">→ policy values, empty until Product Control confirms</span></div>
+  </div>
+</section>
+
+<section class="stack" aria-labelledby="h-map">
+  <div><p class="q">The mapping</p><h2 id="h-map">Where each section of the FOBO skill went</h2></div>
+  <p class="sub">File: <code>config/agent-one-finance/groups/break.investigation/fobo-prime.yaml</code> (the team's rules), on the <code>break.investigation</code> capability (the shape).</p>
+  <div class="tw"><table>
+    <thead><tr><th>Skill</th><th>What it says</th><th>Became</th><th>Kind</th></tr></thead>
+    <tbody>
+      <tr><td class="sec">§1 Role</td><td>Senior controller; evidence-backed root cause plus a verdict</td><td>The first paragraph of the AI instructions (<code>reasoning.skill</code>)</td><td>Judgement</td></tr>
+      <tr><td class="sec">§2 Invariant</td><td>FO PnL = BO PnL + adjustments, truthfully</td><td>AI instructions; the "End-state validation" output section; next-day re-test (<code>follow_through</code>) and the <code>ADJUSTMENT_NOT_CLEARED</code> check</td><td>Rule + judgement</td></tr>
+      <tr><td class="sec">§3 R1</td><td>A break is not an instruction to post</td><td>Built into the engine: verdicts are only proposals; posting needs review and a second person's release</td><td>People</td></tr>
+      <tr><td class="sec">§3 R2</td><td>Validate FO before BO; FO cause never posts</td><td>A guard: <code>POST when side == 'FO' → ESCALATE</code>; FO tests listed first; AI instructions</td><td>Rule</td></tr>
+      <tr><td class="sec">§3 R3</td><td>Decompose by component</td><td>Each test names the component it validates (<code>validates: Position · Price · MTM …</code>)</td><td>Rule</td></tr>
+      <tr><td class="sec">§3 R5</td><td>Do not begin while books are incomplete</td><td>Check <code>R5: book_status != 'Complete'</code> → category W → hold (ESCALATE)</td><td>Rule</td></tr>
+      <tr><td class="sec">§3 R6</td><td>Cannot evidence it → escalate</td><td>Default category H (Novel) → ESCALATE; a failing blocking test holds a POST; a figure the AI cannot trace goes to a person</td><td>Rule</td></tr>
+      <tr><td class="sec">§3 R7</td><td>Deterministic → rule; judgement → SME</td><td>Each category is marked deterministic or judgement. Deterministic ones are settled by the verdict table; judgement ones go to the AI, then to review one by one</td><td>Rule + people</td></tr>
+      <tr><td class="sec">§4 Sequence</td><td>Steps 0–9 in order</td><td>The step list: <code>load → enrich → … → classify → group → reason → draft → validate → review → record</code>; step 0 is check R5; step 9 is the next-day re-test</td><td>Shape</td></tr>
+      <tr><td class="sec">§5 FO tests</td><td>FO-1 … FO-8</td><td>Playbook <code>tests</code>: what fails it (<code>fails_when</code>), the data it needs, evidence, action on failure, whether it blocks a POST</td><td>Rule</td></tr>
+      <tr><td class="sec">§5 FO-6 A/B/C</td><td>Redemption findings</td><td>Playbook <code>findings</code> A, B, C, each pointing to its category</td><td>Rule</td></tr>
+      <tr><td class="sec">§6 BO tests</td><td>BO-1 … BO-6; do not post by elimination</td><td>Playbook <code>tests</code> BO-1 … BO-6; "do not post by elimination" in the AI instructions</td><td>Rule + judgement</td></tr>
+      <tr><td class="sec">§7 Trade level</td><td>Validate every trade</td><td>AI tools <code>cats.trades</code>, <code>motif.trades</code> and a "trade-level" specialist that compares them</td><td>Judgement</td></tr>
+      <tr><td class="sec">§8 Scenarios</td><td>Reapplication, missing side, static outlier, posting failure</td><td>Checks <code>REAPPLICATION</code>, <code>MISSING_SIDE</code>, <code>STATIC_OUTLIER</code>, <code>POSTING_FAILED</code>, run before the cause checks</td><td>Rule</td></tr>
+      <tr><td class="sec">§9 Categories</td><td>A–H; H feeds skill evolution</td><td>Playbook <code>categories</code> with determinism and owning team; H is the default; novel breaks listed for the skill's owners; a judgement approved unchanged 5 times is flagged as a rule candidate</td><td>Rule</td></tr>
+      <tr><td class="sec">§10 Verdicts</td><td>Post · Do not post · Escalate · Correct &amp; re-post</td><td>The verdict table by category and side; POST always needs the reviewer's tick and words</td><td>Rule + people</td></tr>
+      <tr><td class="sec">§11 Remediation</td><td>Never end at the posting decision</td><td>A ticket to the category's owning team after the decision; "Remediation" output section</td><td>People</td></tr>
+      <tr><td class="sec">§12 Output</td><td>Seven-part answer</td><td>AI output <code>sections</code>: root cause, hypotheses, tests not performed, verdict and why, remediation, preventative control, end state. Parts 1, 2 and 4 come from the playbook</td><td>Judgement</td></tr>
+      <tr><td class="sec">§13 Evidence</td><td>Ask for data rather than assume</td><td>A test whose data is missing is "not run", never passed; <code>requests</code>: ask the desk, operations or CATS support; the group waits and goes back to the AI with the answer</td><td>Rule + people</td></tr>
+      <tr><td class="sec">§14 Checklist</td><td>Nine questions</td><td>The review checklist, prefilled from what AOF found</td><td>People</td></tr>
+      <tr><td class="sec">Parameters</td><td>Seven values TO BE CONFIRMED; rule P1</td><td><code>policy</code> values left empty; a test or verdict that needs one is marked "needs controller confirmation"</td><td>Not agreed yet</td></tr>
+      <tr><td class="sec">Appendix A</td><td>The £247k pull-factor case</td><td>A test case for the evaluation: expected Category C, side FO, DO NOT POST</td><td>Proof</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="stack" aria-labelledby="h-two">
+  <div><p class="q">Two files</p><h2 id="h-two">The capability is the shape; the group is the team's rules</h2></div>
+  <div class="two">
+    <div><h3>Capability: the same for every team</h3><ul>
+      <li>What one case is: <code>key: [book, cob]</code></li>
+      <li>How the items load: <code>tool: mbrec.breaks</code></li>
+      <li>The step list, the stops and the three gates</li>
+      <li>Who may review</li>
+      <li>What a team is allowed to change (<code>configurable</code>)</li></ul></div>
+    <div><h3>Group: one team's version</h3><ul>
+      <li>When cases open (MB Rec's end-of-day event) and when they are due</li>
+      <li>Extra data per break: <code>enrich</code></li>
+      <li>The playbook: checks, tests, categories, verdicts, guards</li>
+      <li>Thresholds (<code>policy</code>), AI instructions, tools, output sections</li>
+      <li>Questions to the desk, tickets, the review checklist</li></ul></div>
+  </div>
+  <p class="sub">FOBO Prime and FOBO Rates are two groups on one capability. A third team reuses the shape and brings its own rules.</p>
+</section>
+
+<section class="stack" aria-labelledby="h-data">
+  <div><p class="q">Data from MCP</p><h2 id="h-data">Every field a rule reads must arrive from a tool</h2></div>
+  <p>A test like FO-2 reads two fields on the break: <code>fo_prev_close_price</code> and <code>fo_open_price</code>. Those fields only exist if a step brought them in. There are four ways in, all through MCP tool calls:</p>
+  <div class="tw"><table>
+    <thead><tr><th>Way in</th><th>What it does</th><th>FOBO example</th></tr></thead>
+    <tbody>
+      <tr><td><code>load</code></td><td>The items themselves, one row each</td><td><code>mbrec.breaks</code>: the open breaks for the book and date</td></tr>
+      <tr><td><code>enrich</code></td><td>Joins more fields onto each item by key</td><td><code>motif.break_snapshots</code>, by instrument: the dated FO and BO values the tests read</td></tr>
+      <tr><td><code>dataset</code> step</td><td>A table beside the items, for pattern steps and the AI</td><td><code>mbrec.break_history_book</code>, <code>motif.booking_events</code>, <code>motif.positions</code></td></tr>
+      <tr><td>AI tools</td><td>Questions the AI may ask while investigating</td><td><code>cats.trades</code>, <code>motif.trades</code>, <code>mbrec.break_history</code></td></tr>
+    </tbody>
+  </table></div>
+  <p>Write the <b>data contract</b> first: every field the tests and checks need, and the tool that supplies it. A field no tool supplies yet does not break anything: the tests that need it show "not run", and the capability's "Data and parameters" panel lists it under "Data needed", so the system team knows what to add.</p>
+</section>
+
+<section class="stack" aria-labelledby="h-build">
+  <div><p class="q">One by one</p><h2 id="h-build">Building a new capability from a skill</h2></div>
+  <ol class="build">
+    <li><div><h3>Collect the inputs</h3><p>The skill document; the systems involved and the questions each can answer over MCP (the tool list); a few real past cases with the outcome a controller decided; who reviews, who releases, who owns it.</p><p class="meta">Who: <b>BA and the skill owner</b> · Output: <b>an inputs page in Confluence</b></p></div></li>
+    <li><div><h3>Sort the skill into the four kinds</h3><p>Go section by section, as in the mapping table above. Write each rule as a sentence of the form "fails when …", each judgement as an instruction, each people point as a stop, each open number as a parameter.</p><p class="meta">Who: <b>BA with a controller</b> · Output: <b>a four-column sheet</b></p></div></li>
+    <li><div><h3>Write the data contract</h3><p>List every field the rules read, and the MCP tool that supplies it (load, enrich, data set). Mark the gaps and ask the system teams for them.</p><p class="meta">Who: <b>BA and the developer</b> · Output: <b>field → tool table</b></p></div></li>
+    <li><div><h3>Allow the tools</h3><p>Add each system and its tools to <code>connectors.yaml</code>: address, which argument carries the book (so access is checked per person), and <code>access: write</code> on anything that changes a system. Use the stub until the real server is ready.</p><p class="meta">Who: <b>developer</b> · Output: <b>connections on the allow-list</b></p></div></li>
+    <li><div><h3>Create the capability (the shape)</h3><p>Authoring → guided form, or a YAML file: what one case is, how items load, the step list, where a person stops (and the question they answer), who reviews, and what teams may change.</p><p class="meta">Who: <b>developer</b> · Output: <b>capability draft</b></p></div></li>
+    <li><div><h3>Create the team's group</h3><p>When cases open (an event or a schedule), when they are due, enrich, and the thresholds left empty until confirmed.</p><p class="meta">Who: <b>developer with the BA</b> · Output: <b>group draft</b></p></div></li>
+    <li><div><h3>Write the playbook</h3><p>Scenario checks first, then cause checks; the tests with what fails them, the data they need, and whether they block a POST; the categories (deterministic or judgement, owning team); the verdict table by side; guards such as "an FO cause never posts".</p><p class="meta">Who: <b>BA and a controller</b> · Output: <b>the rules, in the group</b></p></div></li>
+    <li><div><h3>Write the AI's part, and only that</h3><p>Instructions for the judgement cases only, telling it what the playbook has already done; the tools it may use; the output sections it must fill; specialists for long trawls.</p><p class="meta">Who: <b>skill owner and developer</b> · Output: <b>AI instructions and tools</b></p></div></li>
+    <li><div><h3>Set the people points</h3><p>The question at the stop before the AI; reviewer roles; the completion checklist; which verdicts need a tick and words; who may be asked for evidence; which decisions raise a ticket and for whom.</p><p class="meta">Who: <b>controller lead</b> · Output: <b>review set-up</b></p></div></li>
+    <li><div><h3>Check</h3><p>Click Check (or run it on the file). It refuses anything inconsistent and says why: a step that needs data nothing earlier made, a tool not on the allow-list ("…is not an onboarded connector tool"), a team setting the capability has no step for.</p><p class="meta">Who: <b>developer</b> · Output: <b>no problems listed</b></p></div></li>
+    <li><div><h3>Run it on test data, then evaluate</h3><p>Run a case on a test book and walk it as a controller. Then replay the past cases from step 1 (and the skill's worked example): AOF shows how often it agrees with what the controller decided, and where it differs.</p><p class="meta">Who: <b>controllers and QA</b> · Output: <b>agreement figure and a differences list</b></p></div></li>
+    <li><div><h3>Version, approve, and keep improving</h3><p>Save a version; a second owner approves it; new cases use it. Each week, look at the novel breaks and the judgement calls approved unchanged five times: they are the next rules.</p><p class="meta">Who: <b>owner</b> · Output: <b>live version; next rules</b></p></div></li>
+  </ol>
+</section>
+
+<section class="stack" aria-labelledby="h-starter">
+  <div><p class="q">Starter</p><h2 id="h-starter">A minimal capability and group that pass Check</h2></div>
+  <p>A price-break version of FOBO, cut down to one check and one test, to copy and grow. Both files were run through AOF's own checks: no problems. A first draft forgot the <code>enrich</code> step, and Check answered: "<code>enrich</code> is set but the workflow has no <code>enrich</code> step".</p>
+  <details class="tech" open><summary>capability.yaml: the shape</summary><div><pre>id: price.break.investigation
+name: Price break investigation
+description: Investigate price breaks a reconciliation has found; explain each, settle what the playbook can, a controller signs off.
+owners: { people: [erin], role: AOF_RECON_OWNER, four_eyes: true }
+case:
+  label: Price break run
+  item_label: Break
+  key: [book, cob]
+  subject: &quot;{book} · COB {cob}&quot;
+  scopes: { book: book }
+items:
+  load: { tool: mbrec.breaks, args: { book: $case.book, cob: $case.cob } }
+  id_field: instrument
+  amount_field: difference
+  display: [instrument, desk, break_type, difference]
+steps: [load, enrich, classify, group, reason, draft, validate, review, record]
+pause_before: [reason, review]
+tollgates:
+  reason:
+    check: Are these today&#x27;s breaks, and is the playbook&#x27;s classification right?
+group_by: [break_type]
+reasoning:
+  reasoner: llm
+  output: verdict
+  tools: [mbrec.break_history]
+  skill: |
+    You investigate price breaks. Cite only figures from the tools or the breaks.
+review: { roles: [FOBO_CONTROLLER], require_comment: [reject, escalated] }
+configurable: [case.opens_on, case.due, items, enrich, policy.*, playbook, group_by, group_label, reasoning.skill, reasoning.tools, reasoning.sections, review.roles, review.checklist, requests]
+</pre></div></details>
+  <details class="tech"><summary>group.yaml: one team's rules</summary><div><pre>group: price-prime
+name: Price breaks — Prime
+owners: { people: [frank], role: AOF_FOBO_RECON_OWNER, four_eyes: true }
+set:
+  enrich:
+    - { tool: motif.break_snapshots, args: { book: $case.book, cob: $case.cob }, keys: [instrument] }
+  policy:
+    mtm_market_movement_tolerance: { value: null, unit: GBP }
+  playbook:
+    checks:
+      - { id: R5, when: &quot;book_status != &#x27;Complete&#x27;&quot;, category: W, side: UNKNOWN, reason: &quot;Book is {book_status}; start only on complete books&quot; }
+    tests:
+      - { id: FO-2, side: FO, validates: Price, check: &quot;Yesterday close price = today open price&quot;,
+          fails_when: &quot;fo_prev_close_price != fo_open_price&quot;, needs: [fo_prev_close_price, fo_open_price],
+          evidence: [Pricing file], on_fail: &quot;Hold adjustment; raise market-data DQ&quot;, blocks_post: true }
+    categories:
+      A: { name: Price break, determinism: deterministic, escalate_to: Market data }
+      H: { name: Novel break, determinism: judgement, escalate_to: Product Control }
+      W: { name: Books not complete, determinism: deterministic, escalate_to: Operations, any_side: true }
+    default_category: H
+    sides: [FO, BO]
+    verdicts:
+      A: { FO: DO_NOT_POST, BO: POST }
+      H: { FO: ESCALATE, BO: ESCALATE }
+      W: { FO: ESCALATE, BO: ESCALATE }
+    guards:
+      - { verdict: POST, when: &quot;side == &#x27;FO&#x27;&quot;, instead: ESCALATE, reason: &quot;R2: a cause in FO never posts&quot; }
+    blocked_verdict: ESCALATE
+    escalate_verdicts: [ESCALATE]
+    confirm_verdicts: [POST]
+  reasoning:
+    sections:
+      - { id: root_cause, label: Root cause, required: true, hint: &quot;One clear statement, or say it is not established&quot; }
+      - { id: verdict_reason, label: Verdict and why, required: true, hint: &quot;The verdict and the reason&quot; }
+  review:
+    roles: [FOBO_CONTROLLER]
+    checklist:
+      - { id: what_checked, label: &quot;What did I check?&quot;, prefill: tests }
+      - { id: root_cause, label: &quot;What root cause was identified?&quot;, prefill: root_cause }
+</pre></div></details>
+</section>
+
+<section class="stack" aria-labelledby="h-done">
+  <div><p class="q">Ready</p><h2 id="h-done">Before controllers use it</h2></div>
+  <ul class="rules">
+    <li>Every parameter confirmed by Product Control, or knowingly left empty with the tests that depend on it listed.</li>
+    <li>The data contract complete for the tests that block a POST.</li>
+    <li>The worked example from the skill gives the skill's answer.</li>
+    <li>Agreement with past decisions at or above the agreed level, and every difference explained.</li>
+    <li>The version approved by a second owner.</li>
+  </ul>
+</section>
+
+<footer>Agent One Finance · mapping taken from the FOBO Prime group and the break investigation capability in the AOF repository (config/agent-one-finance). The starter files were checked with the engine's own validation.</footer>
+</div>
+</body></html>

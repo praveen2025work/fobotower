@@ -1,0 +1,29 @@
+id: price.break.investigation
+name: Price break investigation
+description: Investigate price breaks a reconciliation has found; explain each, settle what the playbook can, a controller signs off.
+owners: { people: [erin], role: AOF_RECON_OWNER, four_eyes: true }
+case:
+  label: Price break run
+  item_label: Break
+  key: [book, cob]
+  subject: "{book} · COB {cob}"
+  scopes: { book: book }
+items:
+  load: { tool: mbrec.breaks, args: { book: $case.book, cob: $case.cob } }
+  id_field: instrument
+  amount_field: difference
+  display: [instrument, desk, break_type, difference]
+steps: [load, enrich, classify, group, reason, draft, validate, review, record]
+pause_before: [reason, review]
+tollgates:
+  reason:
+    check: Are these today's breaks, and is the playbook's classification right?
+group_by: [break_type]
+reasoning:
+  reasoner: llm
+  output: verdict
+  tools: [mbrec.break_history]
+  skill: |
+    You investigate price breaks. Cite only figures from the tools or the breaks.
+review: { roles: [FOBO_CONTROLLER], require_comment: [reject, escalated] }
+configurable: [case.opens_on, case.due, items, enrich, policy.*, playbook, group_by, group_label, reasoning.skill, reasoning.tools, reasoning.sections, review.roles, review.checklist, requests]

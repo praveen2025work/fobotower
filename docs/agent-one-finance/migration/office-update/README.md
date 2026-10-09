@@ -21,6 +21,7 @@ zip -r aof-update.zip aof-update
 |---|---|
 | `which-version.py` + `versions.json` | Finds the exact upstream version the office copy matches. Needs only Python 3, not git, and changes nothing. |
 | `patches/from-<version>.patch` | One patch from each upstream version since 06 Oct to the latest. Demo screenshots and PDFs are left out. |
+| `web/aof-web-<version>.tar.gz` | The whole AOF console (`apps/web`). The console is **replaced as a folder**, not patched: see [`replace-web-folder.md`](replace-web-folder.md). |
 | `README.md` | This page. |
 
 Carry the zip into the office through the bank's approved transfer route.
@@ -73,7 +74,8 @@ Fill in the three `<…>` and paste:
 >
 > Work on the branch `aof-update` only. Do not touch any database, deployment, secret or the main branch.
 >
-> 1. **Apply.** Run `git apply --check -3 <path>/aof-update/patches/from-<version>.patch`, show me
+> 1. **Apply.** Run `git apply --check -3 --exclude='apps/web/*' <path>/aof-update/patches/from-<version>.patch`
+>    (the console is replaced as a whole folder separately, with `web/README.md`), show me
 >    the result, and stop. Once I agree, apply it.
 >    *(If I already copied the files in by hand, skip this step. Instead, review `git diff HEAD~1`
 >    for anything the copy overwrote that was ours.)*
@@ -130,6 +132,13 @@ stop. None is needed. Check against `whats-new.md` first.
 If the image builds but the deployment fails on its first database call, see
 [`fix-greenlet-deploy.md`](fix-greenlet-deploy.md). It is a one-line dependency fix with steps for
 office Claude.
+
+## The console: replace the folder, do not port it
+
+The patches update the backend and configuration. Replace the AOF console (`apps/web`) as a whole folder, keeping only
+the office's own settings files. The full steps and the prompt for office Claude are in
+[`replace-web-folder.md`](replace-web-folder.md). Porting it file by file into another UI loses the styles, the theme
+and the menu icons.
 
 ## `apps/console` is not part of AOF
 

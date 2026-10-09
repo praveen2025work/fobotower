@@ -6,7 +6,8 @@ to the latest, and the table `which-version.py` uses to find the office's versio
 Run it in this repo, on a machine with the full git history. Zip the output
 folder and carry it into the office the approved way. The office then follows
 docs/agent-one-finance/migration/office-update/README.md. Demo screenshots and
-PDFs are left out of the patches.
+PDFs are left out of the patches. The console (apps/web) also comes whole, as
+web/aof-web-<version>.tar.gz, for the office to replace its console folder with.
 """
 
 import argparse
@@ -69,6 +70,12 @@ def main() -> None:
         if short != to:
             (out / "patches" / f"from-{short}.patch").write_text(git("diff", "--binary", c, to, "--", ".", EXCLUDE, *FOBO_PATHS, ":!apps/backend/tests/test_*.py"))
     (out / "versions.json").write_text(json.dumps({"latest": to, "order": [c[:7] for c in commits], "versions": versions}))
+    # The console is replaced as a whole folder, not patched: see replace-web-folder.md.
+    (out / "web").mkdir()
+    subprocess.run(["git", "-C", str(ROOT), "archive", "--format=tar.gz", "-o", str(out / "web" / f"aof-web-{to}.tar.gz"),
+                    f"{to}:apps/web"], check=True)
+    (out / "web" / "files.txt").write_text(git("ls-tree", "-r", "--name-only", f"{to}:apps/web"))
+    shutil.copy(KIT / "replace-web-folder.md", out / "web" / "README.md")
     shutil.copy(KIT / "which-version.py", out / "which-version.py")
     shutil.copy(KIT / "README.md", out / "README.md")
     print(f"{out}: {len(commits)} versions ({commits[0][:7]} … {to}), {len(files)} files, {len(commits) - 1} patches")

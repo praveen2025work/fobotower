@@ -76,23 +76,7 @@ Risks, assumptions, issues and dependencies tracked weekly.
 
 - Done when: RAID log live
 
-### E01-S05 Architecture review (ARB)
-
-As an architect, I want the architecture approved by ARB, so that the design is accepted before we build on it.
-
-Present the architecture and controls; record conditions.
-
-| Sprint | Release | Points | Priority | Team | Environment | Status |
-|---|---|---|---|---|---|---|
-| Sprint 3 | R1 Working version | 3 | Highest | Architect | - | To Do |
-
-**Acceptance criteria**
-
-- Done when: ARB approval; conditions added as stories
-
-**Blocked by:** E03-S22
-
-### E01-S06 Agree success and go/no-go criteria
+### E01-S05 Agree success and go/no-go criteria
 
 As a delivery lead, I want success and go/no-go criteria agreed, so that the go-live decision is objective.
 
@@ -106,11 +90,11 @@ For example: agreement with reviewers, no unverified figures, hours saved, no op
 
 - Done when: Criteria agreed
 
-### E01-S07 Go/no-go sign-off list
+### E01-S06 Go/no-go sign-off list
 
 As a delivery lead, I want a list of who signs go/no-go, so that the right people approve go-live.
 
-Who signs: the Business (Product Control), Risk, Security, Operations.
+Who signs: the Business (the FOBO controllers' lead, Product Control), Risk, Security, Operations.
 
 | Sprint | Release | Points | Priority | Team | Environment | Status |
 |---|---|---|---|---|---|---|

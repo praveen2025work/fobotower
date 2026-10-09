@@ -6,7 +6,7 @@
 
 ## Summary
 
-Core Agent One Finance, integrated with Agent One, investigates FOBO breaks from MB Rec for Product Control and posts approved adjustments to MOTIF through FAS. People decide every outcome; an adjustment is posted only after a reviewer approves it and a different person releases it.
+Core Agent One Finance, integrated with Agent One, investigates FOBO breaks from MB Rec for the FOBO controllers (Product Control), who run the use case and test it, and posts approved adjustments to MOTIF through FAS. People decide every outcome; an adjustment is posted only after a reviewer approves it and a different person releases it.
 
 ## Key dates
 
@@ -19,7 +19,7 @@ Core Agent One Finance, integrated with Agent One, investigates FOBO breaks from
 | 10 Dec 2026 | **M5 Prod ready before the freeze**: Prod environment and connections in place; no application deployed yet |
 | 18 Dec 2026 | **M6 UAT, security and parity sign-off; CAB submitted**: UAT signed, penetration test closed, parity accepted, CAB request in for 5 Jan |
 | 6 Jan 2027 | **M7 Released to Prod; parallel run**: Released 5 Jan after the freeze; parallel run with today's process from 6 Jan |
-| 14 Jan 2027 | **M8 Go-live**: Product Control uses AOF for FOBO Prime and Rates |
+| 14 Jan 2027 | **M8 Go-live**: The FOBO controllers use AOF for FOBO Prime and Rates |
 
 Change freeze: 11 Dec 2026 to 4 Jan 2027 (no Production changes).
 
@@ -39,10 +39,10 @@ Sprints are two weeks, Tuesday to Monday. Sprint 1 (Diagnostics) is done, Sprint
 | E02 | AOF platform on AWS: skeleton, UAT and Prod | DevOps / Backend | In Progress |
 | E03 | Agent One integration: sessions per capability per case | Backend | To Do |
 | E04 | Data connections: MB Rec, MOTIF and FAS | Backend / DevOps | To Do |
-| E05 | FOBO (Helix) set-up with Product Control | BA / Product Control | To Do |
+| E05 | FOBO (Helix) set-up with the FOBO controllers | BA / FOBO controllers | To Do |
 | E06 | Agent One Finance Diagnostics | Backend / DevOps | In Progress |
-| E07 | Security, risk and controls | Architect / Risk | To Do |
-| E08 | Testing and parity | QA / Product Control | To Do |
+| E07 | Governance, approvals and controls | Governance lead / Risk / Security | In Progress |
+| E08 | Testing and parity with the FOBO controllers | FOBO controllers / QA | To Do |
 | E09 | Business engagement and showcase | PM / BA | In Progress |
 | E10 | Go-live and support | DevOps / PM | To Do |
 

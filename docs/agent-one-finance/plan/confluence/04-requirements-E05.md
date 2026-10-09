@@ -1,4 +1,4 @@
-# E05 FOBO (Helix) set-up with Product Control
+# E05 FOBO (Helix) set-up with the FOBO controllers
 
 | Owner | Status | Last updated | Purpose |
 |---|---|---|---|
@@ -8,33 +8,33 @@
 |---|---|---|---|
 | E05 | FOBO | 20 Oct 2026 to 30 Nov 2026 | To Do |
 
-**Objective:** FOBO Prime and Rates configured and confirmed by Product Control
+**Objective:** FOBO Prime and Rates configured with, and confirmed by, the FOBO controllers who run the use case
 
 **Deliverables:** Thresholds, checks and verdicts, sign-off checklist, owners, which verdicts post adjustments
 
-**Exit criteria:** Product Control confirms the set-up
+**Exit criteria:** The FOBO controllers confirm the set-up
 
-**Dependencies:** Product Control time; MB Rec data
+**Dependencies:** FOBO controllers' time; MB Rec data
 
 ## Stories
 
-### E05-S40 Confirm thresholds and parameters with Product Control
+### E05-S39 Confirm thresholds and parameters with the FOBO controllers
 
-As a Product Control reviewer, I want materiality, tolerances and ageing confirmed, so that the checks use our values.
+As a FOBO controller, I want materiality, tolerances and ageing confirmed, so that the checks use our values.
 
-Materiality, tolerances, ageing.
+Materiality, tolerances, ageing, as the FOBO controllers apply them today.
 
 | Sprint | Release | Points | Priority | Team | Environment | Status |
 |---|---|---|---|---|---|---|
-| Sprint 3 | R1 Working version | 3 | Highest | BA / Product Control | - | To Do |
+| Sprint 3 | R1 Working version | 3 | Highest | BA / FOBO controllers | - | To Do |
 
 **Acceptance criteria**
 
 - Done when: Values signed
 
-### E05-S41 Set up FOBO Prime
+### E05-S40 Set up FOBO Prime
 
-As a Product Control reviewer, I want FOBO Prime set up on AOF, so that Prime breaks are investigated end to end.
+As a FOBO controller, I want FOBO Prime set up on AOF, so that Prime breaks are investigated end to end.
 
 Books, reviewers, owners.
 
@@ -47,25 +47,25 @@ Books, reviewers, owners.
 - Given a Prime book and date, when the case runs, then each break group has a proposal ready for review.
 - Done when: A Prime case runs end to end in UAT
 
-**Blocked by:** E05-S40, E04-S32
+**Blocked by:** E05-S39, E04-S31
 
-### E05-S42 Review checks, categories and verdicts with Product Control
+### E05-S41 Review checks, categories and verdicts with the FOBO controllers
 
-As a Product Control reviewer, I want each check, category and verdict reviewed, so that the outcomes match how we work.
+As a FOBO controller, I want each check, category and verdict reviewed, so that the outcomes match how we work.
 
 Each check, the verdict table and its guards.
 
 | Sprint | Release | Points | Priority | Team | Environment | Status |
 |---|---|---|---|---|---|---|
-| Sprint 4 | R1 Working version | 5 | Highest | BA / Product Control | - | To Do |
+| Sprint 4 | R1 Working version | 5 | Highest | BA / FOBO controllers | - | To Do |
 
 **Acceptance criteria**
 
-- Done when: Product Control confirms or changes each one
+- Done when: The FOBO controllers confirm or change each one
 
-### E05-S43 Sign-off checklist and reviewer answers
+### E05-S42 Sign-off checklist and reviewer answers
 
-As a Product Control reviewer, I want a sign-off checklist, so that every approval meets the same standard.
+As a FOBO controller, I want a sign-off checklist, so that every approval meets the same standard.
 
 What a reviewer must confirm before approving.
 
@@ -78,9 +78,9 @@ What a reviewer must confirm before approving.
 - Given a proposal, when I approve it, then the required checklist answers are recorded.
 - Done when: Reviewer completes the checklist in UAT
 
-### E05-S44 Set up FOBO Rates
+### E05-S43 Set up FOBO Rates
 
-As a Product Control reviewer, I want FOBO Rates set up on AOF, so that Rates breaks are investigated end to end.
+As a FOBO controller, I want FOBO Rates set up on AOF, so that Rates breaks are investigated end to end.
 
 As Prime, for Rates books.
 
@@ -93,28 +93,28 @@ As Prime, for Rates books.
 - Given a Rates book and date, when the case runs, then each break group has a proposal ready for review.
 - Done when: A Rates case runs end to end in UAT
 
-**Blocked by:** E05-S41
+**Blocked by:** E05-S40
 
-### E05-S45 Which verdicts post an adjustment, and who releases it
+### E05-S44 Which verdicts post an adjustment, and who releases it
 
-As a Product Control reviewer, I want the verdicts that post adjustments and the releasing role set, so that posting follows our rules.
+As a FOBO controller, I want the verdicts that post adjustments and the releasing role set, so that posting follows our rules.
 
 Link the verdicts to FAS posting; set the releasing role.
 
 | Sprint | Release | Points | Priority | Team | Environment | Status |
 |---|---|---|---|---|---|---|
-| Sprint 5 | R1 Working version | 2 | Highest | BA / Product Control | UAT | To Do |
+| Sprint 5 | R1 Working version | 2 | Highest | BA / FOBO controllers | UAT | To Do |
 
 **Acceptance criteria**
 
 - Given an approved POST verdict, when it is released by the releasing role, then an adjustment is posted.
 - Done when: Shown working in UAT
 
-**Blocked by:** E04-S33
+**Blocked by:** E04-S32
 
-### E05-S46 Owners and escalation routes
+### E05-S45 Owners and escalation routes
 
-As a Product Control reviewer, I want owners and escalation routes set, so that questions reach the right people.
+As a FOBO controller, I want owners and escalation routes set, so that questions reach the right people.
 
 Who owns each category; who is asked for evidence.
 
@@ -126,9 +126,9 @@ Who owns each category; who is asked for evidence.
 
 - Done when: Questions and escalations reach the right people
 
-### E05-S47 Turn on extra checks when MB Rec's new data arrives
+### E05-S46 Turn on extra checks when MB Rec's new data arrives
 
-As a Product Control reviewer, I want the extra checks on when MB Rec's data arrives, so that more breaks are explained.
+As a FOBO controller, I want the extra checks on when MB Rec's data arrives, so that more breaks are explained.
 
 History, systemic and trend checks.
 
@@ -140,11 +140,11 @@ History, systemic and trend checks.
 
 - Done when: Checks run in UAT
 
-**Blocked by:** E04-S31
+**Blocked by:** E04-S30
 
-### E05-S48 Next-day follow-up and late breaks
+### E05-S47 Next-day follow-up and late breaks
 
-As a Product Control reviewer, I want decisions re-checked the next day and late breaks in their own case, so that nothing is missed.
+As a FOBO controller, I want decisions re-checked the next day and late breaks in their own case, so that nothing is missed.
 
 Re-check decisions on the next business day; late breaks get their own case.
 

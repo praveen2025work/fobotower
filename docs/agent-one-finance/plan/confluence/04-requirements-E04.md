@@ -18,7 +18,7 @@
 
 ## Stories
 
-### E04-S31 MB Rec: request the extra data the checks need (long lead)
+### E04-S30 MB Rec: request the extra data the checks need (long lead)
 
 As a BA, I want MB Rec's extra data requested with dates, so that the extra checks can be turned on.
 
@@ -32,9 +32,9 @@ Book status, history by book, and breaks across books.
 
 - Done when: MB Rec gives delivery dates
 
-### E04-S32 MB Rec: read breaks and break history
+### E04-S31 MB Rec: read breaks and break history
 
-As a Product Control reviewer, I want breaks and their history read from MB Rec, so that each case starts from the real breaks.
+As a FOBO controller, I want breaks and their history read from MB Rec, so that each case starts from the real breaks.
 
 Read-only connection.
 
@@ -47,9 +47,9 @@ Read-only connection.
 - Given a book and date in MB Rec, when a case opens, then its breaks load read-only.
 - Done when: Real breaks load into a case in UAT
 
-**Blocked by:** E02-S12
+**Blocked by:** E02-S11
 
-### E04-S33 FAS: agree posting rules with Product Control and MOTIF
+### E04-S32 FAS: agree posting rules with the FOBO controllers and MOTIF
 
 As a BA, I want the posting rules agreed, so that only the right adjustments are posted.
 
@@ -57,17 +57,17 @@ Which adjustments are posted, accounts and booking fields, limits, who releases.
 
 | Sprint | Release | Points | Priority | Team | Environment | Status |
 |---|---|---|---|---|---|---|
-| Sprint 3 | R1 Working version | 2 | Highest | BA / Product Control | - | To Do |
+| Sprint 3 | R1 Working version | 2 | Highest | BA / FOBO controllers | - | To Do |
 
 **Acceptance criteria**
 
 - Done when: Posting rules signed
 
-### E04-S34 Give provisioned users their AOF roles and books
+### E04-S33 Give the FOBO controllers their AOF roles and books
 
-As a Product Control reviewer, I want my AOF role and books set, so that I see only my books.
+As a FOBO controller, I want my AOF role and books set, so that I see only my books.
 
-Users are already provisioned; set who reviews, who releases and which books each sees.
+The FOBO controllers are already provisioned; set who reviews, who releases and which books each sees.
 
 | Sprint | Release | Points | Priority | Team | Environment | Status |
 |---|---|---|---|---|---|---|
@@ -78,9 +78,9 @@ Users are already provisioned; set who reviews, who releases and which books eac
 - Given a reviewer for book A, when they open the inbox, then they see only book A's cases.
 - Done when: Users see only their books
 
-### E04-S35 MB Rec: end-of-day notification opens a case
+### E04-S34 MB Rec: end-of-day notification opens a case
 
-As a Product Control reviewer, I want a case opened automatically when MB Rec finishes a book, so that work is ready when I start.
+As a FOBO controller, I want a case opened automatically when MB Rec finishes a book, so that work is ready when I start.
 
 When MB Rec finishes a book, AOF opens the case; late breaks open a follow-up.
 
@@ -94,11 +94,11 @@ When MB Rec finishes a book, AOF opens the case; late breaks open a follow-up.
 - Given a late break for an open book, when MB Rec notifies, then a follow-up case opens.
 - Done when: Case opens automatically in UAT
 
-**Blocked by:** E04-S32
+**Blocked by:** E04-S31
 
-### E04-S36 MOTIF: read trades, positions and booking events
+### E04-S35 MOTIF: read trades, positions and booking events
 
-As a Product Control reviewer, I want trades, positions and booking events read from MOTIF, so that breaks are explained from the booking side.
+As a FOBO controller, I want trades, positions and booking events read from MOTIF, so that breaks are explained from the booking side.
 
 Read-only connection.
 
@@ -111,11 +111,11 @@ Read-only connection.
 - Given a break, when it is investigated, then the MOTIF data used is shown on the case.
 - Done when: MOTIF data available in UAT
 
-**Blocked by:** E02-S12
+**Blocked by:** E02-S11
 
-### E04-S37 FAS: post approved adjustments to MOTIF
+### E04-S36 FAS: post approved adjustments to MOTIF
 
-As a Product Control reviewer, I want approved adjustments posted to MOTIF through FAS, so that I do not re-key them.
+As a FOBO controller, I want approved adjustments posted to MOTIF through FAS, so that I do not re-key them.
 
 Connect the FAS service. Only adjustments approved by a reviewer and released by a second person are posted; each is posted once.
 
@@ -130,11 +130,11 @@ Connect the FAS service. Only adjustments approved by a reviewer and released by
 - Given an adjustment not released, when anyone tries to post it, then nothing is posted.
 - Done when: Approved adjustment posted to MOTIF in UAT; a second post is refused; audit shows who approved and released
 
-**Blocked by:** E04-S33, E02-S12
+**Blocked by:** E04-S32, E02-S11
 
-### E04-S38 FAS: confirm each posted adjustment in MOTIF
+### E04-S37 FAS: confirm each posted adjustment in MOTIF
 
-As a Product Control reviewer, I want each posting confirmed in MOTIF, so that I know it landed.
+As a FOBO controller, I want each posting confirmed in MOTIF, so that I know it landed.
 
 Read back from MOTIF that the adjustment landed; flag any that did not.
 
@@ -147,9 +147,9 @@ Read back from MOTIF that the adjustment landed; flag any that did not.
 - Given a posted adjustment, when MOTIF is read back, then the case shows it confirmed, or flags it.
 - Done when: Every UAT posting confirmed
 
-**Blocked by:** E04-S37
+**Blocked by:** E04-S36
 
-### E04-S39 Connections in Prod before the freeze
+### E04-S38 Connections in Prod before the freeze
 
 As a platform engineer, I want MB Rec, MOTIF and FAS reachable from Prod by 10 Dec, so that the 5 Jan release needs no network change.
 
@@ -163,5 +163,5 @@ MB Rec, MOTIF and FAS reachable from Prod by 10 Dec.
 
 - Done when: All connections up in Prod
 
-**Blocked by:** E02-S19
+**Blocked by:** E02-S18
 

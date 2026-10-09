@@ -20,7 +20,7 @@
 
 ## Stories
 
-### E02-S08 Set up the AOF database on AWS (Postgres with pgvector)
+### E02-S07 Set up the AOF database on AWS (Postgres with pgvector)
 
 As a platform engineer, I want the AOF database on AWS with pgvector, so that AOF can keep its cases, audit trail and knowledge.
 
@@ -34,7 +34,7 @@ The AOF database with the pgvector extension.
 
 - Done when: Database reachable from the AOF service; pgvector enabled
 
-### E02-S09 Deploy the AOF orchestrator service to AWS
+### E02-S08 Deploy the AOF orchestrator service to AWS
 
 As a platform engineer, I want the AOF orchestrator running as its own service on AWS, so that the team can deliver changes to UAT.
 
@@ -49,11 +49,11 @@ Its own ECS service from the AOF image (port 8300), health check, database setti
 - Given a release from the pipeline, when it is deployed, then the service starts and passes its health check.
 - Done when: Service healthy on AWS; health check and sign-in check answer
 
-**Blocked by:** E02-S08
+**Blocked by:** E02-S07
 
-### E02-S10 AOF skeleton end to end on AWS
+### E02-S09 AOF skeleton end to end on AWS
 
-As a Product Control reviewer, I want the console, orchestrator and database working together on AWS, so that we can see AOF run before the connections arrive.
+As a FOBO controller, I want the console, orchestrator and database working together on AWS, so that we can see AOF run before the connections arrive.
 
 The console at /agentone/finance, the AOF service and the database working together; a sample case runs on test data.
 
@@ -66,9 +66,9 @@ The console at /agentone/finance, the AOF service and the database working toget
 - Given a sample case on test data, when it is opened in the console at /agentone/finance, then it runs and can be reviewed.
 - Done when: A sample case opens, runs and is reviewed on AWS
 
-**Blocked by:** E02-S09
+**Blocked by:** E02-S08
 
-### E02-S11 Request the Prod platform (long lead)
+### E02-S10 Request the Prod platform (long lead)
 
 As a platform engineer, I want the Prod platform requested now, so that Prod is ready by 10 Dec.
 
@@ -82,7 +82,7 @@ UAT runs on AWS today. Raise the Prod request now; Prod must be ready by 10 Dec.
 
 - Done when: Approved with dates
 
-### E02-S12 Request network access to MB Rec, MOTIF, FAS and the LLM gateway (long lead)
+### E02-S11 Request network access to MB Rec, MOTIF, FAS and the LLM gateway (long lead)
 
 As a platform engineer, I want network access to MB Rec, MOTIF, FAS and the LLM gateway, so that the connections work in UAT and Prod.
 
@@ -96,7 +96,7 @@ Firewall rules for UAT and Prod.
 
 - Done when: Rules approved
 
-### E02-S13 Settle the AOF database migrations
+### E02-S12 Settle the AOF database migrations
 
 As a platform engineer, I want the AWS database on AOF's migration history, so that every release can change the database safely.
 
@@ -111,9 +111,9 @@ Line up the AWS database with AOF's migration history, then run migrations befor
 - Given a release with a database change, when it is deployed, then the migration runs first and there is one migration head.
 - Done when: One migration head; migrations run in the pipeline
 
-**Blocked by:** E02-S08
+**Blocked by:** E02-S07
 
-### E02-S14 Take each AOF release the same way (sync tool)
+### E02-S13 Take each AOF release the same way (sync tool)
 
 As a platform engineer, I want each AOF release taken with the sync tool instead of a hand conversion, so that updates are quick, complete and keep our own changes.
 
@@ -128,7 +128,7 @@ Replace the hand-converted console and backend with the generated release and th
 - Given a new AOF release, when the sync tool runs, then the console and backend are updated and our sign-on and connection settings are kept.
 - Done when: Console at /agentone/finance on the latest release, with its styles and icons; an update is one sync run
 
-### E02-S15 Build pipeline with tests and security scans
+### E02-S14 Build pipeline with tests and security scans
 
 As a platform engineer, I want every change built, tested and scanned, so that only safe changes reach UAT and Prod.
 
@@ -143,9 +143,9 @@ Every change is built, tested and scanned before it can be deployed.
 - Given a change with a failing test, when the pipeline runs, then the release is stopped.
 - Done when: Pipeline green; a failing test stops the release
 
-### E02-S16 Complete the UAT environment
+### E02-S15 Complete the UAT environment
 
-As a platform engineer, I want UAT complete with single sign-on, secrets and connections, so that Product Control can test on real data.
+As a platform engineer, I want UAT complete with single sign-on, secrets and connections, so that the FOBO controllers can test on real data.
 
 Single sign-on, secrets, web address and connections for the AOF service and console.
 
@@ -158,11 +158,11 @@ Single sign-on, secrets, web address and connections for the AOF service and con
 - Given the pipeline, when a release is promoted to UAT, then it deploys and a reviewer can sign in.
 - Done when: Release deployed to UAT by the pipeline; a reviewer signs in
 
-**Blocked by:** E02-S09
+**Blocked by:** E02-S08
 
-### E02-S17 Deploy the reviewer console to UAT
+### E02-S16 Deploy the reviewer console to UAT
 
-As a Product Control reviewer, I want the reviewer console in UAT, so that I can review cases on screen.
+As a FOBO controller, I want the reviewer console in UAT, so that I can review cases on screen.
 
 The screens reviewers use, at /agentone/finance behind single sign-on.
 
@@ -175,9 +175,9 @@ The screens reviewers use, at /agentone/finance behind single sign-on.
 - Given I am a provisioned reviewer, when I open /agentone/finance in UAT, then I see my inbox after single sign-on.
 - Done when: Reviewers open the console in UAT
 
-**Blocked by:** E02-S16
+**Blocked by:** E02-S15
 
-### E02-S18 Promote releases from UAT to Prod through the pipeline
+### E02-S17 Promote releases from UAT to Prod through the pipeline
 
 As a platform engineer, I want the same build promoted from UAT to Prod with an approval gate, so that Prod runs exactly what was tested.
 
@@ -192,9 +192,9 @@ Same build, approval gate before Prod.
 - Given a release signed off in UAT, when it is promoted, then Prod gets the same build only after approval.
 - Done when: Approval gate works
 
-**Blocked by:** E02-S15
+**Blocked by:** E02-S14
 
-### E02-S19 Build the Prod environment before the freeze
+### E02-S18 Build the Prod environment before the freeze
 
 As a platform engineer, I want the Prod environment ready by 10 Dec, so that we can release on 5 Jan without a freeze breach.
 
@@ -209,9 +209,9 @@ Database, secrets, single sign-on, web address; ready by 10 Dec. The application
 - Given the Prod platform, when the smoke test runs, then it passes by 10 Dec.
 - Done when: Prod smoke test passes
 
-**Blocked by:** E02-S11
+**Blocked by:** E02-S10
 
-### E02-S20 Backups and restore tested
+### E02-S19 Backups and restore tested
 
 As a support analyst, I want backups with a tested restore, so that we can recover from data loss.
 

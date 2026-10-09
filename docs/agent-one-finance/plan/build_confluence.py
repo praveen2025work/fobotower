@@ -35,7 +35,7 @@ pages = {}
 # 1. Project overview
 p = header("Agent One Finance with the FOBO (Helix) use case: overview", "What we are delivering, for whom, and by when")
 p += ("## Summary\n\nCore Agent One Finance, integrated with Agent One, investigates FOBO breaks from MB Rec for "
-      "Product Control and posts approved adjustments to MOTIF through FAS. People decide every outcome; "
+      "the FOBO controllers (Product Control), who run the use case and test it, and posts approved adjustments to MOTIF through FAS. People decide every outcome; "
       "an adjustment is posted only after a reviewer approves it and a different person releases it.\n\n"
       "## Key dates\n\n| Date | What |\n|---|---|\n"
       + "".join(f"| {d(m[2])} | **{m[0]} {cell(m[1])}**: {cell(m[3])} |\n" for m in MIL)
@@ -114,8 +114,10 @@ DECISIONS = [
     ("D04", "Agent One sessions per capability per case", "Agreed (design to sign)", "Not per user login; optionally per break group inside a case. Session runs with the case's rights."),
     ("D05", "Diagnostics hosted outside AWS/BCP", "Agreed (platform to confirm)", "Separate build and deployment from AOF."),
     ("D06", "Change freeze 11 Dec to 4 Jan", "Confirmed", "Prod built by 10 Dec; application released on 5 Jan."),
-    ("D07", "Scope and go/no-go owned by the Business", "Agreed", "Sign-off by the Business (Product Control), Risk, Security and Operations."),
+    ("D07", "Scope and go/no-go owned by the Business", "Agreed", "Sign-off by the Business (the FOBO controllers' lead, Product Control), Risk, Security and Operations."),
     ("D08", "Reviewer console inside Agent One at /agentone/finance", "Agreed", "Each AOF release is taken with the sync tool, not converted by hand; our sign-on and connection settings are kept."),
+    ("D10", "The FOBO controllers set up, test and sign off the use case", "Agreed", "Set-up, UAT cycles, parity and the parallel run are done by named FOBO controllers."),
+    ("D11", "One governance lead owns all approvals", "Agreed", "TAC, ARB, CAF, CDO, DAIP, CARA, DPIA and AI risk, with the artefact register, in the governance epic (E07)."),
     ("D09", "Two-week sprints, Tuesday to Monday", "Agreed", "Sprint 1 22 Sep, Sprint 2 6 Oct, Sprint 3 starts 20 Oct; working version end of Sprint 5 (30 Nov)."),
 ]
 p = header("Decision log", "Decisions taken and still open")
@@ -127,11 +129,14 @@ pages["05-decision-log.md"] = p
 RAID = [
     ("R1", "Risk", "Prod not ready by 10 Dec", "High", "Raise platform and network requests in Sprint 2; track weekly", "DevOps"),
     ("R2", "Risk", "Posting to MOTIF through FAS needs controls sign-off and FAS access in UAT", "High", "Agree posting rules in Sprint 3; controls story in Sprint 5", "BA / Risk"),
-    ("R3", "Risk", "Late approvals (model, DPIA, penetration test, CAB)", "High", "Start in Sprints 2–3; each week late moves go-live by about a week", "PM"),
+    ("R3", "Risk", "Late approvals (TAC, ARB, CAF, CDO, DAIP, CARA, DPIA, CAB)", "High", "Artefact register from Sprint 2; forum dates booked now; each week late moves go-live by about a week", "Governance lead"),
+    ("R6", "Risk", "All approvals rest on one person", "Medium", "Register and packs kept in Confluence; a named backup for steerco weeks", "PM"),
+    ("R7", "Risk", "FOBO controllers' time for set-up, UAT and the parallel run not protected", "High", "Names and time agreed with the Business in Sprint 2", "PM"),
     ("R4", "Risk", "MB Rec extra data arrives late", "Medium", "Extra checks stay off; go-live not blocked", "BA"),
     ("R5", "Risk", "Sprint 7 runs over the holidays", "Medium", "UAT cycle 2 starts 15 Dec; sign-offs and CAB request by 18 Dec", "PM"),
-    ("A1", "Assumption", "Product Control available for set-up in Sprints 3–4 and UAT in Sprints 6–7", "", "Confirm with the Business", "PM"),
-    ("A2", "Assumption", "Users are already provisioned for interim skill testing", "", "", "PM"),
+    ("A1", "Assumption", "Named FOBO controllers available for set-up in Sprints 3–4, UAT in Sprints 6–7 and the parallel run in Sprint 8", "", "Confirm with the Business", "PM"),
+    ("A2", "Assumption", "The FOBO controllers are already provisioned for interim skill testing", "", "", "PM"),
+    ("A3", "Assumption", "One team member works full time on governance approvals", "", "", "PM"),
     ("I1", "Issue", "The AOF orchestrator deployment on AWS is not yet healthy", "High", "Missing package fixed; own ECS service in Sprint 2; database migration history settled in Sprint 3", "DevOps"),
     ("I2", "Issue", "Converting each AOF release by hand lost styles and screens", "High", "Take each release with the sync tool from Sprint 3", "Frontend"),
     ("D1", "Dependency", "MB Rec: extra data and end-of-day notification", "", "Weekly session; dates in plan", "PM"),

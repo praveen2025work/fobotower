@@ -12,6 +12,8 @@
 | D04 | Agent One sessions per capability per case | Agreed (design to sign) | Not per user login; optionally per break group inside a case. Session runs with the case's rights. | 9 Oct 2026 | *(name)* |
 | D05 | Diagnostics hosted outside AWS/BCP | Agreed (platform to confirm) | Separate build and deployment from AOF. | 9 Oct 2026 | *(name)* |
 | D06 | Change freeze 11 Dec to 4 Jan | Confirmed | Prod built by 10 Dec; application released on 5 Jan. | 9 Oct 2026 | *(name)* |
-| D07 | Scope and go/no-go owned by the Business | Agreed | Sign-off by the Business (Product Control), Risk, Security and Operations. | 9 Oct 2026 | *(name)* |
+| D07 | Scope and go/no-go owned by the Business | Agreed | Sign-off by the Business (the FOBO controllers' lead, Product Control), Risk, Security and Operations. | 9 Oct 2026 | *(name)* |
 | D08 | Reviewer console inside Agent One at /agentone/finance | Agreed | Each AOF release is taken with the sync tool, not converted by hand; our sign-on and connection settings are kept. | 9 Oct 2026 | *(name)* |
+| D10 | The FOBO controllers set up, test and sign off the use case | Agreed | Set-up, UAT cycles, parity and the parallel run are done by named FOBO controllers. | 9 Oct 2026 | *(name)* |
+| D11 | One governance lead owns all approvals | Agreed | TAC, ARB, CAF, CDO, DAIP, CARA, DPIA and AI risk, with the artefact register, in the governance epic (E07). | 9 Oct 2026 | *(name)* |
 | D09 | Two-week sprints, Tuesday to Monday | Agreed | Sprint 1 22 Sep, Sprint 2 6 Oct, Sprint 3 starts 20 Oct; working version end of Sprint 5 (30 Nov). | 9 Oct 2026 | *(name)* |

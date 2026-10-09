@@ -18,7 +18,7 @@
 
 ## Stories
 
-### E03-S21 Confirm the approved model and data rules (long lead)
+### E03-S20 Confirm the approved model and data rules (long lead)
 
 As a risk officer, I want the approved model and data rules confirmed, so that only approved data reaches the model.
 
@@ -32,7 +32,7 @@ Which model, which data may be sent to it, and what is masked.
 
 - Done when: Written approval
 
-### E03-S22 Agree the session design with the Agent One team
+### E03-S21 Agree the session design with the Agent One team
 
 As an architect, I want the session design agreed with the Agent One team, so that sessions follow the case, not the user login.
 
@@ -46,9 +46,9 @@ Today Agent One opens a session per user login. Target: one session per capabili
 
 - Done when: Design signed by the Agent One team and Architect
 
-### E03-S23 Open an Agent One session per capability per case
+### E03-S22 Open an Agent One session per capability per case
 
-As a Product Control reviewer, I want one Agent One session per capability per case, so that everyone working a case shares the same investigation.
+As a FOBO controller, I want one Agent One session per capability per case, so that everyone working a case shares the same investigation.
 
 When a case opens (by MB Rec's end-of-day trigger or by a person), AOF opens one Agent One session for that capability and case. Logging in no longer creates a session.
 
@@ -63,9 +63,9 @@ When a case opens (by MB Rec's end-of-day trigger or by a person), AOF opens one
 - Given a user, when they log in, then no session is created.
 - Done when: Two people on the same case use the same session; two cases never share one; no session per login
 
-**Blocked by:** E03-S22, E03-S21
+**Blocked by:** E03-S21, E03-S20
 
-### E03-S24 Session runs with the case's rights, not the user's
+### E03-S23 Session runs with the case's rights, not the user's
 
 As a risk officer, I want each session to run with the case's identity and book scope, so that a session can only read that case's books.
 
@@ -80,9 +80,9 @@ The session uses the case's own identity and book scope (a service identity for 
 - Given a session for book A, when it asks for book B's data, then the request is refused and audited.
 - Done when: A session cannot read another book; refusals are audited
 
-**Blocked by:** E03-S23
+**Blocked by:** E03-S22
 
-### E03-S25 Trace every model and system call by case
+### E03-S24 Trace every model and system call by case
 
 As a support analyst, I want every model and system call traceable by case number, so that I can explain any outcome.
 
@@ -97,9 +97,9 @@ Each case's session can be traced end to end by its case number.
 - Given a case number, when I search the traces, then I see every model and system call for it.
 - Done when: Trace found by case number
 
-### E03-S26 Session per break group (where needed)
+### E03-S25 Session per break group (where needed)
 
-As a Product Control reviewer, I want large cases investigated in parallel by break group, so that results are ready sooner.
+As a FOBO controller, I want large cases investigated in parallel by break group, so that results are ready sooner.
 
 Large cases can use one session per break group so groups are investigated in parallel, still under the same case.
 
@@ -112,9 +112,9 @@ Large cases can use one session per break group so groups are investigated in pa
 - Given a case with several break groups, when it runs, then groups are investigated in parallel under the same case.
 - Done when: Groups of one case run in parallel in UAT
 
-**Blocked by:** E03-S23
+**Blocked by:** E03-S22
 
-### E03-S27 Session lifecycle: resume, close and keep the record
+### E03-S26 Session lifecycle: resume, close and keep the record
 
 As a support analyst, I want sessions that resume, close at sign-off and keep their record, so that no work is lost and audit is complete.
 
@@ -130,9 +130,9 @@ A session resumes if a case is re-run or the service restarts, closes when the c
 - Given a signed-off case, when the session closes, then its record stays with the case.
 - Done when: Resume and close shown in UAT; record kept on the case
 
-**Blocked by:** E03-S23
+**Blocked by:** E03-S22
 
-### E03-S28 Cost limits and off switches per capability and case
+### E03-S27 Cost limits and off switches per capability and case
 
 As a delivery lead, I want cost limits and off switches, so that spend is controlled and we can stop safely.
 
@@ -148,9 +148,9 @@ Daily and per-case limits; FOBO and each connection can be switched off.
 - Given FOBO switched off, when a case would open, then nothing runs.
 - Done when: Over limit goes to a person; switch-off tested
 
-### E03-S29 Run the FOBO skill in the case's session
+### E03-S28 Run the FOBO skill in the case's session
 
-As a Product Control reviewer, I want the controllers' FOBO skill run in the case's session, so that we can compare it with the step-by-step set-up.
+As a FOBO controller, I want the controllers' FOBO skill run in the case's session, so that we can compare it with the step-by-step set-up.
 
 The controllers' skill runs end to end in the case's session, as an option to the step-by-step set-up.
 
@@ -162,13 +162,13 @@ The controllers' skill runs end to end in the case's session, as an option to th
 
 - Done when: One case runs in UAT
 
-**Blocked by:** E03-S23
+**Blocked by:** E03-S22
 
-### E03-S30 Real-model evaluation on decided cases
+### E03-S29 Real-model evaluation on decided cases
 
-As a Product Control reviewer, I want the real model checked against cases we already decided, so that we trust its proposals.
+As a FOBO controller, I want the real model checked against cases we already decided, so that we trust its proposals.
 
-Replay cases people decided and compare.
+Replay cases the FOBO controllers decided and compare.
 
 | Sprint | Release | Points | Priority | Team | Environment | Status |
 |---|---|---|---|---|---|---|
@@ -178,5 +178,5 @@ Replay cases people decided and compare.
 
 - Done when: Agreement recorded; differences reviewed
 
-**Blocked by:** E03-S23
+**Blocked by:** E03-S22
 

@@ -212,7 +212,7 @@ footer {{ color:var(--muted); font-size:.8rem }}
 <header>
   <p class="eyebrow">Delivery plan · prepared {dt.date(2026,10,9).strftime("%d %b %Y").lstrip("0")}</p>
   <h1>Agent One Finance with the FOBO (Helix) use case</h1>
-  <p class="lede">Core Agent One Finance, integrated with Agent One, investigating FOBO breaks from MB Rec for Product Control and posting approved adjustments to MOTIF through FAS. Two-week sprints: Sprint 1 built Diagnostics, Sprint 2 is putting the AOF skeleton on AWS, and Sprint 3 starts on 20 Oct. A working version in UAT by 30 Nov; go-live on 14 Jan.</p>
+  <p class="lede">Core Agent One Finance, integrated with Agent One, investigating FOBO breaks from MB Rec for the FOBO controllers, who run the use case and test it, and posting approved adjustments to MOTIF through FAS. Two-week sprints: Sprint 1 built Diagnostics, Sprint 2 is putting the AOF skeleton on AWS, and Sprint 3 starts on 20 Oct. A working version in UAT by 30 Nov; go-live on 14 Jan.</p>
   <dl class="keys">
     <div><dt>Working version</dt><dd class="big">30 Nov 2026</dd></div>
     <div><dt>Go-live</dt><dd class="big">14 Jan 2027</dd></div>
@@ -253,12 +253,13 @@ footer {{ color:var(--muted); font-size:.8rem }}
       <li>Prod platform request (Prod needed by 10 Dec)</li>
       <li>Network access to MB Rec, MOTIF, FAS and the LLM gateway</li>
       <li>Model and data approval for the LLM gateway</li>
+      <li>Governance forum dates: TAC, ARB, CAF, CDO, DAIP and CARA (one governance lead)</li>
       <li>DPIA, AI risk assessment and penetration test slot</li>
       <li>MB Rec extra data and end-of-day trigger; FAS test access</li>
       <li>Diagnostics hosting outside AWS/BCP</li></ul></div>
     <div class="panel"><h3>Assumptions</h3><ul>
-      <li>Team: 2 backend, 1 DevOps, 1 QA, 1 BA, PM and architect; frontend part-time; Product Control SME part-time</li>
-      <li>Product Control available for set-up in Sprints 3–4 and UAT in Sprints 6–7</li>
+      <li>Team: 2 backend, 1 DevOps, 1 QA, 1 BA, a governance lead, PM and architect; frontend part-time</li>
+      <li>Named FOBO controllers available for set-up in Sprints 3–4, UAT in Sprints 6–7 and the parallel run in Sprint 8</li>
       <li>Change freeze 11 Dec – 4 Jan: Prod built by 10 Dec, released on 5 Jan</li>
       <li>Sprint 7 runs over the holidays at reduced capacity</li>
       <li>Users are already provisioned and testing their skill in finance agent chat</li></ul></div>
@@ -266,7 +267,8 @@ footer {{ color:var(--muted); font-size:.8rem }}
       <li>Prod not ready by 10 Dec: platform and network requests are the critical path</li>
       <li>AOF orchestrator deployment on AWS finishes in Sprint 2; the database migration history is settled in Sprint 3</li>
       <li>Posting adjustments to MOTIF through FAS needs controls sign-off and FAS access in UAT</li>
-      <li>Late approvals (model, DPIA, penetration test, CAB): each week late moves go-live by about a week</li></ul></div>
+      <li>Late approvals (TAC, ARB, CAF, CDO, DAIP, CARA, DPIA, CAB) rest on one governance lead: each week late moves go-live by about a week</li>
+      <li>FOBO controllers' time for set-up, UAT and the parallel run not protected</li></ul></div>
   </div>
 </section>
 

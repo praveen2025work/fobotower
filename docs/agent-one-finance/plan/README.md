@@ -13,7 +13,7 @@ Two-week sprints, Tuesday to Monday:
 | File | For |
 |---|---|
 | [`aof-fobo-plan.html`](aof-fobo-plan.html) | PMO and stakeholders. It shows the timeline, milestones, epics, ways of working, and stories by epic (filter by sprint). Open it in a browser. |
-| [`AOF-FOBO-stories.csv`](AOF-FOBO-stories.csv) | The Jira import: 10 epics and 92 stories, as user stories with acceptance criteria. |
+| [`AOF-FOBO-stories.csv`](AOF-FOBO-stories.csv) | The Jira import: 10 epics and 101 stories, as user stories with acceptance criteria. |
 | [`AOF-FOBO-L1-plan.csv`](AOF-FOBO-L1-plan.csv) | Level 1: epics, milestones, sprints and the freeze, for Excel. |
 | [`confluence/`](confluence/00-index.md) | Pages for the project space: overview, delivery plan, ways of working, requirements per epic, decision log, RAID log. |
 | `plan_data.py`, `standards.py` | The single source for the plan. `standards.py` holds the story wording, releases, components, and the Definitions of Ready and Done. |

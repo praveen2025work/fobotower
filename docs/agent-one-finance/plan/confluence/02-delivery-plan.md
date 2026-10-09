@@ -38,19 +38,19 @@
 | M5 | Prod ready before the freeze | 10 Dec 2026 | Prod environment and connections in place; no application deployed yet |
 | M6 | UAT, security and parity sign-off; CAB submitted | 18 Dec 2026 | UAT signed, penetration test closed, parity accepted, CAB request in for 5 Jan |
 | M7 | Released to Prod; parallel run | 6 Jan 2027 | Released 5 Jan after the freeze; parallel run with today's process from 6 Jan |
-| M8 | Go-live | 14 Jan 2027 | Product Control uses AOF for FOBO Prime and Rates |
+| M8 | Go-live | 14 Jan 2027 | The FOBO controllers use AOF for FOBO Prime and Rates |
 
 ## Epics
 
 | Jira | Epic | From | To | Stories | Points | Exit criteria |
 |---|---|---|---|---|---|---|
-| E01 | Programme and governance | 6 Oct 2026 | 14 Dec 2026 | 7 | 11 | Steerco agrees scope, plan and go-live criteria |
+| E01 | Programme and governance | 6 Oct 2026 | 14 Dec 2026 | 6 | 8 | Steerco agrees scope, plan and go-live criteria |
 | E02 | AOF platform on AWS: skeleton, UAT and Prod | 6 Oct 2026 | 14 Dec 2026 | 13 | 40 | The same build runs in UAT and Prod; Prod ready by 10 Dec |
 | E03 | Agent One integration: sessions per capability per case | 6 Oct 2026 | 30 Nov 2026 | 10 | 29 | Each FOBO case has its own Agent One session, shared by everyone working the case; no session per login |
 | E04 | Data connections: MB Rec, MOTIF and FAS | 6 Oct 2026 | 14 Dec 2026 | 9 | 33 | Breaks load from MB Rec; an approved adjustment posts to MOTIF through FAS in UAT |
-| E05 | FOBO (Helix) set-up with Product Control | 20 Oct 2026 | 30 Nov 2026 | 9 | 28 | Product Control confirms the set-up |
+| E05 | FOBO (Helix) set-up with the FOBO controllers | 20 Oct 2026 | 30 Nov 2026 | 9 | 28 | The FOBO controllers confirm the set-up |
 | E06 | Agent One Finance Diagnostics | 22 Sep 2026 | 11 Jan 2027 | 10 | 34 | Running in Prod; results match Phoenix |
-| E07 | Security, risk and controls | 20 Oct 2026 | 14 Dec 2026 | 8 | 26 | All approvals in place before the CAB request |
-| E08 | Testing and parity | 3 Nov 2026 | 28 Dec 2026 | 8 | 34 | UAT signed off; parity accepted; no open Sev1/Sev2 |
-| E09 | Business engagement and showcase | 6 Oct 2026 | 28 Dec 2026 | 10 | 21 | Showcase held 30 Nov; reviewers trained before go-live |
+| E07 | Governance, approvals and controls | 6 Oct 2026 | 28 Dec 2026 | 16 | 51 | All approvals and artefacts approved before the CAB request on 18 Dec |
+| E08 | Testing and parity with the FOBO controllers | 3 Nov 2026 | 28 Dec 2026 | 9 | 36 | FOBO controllers sign off UAT; parity accepted; no open Sev1/Sev2 |
+| E09 | Business engagement and showcase | 6 Oct 2026 | 28 Dec 2026 | 11 | 22 | Showcase held 30 Nov; FOBO controllers trained before go-live |
 | E10 | Go-live and support | 15 Dec 2026 | 25 Jan 2027 | 8 | 18 | Live on 14 Jan with no open Sev1/Sev2; support in place |

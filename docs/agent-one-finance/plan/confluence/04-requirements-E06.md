@@ -20,7 +20,7 @@
 
 ## Stories
 
-### E06-S49 Build the Diagnostics core (Phoenix scraper)
+### E06-S48 Build the Diagnostics core (Phoenix scraper)
 
 As a support analyst, I want agent runs, model calls, errors and cost read from Phoenix traces, so that I can see how the agents run.
 
@@ -34,7 +34,7 @@ Reads Phoenix traces and shows agent runs, model calls, errors and cost. About 7
 
 - Done when: Core running on test traces
 
-### E06-S50 Confirm hosting outside AWS/BCP
+### E06-S49 Confirm hosting outside AWS/BCP
 
 As an architect, I want Diagnostics hosting outside AWS/BCP approved, so that it can be deployed.
 
@@ -48,7 +48,7 @@ Agree the platform and its approvals.
 
 - Done when: Hosting approved
 
-### E06-S51 Diagnostics: finish the remaining 30%
+### E06-S50 Diagnostics: finish the remaining 30%
 
 As a support analyst, I want the open Diagnostics items finished, so that Diagnostics is complete enough for UAT.
 
@@ -62,9 +62,9 @@ The items still open after Sprint 1, in priority order.
 
 - Done when: Agreed items done
 
-**Blocked by:** E06-S49
+**Blocked by:** E06-S48
 
-### E06-S52 Own build pipeline and read-only Phoenix access
+### E06-S51 Own build pipeline and read-only Phoenix access
 
 As a platform engineer, I want a separate pipeline and read-only Phoenix access, so that Diagnostics is released safely.
 
@@ -78,7 +78,7 @@ Separate from the AOF build; read-only account; secrets stored safely.
 
 - Done when: Pipeline green; Phoenix readable
 
-### E06-S53 Deploy Diagnostics to UAT
+### E06-S52 Deploy Diagnostics to UAT
 
 As a support analyst, I want Diagnostics running in UAT, so that we see agent health during UAT.
 
@@ -92,9 +92,9 @@ Outside AWS/BCP.
 
 - Done when: Runs on schedule in UAT
 
-**Blocked by:** E06-S50, E06-S52
+**Blocked by:** E06-S49, E06-S51
 
-### E06-S54 Quality check: results match Phoenix
+### E06-S53 Quality check: results match Phoenix
 
 As a support analyst, I want Diagnostics results reconciled with Phoenix, so that I can trust what it shows.
 
@@ -109,7 +109,7 @@ Compare counts, timings, errors and costs with Phoenix for sample cases.
 - Given sample cases, when Diagnostics and Phoenix are compared, then counts, timings, errors and costs match.
 - Done when: Reconciliation report; defects logged
 
-### E06-S55 Tests, data checks and security review
+### E06-S54 Tests, data checks and security review
 
 As a risk officer, I want Diagnostics tested and reviewed, so that finance data in traces is protected.
 
@@ -123,7 +123,7 @@ Automated checks; confirm finance data in traces is masked.
 
 - Done when: Checks run; review signed
 
-### E06-S56 Diagnostics views for the showcase
+### E06-S55 Diagnostics views for the showcase
 
 As a delivery lead, I want Diagnostics views for the showcase, so that the Business sees how the agent runs.
 
@@ -137,9 +137,9 @@ Run health, model calls, cost per case.
 
 - Done when: Shown on 30 Nov
 
-**Blocked by:** E06-S53
+**Blocked by:** E06-S52
 
-### E06-S57 Improvements from the quality review and UAT feedback
+### E06-S56 Improvements from the quality review and UAT feedback
 
 As a support analyst, I want the top improvements made, so that Diagnostics gets better each sprint.
 
@@ -153,7 +153,7 @@ Next items from the priority list.
 
 - Done when: Agreed items done
 
-### E06-S58 Deploy Diagnostics to Prod
+### E06-S57 Deploy Diagnostics to Prod
 
 As a support analyst, I want Diagnostics running in Prod, so that we see agent health after go-live.
 
@@ -167,5 +167,5 @@ After the freeze, in the same release window.
 
 - Done when: Runs in Prod; results match Phoenix
 
-**Blocked by:** E10-S87
+**Blocked by:** E10-S96
 

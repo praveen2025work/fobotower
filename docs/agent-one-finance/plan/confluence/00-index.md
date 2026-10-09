@@ -11,10 +11,10 @@ Create a page tree in the project space and paste each file into a page of the s
 | `04-requirements-E02.md` | E02 AOF platform on AWS: skeleton, UAT and Prod |
 | `04-requirements-E03.md` | E03 Agent One integration: sessions per capability per case |
 | `04-requirements-E04.md` | E04 Data connections: MB Rec, MOTIF and FAS |
-| `04-requirements-E05.md` | E05 FOBO (Helix) set-up with Product Control |
+| `04-requirements-E05.md` | E05 FOBO (Helix) set-up with the FOBO controllers |
 | `04-requirements-E06.md` | E06 Agent One Finance Diagnostics |
-| `04-requirements-E07.md` | E07 Security, risk and controls |
-| `04-requirements-E08.md` | E08 Testing and parity |
+| `04-requirements-E07.md` | E07 Governance, approvals and controls |
+| `04-requirements-E08.md` | E08 Testing and parity with the FOBO controllers |
 | `04-requirements-E09.md` | E09 Business engagement and showcase |
 | `04-requirements-E10.md` | E10 Go-live and support |
 | `05-decision-log.md` | Decision log |

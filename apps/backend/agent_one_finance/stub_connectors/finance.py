@@ -479,6 +479,8 @@ def build_motif() -> MCPServer:
     server.add_tool(motif_trades, name="trades", description=motif_trades.__doc__)
     server.add_tool(break_snapshots, name="break_snapshots", description=break_snapshots.__doc__)
     server.add_tool(motif_pnl_components, name="pnl_components", description=motif_pnl_components.__doc__)
+    server.add_tool(break_snapshots_named_pnl, name="break_snapshots_named_pnl",
+                    description=break_snapshots_named_pnl.__doc__)
     return server
 
 
@@ -553,6 +555,44 @@ def mbrec_breaks_all(cob: str) -> dict:
                      for book in PRIME_BOOKS + RATES_BOOKS for b in _open_breaks(book, cob)]}
 
 
+# ---------- Named P&L: several master books worked as one case ----------
+# A named P&L groups master books (the books MB Rec reconciles). These tools
+# return every master book's rows in one call, each row naming its book, so a
+# case keyed by named P&L and COB reads them the way a case per book does.
+
+NAMED_PNLS = {
+    "PRIME-FINANCING-EMEA": ["PRIME-MB-01", "PRIME-MB-02", "PRIME-MB-03"],
+    "PRIME-FINANCING-US": ["PRIME-MB-04", "PRIME-MB-05", "PRIME-MB-06"],
+}
+
+
+def _master_books(named_pnl: str) -> list[str]:
+    if named_pnl not in NAMED_PNLS:
+        raise ValueError(f"unknown named P&L {named_pnl!r}")
+    return NAMED_PNLS[named_pnl]
+
+
+def mbrec_named_pnl_books(named_pnl: str, cob: str) -> dict:
+    """The master books in a named P&L: MB Rec's status for each on the COB
+    (Complete, In Progress, ...) and how many open breaks it has."""
+    return {"rows": [{"named_pnl": named_pnl, "book": b, "status": mbrec_book_status(b, cob)["rows"][0]["status"],
+                      "open_breaks": len(mbrec_breaks(b, cob)["rows"])} for b in _master_books(named_pnl)]}
+
+
+def mbrec_breaks_named_pnl(named_pnl: str, cob: str) -> dict:
+    """Open breaks MB Rec reconciled for every master book in a named P&L on one
+    COB. Each row names its master book (`book`); `break_id` is unique across them."""
+    return {"rows": [{**r, "named_pnl": named_pnl} for b in _master_books(named_pnl)
+                     for r in mbrec_breaks(b, cob)["rows"]]}
+
+
+def break_snapshots_named_pnl(named_pnl: str, cob: str) -> dict:
+    """The dated FO/BO snapshots of every master book in a named P&L on one COB,
+    one row per book and instrument (join on both)."""
+    return {"rows": [{**r, "book": b} for b in _master_books(named_pnl)
+                     for r in break_snapshots(b, cob)["rows"]]}
+
+
 def build_mbrec() -> MCPServer:
     server = MCPServer(name="mbrec", instructions="MB Rec reconciled breaks (stub).")
     server.add_tool(mbrec_breaks, name="breaks", description=mbrec_breaks.__doc__)
@@ -560,6 +600,8 @@ def build_mbrec() -> MCPServer:
     server.add_tool(mbrec_break_history_book, name="break_history_book", description=mbrec_break_history_book.__doc__)
     server.add_tool(mbrec_breaks_all, name="breaks_all", description=mbrec_breaks_all.__doc__)
     server.add_tool(mbrec_book_status, name="book_status", description=mbrec_book_status.__doc__)
+    server.add_tool(mbrec_named_pnl_books, name="named_pnl_books", description=mbrec_named_pnl_books.__doc__)
+    server.add_tool(mbrec_breaks_named_pnl, name="breaks_named_pnl", description=mbrec_breaks_named_pnl.__doc__)
     return server
 
 

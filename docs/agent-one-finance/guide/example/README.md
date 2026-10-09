@@ -10,6 +10,7 @@ were taken along the way. The outputs are what the script prints, with a few lon
 | [`group.yaml`](group.yaml) | The Prime controllers' rules: the data joined to each break, the checks and tests, categories, verdicts, the sign-off questions |
 | [`setup_example.py`](setup_example.py) | Does every step below through the API, as the right person each time. Run it against any AOF. |
 | [`img/`](img/) | The console at each stage |
+| [`named-pnl/`](named-pnl/) | The same check with one case per named P&L: all its master books at once. See [One case for a named P&L](#one-case-for-a-named-pnl). |
 
 **What it does.** For one Prime book on one COB, it reads MB Rec's open breaks and joins MOTIF's FO/BO snapshot to
 each. It then runs six of the FOBO skill's checks and three of its tests, and groups the breaks by cause. The verdict
@@ -240,6 +241,89 @@ reject needs a comment (`review.require_comment`).
 ![Run history](img/8-run-history.png)
 
 ---
+
+## One case for a named P&L
+
+A named P&L groups several master books. The controllers work it as one: one case per named P&L and COB, one
+sign-off. [`named-pnl/`](named-pnl/) is that version of this example, run the same way on 8 Oct.
+
+### What changes
+
+The rules (checks, tests, verdicts, the R2 guard, the checklist) do not change. What changes is what one case is and
+how the data is read:
+
+| | One case per book ([`capability.yaml`](capability.yaml)) | One case per named P&L ([`named-pnl/capability.yaml`](named-pnl/capability.yaml)) |
+|---|---|---|
+| A case is | `key: [book, cob]` | `key: [named_pnl, cob]` |
+| Who sees it | controllers entitled to the book | controllers entitled to the named P&L (`scopes: { named_pnl: named_pnl }`) |
+| Breaks from | `mbrec.breaks(book, cob)` | `mbrec.breaks_named_pnl(named_pnl, cob)`: every master book's breaks, each row naming its `book` |
+| A break is identified by | `instrument` | `break_id`: the same instrument can break in two master books |
+| Snapshot joined on | `instrument`, from `motif.break_snapshots` | `book` and `instrument`, from `motif.break_snapshots_named_pnl` |
+| Extra step | | `master_books`: each master book and MB Rec's status for it, listed on the case |
+| Shown on each break | | its `book` |
+
+### What happened
+
+```
+[6] aof-scheduler: opens a case for PRIME-FINANCING-EMEA COB 2026-10-08
+    case fobo.named.pnl.60b4d55df133: PRIME-FINANCING-EMEA · COB 2026-10-08
+
+[7] the run: load, enrich, classify, group done; status paused_before_reason
+    MCP tool mbrec.breaks_named_pnl(cob=2026-10-08, named_pnl=PRIME-FINANCING-EMEA) -> 7 rows, 56 ms
+    MCP tool mbrec.named_pnl_books(cob=2026-10-08, named_pnl=PRIME-FINANCING-EMEA) -> 3 rows, 13 ms
+    MCP tool motif.break_snapshots_named_pnl(cob=2026-10-08, named_pnl=PRIME-FINANCING-EMEA) -> 36 rows, 34 ms
+    data set master_books (3 rows):
+        book PRIME-MB-01, status In Progress, open_breaks 1
+        book PRIME-MB-02, status Complete, open_breaks 4
+        book PRIME-MB-03, status Complete, open_breaks 2
+```
+
+| Group | Breaks | Proposed |
+|---|---|---|
+| Trade booking break · front office | GILT 5Y (MB-03): FO trade version 3, MOTIF version 2 | Don't post (rules) |
+| Novel break · side not proven | CDX IG, ITRAXX MAIN, SOFR FUT, EURUSD FWD (MB-02); JGB 10Y (MB-03): none of the six checks explains them | Escalate; the AI looked first |
+| Books not complete | UST 2Y (MB-01): MB Rec has not finished MB-01 | Escalate (R5: held until the book is complete) |
+
+- **One case:** three MB Rec and MOTIF calls brought in all three master books. Without the named P&L, this would be
+  three cases.
+- **One group can cover several master books:** the Novel group has breaks from MB-02 and MB-03, and one decision
+  covers them.
+- **An unfinished master book does not block the others:** MB-01 was still "In Progress" in MB Rec. R5 held its break
+  and the two finished books were worked.
+- frank continued at the tollgate and signed off all three groups. The case is completed.
+
+![One group, breaks from two master books](img/9-named-pnl-two-books-one-group.png)
+
+![The master books and MB Rec's status, under Case details](img/10-named-pnl-master-books.png)
+
+![Signed off](img/11-named-pnl-signed-off.png)
+
+The stand-in model "reviewed no tool evidence" this time. Its tools (`mbrec.break_history`, `motif.booking_events`)
+need a book, and the case key has none. A real model passes each break's own book, as its instructions say. The
+other option is to give it named P&L versions of those tools.
+
+### What it needs from your systems
+
+These are the stub tools' equivalents in your MCP servers, plus two decisions:
+
+| Need | Why |
+|---|---|
+| An MB Rec tool returning the breaks for a named P&L and COB. Each row names its master book and has a break id that is unique across the named P&L and stable from COB to COB. | The `load` step. A stable id lets a decision carry to the next COB. |
+| The named P&L → master books mapping, with MB Rec's status per master book (a `named_pnl_books` tool) | The `master_books` list, and R5 |
+| MOTIF snapshots for a named P&L, keyed by book and instrument (or the same fields on MB Rec's rows) | The checks and tests |
+| A `named_pnl` data scope in entitlements for the controllers and the service account that opens cases | Who sees the case. If entitlements only know books, say so: AOF would then need to check every master book. |
+| When the case opens: when MB Rec has finished every master book (one event per named P&L and COB to `POST /api/events`), or at a cut-off on a schedule | If a master book is still running, R5 holds its breaks. **Re-run** the case once it completes. |
+
+Two choices for the team:
+- **One decision per cause across the named P&L**, as here (`group_by: [category, side]`), or one per master book
+  (`group_by: [book, category, side]`).
+- **Per book or per named P&L, not both, for the same books.** Otherwise each break is worked twice.
+
+Run it:
+
+```bash
+python setup_example.py --dir named-pnl --key named_pnl=PRIME-FINANCING-EMEA --cob 2026-10-08
+```
 
 ## Run it yourself
 

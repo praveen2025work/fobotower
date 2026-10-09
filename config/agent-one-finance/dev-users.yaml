@@ -1,6 +1,7 @@
 # Development stand-in for the central entitlements system.
 # Used only when AOF_ENTITLEMENT_URL is unset. Same shape the real
 # service is asked for: roles, and data scopes per dimension ("*" = all).
+# `named_pnl` scopes cases worked per named P&L (several master books).
 
 users:
   alice:
@@ -26,7 +27,7 @@ users:
   frank:
     name: Frank (FOBO controller, all books; CATS vs MOTIF owner)
     roles: [FOBO_CONTROLLER, AOF_FOBO_RECON_OWNER]
-    data_scopes: { book: ["*"] }
+    data_scopes: { book: ["*"], named_pnl: ["*"] }
   tom:
     name: Tom (Prime desk trader; answers controllers' questions)
     roles: [PRIME_DESK]
@@ -42,7 +43,7 @@ users:
   gina:
     name: Gina (FOBO controller, PRIME-MB-01; CATS vs MOTIF owner)
     roles: [FOBO_CONTROLLER, AOF_FOBO_RECON_OWNER]
-    data_scopes: { book: [PRIME-MB-01] }
+    data_scopes: { book: [PRIME-MB-01], named_pnl: [PRIME-FINANCING-EMEA] }
   rita:
     name: Rita (FOBO Rates controller, London books; CATS vs MOTIF Rates owner)
     roles: [FOBO_RATES_CONTROLLER, AOF_FOBO_RATES_OWNER]
@@ -88,7 +89,7 @@ users:
     roles: [FIN_REVIEWER, FIN_CONTROLLER, CASH_OPS, FOBO_CONTROLLER, FOBO_RATES_CONTROLLER, PAYMENTS_OPS, PAYMENTS_LEAD,
             COMPLAINTS_LEAD, CONTROL_OWNER, AOF_FIN_VARCOMM_OWNER, AOF_CASH_RECON_OWNER, AOF_RECON_OWNER,
             AOF_FOBO_RECON_OWNER, AOF_FOBO_RATES_OWNER, AOF_PAYMENTS_OWNER, AOF_COMPLAINTS_OWNER, AOF_CONTROLS_OWNER]
-    data_scopes: { entity: ["*"], book: ["*"] }
+    data_scopes: { entity: ["*"], book: ["*"], named_pnl: ["*"] }
   pat:
     name: Pat (Agent One Finance platform support — switches, connectors; sees no case data)
     roles: [AOF_PLATFORM_ADMIN]
@@ -96,7 +97,7 @@ users:
   aof-scheduler:
     name: Agent One Finance scheduler (service account — opens scheduled and event cases, never decides)
     roles: [FIN_PREPARER, CASH_OPS, FOBO_CONTROLLER, FOBO_RATES_CONTROLLER, PAYMENTS_OPS, COMPLAINTS_HANDLER, CONTROL_TESTER]
-    data_scopes: { entity: ["*"], book: ["*"] }
+    data_scopes: { entity: ["*"], book: ["*"], named_pnl: ["*"] }
   viewer:
     name: Viewer (no Agent One Finance roles)
     roles: []

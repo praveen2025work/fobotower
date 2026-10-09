@@ -1,0 +1,59 @@
+# Example: the same check, one case per named P&L.
+#
+# A named P&L groups several master books. Here one case covers all of them on
+# a COB: MB Rec's tool returns every master book's breaks in one call (each row
+# names its book), and a controller signs off the named P&L once.
+# Compared with ../capability.yaml (one case per book), the lines marked "<-" change.
+
+id: fobo.named.pnl
+name: FOBO price and position check by named P&L
+description: The FOBO price and position check for all the master books of a named P&L at once, signed off once by a FOBO controller.
+
+owners:
+  people: [frank]
+  role: AOF_FOBO_RECON_OWNER
+  four_eyes: true
+
+case:
+  label: Named P&L run
+  item_label: Break
+  key: [named_pnl, cob]                     # <- one case per named P&L and COB
+  subject: "{named_pnl} · COB {cob}"
+  scopes: { named_pnl: named_pnl }          # <- a controller sees the named P&Ls they are entitled to
+
+items:
+  load: { tool: mbrec.breaks_named_pnl, args: { named_pnl: $case.named_pnl, cob: $case.cob } }   # <-
+  id_field: break_id                        # <- an instrument can break in more than one master book
+  amount_field: difference
+  amount_unit: GBP
+  display: [book, instrument, desk, break_type, cats_amount, motif_amount, difference]
+
+# One more step than the per-book example: the named P&L's master books and
+# MB Rec's status for each, shown on the case (a book with no breaks is listed too).
+steps: [load, master_books, enrich, classify, group, reason, draft, validate, review, record]
+step_settings:
+  master_books:
+    type: dataset
+    label: The named P&L's master books and MB Rec's status for each
+    with: { name: master_books, tool: mbrec.named_pnl_books, args: { named_pnl: $case.named_pnl, cob: $case.cob } }
+
+pause_before: [reason, review]
+tollgates:
+  reason:
+    check: "Are all the named P&L's master books complete in MB Rec, and is the playbook's classification right? Add anything the desk told you."
+
+reasoning:
+  reasoner: llm
+  output: verdict
+  tools: [mbrec.break_history, motif.booking_events]
+  skill: |
+    You are a Product Controller investigating FOBO breaks (CATS vs MOTIF) for a
+    named P&L: several master books. Each break names its master book; use that
+    book when you call a tool. Cite only figures from the tools or the breaks.
+    Never assume FO is correct. If you cannot evidence a cause, say so and escalate.
+
+review:
+  roles: [FOBO_CONTROLLER]
+  require_comment: [reject, escalated]
+
+configurable: [items.display, enrich, policy.*, playbook, group_by, group_label, reasoning.skill, reasoning.tools, reasoning.sections, review.roles, review.checklist]

@@ -211,6 +211,13 @@ connectors:
       book_status:
         description: Whether MB Rec has processed the book for the COB (Complete, In Progress, Waiting, Failed)
         scope: { arg: book, key: book }
+      # A named P&L groups master books; a case per named P&L reads all of them at once.
+      named_pnl_books:
+        description: The master books in a named P&L, with MB Rec's status and open breaks for each on the COB
+        scope: { arg: named_pnl, key: named_pnl }
+      breaks_named_pnl:
+        description: Open breaks for every master book in a named P&L and one COB; each row names its book
+        scope: { arg: named_pnl, key: named_pnl }
 
   motif:
     name: MOTIF — back-office positions and events (stub)
@@ -227,6 +234,9 @@ connectors:
       break_snapshots:
         description: Dated FO/BO snapshots per instrument (booking time, mapping, curves, components, versions, adjustments)
         scope: { arg: book, key: book }
+      break_snapshots_named_pnl:
+        description: The FO/BO snapshots of every master book in a named P&L, one row per book and instrument
+        scope: { arg: named_pnl, key: named_pnl }
       trades:
         description: BO trades per book and COB (quantity, direction, consideration, price, pull factor, settlement)
         scope: { arg: book, key: book }

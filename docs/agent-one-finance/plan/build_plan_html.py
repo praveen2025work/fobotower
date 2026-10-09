@@ -182,7 +182,7 @@ footer {{ color:var(--muted); font-size:.8rem }}
 <header>
   <p class="eyebrow">Delivery plan · prepared {dt.date(2026,10,9).strftime("%d %b %Y").lstrip("0")}</p>
   <h1>Agent One Finance with the FOBO (Helix) use case</h1>
-  <p class="lede">Core Agent One Finance, integrated with the office Agent One, delivering FOBO break investigation for Product Control: a working version in UAT by the end of November and go-live in mid-January, across Dev, UAT and Prod.</p>
+  <p class="lede">Core Agent One Finance, integrated with Agent One, delivering FOBO break investigation for Product Control: a working version in UAT by the end of November and go-live in mid-January, across Dev, UAT and Prod.</p>
   <dl class="keys">
     <div><dt>Working version</dt><dd class="big">30 Nov 2026</dd></div>
     <div><dt>Go-live</dt><dd class="big">14 Jan 2027</dd></div>
@@ -225,7 +225,7 @@ footer {{ color:var(--muted); font-size:.8rem }}
       <li>Foundational build: Dev deployment is failing today (dependency in the image)</li>
       <li>MB Rec tool delivery slips: the dependent checks stay off; go-live is not blocked</li>
       <li>Approvals (model, DPIA, pen test, CAB) run late: each week late moves go-live by about a week</li>
-      <li>Office console is a port of upstream screens: needs a manual check until it runs the upstream build</li></ul></div>
+      <li>Console is a port of the AOF reference screens: needs a manual check until it runs the reference build</li></ul></div>
   </div>
 </section>
 

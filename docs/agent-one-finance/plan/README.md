@@ -1,6 +1,6 @@
 # Delivery plan: Agent One Finance with the FOBO (Helix) use case
 
-Core Agent One Finance, integrated with the office Agent One, delivering FOBO break investigation
+Core Agent One Finance, integrated with Agent One, delivering FOBO break investigation
 for Product Control. The working version is in UAT by 30 Nov 2026, and go-live is 14 Jan 2027,
 across Dev, UAT and Prod.
 

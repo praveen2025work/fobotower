@@ -76,6 +76,10 @@ def main() -> None:
                     f"{to}:apps/web"], check=True)
     (out / "web" / "files.txt").write_text(git("ls-tree", "-r", "--name-only", f"{to}:apps/web"))
     shutil.copy(KIT / "replace-web-folder.md", out / "web" / "README.md")
+    # What changed in the console since each version, for an office that converts it into its own UI.
+    (out / "web" / "changed").mkdir()
+    for c in commits[:-1]:
+        (out / "web" / "changed" / f"since-{c[:7]}.txt").write_text(git("diff", "--name-status", c, to, "--", "apps/web"))
     shutil.copy(KIT / "which-version.py", out / "which-version.py")
     shutil.copy(KIT / "README.md", out / "README.md")
     print(f"{out}: {len(commits)} versions ({commits[0][:7]} … {to}), {len(files)} files, {len(commits) - 1} patches")

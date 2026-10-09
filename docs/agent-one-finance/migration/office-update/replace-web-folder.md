@@ -2,6 +2,11 @@
 
 **For:** you and office Claude Code, updating the Agent One Finance (AOF) console in the office.
 
+> **Office set-up (agreed 9 Oct).** The office hosts the AOF console inside Agent One at `agentone/finance`,
+> following Agent One's frontend conventions, so the console is converted, not copied. Until the single
+> conversion guide replaces this page, use `web/changed/since-<version>.txt` in the update package: it lists
+> every console file added (A), changed (M) or deleted (D) since that version, so none is missed.
+
 **Short answer: yes, replace the whole folder.**
 
 - Swap the AOF console folder for upstream's `apps/web`.

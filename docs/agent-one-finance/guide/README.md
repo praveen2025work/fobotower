@@ -2,6 +2,8 @@
 
 Agent One Finance is the governed AI platform for Finance; FOBO is one of its use cases.
 
+**Start here:** [One morning of FOBO breaks](fobo-one-morning.html), the use case on one page, for management and controllers: who does what, a worked five-break example, why it is safe, and two one-minute scripts. The guides below are for the people who build and run it.
+
 | Guide | For | What is in it |
 |---|---|---|
 | [User guide](user-guide.md) | Owners, preparers, reviewers, controllers | Screen-by-screen: set up a capability, configure its orchestrator step by step, approve it, open and run a case, review and sign off, team groups (FOBO Prime and Rates), change safely, operations. Includes screenshots. |

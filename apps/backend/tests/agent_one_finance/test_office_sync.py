@@ -8,11 +8,14 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[4]
-spec = importlib.util.spec_from_file_location("aof_sync", ROOT / "office" / "aof_sync.py")
-aof_sync = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(aof_sync)
-
-pytestmark = pytest.mark.skipif(subprocess.run(["git", "--version"], capture_output=True).returncode, reason="needs git")
+TOOL = ROOT / "office" / "aof_sync.py"
+# The office repos get this test with the AOF tests, but not the tool: skip there.
+pytestmark = pytest.mark.skipif(not TOOL.is_file() or subprocess.run(["git", "--version"], capture_output=True).returncode,
+                                reason="needs office/aof_sync.py and git")
+if TOOL.is_file():
+    spec = importlib.util.spec_from_file_location("aof_sync", TOOL)
+    aof_sync = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(aof_sync)
 
 
 def write(base: Path, files: dict[str, str]) -> None:
@@ -26,7 +29,7 @@ def upstream(ws: Path, name: str, backend: dict[str, str], frontend: dict[str, s
     up = ws / name
     write(up, {"office/aos-frontend/aof-frontend.json": json.dumps({"dependencies": {}})})
     write(up, {f"apps/backend/agent_one_finance/{k}": v for k, v in backend.items()})
-    write(up, {f"office/aos-frontend/src/components/financeagent/{k}": v for k, v in (frontend or {}).items()})
+    write(up, {f"office/aos-frontend/src/app/finance/_aof/{k}": v for k, v in (frontend or {}).items()})
     return up
 
 
@@ -51,15 +54,17 @@ LLM = "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\n"
 def test_first_sync_needs_review_then_baseline_replaces_and_prunes(tmp_path):
     up = upstream(tmp_path, "up1", {"a.py": "new a\n"}, {"pages/Overview.jsx": "upstream page\n"})
     write(tmp_path / "aos-backend", {"agent_one_finance/a.py": "office a\n", "agent_one_finance/bridge.py": "ours\n"})
-    write(tmp_path / "aos-frontend", {"src/components/financeagent/pages/Overview.jsx": "hand converted\n",
-                                      "src/components/financeagent/ui/Button.jsx": "old split\n", "src/app/page.jsx": "agent one\n"})
+    write(tmp_path / "aos-frontend", {"src/app/finance/_aof/pages/Overview.jsx": "hand converted\n",
+                                      "src/app/finance/components/Button.jsx": "old conversion\n", "src/app/page.jsx": "agent one\n",
+                                      "src/components/financeagent/FinanceAgentPage.jsx": "agent one's finance agent\n"})
     assert sync(tmp_path, up, "--apply") == 1  # differences need a look first
     assert "first sync" in report(tmp_path) and "the office's own file" in report(tmp_path)
     assert sync(tmp_path, up, "--apply", "--baseline", "--prune") == 0
     fe = tmp_path / "aos-frontend/src"
-    assert (fe / "components/financeagent/pages/Overview.jsx").read_text() == "upstream page\n"
-    assert not (fe / "components/financeagent/ui").exists()  # leftover of the hand conversion, and its folder
-    assert (fe / "app/page.jsx").read_text() == "agent one\n"  # outside the AOF folders: never looked at
+    assert (fe / "app/finance/_aof/pages/Overview.jsx").read_text() == "upstream page\n"
+    assert not (fe / "app/finance/components").exists()  # leftover of the hand conversion, and its folder
+    assert (fe / "app/page.jsx").read_text() == "agent one\n"  # outside the AOF folder: never looked at
+    assert (fe / "components/financeagent/FinanceAgentPage.jsx").exists()  # Agent One's own Finance Agent
     assert (tmp_path / "aos-backend/agent_one_finance/bridge.py").read_text() == "ours\n"  # office file kept
     assert json.loads((tmp_path / "aos-backend/.aof-sync.json").read_text())["files"]["agent_one_finance/a.py"]
 
@@ -99,3 +104,15 @@ def test_first_sync_with_base_from_merges_instead_of_replacing(tmp_path):
     assert sync(tmp_path, new, "--apply", "--base-from", str(old), "--only", "backend") == 0
     office = tmp_path / "aos-backend/agent_one_finance"
     assert (office / "llm.py").read_text().startswith("# office") and (office / "env.py").read_text() == "e2\n"
+
+
+def test_office_owned_file_is_added_once_then_kept(tmp_path):
+    up = upstream(tmp_path, "up", {}, {"office/auth.js": "export function aofRequestHeaders() { return {}; }\n"})
+    (tmp_path / "aos-frontend").mkdir()
+    assert sync(tmp_path, up, "--apply", "--only", "frontend") == 0
+    auth = tmp_path / "aos-frontend/src/app/finance/_aof/office/auth.js"
+    assert "aofRequestHeaders" in auth.read_text()
+    auth.write_text("// office sign-on\n")
+    up2 = upstream(tmp_path, "up2", {}, {"office/auth.js": "// upstream example changed\n"})
+    assert sync(tmp_path, up2, "--apply", "--only", "frontend") == 0
+    assert auth.read_text() == "// office sign-on\n"

@@ -2,6 +2,8 @@
 
 The plug points for the office environment are here, all optional:
 
+  AOF_DATABASE_URL       the database; or its parts, AOF_DATABASE_HOST, _PORT (5432), _NAME,
+                           _USER and _PASSWORD (each can come from a secrets store key)
   AOF_LLM_ADAPTER        none | stub | "module:attr" (your LLM connector)
   AOF_TRACING_SETUP      "module:attr" called once at startup (e.g. Phoenix)
   PHOENIX_COLLECTOR_ENDPOINT  if set and arize-phoenix-otel is installed,
@@ -32,6 +34,20 @@ from functools import lru_cache
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
+
+
+def _database_url_from_parts() -> str | None:
+    """AOF_DATABASE_HOST, _PORT, _NAME, _USER, _PASSWORD as one URL, when only the parts are given
+    (a container gets each key of a database secret as its own variable)."""
+    from urllib.parse import quote
+
+    host = os.getenv("AOF_DATABASE_HOST")
+    if not host:
+        return None
+    user = quote(os.getenv("AOF_DATABASE_USER") or "", safe="")
+    password = quote(os.getenv("AOF_DATABASE_PASSWORD") or "", safe="")
+    login = f"{user}:{password}@" if password else (f"{user}@" if user else "")
+    return f"postgresql+asyncpg://{login}{host}:{os.getenv('AOF_DATABASE_PORT') or '5432'}/{os.getenv('AOF_DATABASE_NAME') or 'postgres'}"
 
 
 @dataclass(frozen=True)
@@ -68,6 +84,7 @@ def settings() -> AofSettings:
     return AofSettings(
         # Same database as the rest of the app unless told otherwise.
         database_url=env("AOF_DATABASE_URL")
+        or _database_url_from_parts()
         or env("FOBO_DATABASE_URL")
         or "postgresql+asyncpg://fobo:fobo@localhost:5433/fobo",
         config_dir=Path(env("AOF_CONFIG_DIR") or REPO_ROOT / "config" / "agent-one-finance"),

@@ -4,10 +4,10 @@
 
 import dynamic from "next/dynamic";
 
-import { Loading } from "../../../../../../components/financeagent/components/ui";
+import { Loading } from "../../../../_aof/components/ui";
 
 // /capabilities/:id/groups/:group in the console.
-const Page = dynamic(() => import("../../../../../../components/financeagent/pages/GroupDetail"), {
+const Page = dynamic(() => import("../../../../_aof/pages/GroupDetail"), {
   ssr: false,
   loading: () => <Loading what="page" />,
 });

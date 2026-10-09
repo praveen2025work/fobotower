@@ -1,15 +1,22 @@
+// Generated from apps/web/office/templates/FinanceShell.jsx by apps/web/office/convert.mjs. Office changes to this file are
+// kept by aof_sync.py on the next update; see docs/agent-one-finance/office/conversion-guide.md.
 "use client";
 // The console's frame inside Agent One: its query cache, its Layout (sidebar,
 // top bar, theme) and the page Next.js routed to. Mirrors the upstream
-// main.tsx and App.tsx.
+// main.tsx and App.tsx. The theme follows Agent One's (office/theme.js).
 
 import { QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
+import { setRequestHeaders } from "../api/client";
 import Layout from "../components/Layout";
 import { makeQueryClient } from "../queryClient";
 import { storedTheme, DEFAULT_THEME } from "../theme";
+import { aofRequestHeaders } from "./auth";
 import { OutletProvider } from "./router";
+
+// The office's sign-on headers on every API call (office/auth.js).
+setRequestHeaders(aofRequestHeaders);
 
 function Frame({ children }) {
   const qc = useQueryClient();

@@ -6,6 +6,20 @@ export const API_BASE = import.meta.env.VITE_AOF_API ?? "/api";
 const USER_KEY = "aof.user";
 let memoryUser: string | null = null;
 
+type HeaderSource = () => Record<string, string> | Promise<Record<string, string>>;
+let signOn: HeaderSource = () => ({});
+
+/** Extra headers for every API call, such as a sign-on token. Upstream sends none; the
+ *  office build sets them in one office-owned file (office/auth.js). */
+export function setRequestHeaders(source: HeaderSource): void {
+  signOn = source;
+}
+
+async function identity(): Promise<Record<string, string>> {
+  const user = currentUser();
+  return { ...(await signOn()), ...(user ? { "X-AOF-User": user } : {}) };
+}
+
 export function currentUser(): string | null {
   try {
     return window.localStorage.getItem(USER_KEY) ?? memoryUser;
@@ -36,11 +50,10 @@ export class ApiError extends Error {
 }
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const user = currentUser();
   const res = await fetch(`${API_BASE}${path}`, {
     method,
     headers: {
-      ...(user ? { "X-AOF-User": user } : {}),
+      ...(await identity()),
       ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -64,8 +77,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 
 /** POST a multipart form (file uploads) with the identity header. */
 export async function upload<T>(path: string, form: FormData): Promise<T> {
-  const user = currentUser();
-  const res = await fetch(`${API_BASE}${path}`, { method: "POST", body: form, headers: user ? { "X-AOF-User": user } : {} });
+  const res = await fetch(`${API_BASE}${path}`, { method: "POST", body: form, headers: await identity() });
   if (res.ok) return (await res.json()) as T;
   let message = `upload failed (${res.status})`;
   try {
@@ -79,8 +91,7 @@ export async function upload<T>(path: string, form: FormData): Promise<T> {
 
 /** Fetch a file the API serves (it needs the identity header too) and save it. */
 export async function download(path: string, filename: string): Promise<void> {
-  const user = currentUser();
-  const res = await fetch(`${API_BASE}${path}`, { headers: user ? { "X-AOF-User": user } : {} });
+  const res = await fetch(`${API_BASE}${path}`, { headers: await identity() });
   if (!res.ok) throw new ApiError(`download failed (${res.status})`, res.status);
   const url = URL.createObjectURL(await res.blob());
   const a = Object.assign(document.createElement("a"), { href: url, download: filename });

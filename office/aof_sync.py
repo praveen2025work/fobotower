@@ -8,10 +8,11 @@ Run it from the workspace folder that holds the upstream download and the two of
 (aos-frontend, aos-backend). It needs Python 3.9+ and git; nothing else, no network.
 
 What it copies (see MAP, or aof-sync.json in the workspace to change it):
-  - frontend: office/aos-frontend/src/{components/financeagent,app/finance} -> the same folders in
-    aos-frontend, already in the office's shape (Next.js pages under /finance, JSX, scoped styles;
-    made by apps/web/office/convert.mjs);
-  - backend: the AOF package, its migrations and its configuration, into aos-backend.
+  - frontend: office/aos-frontend/src/app/finance -> aos-frontend/src/app/finance, already in the
+    office's shape (Next.js pages under /finance, the console's code in the private folder _aof,
+    JSX, scoped styles; made by apps/web/office/convert.mjs). Nothing else in aos-frontend is
+    read or written;
+  - backend: the AOF package, its migrations, configuration, documents and tests, into aos-backend.
 
 For every file it compares three versions: upstream now, upstream at the last sync (the base),
 and the office's file.
@@ -45,15 +46,12 @@ from pathlib import Path
 MAP = {
     "frontend": {
         "repo": "aos-frontend",
-        "roots": [
-            ["office/aos-frontend/src/components/financeagent", "src/components/financeagent"],
-            ["office/aos-frontend/src/app/finance", "src/app/finance"],
-        ],
-        # The office's own files inside the synced folders: never overwritten (listed in the report).
-        "keep": [],
+        "roots": [["office/aos-frontend/src/app/finance", "src/app/finance"]],
+        # The office's own files inside the synced folders: added once, never overwritten.
+        "keep": ["src/app/finance/_aof/office/auth.js"],
         # Folders that hold only AOF, so files there that upstream does not have are leftovers of an
         # earlier conversion (removed by --baseline --prune).
-        "owned": ["src/components/financeagent", "src/app/finance"],
+        "owned": ["src/app/finance"],
     },
     "backend": {
         "repo": "aos-backend",
@@ -61,6 +59,8 @@ MAP = {
             ["apps/backend/agent_one_finance", "agent_one_finance"],
             ["apps/backend/migrations", "aof_migrations"],
             ["config/agent-one-finance", "config/agent-one-finance"],
+            ["apps/backend/seed_data/aof_documents", "seed_data/aof_documents"],
+            ["apps/backend/tests/agent_one_finance", "tests/agent_one_finance"],
         ],
         "keep": ["config/agent-one-finance/connectors.yaml", "agent_one_finance/session_bridge.py"],
         "owned": [],
@@ -129,8 +129,11 @@ def plan_repo(name: str, cfg: dict, upstream: Path, ws: Path, baseline: bool, pr
                 base = read(base_from / src / rel)
                 base_sha = sha(base) if base is not None else None
             if o_path in cfg["keep"]:
-                kind = "same" if office is not None and sha(office) == sha(new) else "keep-office"
-                actions.append((kind, o_path, None, "office file: never overwritten" if kind != "same" else ""))
+                if office is None:
+                    actions.append(("add", o_path, new, "office file: added once, then the office's"))
+                else:
+                    kind = "same" if sha(office) == sha(new) else "keep-office"
+                    actions.append((kind, o_path, None, "office file: never overwritten" if kind != "same" else ""))
             elif office is None:
                 if base_sha and base_sha != sha(new):
                     actions.append(("clash", o_path, new, "removed in the office, changed upstream"))
@@ -224,7 +227,7 @@ def deps_report(upstream: Path, ws: Path) -> list[str]:
     block = re.search(r"^dependencies = \[(.*?)^\]", py.decode(), re.S | re.M)
     names = re.findall(r'"([A-Za-z0-9_.-]+)', block.group(1)) if block else []
     office = ""
-    for f in ("requirements.txt", "requirements.in", "pyproject.toml"):
+    for f in ("requirements.txt", "app/requirements.txt", "requirements.in", "pyproject.toml"):
         office += (read(ws / "aos-backend" / f) or b"").decode(errors="ignore").lower()
     return [n for n in names if re.search(rf"(^|[\s\"']){re.escape(n.lower())}(\[|[\s=<>~!;\"']|$)", office, re.M) is None]
 

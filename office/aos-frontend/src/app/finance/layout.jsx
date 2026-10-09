@@ -4,10 +4,10 @@
 
 import dynamic from "next/dynamic";
 
-import "../../components/financeagent/finance.css";
+import "./_aof/finance.css";
 
 // The console runs in the browser only, as it does upstream.
-const FinanceShell = dynamic(() => import("../../components/financeagent/office/FinanceShell"), { ssr: false });
+const FinanceShell = dynamic(() => import("./_aof/office/FinanceShell"), { ssr: false });
 
 export default function FinanceLayout({ children }) {
   return <FinanceShell>{children}</FinanceShell>;

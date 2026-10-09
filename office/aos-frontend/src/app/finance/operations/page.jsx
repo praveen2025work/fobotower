@@ -4,13 +4,10 @@
 
 import dynamic from "next/dynamic";
 
-import { Loading } from "../../../components/financeagent/components/ui";
+import { Loading } from "../_aof/components/ui";
 
 // /operations in the console.
-const Page = dynamic(() => import("../../../components/financeagent/pages/Operations"), {
-  ssr: false,
-  loading: () => <Loading what="page" />,
-});
+const Page = dynamic(() => import("../_aof/pages/Operations"), { ssr: false, loading: () => <Loading what="page" /> });
 
 export default function OperationsPage() {
   return <Page />;

@@ -28,8 +28,8 @@ import ts from "typescript";
 const WEB = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const SRC = path.join(WEB, "src");
 const ROOT_ID = "aof-root";
-const COMPONENTS = "src/components/financeagent"; // where the console lives in the office repo
-const APP = "src/app/finance"; // its Next.js routes
+const APP = "src/app/finance"; // the console's Next.js routes in the office repo
+const COMPONENTS = `${APP}/_aof`; // its code: a private folder (no routes), so all of AOF is under one folder
 
 const args = process.argv.slice(2);
 const OUT = path.resolve(args.includes("--out") ? args[args.indexOf("--out") + 1] : path.join(WEB, "../../office/aos-frontend"));
@@ -45,10 +45,12 @@ const REWRITES = [
   [/^api\/client\.ts$/, /import\.meta\.env\.VITE_AOF_API/g, () => "process.env.NEXT_PUBLIC_AOF_API", 1],
   [/^pages\/CaseWorkspace\.tsx$/, /import\.meta\.env\.VITE_AOF_TRACE_URL/g, () => "process.env.NEXT_PUBLIC_AOF_TRACE_URL", 1],
   [/^components\/ui\.tsx$/, /import\.meta\.env\.MODE === "test"/g, () => 'process.env.NODE_ENV === "test"', 1],
-  // The theme belongs to the console, not to Agent One's page.
-  [/^theme\.ts$/, /document\.documentElement\.dataset\.theme = theme;/g,
-    () => `const root = document.getElementById("${ROOT_ID}");\n  if (root) root.dataset.theme = theme;`, 1],
 ];
+
+// Upstream files the office build replaces with its own version (office/templates), because the
+// office does it differently: the theme follows Agent One's next-themes. Their exports must stay
+// the same, so a change upstream is noticed here.
+const REPLACED = { "theme.ts": { template: "theme.js", exports: ["DEFAULT_THEME", "Theme", "applyTheme", "storedTheme", "useTheme"] } };
 
 const sha = (text) => createHash("sha256").update(text).digest("hex").slice(0, 16);
 const posix = (p) => p.split(path.sep).join("/");
@@ -77,6 +79,9 @@ async function toJs(source, file) {
 const header = (from) =>
   `// Generated from apps/web/${from} by apps/web/office/convert.mjs. Office changes to this file are\n` +
   `// kept by aof_sync.py on the next update; see docs/agent-one-finance/office/conversion-guide.md.\n`;
+// Console code is linted and type-checked upstream, in TypeScript. The office's lint ignores
+// src/app/finance/_aof (one line in its eslint config; see the conversion guide).
+const generated = header;
 
 /** Routes from App.tsx: [{ path, component, module }]. */
 function routes() {
@@ -138,6 +143,18 @@ async function build() {
   const icons = new Set();
   for (const rel of sources) {
     let text = fs.readFileSync(path.join(SRC, rel), "utf8");
+    if (REPLACED[rel]) {
+      const found = [...text.matchAll(/export (?:const|function|type|interface) (\w+)/g)].map((m) => m[1]).sort();
+      if (found.join() !== REPLACED[rel].exports.join())
+        throw new Error(`${rel}: exports changed (${found}); update office/templates/${REPLACED[rel].template} and REPLACED in convert.mjs`);
+      const name = REPLACED[rel].template;
+      files[`${COMPONENTS}/${name}`] = {
+        text: generated(`office/templates/${name} (in place of src/${rel})`) +
+          (await format(fs.readFileSync(path.join(WEB, "office/templates", name), "utf8"), name)),
+        from: `apps/web/office/templates/${name}`,
+      };
+      continue;
+    }
     const depth = rel.split("/").length - 1;
     const relTo = (target) => (depth ? "../".repeat(depth) : "./") + target;
     for (const [where, from, to, times] of REWRITES) {
@@ -153,19 +170,23 @@ async function build() {
         if (n && n !== "LucideIcon" && n !== "LucideProps") icons.add(n.split(/\s+as\s+/)[0]);
       }
     const out = rel.replace(/\.tsx$/, ".jsx").replace(/\.ts$/, ".js");
-    files[`${COMPONENTS}/${out}`] = { text: header(`src/${rel}`) + (await toJs(text, rel)), from: `apps/web/src/${rel}` };
+    files[`${COMPONENTS}/${out}`] = { text: generated(`src/${rel}`) + (await toJs(text, rel)), from: `apps/web/src/${rel}` };
   }
 
-  for (const name of ["router.js", "FinanceShell.jsx"]) {
-    const text = fs.readFileSync(path.join(WEB, "office/templates", name), "utf8");
-    files[`${COMPONENTS}/office/${name}`] = { text: await format(text, name), from: `apps/web/office/templates/${name}` };
+  // auth.js is the office's own (kept by aof_sync.py); the others are generated like the rest.
+  for (const name of ["router.js", "FinanceShell.jsx", "auth.js"]) {
+    const text = await format(fs.readFileSync(path.join(WEB, "office/templates", name), "utf8"), name);
+    files[`${COMPONENTS}/office/${name}`] = { text: name === "auth.js" ? text : generated(`office/templates/${name}`) + text, from: `apps/web/office/templates/${name}` };
   }
 
   const contentFiles = walk(SRC).filter((p) => /\.(tsx?)$/.test(p) && !/__tests__|\/test\/|\/snapshot\//.test(p));
   contentFiles.push(path.join(WEB, "office/templates/FinanceShell.jsx"));
   files[`${COMPONENTS}/finance.css`] = { text: await css(contentFiles), from: "apps/web/src/index.css" };
 
-  const fromApp = (dir) => posix(path.relative(dir, COMPONENTS));
+  const fromApp = (dir) => {
+    const rel = posix(path.relative(dir, COMPONENTS));
+    return rel.startsWith(".") ? rel : `./${rel}`;
+  };
   files[`${APP}/layout.jsx`] = {
     from: "apps/web/office/convert.mjs",
     text: await format(
@@ -201,7 +222,8 @@ async function build() {
     root: `#${ROOT_ID}`,
     routes: routeList.map((r) => ({ path: `/finance${r.path === "/" ? "" : r.path}`, page: r.module })),
     dependencies: Object.fromEntries(needs.map((n) => [n, pkg.dependencies[n]])),
-    peer: { next: ">=15", react: ">=18.3" },
+    peer: { next: ">=15", react: ">=18.3", "next-themes": ">=0.3" },
+    office_owned: [`${COMPONENTS}/office/auth.js`],
     env: { NEXT_PUBLIC_AOF_API: "the AOF API base, default /api", NEXT_PUBLIC_AOF_TRACE_URL: "optional: link to a case's traces" },
     icons: [...icons].sort(),
     files: Object.fromEntries(Object.entries(files).sort().map(([p, f]) => [p, { sha: sha(f.text), from: f.from }])),

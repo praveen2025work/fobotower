@@ -1,3 +1,5 @@
+// Generated from apps/web/office/templates/router.js by apps/web/office/convert.mjs. Office changes to this file are
+// kept by aof_sync.py on the next update; see docs/agent-one-finance/office/conversion-guide.md.
 "use client";
 // The few react-router pieces the console uses, on Next.js navigation, so the
 // console's files are the same as upstream's. Paths in the console start at "/";

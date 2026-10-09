@@ -8,6 +8,19 @@ export const API_BASE = process.env.NEXT_PUBLIC_AOF_API ?? "/api";
 const USER_KEY = "aof.user";
 let memoryUser = null;
 
+let signOn = () => ({});
+
+/** Extra headers for every API call, such as a sign-on token. Upstream sends none; the
+ *  office build sets them in one office-owned file (office/auth.js). */
+export function setRequestHeaders(source) {
+  signOn = source;
+}
+
+async function identity() {
+  const user = currentUser();
+  return { ...(await signOn()), ...(user ? { "X-AOF-User": user } : {}) };
+}
+
 export function currentUser() {
   try {
     return window.localStorage.getItem(USER_KEY) ?? memoryUser;
@@ -38,11 +51,10 @@ export class ApiError extends Error {
 }
 
 async function request(method, path, body) {
-  const user = currentUser();
   const res = await fetch(`${API_BASE}${path}`, {
     method,
     headers: {
-      ...(user ? { "X-AOF-User": user } : {}),
+      ...(await identity()),
       ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -66,12 +78,7 @@ async function request(method, path, body) {
 
 /** POST a multipart form (file uploads) with the identity header. */
 export async function upload(path, form) {
-  const user = currentUser();
-  const res = await fetch(`${API_BASE}${path}`, {
-    method: "POST",
-    body: form,
-    headers: user ? { "X-AOF-User": user } : {},
-  });
+  const res = await fetch(`${API_BASE}${path}`, { method: "POST", body: form, headers: await identity() });
   if (res.ok) return await res.json();
   let message = `upload failed (${res.status})`;
   try {
@@ -85,8 +92,7 @@ export async function upload(path, form) {
 
 /** Fetch a file the API serves (it needs the identity header too) and save it. */
 export async function download(path, filename) {
-  const user = currentUser();
-  const res = await fetch(`${API_BASE}${path}`, { headers: user ? { "X-AOF-User": user } : {} });
+  const res = await fetch(`${API_BASE}${path}`, { headers: await identity() });
   if (!res.ok) throw new ApiError(`download failed (${res.status})`, res.status);
   const url = URL.createObjectURL(await res.blob());
   const a = Object.assign(document.createElement("a"), { href: url, download: filename });

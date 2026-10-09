@@ -1,9 +1,11 @@
 import html, runpy, datetime as dt
 g = runpy.run_path(__import__("os").path.join(__import__("os").path.dirname(__file__), "plan_data.py"))
 EPICS, MIL, S, SPR, SNAME = g["EPICS"], g["MILESTONES"], g["S"], g["SPR"], g["SNAME"]
-EST, CUR = g["EPIC_STATUS"], g["CURRENT"]
+EST, CUR, SFOCUS, SSTATE, TODAY, FREEZE = g["EPIC_STATUS"], g["CURRENT"], g["SFOCUS"], g["SPRINT_STATE"], g["TODAY"], g["FREEZE"]
 e = html.escape
-order = ["S0","S1","S2","S3","S4","S5","S6"]
+order = list(SPR)
+NOW = next(k for k, v in SSTATE.items() if v == "Now")
+NEXT = order[order.index(NOW) + 1]
 def d(x): return dt.date.fromisoformat(x)
 def fmt(x): return d(x).strftime("%d %b").lstrip("0")
 def fmty(x): return d(x).strftime("%d %b %Y").lstrip("0")
@@ -14,34 +16,49 @@ COMPONENT, RELEASE_OF, RELEASES, DOR, DOD = g["COMPONENT"], g["RELEASE_OF"], g["
 by_ep={x[0]:[s for s in stories if s["ep"]==x[0]] for x in EPICS}
 tot_pts=sum(s["pts"] for s in stories)
 
-# gantt columns: working-day weights; freeze column between S5 and S6
-cols=[("S0",5),("S1",10),("S2",10),("S3",10),("S4",10),("S5",8),("FZ",4),("S6",10)]
-colidx={c:i+2 for i,(c,_) in enumerate(cols)}   # grid col line start (col 1 = labels)
-gtc="minmax(12rem,15rem) "+" ".join(f"{w}fr" for _,w in cols)
+# gantt: one column per week (two per sprint), so the freeze and today sit on the right days
+W0 = d(SPR[order[0]][0])
+nweeks = 2 * len(order)
+def wk(x): return max(0, min(nweeks - 1, (d(x) - W0).days // 7))
+gtc = "minmax(12rem,15rem) " + " ".join(["1fr"] * nweeks)
+def scol(c): return 2 + 2 * order.index(c)
 
 def chip(st):
     cls={"In Progress":"prog","To Do":"todo","Done":"done"}.get(st,"todo")
     return f'<span class="chip {cls}">{e(st)}</span>'
 
-head_cells="".join(
-    f'<div class="gh{" fz" if c in ("FZ","S5") else ""}" style="grid-column:{colidx[c]}"><b>{"Holidays" if c=="FZ" else e(c)}</b>'
-    f'<span>{"24 Dec–4 Jan" if c=="FZ" else fmt(SPR[c][0])+"–"+fmt(SPR[c][1])}</span></div>' for c,_ in cols)
-rows=""
-for ep in EPICS:
-    a,b=ep[4].split("-"); st=EST.get(ep[0],"To Do")
-    start=colidx[a]; end=colidx[b]+1
-    rows+=(f'<a class="gl" href="#{ep[0]}"><span class="mono">{ep[0]}</span> {e(ep[1])}</a>'
-           f'<div class="bar {"prog" if st=="In Progress" else ""}" style="grid-column:{start}/{end}" title="{e(ep[1])}: {fmty(SPR[a][0])} to {fmty(SPR[b][1])}"></div>')
-# milestone row
-def col_for(date):
-    for c in order:
-        if d(SPR[c][0])<=d(date)<=d(SPR[c][1])+dt.timedelta(days=2): return c
-    return "S4" if date.startswith("2026-11-30") else "S6"
-mrow='<div class="gl mlabel">Milestones</div>'
-grp={}
-for m in MIL: grp.setdefault(col_for(m[2]),[]).append(m)
-for c,ms in grp.items():
-    mrow+=f'<div class="ms" style="grid-column:{colidx[c]}/{colidx[c]+1}">'+"".join(f'<span title="{e(m[1])} ({fmty(m[2])})"><i></i><span class="mono">{m[0]}</span></span>' for m in ms)+'</div>'
+def sstate(c):
+    st = SSTATE.get(c)
+    return f'<em class="ss {st.lower()}">{e(st)}</em>' if st else ""
+
+# every item has an explicit row, so the today line can overlap them
+tw = wk(TODAY); tfrac = ((d(TODAY) - W0).days % 7) / 7 * 100
+today_line = (f'<div class="today" style="grid-column:{2 + tw};grid-row:2 / span {len(EPICS) + 1}" aria-hidden="true">'
+              f'<i style="left:{tfrac:.0f}%"></i></div>')
+head_cells = "".join(
+    f'<div class="gh{" now" if SSTATE.get(c) == "Now" else ""}{" done" if SSTATE.get(c) == "Done" else ""}" style="grid-column:{scol(c)} / span 2;grid-row:1">'
+    f'<b>{e(c)} {sstate(c)}</b><span>{fmt(SPR[c][0])}–{fmt(SPR[c][1])}</span><span class="fo">{e(SFOCUS[c])}</span></div>' for c in order)
+rows = ""
+for r, ep in enumerate(EPICS, 2):
+    a, b = ep[4].split("-"); st = EST.get(ep[0], "To Do")
+    rows += (f'<a class="gl" href="#{ep[0]}" style="grid-row:{r}"><span class="mono">{ep[0]}</span> {e(ep[1])}</a>'
+             f'<div class="bar {"prog" if st=="In Progress" else ""}" style="grid-column:{scol(a)} / {scol(b) + 2};grid-row:{r}" title="{e(ep[1])}: {fmty(SPR[a][0])} to {fmty(SPR[b][1])}"></div>')
+FZROW, MSROW = len(EPICS) + 2, len(EPICS) + 3
+rows += (f'<div class="gl mlabel" style="grid-row:{FZROW}">Change freeze</div><div class="fzbar" style="grid-column:{2 + wk(FREEZE[0])} / {3 + wk(FREEZE[1])};grid-row:{FZROW}" '
+         f'title="No Production changes {fmty(FREEZE[0])} to {fmty(FREEZE[1])}"><span>{fmt(FREEZE[0])} – {fmt(FREEZE[1])}</span></div>')
+mrow = f'<div class="gl mlabel" style="grid-row:{MSROW}">Milestones</div>'
+grp = {}
+for m in MIL: grp.setdefault(next(c for c in order if d(SPR[c][0]) <= d(m[2]) <= d(SPR[c][1])), []).append(m)
+for c in order:
+    ms = grp.get(c, [])
+    mrow += f'<div class="ms" style="grid-column:{scol(c)} / span 2;grid-row:{MSROW}">' + "".join(f'<span title="{e(m[1])} ({fmty(m[2])})"><i></i><span class="mono">{m[0]}</span></span>' for m in ms) + '</div>'
+
+sprint_rows = ""
+for c in order:
+    its = [x for x in stories if x["spr"] == c]
+    sprint_rows += (f'<tr class="{"rnow" if SSTATE.get(c) == "Now" else ""}"><td class="mono nowrap">{e(SNAME[c])}</td><td class="mono nowrap">{fmt(SPR[c][0])} – {fmty(SPR[c][1])}</td>'
+                    f'<td><b>{e(SFOCUS[c])}</b></td><td class="num mono">{len(its)}</td><td class="num mono">{sum(x["pts"] for x in its)}</td>'
+                    f'<td>{sstate(c) or "<span class=sub>Planned</span>"}</td></tr>')
 
 ms_items="".join(f'<li><span class="mono mid">{m[0]}</span><time class="mono">{fmty(m[2])}</time><div><b>{e(m[1])}</b><p>{e(m[3])}</p></div></li>' for m in MIL)
 
@@ -74,8 +91,9 @@ for ep in EPICS:
                f'<tbody>{trs}</tbody></table></div></div></details>')
 
 spr_pts={c:sum(s["pts"] for s in stories if s["spr"]==c) for c in order}
-filt="".join(f'<button type="button" class="fb" data-f="{c}" id="f-{c}">{c} <span class="mono">{spr_pts[c]}</span></button>' for c in order)
+filt="".join(f'<button type="button" class="fb" data-f="{c}" id="f-{c}" title="{e(SNAME[c])}: {e(SFOCUS[c])}">{c}{" · now" if SSTATE.get(c)=="Now" else ""} <span class="mono">{spr_pts[c]}</span></button>' for c in order)
 inprog=sum(1 for s in stories if s["st"]=="In Progress")
+done=sum(1 for s in stories if s["st"]=="Done")
 
 page=f'''<title>Agent One Finance Delivery Plan</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -85,18 +103,18 @@ page=f'''<title>Agent One Finance Delivery Plan</title>
 :root {{
   --bg:#f6f8fb; --surface:#ffffff; --ink:#0d1b2e; --muted:#53627a; --line:#dde3ec;
   --accent:#00395d; --accent-2:#0076b6; --bar:#9fb7cf; --prog:#0076b6; --warn:#a85d00; --warn-bg:#fdf1e2;
-  --ok:#1e7d4f; --ok-bg:#e5f4ec; --todo-bg:#eef1f5; --freeze:repeating-linear-gradient(135deg,#e4e9f0 0 6px,#f6f8fb 6px 12px);
+  --ok:#1e7d4f; --ok-bg:#e5f4ec; --todo-bg:#eef1f5; --freeze:repeating-linear-gradient(135deg,#e4e9f0 0 6px,#f6f8fb 6px 12px); --now-bg:#fdf6ea;
   --display:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif; --body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
   --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
 }}
 @media (prefers-color-scheme: dark) {{ :root:not([data-theme="light"]) {{
   --bg:#0b1420; --surface:#111d2c; --ink:#e6edf6; --muted:#9aaabf; --line:#22334a;
   --accent:#8cc8f0; --accent-2:#5fb3e8; --bar:#3b5878; --prog:#3d9ad6; --warn:#f0b36a; --warn-bg:#3a2a14;
-  --ok:#6fcf9b; --ok-bg:#163326; --todo-bg:#1a2838; --freeze:repeating-linear-gradient(135deg,#1a2838 0 6px,#0b1420 6px 12px); color-scheme:dark }} }}
+  --ok:#6fcf9b; --ok-bg:#163326; --todo-bg:#1a2838; --freeze:repeating-linear-gradient(135deg,#1a2838 0 6px,#0b1420 6px 12px); --now-bg:#2a2114; color-scheme:dark }} }}
 :root[data-theme="dark"] {{
   --bg:#0b1420; --surface:#111d2c; --ink:#e6edf6; --muted:#9aaabf; --line:#22334a;
   --accent:#8cc8f0; --accent-2:#5fb3e8; --bar:#3b5878; --prog:#3d9ad6; --warn:#f0b36a; --warn-bg:#3a2a14;
-  --ok:#6fcf9b; --ok-bg:#163326; --todo-bg:#1a2838; --freeze:repeating-linear-gradient(135deg,#1a2838 0 6px,#0b1420 6px 12px); color-scheme:dark }}
+  --ok:#6fcf9b; --ok-bg:#163326; --todo-bg:#1a2838; --freeze:repeating-linear-gradient(135deg,#1a2838 0 6px,#0b1420 6px 12px); --now-bg:#2a2114; color-scheme:dark }}
 * {{ box-sizing:border-box }}
 body {{ background:var(--bg); color:var(--ink); font:15px/1.55 var(--body); }}
 .wrap {{ max-width:72rem; margin:0 auto; padding-inline:16px; padding-block:2rem 4rem; display:grid; gap:2.5rem }}
@@ -116,10 +134,17 @@ a {{ color:var(--accent-2) }} a:focus-visible,button:focus-visible,summary:focus
 .panel {{ background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:1.1rem 1.2rem }}
 .tw {{ overflow-x:auto }}
 /* gantt */
-.gantt {{ display:grid; grid-template-columns:{gtc}; row-gap:.35rem; column-gap:0; min-width:52rem; align-items:center }}
+.gantt {{ display:grid; grid-template-columns:{gtc}; row-gap:.35rem; column-gap:0; min-width:60rem; align-items:center }}
 .gh {{ font-size:.72rem; color:var(--muted); padding:0 .35rem .5rem; border-left:1px solid var(--line); display:grid; line-height:1.3 }}
 .gh b {{ color:var(--ink); font:600 .75rem var(--mono) }}
-.gh.fz {{ background:var(--freeze); border-radius:4px 4px 0 0 }}
+.gh .fo {{ color:var(--muted) }}
+.gh.now {{ background:var(--now-bg); border-radius:4px 4px 0 0 }} .gh.done b {{ color:var(--muted) }}
+.ss {{ font:600 .62rem var(--body); font-style:normal; padding:.05rem .35rem; border-radius:999px; margin-left:.2rem }}
+.ss.done {{ background:var(--ok-bg); color:var(--ok) }} .ss.now {{ background:var(--warn-bg); color:var(--warn) }}
+.fzbar {{ height:1.1rem; background:var(--freeze); border-radius:3px; margin-inline:2px; font-size:.68rem; color:var(--muted); display:flex; align-items:center; padding-left:.35rem; white-space:nowrap; overflow:hidden }}
+.today {{ position:relative; pointer-events:none; align-self:stretch }}
+.today i {{ position:absolute; top:-.2rem; bottom:-.2rem; border-left:2px dashed var(--warn) }}
+tr.rnow td {{ background:var(--now-bg) }}
 .gl {{ grid-column:1; font-size:.82rem; color:var(--ink); text-decoration:none; padding-right:.75rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }}
 .gl:hover {{ color:var(--accent-2) }} .gl .mono {{ color:var(--muted); font-size:.72rem }}
 .bar {{ height:.85rem; background:var(--bar); border-radius:3px; margin-inline:2px }}
@@ -130,6 +155,7 @@ a {{ color:var(--accent-2) }} a:focus-visible,button:focus-visible,summary:focus
 .legend {{ display:flex; flex-wrap:wrap; gap:1.2rem; font-size:.78rem; color:var(--muted); margin-top:.9rem }}
 .legend span::before {{ content:""; display:inline-block; width:.9rem; height:.55rem; border-radius:2px; margin-right:.4rem; vertical-align:middle; background:var(--bar) }}
 .legend .lp::before {{ background:var(--prog) }} .legend .lf::before {{ background:var(--freeze) }}
+.legend .lt::before {{ width:0; height:.8rem; border-left:2px dashed var(--warn); background:none; border-radius:0 }}
 .legend .lm::before {{ width:.55rem; height:.55rem; background:var(--accent); transform:rotate(45deg); border-radius:0 }}
 /* milestones */
 ol.mil {{ list-style:none; margin:0; padding:0; display:grid; gap:.1rem }}
@@ -186,21 +212,28 @@ footer {{ color:var(--muted); font-size:.8rem }}
 <header>
   <p class="eyebrow">Delivery plan · prepared {dt.date(2026,10,9).strftime("%d %b %Y").lstrip("0")}</p>
   <h1>Agent One Finance with the FOBO (Helix) use case</h1>
-  <p class="lede">Core Agent One Finance, integrated with Agent One, investigating FOBO breaks from MB Rec for Product Control and posting approved adjustments to MOTIF through FAS. A working version in UAT by the end of November; go-live in mid-January.</p>
+  <p class="lede">Core Agent One Finance, integrated with Agent One, investigating FOBO breaks from MB Rec for Product Control and posting approved adjustments to MOTIF through FAS. Two-week sprints: Sprint 1 built Diagnostics, Sprint 2 is putting the AOF skeleton on AWS, and Sprint 3 starts on 20 Oct. A working version in UAT by 30 Nov; go-live on 14 Jan.</p>
   <dl class="keys">
     <div><dt>Working version</dt><dd class="big">30 Nov 2026</dd></div>
     <div><dt>Go-live</dt><dd class="big">14 Jan 2027</dd></div>
+    <div><dt>Now</dt><dd>{e(SNAME[NOW])} · {fmt(SPR[NOW][0])}–{fmt(SPR[NOW][1])}</dd></div>
+    <div><dt>Next</dt><dd>{e(SNAME[NEXT])} from {fmt(SPR[NEXT][0])}</dd></div>
     <div><dt>Scope</dt><dd>{len(EPICS)} epics · {len(stories)} stories · {tot_pts} pts</dd></div>
-    <div><dt>Under way</dt><dd>{inprog} stories in progress</dd></div>
+    <div><dt>Progress</dt><dd>{done} done · {inprog} in progress</dd></div>
   </dl>
 </header>
 
 <section aria-labelledby="t-time">
   <h2 id="t-time">Timeline</h2>
   <div class="panel"><div class="tw"><div class="gantt">
-    <div class="gh" style="grid-column:1;border-left:0"><b>Epic</b><span>Sprint dates</span></div>{head_cells}{rows}{mrow}
+    <div class="gh" style="grid-column:1;grid-row:1;border-left:0"><b>Epic</b><span>Sprint dates</span></div>{today_line}{head_cells}{rows}{mrow}
   </div></div>
-  <div class="legend"><span>Planned</span><span class="lp">In progress now</span><span class="lf">Change freeze 11 Dec – 4 Jan: no Production changes</span><span class="lm">Milestone</span></div></div>
+  <div class="legend"><span>Planned</span><span class="lp">In progress now</span><span class="lf">Change freeze 11 Dec – 4 Jan: no Production changes</span><span class="lt">Today ({fmt(TODAY)})</span><span class="lm">Milestone</span></div></div>
+</section>
+
+<section aria-labelledby="t-spr">
+  <h2 id="t-spr">Sprints</h2>
+  <div class="panel tw"><table style="min-width:40rem"><thead><tr><th>Sprint</th><th>Dates</th><th>Focus</th><th class="num">Stories</th><th class="num">Pts</th><th>State</th></tr></thead><tbody>{sprint_rows}</tbody></table></div>
 </section>
 
 <section aria-labelledby="t-ms">
@@ -217,7 +250,7 @@ footer {{ color:var(--muted); font-size:.8rem }}
   <h2 id="t-crit">What the dates depend on</h2>
   <div class="cols">
     <div class="panel"><h3>Raise these now (long lead)</h3><ul>
-      <li>UAT and Prod platform requests (Prod needed by 11 Dec)</li>
+      <li>Prod platform request (Prod needed by 10 Dec)</li>
       <li>Network access to MB Rec, MOTIF, FAS and the LLM gateway</li>
       <li>Model and data approval for the LLM gateway</li>
       <li>DPIA, AI risk assessment and penetration test slot</li>
@@ -225,12 +258,13 @@ footer {{ color:var(--muted); font-size:.8rem }}
       <li>Diagnostics hosting outside AWS/BCP</li></ul></div>
     <div class="panel"><h3>Assumptions</h3><ul>
       <li>Team: 2 backend, 1 DevOps, 1 QA, 1 BA, PM and architect; frontend part-time; Product Control SME part-time</li>
-      <li>Product Control available for set-up in S1–S2 and UAT in S4–S5</li>
-      <li>Change freeze 11 Dec – 4 Jan: Prod built before it, released on 5 Jan</li>
+      <li>Product Control available for set-up in Sprints 3–4 and UAT in Sprints 6–7</li>
+      <li>Change freeze 11 Dec – 4 Jan: Prod built by 10 Dec, released on 5 Jan</li>
+      <li>Sprint 7 runs over the holidays at reduced capacity</li>
       <li>Users are already provisioned and testing their skill in finance agent chat</li></ul></div>
     <div class="panel"><h3>Top risks</h3><ul>
-      <li>Prod not ready by 11 Dec: platform and network requests are the critical path</li>
-      <li>The build deployment is failing today; fix in progress</li>
+      <li>Prod not ready by 10 Dec: platform and network requests are the critical path</li>
+      <li>AOF orchestrator deployment on AWS finishes in Sprint 2; the database migration history is settled in Sprint 3</li>
       <li>Posting adjustments to MOTIF through FAS needs controls sign-off and FAS access in UAT</li>
       <li>Late approvals (model, DPIA, penetration test, CAB): each week late moves go-live by about a week</li></ul></div>
   </div>

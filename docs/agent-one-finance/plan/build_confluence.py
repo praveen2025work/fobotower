@@ -10,7 +10,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 g = runpy.run_path(os.path.join(HERE, "plan_data.py" if os.path.exists(os.path.join(HERE, "plan_data.py")) else "gen.py"))
 EPICS, MIL, SPR, SNAME, STORIES = g["EPICS"], g["MILESTONES"], g["SPR"], g["SNAME"], g["STORIES"]
 DOR, DOD, RELEASES, COMPONENT, RELEASE_OF = g["DOR"], g["DOD"], g["RELEASES"], g["COMPONENT"], g["RELEASE_OF"]
-EST, CUR = g["EPIC_STATUS"], g["CURRENT"]
+EST, CUR, SFOCUS, SSTATE, FREEZE = g["EPIC_STATUS"], g["CURRENT"], g["SFOCUS"], g["SPRINT_STATE"], g["FREEZE"]
 OUT = os.path.join(os.getcwd(), "confluence")
 os.makedirs(OUT, exist_ok=True)
 TODAY = "9 Oct 2026"
@@ -39,7 +39,9 @@ p += ("## Summary\n\nCore Agent One Finance, integrated with Agent One, investig
       "an adjustment is posted only after a reviewer approves it and a different person releases it.\n\n"
       "## Key dates\n\n| Date | What |\n|---|---|\n"
       + "".join(f"| {d(m[2])} | **{m[0]} {cell(m[1])}**: {cell(m[3])} |\n" for m in MIL)
-      + "\nChange freeze: 11 Dec 2026 to 4 Jan 2027 (no Production changes).\n\n"
+      + f"\nChange freeze: {d(FREEZE[0])} to {d(FREEZE[1])} (no Production changes).\n\n"
+      "Sprints are two weeks, Tuesday to Monday. Sprint 1 (Diagnostics) is done, Sprint 2 (AOF skeleton on AWS) is under way, "
+      f"and Sprint 3 starts on {d(SPR['S3'][0])}.\n\n"
       "## Scope\n\n**In:** FOBO Prime and Rates on AOF; MB Rec and MOTIF data; approved adjustments posted to MOTIF "
       "through FAS; Agent One sessions per capability per case; Agent One Finance Diagnostics; UAT and Prod.\n\n"
       "**Out:** other use cases; CATS.\n\n"
@@ -52,8 +54,8 @@ pages["01-overview.md"] = p
 p = header("Delivery plan", "Sprints, milestones and epics; live dates come from Jira")
 p += ("> Insert the Jira **Timeline** (or Advanced Roadmaps) macro here, filtered to this project, so dates stay live. "
       "The tables below are the baseline agreed on " + TODAY + ".\n\n"
-      "## Sprints\n\n| Sprint | Start | End |\n|---|---|---|\n"
-      + "".join(f"| {cell(SNAME[k])} | {d(a)} | {d(b)} |\n" for k, (a, b) in SPR.items())
+      "## Sprints\n\n| Sprint | Start | End | Focus | State |\n|---|---|---|---|---|\n"
+      + "".join(f"| {cell(SNAME[k])} | {d(a)} | {d(b)} | {cell(SFOCUS[k])} | {SSTATE.get(k, 'Planned')} |\n" for k, (a, b) in SPR.items())
       + "\n## Releases\n\n| Release | Date | Contains |\n|---|---|---|\n"
       + "".join(f"| {r[0]} | {d(r[1])} | {r[2]} |\n" for r in RELEASES)
       + "\n## Milestones\n\n| ID | Milestone | Date | Meaning |\n|---|---|---|---|\n"
@@ -76,7 +78,7 @@ p += ("## Story template\n\n**Title:** a short action (what gets done).\n\n"
       + "\n## Jira conventions\n\n"
       "- Issue types: Epic and Story; sub-tasks are added by the team at sprint planning.\n"
       "- Epics link stories through **Parent** (Jira Cloud) or **Epic Link** (Jira Data Center); the import file has both.\n"
-      "- Story points on the Fibonacci scale (1, 2, 3, 5, 8); two-week sprints.\n"
+      "- Story points on the Fibonacci scale (1, 2, 3, 5, 8); two-week sprints, Tuesday to Monday.\n"
       "- Releases (Fix Version): " + "; ".join(f"{r[0]} ({d(r[1])})" for r in RELEASES) + ".\n"
       "- Components: " + ", ".join(dict.fromkeys(COMPONENT.values())) + ".\n"
       "- Labels: AOF, FOBO; long-lead for requests with long lead times; diagnostics for the Diagnostics service.\n"
@@ -111,9 +113,10 @@ DECISIONS = [
     ("D03", "Adjustments are posted to MOTIF through FAS", "Agreed", "Only after a reviewer approves and a different person releases; each posted once; read back from MOTIF."),
     ("D04", "Agent One sessions per capability per case", "Agreed (design to sign)", "Not per user login; optionally per break group inside a case. Session runs with the case's rights."),
     ("D05", "Diagnostics hosted outside AWS/BCP", "Agreed (platform to confirm)", "Separate build and deployment from AOF."),
-    ("D06", "Change freeze 11 Dec to 4 Jan", "Confirmed", "Prod built before the freeze; application released on 5 Jan."),
+    ("D06", "Change freeze 11 Dec to 4 Jan", "Confirmed", "Prod built by 10 Dec; application released on 5 Jan."),
     ("D07", "Scope and go/no-go owned by the Business", "Agreed", "Sign-off by the Business (Product Control), Risk, Security and Operations."),
-    ("D08", "Reviewer console approach", "Open", "Use the AOF reference console as built, or port to the existing Next.js console."),
+    ("D08", "Reviewer console inside Agent One at /agentone/finance", "Agreed", "Each AOF release is taken with the sync tool, not converted by hand; our sign-on and connection settings are kept."),
+    ("D09", "Two-week sprints, Tuesday to Monday", "Agreed", "Sprint 1 22 Sep, Sprint 2 6 Oct, Sprint 3 starts 20 Oct; working version end of Sprint 5 (30 Nov)."),
 ]
 p = header("Decision log", "Decisions taken and still open")
 p += "| ID | Decision | Status | Notes | Date | Decided by |\n|---|---|---|---|---|---|\n"
@@ -122,16 +125,18 @@ pages["05-decision-log.md"] = p
 
 # 6. RAID log
 RAID = [
-    ("R1", "Risk", "Prod not ready by 11 Dec", "High", "Raise platform and network requests in S0; track weekly", "DevOps"),
-    ("R2", "Risk", "Posting to MOTIF through FAS needs controls sign-off and FAS access in UAT", "High", "Agree posting rules in S1; controls story in S3", "BA / Risk"),
-    ("R3", "Risk", "Late approvals (model, DPIA, penetration test, CAB)", "High", "Start in S0; each week late moves go-live by about a week", "PM"),
+    ("R1", "Risk", "Prod not ready by 10 Dec", "High", "Raise platform and network requests in Sprint 2; track weekly", "DevOps"),
+    ("R2", "Risk", "Posting to MOTIF through FAS needs controls sign-off and FAS access in UAT", "High", "Agree posting rules in Sprint 3; controls story in Sprint 5", "BA / Risk"),
+    ("R3", "Risk", "Late approvals (model, DPIA, penetration test, CAB)", "High", "Start in Sprints 2–3; each week late moves go-live by about a week", "PM"),
     ("R4", "Risk", "MB Rec extra data arrives late", "Medium", "Extra checks stay off; go-live not blocked", "BA"),
-    ("A1", "Assumption", "Product Control available for set-up in S1–S2 and UAT in S4–S5", "", "Confirm with the Business", "PM"),
+    ("R5", "Risk", "Sprint 7 runs over the holidays", "Medium", "UAT cycle 2 starts 15 Dec; sign-offs and CAB request by 18 Dec", "PM"),
+    ("A1", "Assumption", "Product Control available for set-up in Sprints 3–4 and UAT in Sprints 6–7", "", "Confirm with the Business", "PM"),
     ("A2", "Assumption", "Users are already provisioned for interim skill testing", "", "", "PM"),
-    ("I1", "Issue", "The build deployment is failing (missing package in the image)", "High", "Fix in progress", "DevOps"),
+    ("I1", "Issue", "The AOF orchestrator deployment on AWS is not yet healthy", "High", "Missing package fixed; own ECS service in Sprint 2; database migration history settled in Sprint 3", "DevOps"),
+    ("I2", "Issue", "Converting each AOF release by hand lost styles and screens", "High", "Take each release with the sync tool from Sprint 3", "Frontend"),
     ("D1", "Dependency", "MB Rec: extra data and end-of-day notification", "", "Weekly session; dates in plan", "PM"),
     ("D2", "Dependency", "FAS: test access in UAT and Prod connection", "", "Dates in plan", "PM"),
-    ("D3", "Dependency", "Agent One team: session per capability per case", "", "Design agreed in S0", "Architect"),
+    ("D3", "Dependency", "Agent One team: session per capability per case", "", "Design agreed in Sprint 3", "Architect"),
 ]
 p = header("RAID log", "Risks, assumptions, issues and dependencies")
 p += "| ID | Type | Description | Rating | Action | Owner |\n|---|---|---|---|---|---|\n"

@@ -4,11 +4,11 @@
 # Keyed by story summary (see plan_data.py).
 
 RELEASES = [
-    ("R1 Working version", "2026-11-30", "Everything needed for the working version in UAT and the 30 Nov showcase (S0 to S3)"),
-    ("R2 Go-live", "2027-01-14", "UAT sign-off, Prod and go-live (S4 to S6)"),
+    ("R1 Working version", "2026-11-30", "Everything needed for the working version in UAT and the 30 Nov showcase (Sprints 1 to 5)"),
+    ("R2 Go-live", "2027-01-14", "UAT sign-off, Prod and go-live (Sprints 6 to 9)"),
 ]
-RELEASE_OF = {"S0": "R1 Working version", "S1": "R1 Working version", "S2": "R1 Working version",
-              "S3": "R1 Working version", "S4": "R2 Go-live", "S5": "R2 Go-live", "S6": "R2 Go-live"}
+RELEASE_OF = {**{k: "R1 Working version" for k in ("S1", "S2", "S3", "S4", "S5")},
+              **{k: "R2 Go-live" for k in ("S6", "S7", "S8", "S9")}}
 
 COMPONENT = {"E01": "Programme", "E02": "Platform", "E03": "Agent One", "E04": "Connections", "E05": "FOBO",
              "E06": "Diagnostics", "E07": "Risk and controls", "E08": "Testing", "E09": "Engagement",
@@ -42,15 +42,18 @@ US = {
  "Agree success and go/no-go criteria": ("delivery lead", "success and go/no-go criteria agreed", "the go-live decision is objective", None, []),
  "Go/no-go sign-off list": ("delivery lead", "a list of who signs go/no-go", "the right people approve go-live", None, []),
  # E02
- "Fix the build and deploy (deployment currently failing)": ("platform engineer", "the build fixed and deploying cleanly", "the team can deliver changes to UAT", [("the build pipeline", "a release is deployed", "the service starts and passes its health check")], []),
- "Bring the codebase to the latest AOF version and keep it current": ("platform engineer", "the codebase on the latest AOF version", "we get fixes and features without drift", None, []),
- "Request the UAT and Prod platform (long lead)": ("platform engineer", "the UAT and Prod platform requested now", "Prod is ready before 11 Dec", None, []),
+ "Set up the AOF database on AWS (Postgres with pgvector)": ("platform engineer", "the AOF database on AWS with pgvector", "AOF can keep its cases, audit trail and knowledge", None, []),
+ "Deploy the AOF orchestrator service to AWS": ("platform engineer", "the AOF orchestrator running as its own service on AWS", "the team can deliver changes to UAT", [("a release from the pipeline", "it is deployed", "the service starts and passes its health check")], ["Set up the AOF database on AWS (Postgres with pgvector)"]),
+ "AOF skeleton end to end on AWS": ("Product Control reviewer", "the console, orchestrator and database working together on AWS", "we can see AOF run before the connections arrive", [("a sample case on test data", "it is opened in the console at /agentone/finance", "it runs and can be reviewed")], ["Deploy the AOF orchestrator service to AWS"]),
+ "Request the Prod platform (long lead)": ("platform engineer", "the Prod platform requested now", "Prod is ready by 10 Dec", None, []),
+ "Settle the AOF database migrations": ("platform engineer", "the AWS database on AOF's migration history", "every release can change the database safely", [("a release with a database change", "it is deployed", "the migration runs first and there is one migration head")], ["Set up the AOF database on AWS (Postgres with pgvector)"]),
+ "Take each AOF release the same way (sync tool)": ("platform engineer", "each AOF release taken with the sync tool instead of a hand conversion", "updates are quick, complete and keep our own changes", [("a new AOF release", "the sync tool runs", "the console and backend are updated and our sign-on and connection settings are kept")], []),
  "Request network access to MB Rec, MOTIF, FAS and the LLM gateway (long lead)": ("platform engineer", "network access to MB Rec, MOTIF, FAS and the LLM gateway", "the connections work in UAT and Prod", None, []),
  "Build pipeline with tests and security scans": ("platform engineer", "every change built, tested and scanned", "only safe changes reach UAT and Prod", [("a change with a failing test", "the pipeline runs", "the release is stopped")], []),
- "Build the UAT environment": ("platform engineer", "a UAT environment with database, secrets and single sign-on", "Product Control can test on real data", [("the pipeline", "a release is promoted to UAT", "it deploys and a reviewer can sign in")], ["Request the UAT and Prod platform (long lead)"]),
- "Deploy the reviewer console to UAT": ("Product Control reviewer", "the reviewer console in UAT", "I can review cases on screen", [("I am a provisioned reviewer", "I open the console in UAT", "I see my inbox after single sign-on")], ["Build the UAT environment"]),
+ "Complete the UAT environment": ("platform engineer", "UAT complete with single sign-on, secrets and connections", "Product Control can test on real data", [("the pipeline", "a release is promoted to UAT", "it deploys and a reviewer can sign in")], ["Deploy the AOF orchestrator service to AWS"]),
+ "Deploy the reviewer console to UAT": ("Product Control reviewer", "the reviewer console in UAT", "I can review cases on screen", [("I am a provisioned reviewer", "I open /agentone/finance in UAT", "I see my inbox after single sign-on")], ["Complete the UAT environment"]),
  "Promote releases from UAT to Prod through the pipeline": ("platform engineer", "the same build promoted from UAT to Prod with an approval gate", "Prod runs exactly what was tested", [("a release signed off in UAT", "it is promoted", "Prod gets the same build only after approval")], ["Build pipeline with tests and security scans"]),
- "Build the Prod environment before the freeze": ("platform engineer", "the Prod environment ready by 11 Dec", "we can release on 5 Jan without a freeze breach", [("the Prod platform", "the smoke test runs", "it passes before 11 Dec")], ["Request the UAT and Prod platform (long lead)"]),
+ "Build the Prod environment before the freeze": ("platform engineer", "the Prod environment ready by 10 Dec", "we can release on 5 Jan without a freeze breach", [("the Prod platform", "the smoke test runs", "it passes by 10 Dec")], ["Request the Prod platform (long lead)"]),
  "Backups and restore tested": ("support analyst", "backups with a tested restore", "we can recover from data loss", [("a backup", "we restore it to UAT", "the cases and audit trail are complete")], []),
  # E03
  "Confirm the approved model and data rules (long lead)": ("risk officer", "the approved model and data rules confirmed", "only approved data reaches the model", None, []),
@@ -72,7 +75,7 @@ US = {
  "FAS: post approved adjustments to MOTIF": ("Product Control reviewer", "approved adjustments posted to MOTIF through FAS", "I do not re-key them", [("an adjustment approved by a reviewer and released by a second person", "it is posted", "it reaches MOTIF through FAS"), ("an adjustment already posted", "it is posted again", "the second post is refused"), ("an adjustment not released", "anyone tries to post it", "nothing is posted")], ["FAS: agree posting rules with Product Control and MOTIF", "Request network access to MB Rec, MOTIF, FAS and the LLM gateway (long lead)"]),
  "FAS: confirm each posted adjustment in MOTIF": ("Product Control reviewer", "each posting confirmed in MOTIF", "I know it landed", [("a posted adjustment", "MOTIF is read back", "the case shows it confirmed, or flags it")], ["FAS: post approved adjustments to MOTIF"]),
  "Give provisioned users their AOF roles and books": ("Product Control reviewer", "my AOF role and books set", "I see only my books", [("a reviewer for book A", "they open the inbox", "they see only book A's cases")], []),
- "Connections in Prod before the freeze": ("platform engineer", "MB Rec, MOTIF and FAS reachable from Prod by 11 Dec", "the 5 Jan release needs no network change", None, ["Build the Prod environment before the freeze"]),
+ "Connections in Prod before the freeze": ("platform engineer", "MB Rec, MOTIF and FAS reachable from Prod by 10 Dec", "the 5 Jan release needs no network change", None, ["Build the Prod environment before the freeze"]),
  # E05
  "Confirm thresholds and parameters with Product Control": ("Product Control reviewer", "materiality, tolerances and ageing confirmed", "the checks use our values", None, []),
  "Set up FOBO Prime": ("Product Control reviewer", "FOBO Prime set up on AOF", "Prime breaks are investigated end to end", [("a Prime book and date", "the case runs", "each break group has a proposal ready for review")], ["Confirm thresholds and parameters with Product Control", "MB Rec: read breaks and break history"]),
@@ -84,7 +87,8 @@ US = {
  "Turn on extra checks when MB Rec's new data arrives": ("Product Control reviewer", "the extra checks on when MB Rec's data arrives", "more breaks are explained", None, ["MB Rec: request the extra data the checks need (long lead)"]),
  "Next-day follow-up and late breaks": ("Product Control reviewer", "decisions re-checked the next day and late breaks in their own case", "nothing is missed", [("a decision that a break would clear", "the next business day runs", "the case shows whether it cleared")], []),
  # E06
- "Review what Diagnostics already does": ("support analyst", "a clear view of what Diagnostics does today", "we improve the right things first", None, []),
+ "Build the Diagnostics core (Phoenix scraper)": ("support analyst", "agent runs, model calls, errors and cost read from Phoenix traces", "I can see how the agents run", None, []),
+ "Diagnostics: finish the remaining 30%": ("support analyst", "the open Diagnostics items finished", "Diagnostics is complete enough for UAT", None, ["Build the Diagnostics core (Phoenix scraper)"]),
  "Confirm hosting outside AWS/BCP": ("architect", "Diagnostics hosting outside AWS/BCP approved", "it can be deployed", None, []),
  "Quality check: results match Phoenix": ("support analyst", "Diagnostics results reconciled with Phoenix", "I can trust what it shows", [("sample cases", "Diagnostics and Phoenix are compared", "counts, timings, errors and costs match")], []),
  "Own build pipeline and read-only Phoenix access": ("platform engineer", "a separate pipeline and read-only Phoenix access", "Diagnostics is released safely", None, []),
@@ -100,7 +104,7 @@ US = {
  "Security scans clean": ("risk officer", "code and dependency scans clean", "no known vulnerabilities go live", None, []),
  "Controls for posting adjustments": ("risk officer", "posting controls signed off", "postings to MOTIF are safe", None, ["FAS: agree posting rules with Product Control and MOTIF"]),
  "Audit trail cannot be changed": ("risk officer", "an audit trail that cannot be changed", "it stands as evidence", None, []),
- "Penetration test on UAT": ("risk officer", "a penetration test with no open high findings", "the service is safe to go live", None, ["Build the UAT environment"]),
+ "Penetration test on UAT": ("risk officer", "a penetration test with no open high findings", "the service is safe to go live", None, ["Complete the UAT environment"]),
  "Access and segregation-of-duties review": ("risk officer", "access and segregation of duties reviewed", "no one can approve and release the same posting", None, []),
  # E08
  "Test plan": ("QA lead", "a test plan", "testing covers what matters", None, []),

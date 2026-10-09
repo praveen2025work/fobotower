@@ -8,7 +8,7 @@ Create a page tree in the project space and paste each file into a page of the s
 | `02-delivery-plan.md` | Delivery plan |
 | `03-ways-of-working.md` | Ways of working |
 | `04-requirements-E01.md` | E01 Programme and governance |
-| `04-requirements-E02.md` | E02 Build and environments (UAT, Prod) |
+| `04-requirements-E02.md` | E02 AOF platform on AWS: skeleton, UAT and Prod |
 | `04-requirements-E03.md` | E03 Agent One integration: sessions per capability per case |
 | `04-requirements-E04.md` | E04 Data connections: MB Rec, MOTIF and FAS |
 | `04-requirements-E05.md` | E05 FOBO (Helix) set-up with Product Control |

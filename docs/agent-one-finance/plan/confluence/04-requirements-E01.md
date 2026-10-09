@@ -6,7 +6,7 @@
 
 | Jira epic | Component | Dates | Status |
 |---|---|---|---|
-| E01 | Programme | 12 Oct 2026 to 11 Dec 2026 | To Do |
+| E01 | Programme | 6 Oct 2026 to 14 Dec 2026 | In Progress |
 
 **Objective:** Plan, scope, approvals and reporting
 
@@ -16,17 +16,19 @@
 
 **Dependencies:** Change freeze 11 Dec to 4 Jan; CAB calendar
 
+**Current state:** Plan re-baselined on 9 Oct: two-week sprints, Sprint 3 from 20 Oct
+
 ## Stories
 
 ### E01-S01 Set up Jira, sprint calendar and weekly status
 
 As a delivery lead, I want the plan loaded into Jira with a sprint calendar and a weekly status, so that everyone works from one plan and sees progress.
 
-Load this plan into Jira; two-week sprints; weekly status to stakeholders.
+Load this plan into Jira; two-week sprints, Sprint 3 from 20 Oct; weekly status to stakeholders.
 
 | Sprint | Release | Points | Priority | Team | Environment | Status |
 |---|---|---|---|---|---|---|
-| S0 Mobilise | R1 Working version | 1 | High | PM | - | To Do |
+| Sprint 2 | R1 Working version | 1 | High | PM | - | In Progress |
 
 **Acceptance criteria**
 
@@ -40,7 +42,7 @@ In: FOBO Prime and Rates on AOF, MB Rec and MOTIF data, approved adjustments pos
 
 | Sprint | Release | Points | Priority | Team | Environment | Status |
 |---|---|---|---|---|---|---|
-| S0 Mobilise | R1 Working version | 2 | Highest | PM | - | To Do |
+| Sprint 2 | R1 Working version | 2 | Highest | PM | - | In Progress |
 
 **Acceptance criteria**
 
@@ -54,7 +56,7 @@ Change freeze confirmed: 11 Dec to 4 Jan.
 
 | Sprint | Release | Points | Priority | Team | Environment | Status |
 |---|---|---|---|---|---|---|
-| S0 Mobilise | R1 Working version | 1 | Highest | PM | - | In Progress |
+| Sprint 2 | R1 Working version | 1 | Highest | PM | - | In Progress |
 
 **Acceptance criteria**
 
@@ -68,7 +70,7 @@ Risks, assumptions, issues and dependencies tracked weekly.
 
 | Sprint | Release | Points | Priority | Team | Environment | Status |
 |---|---|---|---|---|---|---|
-| S0 Mobilise | R1 Working version | 1 | High | PM | - | To Do |
+| Sprint 3 | R1 Working version | 1 | High | PM | - | To Do |
 
 **Acceptance criteria**
 
@@ -82,13 +84,13 @@ Present the architecture and controls; record conditions.
 
 | Sprint | Release | Points | Priority | Team | Environment | Status |
 |---|---|---|---|---|---|---|
-| S1 | R1 Working version | 3 | Highest | Architect | - | To Do |
+| Sprint 3 | R1 Working version | 3 | Highest | Architect | - | To Do |
 
 **Acceptance criteria**
 
 - Done when: ARB approval; conditions added as stories
 
-**Blocked by:** E03-S19
+**Blocked by:** E03-S22
 
 ### E01-S06 Agree success and go/no-go criteria
 
@@ -98,7 +100,7 @@ For example: agreement with reviewers, no unverified figures, hours saved, no op
 
 | Sprint | Release | Points | Priority | Team | Environment | Status |
 |---|---|---|---|---|---|---|
-| S1 | R1 Working version | 2 | High | PM / BA | - | To Do |
+| Sprint 3 | R1 Working version | 2 | High | PM / BA | - | To Do |
 
 **Acceptance criteria**
 
@@ -112,7 +114,7 @@ Who signs: the Business (Product Control), Risk, Security, Operations.
 
 | Sprint | Release | Points | Priority | Team | Environment | Status |
 |---|---|---|---|---|---|---|
-| S4 UAT-1 | R2 Go-live | 1 | High | PM | - | To Do |
+| Sprint 6 | R2 Go-live | 1 | High | PM | - | To Do |
 
 **Acceptance criteria**
 

@@ -34,7 +34,7 @@
 
 - Issue types: Epic and Story; sub-tasks are added by the team at sprint planning.
 - Epics link stories through **Parent** (Jira Cloud) or **Epic Link** (Jira Data Center); the import file has both.
-- Story points on the Fibonacci scale (1, 2, 3, 5, 8); two-week sprints.
+- Story points on the Fibonacci scale (1, 2, 3, 5, 8); two-week sprints, Tuesday to Monday.
 - Releases (Fix Version): R1 Working version (30 Nov 2026); R2 Go-live (14 Jan 2027).
 - Components: Programme, Platform, Agent One, Connections, FOBO, Diagnostics, Risk and controls, Testing, Engagement, Go-live.
 - Labels: AOF, FOBO; long-lead for requests with long lead times; diagnostics for the Diagnostics service.

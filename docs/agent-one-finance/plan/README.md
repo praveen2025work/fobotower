@@ -1,13 +1,19 @@
 # Delivery plan: Agent One Finance with the FOBO (Helix) use case
 
 Core Agent One Finance, integrated with Agent One. It investigates FOBO breaks from MB Rec for Product
-Control and posts approved adjustments to MOTIF through FAS. The working version is in UAT by
-30 Nov 2026, and go-live is 14 Jan 2027.
+Control and posts approved adjustments to MOTIF through FAS.
+
+Two-week sprints, Tuesday to Monday:
+
+- Sprint 1 (22 Sep – 5 Oct): Diagnostics, about 70% built. Done.
+- Sprint 2 (6 – 19 Oct): AOF skeleton on AWS (orchestrator service, database, console). Under way.
+- Sprint 3 starts 20 Oct.
+- Working version in UAT by 30 Nov (end of Sprint 5); go-live 14 Jan 2027 (Sprint 9).
 
 | File | For |
 |---|---|
 | [`aof-fobo-plan.html`](aof-fobo-plan.html) | PMO and stakeholders. It shows the timeline, milestones, epics, ways of working, and stories by epic (filter by sprint). Open it in a browser. |
-| [`AOF-FOBO-stories.csv`](AOF-FOBO-stories.csv) | The Jira import: 10 epics and 88 stories, as user stories with acceptance criteria. |
+| [`AOF-FOBO-stories.csv`](AOF-FOBO-stories.csv) | The Jira import: 10 epics and 92 stories, as user stories with acceptance criteria. |
 | [`AOF-FOBO-L1-plan.csv`](AOF-FOBO-L1-plan.csv) | Level 1: epics, milestones, sprints and the freeze, for Excel. |
 | [`confluence/`](confluence/00-index.md) | Pages for the project space: overview, delivery plan, ways of working, requirements per epic, decision log, RAID log. |
 | `plan_data.py`, `standards.py` | The single source for the plan. `standards.py` holds the story wording, releases, components, and the Definitions of Ready and Done. |
@@ -15,7 +21,9 @@ Control and posts approved adjustments to MOTIF through FAS. The working version
 
 ## Importing into Jira (System → External system import → CSV)
 
-1. Create the sprints, the releases (**R1 Working version**, **R2 Go-live**) and the components first.
+1. Create the sprints (named **Sprint 1** to **Sprint 9**, as in the file), the releases (**R1 Working version**,
+   **R2 Go-live**) and the components first. Sprint 1 is closed and Sprint 2 is active, so their stories come in as
+   Done and In Progress; leave those rows out if the board already has them.
 2. Map the columns:
    - **Jira Cloud:** `Issue ID` → Issue ID, `Parent` → Parent.
    - **Jira Data Center:** `Issue ID` → Issue ID, `Epic Name` → Epic Name, `Epic Link` → Epic Link.

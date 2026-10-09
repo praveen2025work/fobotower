@@ -2,6 +2,8 @@
 
 The plug points for the office environment are here, all optional:
 
+  AOF_PATH_PREFIX        also serve the API under this path (e.g. /finance), for a load
+                           balancer that routes /finance/* here without rewriting paths
   AOF_DATABASE_URL       the database; or its parts, AOF_DATABASE_HOST, _PORT (5432), _NAME,
                            _USER and _PASSWORD (each can come from a secrets store key)
   AOF_LLM_ADAPTER        none | stub | "module:attr" (your LLM connector)
@@ -71,6 +73,7 @@ class AofSettings:
     event_secret: str | None
     admin_role: str
     env_name: str
+    path_prefix: str
     promotion_key: str | None
     notify_webhook_url: str | None
     documents_dir: Path
@@ -114,6 +117,7 @@ def settings() -> AofSettings:
         # Promotion across environments: this deployment's name, and the key that
         # signs exported versions (shared by the environments that trust each other).
         env_name=env("AOF_ENV_NAME") or "dev",
+        path_prefix=(env("AOF_PATH_PREFIX") or "").rstrip("/"),
         promotion_key=env("AOF_PROMOTION_KEY") or None,
         # Links in notifications point here.
         console_url=(env("AOF_CONSOLE_URL") or "http://localhost:5180").rstrip("/"),

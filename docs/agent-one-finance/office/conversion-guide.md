@@ -1,58 +1,70 @@
-# Agent One Finance in the office: conversion guide
+# Agent One Finance in aos-frontend and aos-backend: the conversion guide
 
-**For:** you and office Claude Code, bringing Agent One Finance (AOF) from this repository into the
-office repos `aos-frontend` and `aos-backend`, and running the AOF service on AWS.
+**Final version, 9 Oct 2026. This is the only guide.** Earlier migration, update and conversion pages are in
+[`../archive/`](../archive/README.md), for the record only. Do not use them.
 
-**This is the only guide.** It replaces every earlier migration, update and conversion page (now in
-[`../archive/`](../archive/README.md), for the record only). It is written for the office layout
-reported in `aos-structure.md` (9 Oct 2026):
+**For:** office Claude Code, working in the `Skillgap` workspace with the person who runs it. It covers:
 
-- `aos-frontend`: Next.js 16.1.1 with webpack, React 19, JSX, Tailwind 4, `basePath /agentone`,
-  next-themes and BAM single sign-on;
-- `aos-backend`: Python 3.12, `app/requirements.txt`, the AOF image built from `Dockerfile.helix`
-  on port 8300, ECS task definitions.
+1. bringing AOF from `fobotower-main` into `aos-frontend` and `aos-backend`, the same way on every release;
+2. hosting the AOF API on AWS next to the Agent One API.
 
-## 1. The rule: the conversion happens here, not in the office
+---
 
-Every earlier update was converted by hand in the office: 58 files from TSX to JSX, Vite routes to
-Next.js routes, Tailwind 3 to 4. That lost the styles and the menu icons, missed the newest screens,
-and took 8 fix-up commits.
+## For the person: what to do
 
-Now the conversion is one script in this repository, run the same way every time:
+1. Download `main` of `praveen2025work/fobotower` as a zip and unpack it as `Skillgap/fobotower-main`.
+2. First time only, also download `https://github.com/praveen2025work/fobotower/archive/dbaac6f.zip` and unpack
+   it as `Skillgap/fobotower-base`. That is the backend version the office last copied.
+3. Paste the prompt in [section 9](#9-the-prompts) into office Claude: the first-time prompt, or the update prompt
+   after that. Approve each step it shows you.
 
-- `apps/web/office/convert.mjs` turns the console into `aos-frontend`'s shape and commits the result
-  in [`office/aos-frontend/`](../../../office/aos-frontend). A test fails if that folder is out of date.
-- `office/aof_sync.py` copies it, and the AOF backend, into the office repos. It keeps the office's
-  own changes with a three-way merge.
+---
 
-**Office Claude never converts or restyles code.** It runs the sync, settles anything the sync marks,
-builds, tests and reports.
+## 1. Rules for office Claude
+
+- **Never convert, restyle or rewrite AOF code by hand.** The console is converted once, in `fobotower-main`
+  (`apps/web/office/convert.mjs`). The result is in `fobotower-main/office/aos-frontend/`, already in
+  `aos-frontend`'s shape: Next.js App Router, JSX, Tailwind-independent styles. A test there fails if that
+  folder is out of date.
+- **Copy with the sync tool only:** `python3 fobotower-main/office/aof_sync.py`. It merges, so office changes
+  are kept.
+- **Work on a branch.** Never touch the main branch, a deployment, a database or a secret without the person's
+  OK.
+- **Stop after each numbered step**, show the result, and wait.
+- If something does not work, report what and why. Do not work around it by editing AOF code.
 
 ## 2. What goes where
 
-| Upstream (this repository) | Office | Notes |
+| From `fobotower-main` | To | Owned by |
 |---|---|---|
-| `office/aos-frontend/src/app/finance/**` (made from `apps/web`) | `aos-frontend/src/app/finance/**` | The Next.js pages for `/finance`, and the console's code in the private folder `_aof/` (Next.js ignores `_` folders for routing). **The sync reads and writes nothing else in aos-frontend.** |
-| `apps/backend/agent_one_finance` | `aos-backend/agent_one_finance` | `session_bridge.py` stays the office's |
-| `apps/backend/migrations` | `aos-backend/aof_migrations` | See section 6 step 2 before the first sync |
-| `config/agent-one-finance` | `aos-backend/config/agent-one-finance` | `connectors.yaml` stays the office's |
-| `apps/backend/seed_data/aof_documents` | `aos-backend/seed_data/aof_documents` | Sample documents for the documents service |
-| `apps/backend/tests/agent_one_finance` | `aos-backend/tests/agent_one_finance` | |
-| `apps/backend/pyproject.toml` dependencies | `aos-backend/app/requirements.txt` | The sync report lists anything missing; add it by hand |
+| `office/aos-frontend/src/app/finance/**` | `aos-frontend/src/app/finance/**`: the `/finance` pages, and the console code in the private folder `_aof/` | AOF (synced) |
+| `apps/backend/agent_one_finance/**` | `aos-backend/agent_one_finance/**` | AOF (synced) |
+| `apps/backend/migrations/**` | `aos-backend/aof_migrations/**` | AOF (synced) |
+| `config/agent-one-finance/**` | `aos-backend/config/agent-one-finance/**` | AOF (synced), except `connectors.yaml` |
+| `apps/backend/seed_data/aof_documents/**` | `aos-backend/seed_data/aof_documents/**` | AOF (synced) |
+| `apps/backend/tests/agent_one_finance/**` | `aos-backend/tests/agent_one_finance/**` | AOF (synced) |
+| `office/hosting/*` | `aos-backend` (section 8), copied once | Office |
+| `apps/backend/pyproject.toml` dependencies | `aos-backend/app/requirements.txt` (the sync report lists what is missing) | Office |
 
-Not AOF, and never touched by the sync:
+These files are the office's own. The sync never overwrites them:
+
+- `src/app/finance/_aof/office/auth.js`: the sign-on headers for AOF calls;
+- `config/agent-one-finance/connectors.yaml`: the office's connection settings;
+- `agent_one_finance/session_bridge.py`: the office's session bridge.
+
+These are not AOF, and the sync never reads or writes them:
 
 - `src/components/financeagent/` and `/financeagent`: Agent One's own Finance Agent;
-- `/fobo`, `Dockerfile.fobo`: the original FOBO app, retired after go-live;
-- `api/routes/aof_*.py`: the main API's own routes into AOF.
+- the rest of `aos-frontend` and `aos-backend`;
+- `/fobo`, `Dockerfile.fobo`: the original FOBO app, retired after go-live.
 
-## 3. How the converted console fits aos-frontend
+## 3. How the console fits aos-frontend
 
-This was checked in a Next.js app set up like aos-frontend:
+This was tested in a Next.js app set up like aos-frontend:
 
 - Next.js 16.1.1, built with `next build --webpack`;
 - `basePath: "/agentone"`;
-- React 19.2.3, Tailwind 4 with a `tailwind.config.js` (`darkMode: ["class"]`);
+- React 19.2.3, Tailwind 4 with `tailwind.config.js` (`darkMode: ["class"]`);
 - next-themes, lucide-react 0.562, eslint-config-next.
 
 The results:
@@ -61,182 +73,214 @@ The results:
 - every page loads with no browser errors;
 - links and the left menu go to `/agentone/finance/...`;
 - the icons show;
-- the console's theme button switches Agent One's theme too;
-- Agent One's own pages look exactly as before.
+- the console follows Agent One's light and dark theme;
+- Agent One's own pages are unchanged.
 
-| Part | In aos-frontend |
+| Part | Detail |
 |---|---|
-| Routes | `/finance` (Overview), `/finance/inbox`, `/finance/capabilities`, `/finance/capabilities/[id]`, `/finance/capabilities/[id]/groups/[group]`, `/finance/cases/[caseId]`, `/finance/authoring`, `/finance/operations`, `/finance/audit`, `/finance/connectors`. Each is a small `page.jsx` that loads the console page in the browser. |
-| Frame | `src/app/finance/layout.jsx` wraps the finance pages in `_aof/office/FinanceShell.jsx`: the console's query cache, its left menu and top bar. |
-| Navigation | `_aof/office/router.js` gives the console's links Next.js navigation. `basePath` is added by Next.js. |
-| Styles | `_aof/finance.css` is compiled here and scoped to `#aof-root`. It needs no change to Agent One's Tailwind set-up and does not change Agent One's pages. |
-| Theme | Follows Agent One's light and dark theme (next-themes), so there is one theme switch for the whole page. |
-| Height | The console fills the viewport by default. Under Agent One's header, set `--aof-height`, for example `calc(100vh - 64px)`, on an element around it. |
-| Packages | `@tanstack/react-query`, `clsx`, `yaml`, `lucide-react` and `next-themes`. aos-frontend already has them all. |
-| Sign-on | `_aof/office/auth.js` is **the one console file the office owns**. It returns the headers Agent One's API needs on each AOF call, for example the BAM token from `src/lib/sso.js`. The sync adds it once and never overwrites it. |
-| API address | `NEXT_PUBLIC_AOF_API=/agentone/api/finance`, set in `.env.development`, `.env.uat` and `.env.production`. The console calls `/agentone/api/finance/...`, and Next.js rewrites `/api/finance/*` to the AOF service (section 8). |
-| Lint | Add `{ ignores: ["src/app/finance/_aof/**"] }` to `eslint.config.mjs`. That code is linted and type-checked upstream, in TypeScript. |
+| Routes | `/finance`, `/finance/inbox`, `/finance/capabilities`, `/finance/capabilities/[id]`, `/finance/capabilities/[id]/groups/[group]`, `/finance/cases/[caseId]`, `/finance/authoring`, `/finance/operations`, `/finance/audit`, `/finance/connectors` |
+| Frame | `src/app/finance/layout.jsx` wraps the pages in `_aof/office/FinanceShell.jsx`: the console's query cache, its left menu and top bar |
+| Styles | `_aof/finance.css`, compiled in `fobotower-main` and scoped to `#aof-root`; no change to Agent One's Tailwind set-up |
+| Height | Fills the viewport by default. Under Agent One's header, set `--aof-height` (for example `calc(100vh - 64px)`) on an element around it. |
+| Packages | `@tanstack/react-query`, `clsx`, `yaml`, `lucide-react`, `next-themes`. aos-frontend already has them all. |
+| Sign-on | `_aof/office/auth.js` returns the headers every AOF call needs: the same BAM token the rest of aos-frontend sends to the Agent One API |
+| API address | `NEXT_PUBLIC_AOF_API=/agentone/api/finance` in `.env.development`, `.env.uat` and `.env.production`. Next.js rewrites `/api/finance/*` to the Agent One API (section 8). |
+| Lint | Add `{ ignores: ["src/app/finance/_aof/**"] }` to `eslint.config.mjs`. That code is linted and type-checked in `fobotower-main`, in TypeScript. |
 
 ## 4. The workspace
 
 ```
 Skillgap/
-  fobotower-main/       the latest download of this repository (main), replaced on every update
-  aos-frontend/         office repo
-  aos-backend/          office repo
-  aof-sync.json         optional: only if the office folder names differ from section 2
-  aof-sync-base/        kept by the sync tool: what upstream looked like at the last sync. Do not delete.
+  fobotower-main/       the latest download of main, replaced on every update
+  fobotower-base/       first time only: the backend version the office copied last (dbaac6f)
+  aos-frontend/         repo
+  aos-backend/          repo
+  aof-sync.json         optional: only if a folder name differs from section 2
+  aof-sync-base/        kept by the sync tool between runs. Do not delete.
   aof-sync-report.md    written by every run
 ```
 
-Each office repo also gets `.aof-sync.json`, recording what was synced and when. Commit it.
+Each repo gets `.aof-sync.json`, recording what was synced and when. Commit it with the update.
 
-## 5. What the sync does with each file
+## 5. Reading the sync report
 
 | In the report | Meaning | What to do |
 |---|---|---|
-| `add`, `update`, `remove` | Upstream changed a file the office never edited | Nothing |
-| `keep-office` | Only the office changed it, or it is an office file (`auth.js`, `connectors.yaml`, `session_bridge.py`) | Nothing |
-| `merge` | Both changed it, in different places; merged | Look at the diff |
-| `clash` | Both changed the same lines, marked `<<<<<<< office` … `>>>>>>> upstream` | Settle by hand. The next run refuses to apply until no marks are left. |
-| `differs` | First sync only: the office file differs and there is no base to merge from | Review; `--baseline` takes upstream |
-| `office-only` | A file upstream does not have. In `src/app/finance` it is a leftover of the hand conversion; elsewhere it is the office's own | `--baseline --prune` removes leftovers in `src/app/finance` only |
-| Packages to add | Upstream needs a Python package that `app/requirements.txt` does not list | Add it |
+| `add`, `update`, `remove` | Changed in AOF; the office never edited the file | Nothing |
+| `keep-office` | Only the office changed it, or it is an office file | Nothing |
+| `merge` | Both changed it, in different places; merged | Show the diff |
+| `clash` | Both changed the same lines; marked `<<<<<<< office` … `>>>>>>> upstream` | Show both, propose, settle after the person's OK. The next run refuses to apply while marks remain. |
+| `differs` | First sync only: different, with no common base | Review; `--baseline` takes the AOF version |
+| `office-only` | Not in AOF. In `src/app/finance` it is a leftover of the hand conversion; elsewhere it is the office's own | `--baseline --prune` removes leftovers in `src/app/finance` only |
+| Packages to add | AOF needs a Python package that `app/requirements.txt` lacks | Add it |
 
-## 6. First time: replace the hand conversion (once)
+## 6. The AOF database
 
-1. **Get the code.**
-   - Download `main` of this repository as a zip and unpack it as `Skillgap/fobotower-main`.
-   - Download `https://github.com/praveen2025work/fobotower/archive/dbaac6f.zip` and unpack it as
-     `Skillgap/fobotower-base`. That is the backend version the office last copied. It lets the
-     sync merge office edits instead of overwriting them.
-2. **Settle the migrations** (the AOF database on AWS).
-   - The office has `helix_migrations` (18 versions, an older lineage) and removed `aof_migrations`.
-     The AOF code needs the upstream lineage: 25 versions, head `e7f9a1b3c5d7`.
-   - Ask office Claude to read the UAT AOF database's `alembic_version` table, and the list of its
-     tables, and send me the result. There are three cases:
-     - **An upstream id** (any file name in `apps/backend/migrations/versions`): restore
-       `aof_migrations` through the sync, with an `aof_alembic.ini` (`script_location = aof_migrations`),
-       then run `alembic -c aof_alembic.ini upgrade head`.
-     - **No `alembic_version` table** (created by deployment scripts): restore `aof_migrations`. Run
-       `alembic -c aof_alembic.ini stamp e7f9a1b3c5d7` once, only if `alembic -c aof_alembic.ini check`
-       reports no differences.
-     - **A `helix_migrations` id**: stop and send me the tables. The database needs a one-off step
-       to join the upstream lineage.
-3. **Paste the first-time prompt below** into office Claude.
+The office has `helix_migrations` (18 versions, an older lineage) and removed `aof_migrations`. The AOF code
+needs AOF's own history: 25 versions, head `e7f9a1b3c5d7`.
 
-> We are bringing Agent One Finance into aos-frontend and aos-backend with the upstream sync tool.
-> Read `Skillgap/fobotower-main/docs/agent-one-finance/office/conversion-guide.md` first and follow it.
-> Do not convert, restyle or rewrite any upstream file yourself; if something does not work, tell me
-> what and why.
->
-> Work on a new branch `aof-sync` in both repos. Do not touch the main branch, any deployment,
-> database or secret. Stop after each step and show me the result.
->
-> 1. **Dry run.** From `Skillgap`, run
->    `python3 fobotower-main/office/aof_sync.py --upstream fobotower-main --base-from fobotower-base`
->    and show me `aof-sync-report.md`. Then:
->    - **Frontend:** every file under `src/app/finance` from the hand conversion will be replaced.
->      List any file outside `src/app/finance` that imports from `src/app/finance` (for example
->      `src/components/finance/FinanceCasesWidget.jsx`). Each must be re-pointed to
->      `src/app/finance/_aof/...` in step 3.
->    - **Frontend leftovers outside `src/app/finance`:** list the files the hand conversion added
->      elsewhere: the `ui.tsx` split in `src/components/ui/`, and `useIsPhone.js` and
->      `useStickyBottom.js` in `src/components/financeagent/layout/`. For each, say whether anything
->      other than the old `src/app/finance` files imports it. Do not touch Agent One's own files,
->      including the Finance Agent in `src/components/financeagent/`.
->    - **Backend:** for each `differs`, `clash` or `office-only` file, show me the diff and say
->      whether it is an office change to keep.
-> 2. **Apply.** Once I agree, run the same command with `--apply --baseline --prune`, then show the
->    report and `git status` for both repos.
-> 3. **Office wiring (aos-frontend).** Do each step the way the rest of aos-frontend is written.
->    - Port our BAM sign-on into `src/app/finance/_aof/office/auth.js`. It returns the headers our
->      API needs. The old hand-converted `api/client.js` and the SSO bridge commit (d9db52a) show
->      what we sent.
->    - Set `NEXT_PUBLIC_AOF_API=/agentone/api/finance` in `.env.development`, `.env.uat` and
->      `.env.production`.
->    - Add `{ ignores: ["src/app/finance/_aof/**"] }` to `eslint.config.mjs`.
->    - Re-point the importers from step 1 to `src/app/finance/_aof/...`.
->    - Remove the leftovers I approved in step 1, and `docs/helix-ui-reference/`.
->    - Check the Finance entry in `src/components/sidebar/Sidebar.jsx` goes to `/finance`.
->    - If the page has a fixed header, set `--aof-height` (guide section 3).
-> 4. **Backend wiring (aos-backend).**
->    - Add the packages the report lists to `app/requirements.txt`.
->    - Make sure `Dockerfile.helix` copies `aof_migrations`, `config/agent-one-finance` and
->      `seed_data/aof_documents`.
->    - Add those folders to the `.gitlab-ci-aof.yml` trigger paths.
-> 5. **Check.**
->    - aos-frontend: `npm run lint` and `npm run build:uat`.
->    - aos-backend: `pytest -q tests/agent_one_finance` and `alembic -c aof_alembic.ini heads` (one
->      head, `e7f9a1b3c5d7`).
->    - Then run both against UAT. Give me screenshots of `/agentone/finance`, a case and a
->      capability's "How it runs" tab, light and dark. Confirm the left-menu icons show.
-> 6. **Commit** in each repo, including `.aof-sync.json`, and summarise:
->    - what was replaced, merged, kept and removed;
->    - the wiring done;
->    - the check results.
->
->    Stop there; I will raise the merge requests.
+1. Read the UAT AOF database's `alembic_version` table and its list of tables. Show them to the person.
+2. Then:
+   - **An AOF id** (a file name in `fobotower-main/apps/backend/migrations/versions`): run
+     `alembic -c aof_alembic.ini upgrade head`.
+   - **No `alembic_version` table** (created by deployment scripts): only if `alembic -c aof_alembic.ini check`
+     reports no differences, run `alembic -c aof_alembic.ini stamp e7f9a1b3c5d7` once.
+   - **A `helix_migrations` id:** stop. The person sends the table list to the AOF team for a one-off step.
+3. From then on, every deployment runs `alembic -c aof_alembic.ini upgrade head` before the new service starts
+   (section 8).
 
-## 7. Every update after that
+## 7. Settings for the AOF service
 
-1. Replace `Skillgap/fobotower-main` with a new download of `main`.
-2. Paste:
+The defaults assume the `fobotower-main` folder layout, so these must be set:
 
-> Update Agent One Finance from upstream with the sync tool, as
-> `Skillgap/fobotower-main/docs/agent-one-finance/office/conversion-guide.md` section 7 says. Use a new
-> branch `aof-sync-<date>` in both repos. Never convert or rewrite upstream files yourself.
->
-> 1. Run `python3 fobotower-main/office/aof_sync.py --upstream fobotower-main` from `Skillgap` and show
->    me the report.
-> 2. Once I agree, run it with `--apply`.
->    - For each `clash`, show me the marked lines, propose how to settle them, and wait for my OK.
->    - Then run it again until it applies cleanly.
-> 3. Add any packages the report lists. If `apps/backend/migrations` changed, run
->    `alembic -c aof_alembic.ini upgrade head` on UAT only after I agree.
-> 4. Run the checks from section 6 step 5.
-> 5. Commit in each repo with `.aof-sync.json`, and summarise as in section 6 step 6.
+- `AOF_CONFIG_DIR=/app/config/agent-one-finance`;
+- `AOF_DOCUMENTS_DIR=/app/seed_data/aof_documents`.
 
-## 8. The AOF service on AWS
+`Dockerfile.aof` sets both.
 
-`aos-backend` already builds the AOF image (`financeagent-aof-backend` from `Dockerfile.helix`, port
-8300, pipeline `.gitlab-ci-aof.yml`), and the AOF database (Postgres with pgvector) exists. What is
-left is AOF's own ECS service.
-
-| | |
+| Setting | Value |
 |---|---|
-| Task definition | `ecs-task-definition-aof.json`, made like `ecs-task-definition-fobo.json`. Family `agentone-aof-family`, container `aof-backend`, port 8300, image `financeagent-aof-backend`. |
-| Start | `uvicorn agent_one_finance.web.main:app --host 0.0.0.0 --port 8300 --workers 3` |
-| Health check | `curl -f http://localhost:8300/health` |
-| Image | Python 3.12 from Nexus. `app/requirements.txt` must keep `sqlalchemy[asyncio]` and `greenlet>=3.0`; it already does. |
-| Database | Either `AOF_DATABASE_URL`, or its parts `AOF_DATABASE_HOST`, `AOF_DATABASE_PORT`, `AOF_DATABASE_NAME`, `AOF_DATABASE_USER` and `AOF_DATABASE_PASSWORD`. Each part can be one key of the database secret in Secrets Manager (`valueFrom: <secret arn>:<key>::`). AOF builds the URL itself. |
-| Migrations | Before each deployment, a one-off task with the same image: `alembic -c aof_alembic.ini upgrade head` (see section 6 step 2). |
-| Required settings | `AOF_CONFIG_DIR=/app/config/agent-one-finance` and `AOF_DOCUMENTS_DIR=/app/seed_data/aof_documents`, or wherever the Dockerfile puts them. The defaults assume the upstream folder layout, so the office must set both. |
-| Other settings | `AOF_LLM_ADAPTER` (the office adapter), `AOF_IDENTITY_HEADER`, `AOF_TRUSTED_PROXY_SECRET`, `AOF_PROXY_SECRET_HEADER`, `AOF_CONSOLE_ORIGIN` and `AOF_CONSOLE_URL` (Agent One's address, with `/agentone/finance`), `AOF_ENTITLEMENT_URL`, `AOF_ENV_NAME` (`uat`, `prod`), `AOF_RUN_MODE`, `AOF_SCHEDULER`, `AOF_REPORTS_STORE`, `PHOENIX_COLLECTOR_ENDPOINT`, `PHOENIX_PROJECT_NAME`. Each is described at the top of `agent_one_finance/config.py`. |
-| From the frontend | Today `next.config.mjs` rewrites `/api/finance/*` to `{API_URL}/finance/api/*`, the main API on 8000. Once AOF has its own service, point that rewrite at it: `{AOF_API_URL}/api/*`. Before changing it, ask office Claude to show how 8000 serves `/finance/api` today (`api/routes/aof_*.py` or a proxy). |
+| Database | `AOF_DATABASE_HOST`, `AOF_DATABASE_PORT`, `AOF_DATABASE_NAME`, `AOF_DATABASE_USER`, `AOF_DATABASE_PASSWORD`, each from one key of the database secret (or one `AOF_DATABASE_URL`) |
+| `AOF_TRUSTED_PROXY_SECRET` | From the secrets store; the same value on the Agent One API. AOF then refuses any call that did not come through it. |
+| `AOF_IDENTITY_HEADER` | `X-AOF-User` (the default) |
+| `AOF_PROXY_SECRET_HEADER` | `X-AOF-Proxy-Secret` (the default) |
+| `AOF_LLM_ADAPTER` | The office's model adapter (as set today for the FOBO backend) |
+| `AOF_ENTITLEMENT_URL` | The entitlements service, if AOF reads roles and books from it |
+| `AOF_CONSOLE_ORIGIN`, `AOF_CONSOLE_URL` | Agent One's address; the console URL ends in `/agentone/finance` |
+| `AOF_ENV_NAME` | `uat` or `prod` |
+| `AOF_RUN_MODE`, `AOF_SCHEDULER` | Leave unset (background runs, scheduler on) |
+| `PHOENIX_COLLECTOR_ENDPOINT`, `PHOENIX_PROJECT_NAME` | As for the other agent services |
+
+Every setting is described at the top of `agent_one_finance/config.py`.
+
+## 8. Hosting the AOF API on AWS, next to the Agent One API
+
+**The design: the Agent One API stays the one front door.**
+
+```
+Browser ──> aos-frontend (Next.js, /agentone)
+              /api/finance/*  ── rewrite ──>  Agent One API (8000)  /finance/api/*
+                                                 checks the BAM sign-on, then calls
+                                                 ──> AOF service (8300)  /api/*   (internal only)
+                                                       with X-AOF-User and X-AOF-Proxy-Secret
+```
+
+- AOF runs as **its own ECS service, the way the FOBO backend runs today**: its own image, task definition,
+  pipeline and health check.
+- Only the Agent One API can reach it, so there is **one sign-on check** and no new public route.
+- The aos-frontend rewrite does not change: `/api/finance/*` already goes to `{API_URL}/finance/api/*`.
+
+What to build, all by copying what already exists for the FOBO backend and the Agent One API:
+
+| Piece | How |
+|---|---|
+| Image | `fobotower-main/office/hosting/Dockerfile.aof` becomes the contents of `Dockerfile.helix`. Take the base image and pip mirror from `app/Dockerfile`. Copy `office/hosting/aof_alembic.ini` to `aos-backend/aof_alembic.ini`. |
+| Pipeline | `.gitlab-ci-aof.yml`, same shared build component and Wiz scan as `.gitlab-ci-api.yml`. Image `financeagent-aof-backend`. Add `aof_migrations/`, `aof_alembic.ini` and `seed_data/aof_documents/` to its trigger paths. |
+| Task definition | Copy `ecs-task-definition-fobo.json` to `ecs-task-definition-aof.json`, then change:<ul><li>family `agentone-aof-family`;</li><li>container `aof-backend`;</li><li>the image;</li><li>port 8300;</li><li>health check `curl -f http://localhost:8300/health`;</li><li>environment and secrets from section 7.</li></ul>Same roles, cluster, subnets and log settings as FOBO. |
+| Service | One task in UAT and two in Prod. Scheduled cases and case runs are safe across tasks and workers: each schedule minute is claimed once, and each case is locked while it runs. |
+| Network | A security group that lets only the Agent One API's tasks reach port 8300. Give it an internal address (an internal load balancer or service discovery name) and set `AOF_API_URL` on the Agent One API to it. |
+| Agent One API route | `/finance/api/*` checks the sign-on, then calls `AOF_API_URL` + `/api/*`, adding `X-AOF-User` (the signed-in bank id) and `X-AOF-Proxy-Secret`. If the Agent One API already serves `/finance/api` (the SSO bridge), point that route at the service. Otherwise use `fobotower-main/office/hosting/aof_forward.py` as the reference. Either way, AOF then runs in one place only: remove any in-process mount of AOF from the Agent One API. |
+| Migrations | Before each deployment, run `alembic -c aof_alembic.ini upgrade head` as a one-off task with the new image (section 6). |
 
 Checks after each deployment:
 
 ```bash
-curl -s https://<aof-service>/health
-curl -s -H "<identity header>: <a test user>" https://<aof-service>/api/me
+# from inside the Agent One API task (AOF is internal only)
+curl -s $AOF_API_URL/health
+# through the front door, signed in, from the browser or with a test token
+curl -s -H "Authorization: Bearer <token>" https://<agent one host>/agentone/api/finance/me
 ```
 
-After go-live, retire FOBO: `Dockerfile.fobo`, `ecs-task-definition-fobo.json`, the FOBO pipeline
-trigger, and `/fobo` in aos-frontend.
+**Other routing (only if the bank's load balancer adds the signed-in identity itself).** AOF can also answer
+under a path: set `AOF_PATH_PREFIX=/finance`, and a load balancer rule `/finance/*` → the AOF target group serves
+`/finance/api/...` and `/finance/health`. Use this only if that layer sets `X-AOF-User` and
+`X-AOF-Proxy-Secret`. The browser must never be trusted to set identity.
 
-## 9. Changing the conversion (upstream only)
+After go-live, retire FOBO: `Dockerfile.fobo`, `ecs-task-definition-fobo.json`, `infrastructure/fobo-alb-rules.json`,
+the FOBO pipeline trigger, and `/fobo` in aos-frontend.
 
-In this repository:
+## 9. The prompts
 
-1. After any console change, run `cd apps/web && npm run office:build`.
-2. Commit `office/aos-frontend` with the change. `npm test` fails if you forget.
+### First time (once)
 
-To change how the console is converted, edit `apps/web/office/convert.mjs` and
-`apps/web/office/templates/`:
+> We are bringing Agent One Finance into aos-frontend and aos-backend, and hosting the AOF API on AWS.
+> Read `Skillgap/fobotower-main/docs/agent-one-finance/office/conversion-guide.md` and follow its rules
+> (section 1). Use a new branch `aof-sync` in both repos. Stop after each step and show me the result.
+>
+> 1. **Dry run.** From `Skillgap`, run
+>    `python3 fobotower-main/office/aof_sync.py --upstream fobotower-main --base-from fobotower-base` and show me
+>    `aof-sync-report.md`. Then:
+>    - List any file outside `src/app/finance` that imports from it (for example
+>      `src/components/finance/FinanceCasesWidget.jsx`).
+>    - List what the hand conversion added outside `src/app/finance`:
+>      - the `ui.tsx` split in `src/components/ui/`;
+>      - `useIsPhone.js` and `useStickyBottom.js` in `src/components/financeagent/layout/`;
+>      - `docs/helix-ui-reference/`.
+>
+>      For each, say whether anything else imports it.
+>    - For each backend `differs`, `clash` or `office-only` file, show me the diff and say whether it is our
+>      change to keep.
+> 2. **Apply.** Once I agree, run the same command with `--apply --baseline --prune`. Show me the report and
+>    `git status` for both repos.
+> 3. **aos-frontend wiring (guide section 3).**
+>    - Port our BAM sign-on into `src/app/finance/_aof/office/auth.js`. It must send the same token our other
+>      API calls send.
+>    - Set `NEXT_PUBLIC_AOF_API=/agentone/api/finance` in the three `.env` files.
+>    - Add the lint ignore line to `eslint.config.mjs`.
+>    - Re-point the importers from step 1 to `src/app/finance/_aof/...`.
+>    - Remove the leftovers I approve.
+>    - Check the Finance menu entry goes to `/finance`.
+>    - Set `--aof-height` if the page has a fixed header.
+> 4. **AOF database (guide section 6).** Read UAT's `alembic_version` and table list and show me. Run nothing
+>    against the database until I say which case applies.
+> 5. **Hosting (guide sections 7 and 8).**
+>    - Add the packages the report lists to `app/requirements.txt`.
+>    - Copy `aof_alembic.ini`.
+>    - Replace the contents of `Dockerfile.helix` with `office/hosting/Dockerfile.aof`, using the base image and
+>      pip mirror from `app/Dockerfile`.
+>    - Update `.gitlab-ci-aof.yml` triggers.
+>    - Create `ecs-task-definition-aof.json` from the FOBO one.
+>    - Show me how the Agent One API serves `/finance/api` today. Then propose the change that makes it call
+>      the AOF service, with the sign-on check and both headers (reference: `office/hosting/aof_forward.py`).
+>    - List the secrets and settings DevOps must create (section 7), with names only, no values.
+>
+>    Do not deploy anything.
+> 6. **Check.**
+>    - aos-frontend: `npm run lint` and `npm run build:uat`.
+>    - aos-backend: `pytest -q tests/agent_one_finance`, `alembic -c aof_alembic.ini heads` (one head,
+>      `e7f9a1b3c5d7`), and a local Docker build of the AOF image, if Docker is available here.
+> 7. **Commit** in each repo, including `.aof-sync.json`. Summarise for me:
+>    - what was replaced, merged, kept and removed;
+>    - the wiring;
+>    - the hosting files;
+>    - what DevOps must do;
+>    - the check results.
+>
+>    Stop there; I will raise the merge requests.
 
-- `router.js` and `FinanceShell.jsx`;
-- `theme.js`, the office version of `src/theme.ts`;
-- `auth.js`, the office-owned starting point.
+### Every update after that
 
-Then check the result in a Next.js app set up like aos-frontend (section 3).
+> Update Agent One Finance from `Skillgap/fobotower-main` with the sync tool, following
+> `Skillgap/fobotower-main/docs/agent-one-finance/office/conversion-guide.md`. Use a new branch
+> `aof-sync-<date>` in both repos.
+>
+> 1. From `Skillgap`, run `python3 fobotower-main/office/aof_sync.py --upstream fobotower-main` and show me the
+>    report.
+> 2. Once I agree, run it with `--apply`.
+>    - For each `clash`, show me the marked lines, propose how to settle them, and wait for my OK.
+>    - Then run it again until it applies cleanly.
+> 3. Add any packages the report lists. If `aof_migrations` changed, tell me; the migration runs as part of the
+>    next deployment.
+> 4. Run the checks from step 6 of the first-time prompt.
+> 5. Commit with `.aof-sync.json` and summarise as before.
+
+## 10. For the AOF team (in `fobotower-main`)
+
+1. After any console change, run `cd apps/web && npm run office:build` and commit `office/aos-frontend`.
+   `npm test` fails if you forget.
+2. The conversion lives in `apps/web/office/convert.mjs` and `apps/web/office/templates/`:
+   - `router.js` and `FinanceShell.jsx`;
+   - `theme.js`, which follows next-themes;
+   - `auth.js`, the office-owned starting point.
+3. The sync tool is `office/aof_sync.py`; its tests are in `apps/backend/tests/agent_one_finance/test_office_sync.py`.
+4. The hosting templates are in `office/hosting/`.

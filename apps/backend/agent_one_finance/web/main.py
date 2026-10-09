@@ -63,6 +63,26 @@ async def trusted_proxy(request: Request, call_next):
     return await call_next(request)
 
 
+class PathPrefix:
+    """AOF_PATH_PREFIX (for example /finance): /finance/api/... and /finance/health are served as
+    /api/... and /health, for a load balancer that sends /finance/* to AOF without rewriting
+    paths. Only the path changes, so every check below sees the same path either way."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        prefix = settings().path_prefix
+        if prefix and scope["type"] in ("http", "websocket"):
+            path = scope["path"]
+            if path == prefix or path.startswith(prefix + "/"):
+                scope = {**scope, "path": path[len(prefix):] or "/"}
+        await self.app(scope, receive, send)
+
+
+app.add_middleware(PathPrefix)   # added last, so it runs first
+
+
 async def caller(request: Request) -> Caller:
     user_id = request.headers.get(settings().identity_header, "").strip()
     if not user_id:

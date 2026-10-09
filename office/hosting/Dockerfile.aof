@@ -1,0 +1,32 @@
+# The AOF API image, built in aos-backend like the Agent One API image (app/Dockerfile):
+# same base image and pip mirror from Nexus. Replace the two <...> with the values app/Dockerfile uses.
+FROM <nexus python 3.12 base image used by app/Dockerfile>
+
+ENV PIP_INDEX_URL=<the Nexus pip mirror used by app/Dockerfile> \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    AOF_CONFIG_DIR=/app/config/agent-one-finance \
+    AOF_DOCUMENTS_DIR=/app/seed_data/aof_documents
+
+WORKDIR /app
+
+# Packages first, so code changes do not reinstall them. app/requirements.txt must list
+# sqlalchemy[asyncio] and greenlet>=3.0 (the async database driver needs greenlet at run time).
+COPY app/requirements.txt ./requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY agent_one_finance ./agent_one_finance
+COPY aof_migrations ./aof_migrations
+COPY aof_alembic.ini ./aof_alembic.ini
+COPY config/agent-one-finance ./config/agent-one-finance
+COPY seed_data/aof_documents ./seed_data/aof_documents
+
+USER 1001
+EXPOSE 8300
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8300/health', timeout=4)" || exit 1
+
+# Three workers, as the FOBO backend had. Scheduled cases and case runs are safe across workers
+# and tasks: each schedule minute is claimed once, and each case is locked while it runs.
+CMD ["uvicorn", "agent_one_finance.web.main:app", "--host", "0.0.0.0", "--port", "8300", "--workers", "3", "--proxy-headers"]

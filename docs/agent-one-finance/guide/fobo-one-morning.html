@@ -73,6 +73,7 @@ section { display: grid; gap: 18px; }
 .summary { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; font-size: 0.95rem; }
 .summary .step { background: var(--paper); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; }
 .summary .arrow { color: var(--muted); }
+.summary .step.here { border-color: var(--accent); background: var(--accent-soft); }
 .ledger-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
 .ledger { width: 100%; border-collapse: collapse; min-width: 860px; font-size: 0.95rem; }
 .ledger th { text-align: left; font-family: var(--mono); font-weight: 500; font-size: 0.72rem; letter-spacing: 0.07em; text-transform: uppercase;
@@ -165,10 +166,22 @@ dl.words dd { margin: 0; color: var(--muted); }
   </header>
 
   <section class="col" aria-labelledby="h-what">
-    <p class="eyebrow">What a break is</p>
-    <h2 id="h-what">Front office and back office should agree on P&amp;L. When they don't, that is a break.</h2>
+    <p class="eyebrow">Where AOF starts</p>
+    <h2 id="h-what">MB Rec finds the breaks. AOF starts where MB Rec's rules stop.</h2>
     <div class="equation"><span>FO P&amp;L (CATS)</span><b>=</b><span>BO P&amp;L (MOTIF)</span><b>+</b><span>FOBO adjustments</span></div>
-    <p>Every evening MB Rec compares the two for each book and lists the breaks. The controller's job is to find out <em>why</em> each one exists and what to do about it. The rule from the team's investigation skill: restore the equation truthfully, never force it with an adjustment.</p>
+    <p>Front office and back office should agree on P&amp;L. Every evening MB Rec reconciles CATS to MOTIF for each book, and its own rules match and clear what they can. What its rules can't explain goes to the controllers as breaks. AOF picks up exactly that queue. It does not reconcile again or repeat MB Rec's rules.</p>
+    <div class="summary" aria-label="Who does what, in order">
+      <span class="step">CATS and MOTIF</span>
+      <span class="arrow" aria-hidden="true">→</span>
+      <span class="step">MB Rec reconciles; its rules clear what they can</span>
+      <span class="arrow" aria-hidden="true">→</span>
+      <span class="step">the breaks its rules can't explain</span>
+      <span class="arrow" aria-hidden="true">→</span>
+      <span class="step here">AOF applies the controllers' methods to each one</span>
+      <span class="arrow" aria-hidden="true">→</span>
+      <span class="step here">the controller decides</span>
+    </div>
+    <p>The controller's job is to find out <em>why</em> each break exists and what to do about it. The rule from the team's investigation skill: restore the equation truthfully, never force it with an adjustment.</p>
   </section>
 
   <section aria-labelledby="h-change">
@@ -178,7 +191,7 @@ dl.words dd { margin: 0; color: var(--muted); }
       <div>
         <span class="tag">Today, for each break, by hand</span>
         <ol>
-          <li>Open CATS, MOTIF and MB Rec and pull the figures</li>
+          <li>Take the break from MB Rec, then open CATS and MOTIF to pull the figures</li>
           <li>Run the checks in the FOBO skill one by one</li>
           <li>Decide: post an adjustment, don't post and send it to the team that must fix it, or watch it</li>
           <li>Write up why, and sign off</li>
@@ -187,7 +200,7 @@ dl.words dd { margin: 0; color: var(--muted); }
       <div>
         <span class="tag">With AOF, for the whole book at once</span>
         <ol>
-          <li>AOF pulls the figures from the same systems</li>
+          <li>AOF reads the breaks from MB Rec and pulls the figures from the same systems</li>
           <li>AOF runs the same checks on every break, and records each result</li>
           <li>AOF groups the breaks by cause and proposes a decision for each group, with the reason</li>
           <li>The controller reviews the proposals and signs off</li>
@@ -289,7 +302,7 @@ dl.words dd { margin: 0; color: var(--muted); }
     <div class="scripts">
       <article class="script">
         <header><h3>For management</h3><button class="copy" type="button" data-for="s-mgmt">Copy</button></header>
-        <p id="s-mgmt">Every morning MB Rec gives our FOBO controllers a list of breaks: places where front office and back office disagree on P&amp;L. Today a controller works each break by hand: pulls the figures from several systems, runs the same checks, decides and writes it up. AOF does the checking and the write-up for the whole book, using the team's own investigation skill, the same way every day. It groups the breaks by cause and proposes what to do. Where the rules can't explain a break, the AI investigates and shows its evidence. Nothing is posted or sent without a controller approving it, and every step is recorded. In our test run, five breaks with £514,506 at stake became four prepared proposals; the controller approved three and sent one back with a reason. The next use case, such as cash reconciliation or accruals, is a new set of rules on the same platform, not a new system.</p>
+        <p id="s-mgmt">MB Rec already reconciles front office to back office and clears what its rules can. What its rules can't explain goes to our FOBO controllers as breaks, and today a controller works each one by hand: pulls the figures from several systems, runs the same checks, decides and writes it up. AOF doesn't replace MB Rec; it starts where MB Rec stops. It does the checking and the write-up for those breaks, using the team's own investigation skill, the same way every day. It groups the breaks by cause and proposes what to do. Where the rules can't explain a break, the AI investigates and shows its evidence. Nothing is posted or sent without a controller approving it, and every step is recorded. In our test run, five breaks with £514,506 at stake became four prepared proposals; the controller approved three and sent one back with a reason. The next use case, such as cash reconciliation or accruals, is a new set of rules on the same platform, not a new system.</p>
       </article>
       <article class="script">
         <header><h3>For controllers</h3><button class="copy" type="button" data-for="s-users">Copy</button></header>

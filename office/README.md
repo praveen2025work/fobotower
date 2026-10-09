@@ -21,6 +21,7 @@ the AOF API on AWS next to the Agent One API. It is written for the structure of
 | `hosting/Dockerfile.aof` | The AOF API image (port 8300) |
 | `hosting/aof_alembic.ini` | Migration settings for `aof_migrations/` |
 | `hosting/aof_forward.py` | Reference for the Agent One API route that forwards `/finance/api/*` to the AOF service |
+| `hosting/deploy-options.md` | The two ways to run the AOF container on ECS, step by step: A (its own service, recommended) and B (a container in `agentoneapi-family`) |
 
 ## 1. Rules for office Claude
 
@@ -124,6 +125,7 @@ Browser ─> aos-frontend (Next.js, basePath /agentone)
                                               with X-AOF-User and X-AOF-Proxy-Secret
 ```
 
+- Step by step for both ways to run it: [`hosting/deploy-options.md`](hosting/deploy-options.md).
 - AOF runs as **its own ECS service, the way the FOBO backend runs today**: own image, task definition, pipeline and
   health check.
 - **The Agent One API stays the one front door**, so there is one sign-on check and no new public route. With

@@ -46,7 +46,11 @@ uv pip install -e ".[dev]"
 echo "==> Applying database migrations"
 .venv/bin/alembic upgrade head
 
-echo "==> Installing console dependencies"
+echo "==> Installing Agent One Finance console dependencies"
+cd "${REPO_ROOT}/apps/web"
+npm ci
+
+echo "==> Installing the original FOBO console dependencies"
 cd "${REPO_ROOT}/apps/console"
 npm ci
 

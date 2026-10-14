@@ -10,7 +10,7 @@ To make a new snapshot from a running stack (API on :8300, web on :5180):
 
 ```bash
 cd apps/web
-node scripts/capture-snapshot.mjs     # opens every page, tab and proposal, writes src/snapshot/data.json
+node scripts/capture-snapshot.mjs     # records every page, tab and case, writes src/snapshot/data.b64
 npm run build:snapshot                # → dist-snapshot/agent-one-finance-snapshot.html (one self-contained file)
 ```
 
@@ -19,13 +19,18 @@ to your team by email or Teams, and it opens in any browser: no server, no insta
 It also works on a phone. The current copy (dev data, recorded 2026-10-14) is in
 [`../demo/agent-one-finance-snapshot.html`](../demo/agent-one-finance-snapshot.html).
 
-The capture also records each configuration's check result (shown on the Configure tab
-until you edit it) and the files behind the download buttons: a case's Excel export and
-evidence pack, and each version's export.
+The capture records everything the console offers to open: every case it lists or names
+(follow-ups and child cases too), each run history step, eval runs, any two versions to
+compare, the filters on the Cases tab and the audit log, each configuration's check result
+(shown on the Configure tab until you edit it), and the files behind the download buttons. So
+nothing a viewer can click says it was not recorded. What stays live-only is anything that
+changes data or asks the model (approving, sending, asking about a case): the snapshot says it
+is read-only. Opening it needs a current browser (Chrome, Edge, Firefox, or Safari 16.4 or
+later).
 
 The build also leaves `snapshot.html` + `assets/` in `dist-snapshot/`, for hosting on a
-static web server. The recorded responses are in `src/snapshot/data.json`; recapture and
-rebuild to refresh them. The recorded data comes from the dev stack only, so never capture
+static web server. The recorded responses are in `src/snapshot/data.b64` (gzipped JSON, so
+the file stays small enough to email); recapture and rebuild to refresh them. The recorded data comes from the dev stack only, so never capture
 a snapshot from an environment with real data.
 
 Options for the capture script (environment variables):
@@ -34,7 +39,7 @@ Options for the capture script (environment variables):
 |---|---|---|
 | `AOF_WEB` | `http://localhost:5180` | the running web app |
 | `SNAPSHOT_USER` | `frank` | who the screens are recorded as |
-| `SNAPSHOT_CASES` | — | case ids to include besides the first twelve in the inbox, comma-separated |
+| `SNAPSHOT_CASES` | — | extra case ids to include, comma-separated (every listed case is already in) |
 | `PLAYWRIGHT` | `playwright` | module path, if Playwright is installed globally |
 | `CHROMIUM` | — | a Chromium executable, if Playwright's own is not installed |
 

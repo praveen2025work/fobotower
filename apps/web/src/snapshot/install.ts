@@ -24,6 +24,9 @@ export function bodyKey(body: string): string {
   return h.toString(16);
 }
 
+const READ_ONLY = "This is a read-only snapshot, so nothing can be changed, approved or run here. Use the live console for that.";
+const NOT_RECORDED = "This was not recorded in the snapshot. The live console shows it.";
+
 const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 
@@ -43,13 +46,13 @@ export function installSnapshot(snap: Snapshot, apiBase = "/api"): void {
     if (method !== "GET") {
       const check = url.pathname.endsWith("/check") && typeof init?.body === "string"
         ? snap.responses[`POST ${key} ${bodyKey(init.body)}`] : undefined;
-      return check ? json(check.status, check.body) : json(403, { detail: "This is a read-only snapshot: changes are not saved." });
+      return check ? json(check.status, check.body) : json(403, { detail: READ_ONLY });
     }
     const hit = snap.responses[key] ?? snap.responses[url.pathname.slice(at)];
     if (hit?.file) {
       const bytes = Uint8Array.from(atob(hit.file.base64), (ch) => ch.charCodeAt(0));
       return new Response(bytes, { status: hit.status, headers: { "Content-Type": hit.file.type } });
     }
-    return hit ? json(hit.status, hit.body) : json(404, { detail: "Not part of this snapshot." });
+    return hit ? json(hit.status, hit.body) : json(404, { detail: NOT_RECORDED });
   };
 }

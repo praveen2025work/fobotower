@@ -12,7 +12,8 @@ that opens in any browser with no setup. It is read-only and uses recorded dev d
 to your team or open it after the video.
 
 The snapshot was refreshed on 2026-10-14 from the latest version. It is seen as Dana, a dev
-user who sees every team's work across all thirteen capabilities. It includes:
+user who sees every team's work across all thirteen capabilities, and holds all 80 of her
+cases. It includes:
 
 - the FOBO examples from the [guide](../guide/example/README.md): one book's price and position
   breaks (one case signed off, one waiting for review), and a named P&L run as one case across
@@ -23,10 +24,12 @@ user who sees every team's work across all thirteen capabilities. It includes:
 - payments exceptions;
 - the FOBO break investigations.
 
-Every page, tab and proposal answers from the recording, and the download buttons work: a
-case's Excel export and evidence pack (PDF), and each version's export. The Configure tab
-shows the real check result for each stored configuration; once you edit it, it says checks
-need the live service. Nothing can be saved.
+Everything you can open in it is recorded: every case the lists link to, each run history
+step, eval runs, any two versions to compare, the filters, and the downloads (a case's Excel
+export and evidence pack, each version's export). The Configure tab shows the real check
+result for each stored configuration; once you edit it, it says checks need the live
+service. Anything that changes data or asks the model (approving, sending, asking about a
+case) says the snapshot is read-only.
 
 The console's motion is in the snapshot too:
 

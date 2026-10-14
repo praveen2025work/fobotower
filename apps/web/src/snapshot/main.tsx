@@ -8,10 +8,17 @@ import App from "../App";
 import "../index.css";
 import { installSnapshot, type Snapshot } from "./install";
 
-// Written by scripts/capture-snapshot.mjs (not committed: it holds recorded data).
-const recorded = import.meta.glob<Snapshot>("./data.json", { eager: true, import: "default" });
-const snap: Snapshot = recorded["./data.json"] ?? { user: "", captured_at: new Date().toISOString(), responses: {} };
-installSnapshot(snap);
+// Written by scripts/capture-snapshot.mjs: the recorded responses, gzipped and
+// base64-encoded (most of it is run state that repeats).
+const packed = import.meta.glob<string>("./data.b64", { eager: true, query: "?raw", import: "default" })["./data.b64"];
+
+async function unpack(b64: string | undefined): Promise<Snapshot> {
+  if (!b64) return { user: "", captured_at: new Date().toISOString(), responses: {} };
+  const bytes = Uint8Array.from(atob(b64.trim()), (ch) => ch.charCodeAt(0));
+  const text = await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"))).text();
+  return JSON.parse(text) as Snapshot;
+}
+
 // A showcase: the sidebar opens with its labels (a viewer's own choice still wins).
 try {
   if (localStorage.getItem("aof.nav.collapsed") === null) localStorage.setItem("aof.nav.collapsed", "0");
@@ -23,8 +30,8 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false, refetchInterval: false, staleTime: Infinity } },
 });
 
-function Banner() {
-  const when = new Date(snap.captured_at).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+function Banner({ capturedAt }: { capturedAt: string }) {
+  const when = new Date(capturedAt).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   return (
     // On phones it sits above the bottom navigation, not over its labels.
     <div className="hx-topbar hx-pop pointer-events-none fixed bottom-[calc(env(safe-area-inset-bottom)+4rem)] right-3 z-50 flex items-center lg:bottom-3 gap-2 rounded-full border border-surface-200 px-3 py-1.5 text-[11px] font-medium text-surface-700 shadow-lg">
@@ -34,13 +41,21 @@ function Banner() {
   );
 }
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <HashRouter>
-        <App />
-        <Banner />
-      </HashRouter>
-    </QueryClientProvider>
-  </React.StrictMode>,
-);
+const root = document.getElementById("root")!;
+if (typeof DecompressionStream === "undefined") {
+  root.textContent = "This snapshot needs a current browser: Chrome, Edge, Firefox or Safari 16.4 or later.";
+} else {
+  unpack(packed).then((snap) => {
+    installSnapshot(snap);
+    ReactDOM.createRoot(root).render(
+      <React.StrictMode>
+        <QueryClientProvider client={queryClient}>
+          <HashRouter>
+            <App />
+            <Banner capturedAt={snap.captured_at} />
+          </HashRouter>
+        </QueryClientProvider>
+      </React.StrictMode>,
+    );
+  });
+}

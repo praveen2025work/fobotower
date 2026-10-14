@@ -10,14 +10,18 @@ To make a new snapshot from a running stack (API on :8300, web on :5180):
 
 ```bash
 cd apps/web
-node scripts/capture-snapshot.mjs     # walks the main screens, writes src/snapshot/data.json
+node scripts/capture-snapshot.mjs     # opens every page, tab and proposal, writes src/snapshot/data.json
 npm run build:snapshot                # → dist-snapshot/agent-one-finance-snapshot.html (one self-contained file)
 ```
 
 **`agent-one-finance-snapshot.html` is one file with everything inside it.** Double-click it, or send it
 to your team by email or Teams, and it opens in any browser: no server, no install, no login.
-It also works on a phone. The current copy (dev data, recorded 2026-10-05) is in
+It also works on a phone. The current copy (dev data, recorded 2026-10-14) is in
 [`../demo/agent-one-finance-snapshot.html`](../demo/agent-one-finance-snapshot.html).
+
+The capture also records each configuration's check result (shown on the Configure tab
+until you edit it) and the files behind the download buttons: a case's Excel export and
+evidence pack, and each version's export.
 
 The build also leaves `snapshot.html` + `assets/` in `dist-snapshot/`, for hosting on a
 static web server. The recorded responses are in `src/snapshot/data.json`; recapture and
@@ -30,6 +34,7 @@ Options for the capture script (environment variables):
 |---|---|---|
 | `AOF_WEB` | `http://localhost:5180` | the running web app |
 | `SNAPSHOT_USER` | `frank` | who the screens are recorded as |
+| `SNAPSHOT_CASES` | — | case ids to include besides the first twelve in the inbox, comma-separated |
 | `PLAYWRIGHT` | `playwright` | module path, if Playwright is installed globally |
 | `CHROMIUM` | — | a Chromium executable, if Playwright's own is not installed |
 

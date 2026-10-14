@@ -26,7 +26,8 @@ const queryClient = new QueryClient({
 function Banner() {
   const when = new Date(snap.captured_at).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   return (
-    <div className="hx-topbar hx-pop pointer-events-none fixed bottom-3 right-3 z-50 flex items-center gap-2 rounded-full border border-surface-200 px-3 py-1.5 text-[11px] font-medium text-surface-700 shadow-lg">
+    // On phones it sits above the bottom navigation, not over its labels.
+    <div className="hx-topbar hx-pop pointer-events-none fixed bottom-[calc(env(safe-area-inset-bottom)+4rem)] right-3 z-50 flex items-center lg:bottom-3 gap-2 rounded-full border border-surface-200 px-3 py-1.5 text-[11px] font-medium text-surface-700 shadow-lg">
       <span className="hx-live text-accent-500" aria-hidden="true" />
       Agent One Finance · read-only snapshot · {when}
     </div>

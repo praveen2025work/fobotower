@@ -1,6 +1,6 @@
 # Agent One Finance demo: presenter script (silent video)
 
-**Video:** [`aof-demo-silent.mp4`](aof-demo-silent.mp4), 4 min 20 s, 1280×720, no
+**Video:** [`agent-one-finance-demo-silent.mp4`](agent-one-finance-demo-silent.mp4), 4 min 20 s, 1280×720, no
 audio. Recorded on 2026-10-05 from the current app: light theme, the dev stack, dev data and
 the deterministic stub model (no live model calls).
 
@@ -181,7 +181,7 @@ basis, not a measured result. Likely questions and answers are in [`README.md`](
 ```bash
 cd docs/agent-one-finance/demo
 node record-silent.mjs --out /tmp/raw-silent           # 15 clips; ~5 min
-python build-silent.py /tmp/raw-silent aof-demo-silent.mp4
+python build-silent.py /tmp/raw-silent agent-one-finance-demo-silent.mp4
 ```
 
 Two scenes open a case of their own:

@@ -11,6 +11,7 @@ export default defineConfig(({ mode }) => ({
   plugins: [react()],
   ...(mode === "snapshot" && {
     base: "./",
+    publicDir: false, // the snapshot is the console alone; public/pitch is not part of it
     build: {
       outDir: "dist-snapshot",
       cssCodeSplit: false,

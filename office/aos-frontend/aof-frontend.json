@@ -180,7 +180,7 @@
       "from": "apps/web/src/components/ErrorBoundary.tsx"
     },
     "src/app/finance/_aof/components/Layout.jsx": {
-      "sha": "6bd08b9f00ea29f7",
+      "sha": "171661a8728cdcfe",
       "from": "apps/web/src/components/Layout.tsx"
     },
     "src/app/finance/_aof/components/NotificationBell.jsx": {

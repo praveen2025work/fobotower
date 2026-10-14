@@ -1,6 +1,6 @@
 # Agent One Finance: executive demo (CIO and accounting MDs)
 
-**Latest, for presenting live:** [`aof-demo-silent.mp4`](aof-demo-silent.mp4), 4 min 20 s,
+**Latest, for presenting live:** [`agent-one-finance-demo-silent.mp4`](agent-one-finance-demo-silent.mp4), 4 min 20 s,
 no audio, recorded 2026-10-05 from the current app. You speak over it from
 [`presenter-script.md`](presenter-script.md), which gives each scene's start time, what is on
 screen and the words to say. Scenes 10–12 show the controllers' FOBO skill on MB Rec's breaks:
@@ -11,14 +11,22 @@ follow-through (an adjustment that did not clear stays open).
 that opens in any browser with no setup. It is read-only and uses recorded dev data. Send it
 to your team or open it after the video.
 
-The snapshot was refreshed on 2026-10-06 from the latest version. It is seen as Dana, a dev
-user who sees every team's work across all ten capabilities. It includes the steps v2 cases:
+The snapshot was refreshed on 2026-10-14 from the latest version. It is seen as Dana, a dev
+user who sees every team's work across all thirteen capabilities. It includes:
 
+- the FOBO examples from the [guide](../guide/example/README.md): one book's price and position
+  breaks (one case signed off, one waiting for review), and a named P&L run as one case across
+  its master books (PRIME-FINANCING-EMEA signed off, PRIME-FINANCING-US stopped at the tollgate);
 - accruals with balanced journals and the authority matrix;
 - a complaints day at its send tollgate, with a drafted message and clocks;
 - a control test waiting on its three sample cases;
 - payments exceptions;
 - the FOBO break investigations.
+
+Every page, tab and proposal answers from the recording, and the download buttons work: a
+case's Excel export and evidence pack (PDF), and each version's export. The Configure tab
+shows the real check result for each stored configuration; once you edit it, it says checks
+need the live service. Nothing can be saved.
 
 The console's motion is in the snapshot too:
 
@@ -33,7 +41,8 @@ To rebuild the snapshot:
 
 1. Run the API and `npm run dev`.
 2. Run `SNAPSHOT_USER=dana node scripts/capture-snapshot.mjs` (add `SNAPSHOT_CASES` for
-   extra cases).
+   extra cases). For the FOBO examples, run the guide's `setup_example.py` first (the book,
+   and `--dir named-pnl` for the named P&L) and pass the case ids it prints.
 3. Run `npm run build:snapshot` in `apps/web`, and copy `dist-snapshot/agent-one-finance-snapshot.html` here.
 
 The narrated version below (2026-10-04) is kept for sending to people who will watch it alone.

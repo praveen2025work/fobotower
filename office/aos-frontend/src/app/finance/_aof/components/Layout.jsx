@@ -49,6 +49,9 @@ function initials(name) {
 
 // The sidebar starts collapsed (icons only); a person's choice is remembered.
 const COLLAPSED_KEY = "aof.nav.collapsed";
+// The pitch page is a static page in public/pitch. The single-file snapshot
+// (npm run build:snapshot) has no public/ beside it, so it leaves the link out.
+const PITCH_PAGE = true;
 
 function readCollapsed() {
   try {
@@ -196,22 +199,24 @@ function Layout({ onUserChange }) {
               </div>
             </div>
           ))}
-          {/* The pitch page: a static page in public/pitch, opened beside the console. */}
-          <div className="px-3 pt-2">
-            <a
-              href="/pitch/index.html"
-              target="_blank"
-              rel="noreferrer"
-              title={compact ? "About Agent One Finance" : undefined}
-              className={clsx(
-                "flex items-center rounded-lg text-nav-fg transition-colors hover:bg-nav-hover hover:text-white",
-                compact ? "justify-center p-2.5" : "gap-2.5 px-3 py-2 text-sm font-medium",
-              )}
-            >
-              <Presentation size={compact ? 18 : 16} />
-              {!compact && <span>About Agent One Finance</span>}
-            </a>
-          </div>
+          {/* The pitch page, opened beside the console. */}
+          {PITCH_PAGE && (
+            <div className="px-3 pt-2">
+              <a
+                href="/pitch/index.html"
+                target="_blank"
+                rel="noreferrer"
+                title={compact ? "About Agent One Finance" : undefined}
+                className={clsx(
+                  "flex items-center rounded-lg text-nav-fg transition-colors hover:bg-nav-hover hover:text-white",
+                  compact ? "justify-center p-2.5" : "gap-2.5 px-3 py-2 text-sm font-medium",
+                )}
+              >
+                <Presentation size={compact ? 18 : 16} />
+                {!compact && <span>About Agent One Finance</span>}
+              </a>
+            </div>
+          )}
         </nav>
 
         <div className="hidden border-t border-nav-line lg:block">

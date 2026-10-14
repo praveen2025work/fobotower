@@ -45,6 +45,8 @@ const REWRITES = [
   [/^api\/client\.ts$/, /import\.meta\.env\.VITE_AOF_API/g, () => "process.env.NEXT_PUBLIC_AOF_API", 1],
   [/^pages\/CaseWorkspace\.tsx$/, /import\.meta\.env\.VITE_AOF_TRACE_URL/g, () => "process.env.NEXT_PUBLIC_AOF_TRACE_URL", 1],
   [/^components\/ui\.tsx$/, /import\.meta\.env\.MODE === "test"/g, () => 'process.env.NODE_ENV === "test"', 1],
+  // The office app is never the offline snapshot, so it always has the pitch page.
+  [/^components\/Layout\.tsx$/, /import\.meta\.env\.MODE !== "snapshot"/g, () => "true", 1],
 ];
 
 // Upstream files the office build replaces with its own version (office/templates), because the

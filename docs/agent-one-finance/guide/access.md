@@ -16,7 +16,7 @@ npm run build:snapshot                # → dist-snapshot/agent-one-finance-snap
 
 **`agent-one-finance-snapshot.html` is one file with everything inside it.** Double-click it, or send it
 to your team by email or Teams, and it opens in any browser: no server, no install, no login.
-It also works on a phone. The current copy (dev data, recorded 2026-10-14) is in
+It also works on a phone. The current copy (dev data, recorded 2026-10-15) is in
 [`../demo/agent-one-finance-snapshot.html`](../demo/agent-one-finance-snapshot.html).
 
 The capture records everything the console offers to open: every case it lists or names

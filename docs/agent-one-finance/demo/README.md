@@ -11,18 +11,27 @@ follow-through (an adjustment that did not clear stays open).
 that opens in any browser with no setup. It is read-only and uses recorded dev data. Send it
 to your team or open it after the video.
 
-The snapshot was refreshed on 2026-10-14 from the latest version. It is seen as Dana, a dev
-user who sees every team's work across all thirteen capabilities, and holds all 80 of her
-cases. It includes:
+The snapshot was refreshed on 2026-10-15 from the latest version, with demo cases built that
+day. It is seen as Dana, a dev user who sees every team's work across all thirteen
+capabilities, and holds all 56 of her cases. Every case is on a current business date: COB
+14 October was run and mostly signed off that morning, COB 15 October is the day's work in
+progress, and month-end items are for September. It includes:
 
-- the FOBO examples from the [guide](../guide/example/README.md): one book's price and position
-  breaks (one case signed off, one waiting for review), and a named P&L run as one case across
-  its master books (PRIME-FINANCING-EMEA signed off, PRIME-FINANCING-US stopped at the tollgate);
-- accruals with balanced journals and the authority matrix;
-- a complaints day at its send tollgate, with a drafted message and clocks;
-- a control test waiting on its three sample cases;
-- payments exceptions;
-- the FOBO break investigations.
+- CATS vs MOTIF reconciliation for six Prime and four Rates books, and the cash ledger: COB
+  14 October signed off (two Prime books still waiting), COB 15 October waiting for review;
+- FOBO break investigations: COB 14 October signed off; COB 15 October with three books at
+  the tollgate and three waiting for review; the FOBO skill's curated books (COB 9 October),
+  both step by step and as one model session;
+- the FOBO examples from the [guide](../guide/example/README.md): a book's price and position
+  check, and a named P&L run as one case across its master books (PRIME-FINANCING-EMEA
+  signed off for 14 October and waiting for review for 15 October; PRIME-FINANCING-US at the
+  tollgate);
+- payments exceptions, a complaints day at its send tollgate with a drafted message and clocks,
+  and a control test waiting on its sample cases;
+- September month-end: accruals with balanced journals and the authority matrix, the accruals
+  review signed off, variance commentary (UK01 approved and waiting for its publish release,
+  US01 waiting for review, August published), and the management report validated;
+- the eval sets for FOBO break investigation and variance commentary, rerun over these cases.
 
 Everything you can open in it is recorded: every case the lists link to, each run history
 step, eval runs, any two versions to compare, the filters, and the downloads (a case's Excel
@@ -40,13 +49,33 @@ The console's motion is in the snapshot too:
 - switching theme opens the new theme as a circle from the switch;
 - all motion stops when the viewer's system asks for reduced motion.
 
-To rebuild the snapshot:
+To rebuild the snapshot for another day:
 
-1. Run the API and `npm run dev`.
-2. Run `SNAPSHOT_USER=dana node scripts/capture-snapshot.mjs` (add `SNAPSHOT_CASES` for
-   extra cases). For the FOBO examples, run the guide's `setup_example.py` first (the book,
-   and `--dir named-pnl` for the named P&L) and pass the case ids it prints.
-3. Run `npm run build:snapshot` in `apps/web`, and copy `dist-snapshot/agent-one-finance-snapshot.html` here.
+1. Copy the dev database and clear its cases, keeping capabilities, groups and their
+   versions (the copy leaves your own dev data alone):
+
+   ```bash
+   psql postgresql://fobo:fobo@localhost:5433/postgres -c "create database fobo_demo template fobo"
+   psql postgresql://fobo:fobo@localhost:5433/fobo_demo <<'SQL'
+   begin;
+   delete from aof_tool_call; delete from aof_document where case_id is not null;
+   delete from aof_notification; delete from aof_retention_event; delete from aof_eval_run;
+   delete from aof_case;   -- cascades to items, groups, decisions, gates, messages, requests
+   delete from checkpoint_writes; delete from checkpoint_blobs; delete from checkpoints;
+   delete from aof_scheduler_tick;
+   -- past sign-offs the knowledge graph keeps as "seen before"; places, books and desks stay
+   delete from aof_kg_edge where from_id like 'decision:%' or to_id like 'decision:%';
+   delete from aof_kg_node where kind = 'decision';
+   commit;
+   SQL
+   ```
+
+2. Run the API on the copy (`AOF_DATABASE_URL=postgresql+asyncpg://fobo:fobo@localhost:5433/fobo_demo`)
+   and `npm run dev`.
+3. Build the cases: `python build-demo-cases.py --today 2026-10-15` (this folder). It opens,
+   runs and decides each case through the API as the right person, then reruns the evals.
+4. Record: `SNAPSHOT_USER=dana node scripts/capture-snapshot.mjs` in `apps/web`.
+5. Run `npm run build:snapshot` in `apps/web`, and copy `dist-snapshot/agent-one-finance-snapshot.html` here.
 
 The narrated version below (2026-10-04) is kept for sending to people who will watch it alone.
 

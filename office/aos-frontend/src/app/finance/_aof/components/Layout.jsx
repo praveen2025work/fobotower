@@ -34,6 +34,7 @@ import { useDevUsers, useInbox, useMe, usePlatform } from "../api/aof";
 import { useTheme } from "../theme";
 import ErrorBoundary from "./ErrorBoundary";
 import NotificationBell from "./NotificationBell";
+import { configOnly } from "../scope";
 
 /** "Frank (FOBO controller, all books; owner)" -> name "Frank", role "FOBO controller", the rest as description. */
 function splitName(full) {
@@ -104,13 +105,13 @@ function Layout({ onUserChange }) {
     return () => document.removeEventListener("mousedown", onDown);
   }, [userMenu]);
 
-  const sections = [
+  const allSections = [
     {
       title: "Work",
       items: [
         { to: "/", icon: LayoutDashboard, label: "Overview" },
         { to: "/inbox", icon: Inbox, label: "Inbox", badge: inbox.data?.length || undefined },
-        { to: "/capabilities", icon: Layers, label: "Capabilities" },
+        { to: "/capabilities", icon: Layers, label: "Agents" },
       ],
     },
     {
@@ -123,6 +124,13 @@ function Layout({ onUserChange }) {
       ],
     },
   ];
+  // A config-only snapshot has agents and connectors, nothing about work in progress.
+  const sections = configOnly()
+    ? allSections.map((s) => ({
+        ...s,
+        items: s.items.filter((i) => i.to === "/capabilities" || i.to === "/connectors"),
+      }))
+    : allSections;
   // Collapsing is for the desktop sidebar; the phone menu always shows labels.
   const compact = collapsed && !mobileOpen;
   const fixtures = devUsers.data ?? [];
@@ -150,7 +158,7 @@ function Layout({ onUserChange }) {
             {!compact && (
               <div>
                 <h1 className="text-base font-bold leading-none tracking-tight">Agent One Finance</h1>
-                <p className="mt-0.5 text-[10px] leading-none text-nav-muted">Governed AI, case by case</p>
+                <p className="mt-0.5 text-[10px] leading-none text-nav-muted">Governed AI, task by task</p>
               </div>
             )}
           </div>
@@ -280,7 +288,7 @@ function Layout({ onUserChange }) {
                 />
               </span>
             )}
-            <NotificationBell enabled={!!user} />
+            {!configOnly() && <NotificationBell enabled={!!user} />}
             <button
               onClick={switchTheme}
               className="rounded-lg p-2 text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-700"
@@ -392,8 +400,10 @@ function Layout({ onUserChange }) {
         aria-label="Quick"
         className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-surface-200 bg-card pb-[env(safe-area-inset-bottom)] lg:hidden"
       >
-        {[sections[0].items[0], sections[0].items[1], sections[0].items[2], sections[1].items[0]].map(
-          ({ to, icon: Icon, label, badge }) => (
+        {sections
+          .flatMap((s) => s.items)
+          .slice(0, 4)
+          .map(({ to, icon: Icon, label, badge }) => (
             <NavLink
               key={to}
               to={to}
@@ -413,8 +423,7 @@ function Layout({ onUserChange }) {
                 </span>
               ) : null}
             </NavLink>
-          ),
-        )}
+          ))}
         <button
           onClick={() => setMobileOpen(true)}
           className="flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium text-surface-500"

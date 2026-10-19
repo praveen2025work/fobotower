@@ -13,7 +13,7 @@ export default function Connectors() {
     <div>
       <PageHeader
         title="Connectors"
-        subtitle="Bank systems onboarded by the Agent One Finance team as MCP servers. Capabilities may only use the tools listed here."
+        subtitle="Bank systems onboarded by the Agent One Finance team as MCP servers. Agents may only use the tools listed here."
       />
       {platform.isLoading && <Loading what="connectors" />}
       {platform.error && <ErrorState error={platform.error} />}

@@ -290,11 +290,11 @@ describe("CaseWorkspace", () => {
       },
     });
     open();
-    await userEvent.click(await screen.findByRole("tab", { name: "Ask about this case" }));
+    await userEvent.click(await screen.findByRole("tab", { name: "Ask about this task" }));
     await userEvent.type(screen.getByLabelText("Your question"), "Why 6100?");
     await userEvent.click(screen.getByRole("button", { name: /Ask/ }));
     expect(await screen.findByText("Account 6100 is 1,234.00 off.")).toBeInTheDocument();
-    expect(screen.getByText(/Not traceable to this case's data: 1,234/)).toBeInTheDocument();
+    expect(screen.getByText(/Not traceable to this task's data: 1,234/)).toBeInTheDocument();
     expect(calls.find((c) => c.method === "POST")!.body).toEqual({ question: "Why 6100?" });
   });
 
@@ -410,10 +410,10 @@ describe("Asking for evidence", () => {
     expect(within(panel).getByText(/No outage/)).toBeInTheDocument();
   });
 
-  it("links a follow-up of late items to the day's case", async () => {
+  it("links a follow-up of late items to the day's task", async () => {
     mockApi({ "GET /cases/fin.c1": detail({ follow_up_of: "fin.c0" }) });
     open();
-    expect(await screen.findByRole("link", { name: "the day's case" })).toHaveAttribute("href", "/cases/fin.c0");
+    expect(await screen.findByRole("link", { name: "the day's task" })).toHaveAttribute("href", "/cases/fin.c0");
   });
 });
 

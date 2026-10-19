@@ -16,7 +16,7 @@ const KINDS = [
   { value: "review", label: "Review a list", help: "e.g. attestations or exceptions, one decision per group" },
 ] as const;
 
-const STEPS = ["The work", "Case and data", "Who decides", "Checks (optional)"] as const;
+const STEPS = ["The work", "Task and data", "Who decides", "Checks (optional)"] as const;
 
 const list = (s: string) => s.split(/[,\n]/).map((x) => x.trim()).filter(Boolean);
 const input = "mt-1 block w-full rounded-lg border border-surface-300 bg-card px-2 py-1.5 text-sm font-normal";
@@ -89,13 +89,13 @@ export default function GuidedForm({ onBuild, pending }: { onBuild: (answers: Re
       </>}
       {step === 1 && <>
       <div className="grid gap-3 sm:grid-cols-2">
-        <label className={label}>One case is one… (key fields)<input value={a.case_key} onChange={(e) => set("case_key", e.target.value)} placeholder="book, cob" className={input} /></label>
-        <label className={label}>Who sees a case is limited by
+        <label className={label}>One task is one… (key fields)<input value={a.case_key} onChange={(e) => set("case_key", e.target.value)} placeholder="book, cob" className={input} /></label>
+        <label className={label}>Who sees a task is limited by
           <select aria-label="Data scope field" value={a.scope_field} onChange={(e) => set("scope_field", e.target.value)} className={input}>
             <option value="">no data scope</option>{key.map((k) => <option key={k}>{k}</option>)}
           </select>
         </label>
-        <label className={label}>A case is called<input value={a.case_label} onChange={(e) => set("case_label", e.target.value)} className={input} /></label>
+        <label className={label}>A task is called<input value={a.case_label} onChange={(e) => set("case_label", e.target.value)} className={input} /></label>
         <label className={label}>An item is called<input value={a.item_label} onChange={(e) => set("item_label", e.target.value)} className={input} /></label>
       </div>
 
@@ -159,8 +159,8 @@ export default function GuidedForm({ onBuild, pending }: { onBuild: (answers: Re
       <div className="grid gap-3 sm:grid-cols-2">
         <label className={label}>Reviewers (roles)<input value={a.reviewer_roles} onChange={(e) => set("reviewer_roles", e.target.value)} placeholder="FOBO_CONTROLLER" className={input} /></label>
         <label className={label}>Owners (role, optional)<input value={a.owner_role} onChange={(e) => set("owner_role", e.target.value)} className={input} /></label>
-        <label className={label}>A case opens
-          <select aria-label="A case opens" value={a.opens} onChange={(e) => set("opens", e.target.value)} className={input}>
+        <label className={label}>A task opens
+          <select aria-label="A task opens" value={a.opens} onChange={(e) => set("opens", e.target.value)} className={input}>
             <option value="manual">when someone opens it</option>
             <option value="event">when another system notifies Agent One Finance</option>
             <option value="schedule">on a schedule</option>
@@ -168,7 +168,7 @@ export default function GuidedForm({ onBuild, pending }: { onBuild: (answers: Re
         </label>
         <div className="flex flex-col justify-end gap-1 pb-1 text-xs text-surface-600">
           {a.opens === "event" && (
-            <label className="flex items-center gap-1.5"><input type="checkbox" checked={a.late_items} onChange={(e) => set("late_items", e.target.checked)} /> Late items open a follow-up case</label>
+            <label className="flex items-center gap-1.5"><input type="checkbox" checked={a.late_items} onChange={(e) => set("late_items", e.target.checked)} /> Late items open a follow-up task</label>
           )}
           {key.length >= 2 && (
             <label className="flex items-center gap-1.5"><input type="checkbox" checked={a.follow_through} onChange={(e) => set("follow_through", e.target.checked)} /> Re-check each decision on the next {key[key.length - 1]}</label>
@@ -194,7 +194,7 @@ export default function GuidedForm({ onBuild, pending }: { onBuild: (answers: Re
           </label>
           {a.clock_hours !== "" && (
             <label className={label}>…counted from the field
-              <input value={a.clock_starts} onChange={(e) => set("clock_starts", e.target.value)} placeholder="when the case opens" className={input} />
+              <input value={a.clock_starts} onChange={(e) => set("clock_starts", e.target.value)} placeholder="when the task opens" className={input} />
             </label>
           )}
           <label className={label}>Who may approve how much: the bank's authority system
@@ -239,7 +239,7 @@ export default function GuidedForm({ onBuild, pending }: { onBuild: (answers: Re
         <button onClick={build} disabled={pending || !a.name.trim()}
           className={clsx("ml-auto inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-50",
             step === STEPS.length - 1 ? "bg-brand text-brand-fg hover:bg-brand-strong" : "text-primary-700 hover:bg-primary-50")}>
-          <ListChecks size={14} /> {pending ? "Building…" : step === STEPS.length - 1 ? "Build the capability" : "Build now"}
+          <ListChecks size={14} /> {pending ? "Building…" : step === STEPS.length - 1 ? "Build the agent" : "Build now"}
         </button>
       </div>
     </div>

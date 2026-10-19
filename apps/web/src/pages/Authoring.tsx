@@ -65,7 +65,7 @@ export default function Authoring(): JSX.Element {
     <div>
       <PageHeader
         title="Authoring"
-        subtitle="Build a capability in four short steps, from a BRD, or from a template. The platform checks it; another owner approves it."
+        subtitle="Build an agent in four short steps, from a BRD, or from a template. The platform checks it; another owner approves it."
       />
       <div className="grid gap-4 xl:grid-cols-2">
         <Card title={<span className="flex items-center gap-2"><FileText size={14} /> How do you want to start?</span>}>
@@ -104,7 +104,7 @@ export default function Authoring(): JSX.Element {
                 disabled={draft.isPending || !brd.trim()}
                 className="mt-3 inline-flex items-center gap-2 rounded-lg bg-brand-accent px-4 py-2 text-sm font-medium text-brand-accent-fg hover:bg-brand-accent-strong disabled:opacity-50"
               >
-                <Sparkles size={14} /> {draft.isPending ? "Drafting…" : "Draft capability"}
+                <Sparkles size={14} /> {draft.isPending ? "Drafting…" : "Draft agent"}
               </button>
               {draft.error && <div className="mt-3"><ErrorState error={draft.error} /></div>}
             </>
@@ -231,7 +231,7 @@ function PendingDrafts() {
           <li key={`${d.capability_id}-${d.version}`} className="flex flex-wrap items-center gap-3 py-2.5 text-sm">
             <span className="font-medium">{d.name}</span>
             <span className="font-mono text-xs text-surface-400">{d.capability_id} v{d.version}</span>
-            {d.new && <span className="rounded bg-accent-50 px-1.5 py-0.5 text-[10px] font-medium text-accent-700">new capability</span>}
+            {d.new && <span className="rounded bg-accent-50 px-1.5 py-0.5 text-[10px] font-medium text-accent-700">new agent</span>}
             <span className="text-xs text-surface-500">by {d.drafted_by} {formatTime(d.drafted_at)}{d.note && ` — ${d.note}`}</span>
             <span className="ml-auto">
               {d.can_approve ? (
@@ -250,7 +250,7 @@ function PendingDrafts() {
         ))}
       </ul>
       {approve.error && <ErrorState error={approve.error} />}
-      {approve.data && <p className="mt-2 text-sm text-green-700">Approved — now live in <Link className="underline" to="/capabilities">Capabilities</Link>.</p>}
+      {approve.data && <p className="mt-2 text-sm text-green-700">Approved — now live in <Link className="underline" to="/capabilities">Agents</Link>.</p>}
     </Card>
   );
 }

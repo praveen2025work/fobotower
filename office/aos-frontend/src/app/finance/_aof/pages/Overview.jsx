@@ -26,7 +26,7 @@ function OverviewHero({ review, overdue, release }) {
       <div className="min-w-0">
         <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
           {waiting
-            ? `${waiting} ${waiting === 1 ? "case is" : "cases are"} waiting on you`
+            ? `${waiting} ${waiting === 1 ? "task is" : "tasks are"} waiting on you`
             : "Nothing is waiting on you"}
         </h1>
         {waiting > 0 && (
@@ -133,9 +133,9 @@ export default function Overview() {
                 ))}
             </Card>
 
-            <Card title="Capabilities">
+            <Card title="Agents">
               {overview.data.capabilities.length === 0 ? (
-                <Empty>No capabilities for your roles.</Empty>
+                <Empty>No agents for your roles.</Empty>
               ) : (
                 <ul className="-my-1 divide-y divide-surface-100">
                   {[...overview.data.capabilities]

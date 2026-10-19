@@ -43,8 +43,8 @@ const HOW = [
   },
   {
     icon: History,
-    title: "Replay past cases",
-    text: "Cases people already decided are run again in hidden copies: same connectors, nothing written, nobody notified.",
+    title: "Replay past tasks",
+    text: "Tasks people already decided are run again in hidden copies: same connectors, nothing written, nobody notified.",
   },
   {
     icon: Scale,
@@ -229,16 +229,16 @@ export default function EvalsPanel({ capabilityId, versions, groups, statuses = 
         </div>
         <p className="mt-2 text-xs text-surface-600">
           {ready == null ? (
-            "Replays up to 20 of the most recent cases people decided."
+            "Replays up to 20 of the most recent tasks people decided."
           ) : ready === 0 ? (
             <span className="text-orange-700">
-              No decided cases yet{groups.length ? ` for ${name(group)}` : ""}: decide some cases first, then run an
+              No decided tasks yet{groups.length ? ` for ${name(group)}` : ""}: decide some tasks first, then run an
               eval.
             </span>
           ) : (
-            `${ready} decided ${ready === 1 ? "case is" : "cases are"} ready to replay${ready >= (available.data?.limit ?? 20) ? " (the most recent)" : ""}.`
+            `${ready} decided ${ready === 1 ? "task is" : "tasks are"} ready to replay${ready >= (available.data?.limit ?? 20) ? " (the most recent)" : ""}.`
           )}{" "}
-          Owners of the capability{groups.length ? " or of the group" : ""} can run one.
+          Owners of the agent{groups.length ? " or of the group" : ""} can run one.
         </p>
       </div>
       {start.error && <ErrorState error={start.error} />}
@@ -265,7 +265,7 @@ export default function EvalsPanel({ capabilityId, versions, groups, statuses = 
                 </span>
               </div>
               {r.status === "running" && (
-                <p className="mt-2 text-xs text-surface-500">Replaying past cases… this page updates by itself.</p>
+                <p className="mt-2 text-xs text-surface-500">Replaying past tasks… this page updates by itself.</p>
               )}
               <Result r={r} />
               {r.error && <p className="mt-1 text-xs text-red-700">{r.error}</p>}

@@ -46,7 +46,7 @@ export default function LearningPanel({ capabilityId, teamGroup }: { capabilityI
             ) : (
               <>
                 <p className="mb-1 text-xs text-surface-600">
-                  A condition on the data that picked out the verdict people approved. Add it as a check only after replaying it on past cases.
+                  A condition on the data that picked out the verdict people approved. Add it as a check only after replaying it on past tasks.
                 </p>
                 <ul className="space-y-1 text-xs">
                   {d.proposed_checks.slice(0, 10).map((p) => (
@@ -54,7 +54,7 @@ export default function LearningPanel({ capabilityId, teamGroup }: { capabilityI
                       <code className="rounded bg-surface-100 px-1 py-0.5 text-surface-800">{p.when}</code>
                       <span className="text-surface-600">→ {p.verdict.replace(/_/g, " ")} in {p.category}</span>
                       <span className="text-surface-500">
-                        {p.covers} of {p.of} cases · {p.wrong ? `${p.wrong} wrong` : "never wrong"} ({Math.round(p.precision * 100)}%)
+                        {p.covers} of {p.of} tasks · {p.wrong ? `${p.wrong} wrong` : "never wrong"} ({Math.round(p.precision * 100)}%)
                       </span>
                     </li>
                   ))}

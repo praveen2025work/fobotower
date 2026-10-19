@@ -152,7 +152,7 @@ async def _derive(state, cfg: DeriveCfg, step_id):
 
 
 register(StepType(
-    "derive", "Computed fields", "Adds fields computed from each item, the case and policy (age, ratios, flags).",
+    "derive", "Computed fields", "Adds fields computed from each item, the task and policy (age, ratios, flags).",
     DeriveCfg, _derive, expressions=lambda c: [(f"fields.{k}", v) for k, v in c.fields.items()]))
 
 
@@ -176,7 +176,7 @@ async def _filter(state, cfg: FilterCfg, step_id):
 
 
 register(StepType(
-    "filter", "Filter", "Keeps the items that match; the others stay on the case, marked with the reason.",
+    "filter", "Filter", "Keeps the items that match; the others stay on the task, marked with the reason.",
     FilterCfg, _filter, expressions=lambda c: [("keep_when", c.keep_when)]))
 
 
@@ -214,7 +214,7 @@ async def _convert(state, cfg: ConvertCfg, step_id):
 
 
 register(StepType(
-    "convert", "Currency conversion", "Converts amounts to one currency with the case's own rates; a missing rate is flagged, never assumed.",
+    "convert", "Currency conversion", "Converts amounts to one currency with the task's own rates; a missing rate is flagged, never assumed.",
     ConvertCfg, _convert, needs=lambda c: {"items", ds(c.rates)}, dataset_refs=lambda c: {c.rates}))
 
 
@@ -275,7 +275,7 @@ async def _dedupe(state, cfg: DedupeCfg, step_id):
 
 
 register(StepType(
-    "dedupe", "Duplicates", "Finds items with the same key fields; duplicates are set aside (kept on the case) or marked.",
+    "dedupe", "Duplicates", "Finds items with the same key fields; duplicates are set aside (kept on the task) or marked.",
     DedupeCfg, _dedupe))
 
 

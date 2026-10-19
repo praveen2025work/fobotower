@@ -109,13 +109,13 @@ export function CaseLinks({ c }: { c: CaseDetail }) {
       {c.parent_case_id && (
         <p className="flex items-center gap-1.5 text-xs text-surface-600">
           <GitFork size={12} /> Opened by{" "}
-          <Link to={`/cases/${encodeURIComponent(c.parent_case_id)}`} className="text-primary-700 hover:underline">its parent case</Link>
+          <Link to={`/cases/${encodeURIComponent(c.parent_case_id)}`} className="text-primary-700 hover:underline">its parent task</Link>
         </p>
       )}
       {kids.length > 0 && (
         <div>
           <h2 className="mb-1 text-xs font-semibold uppercase tracking-wider text-surface-500">
-            Child cases · {kids.filter((k) => ["completed", "failed", "stopped", "escalated"].includes(k.status)).length} of {kids.length} finished
+            Child tasks · {kids.filter((k) => ["completed", "failed", "stopped", "escalated"].includes(k.status)).length} of {kids.length} finished
           </h2>
           <ul className="space-y-1">
             {kids.map((k) => (

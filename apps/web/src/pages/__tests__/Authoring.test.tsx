@@ -22,7 +22,7 @@ it("drafts from a BRD, shows what to fix, and submits the edited manifest", asyn
   renderAt("/authoring", "/authoring", <Authoring />);
   await userEvent.click(screen.getByRole("tab", { name: /Describe it/ }));
   await userEvent.type(screen.getByLabelText("BRD"), "Monthly variance commentary");
-  await userEvent.click(screen.getByRole("button", { name: /Draft capability/ }));
+  await userEvent.click(screen.getByRole("button", { name: /Draft agent/ }));
 
   expect(await screen.findByText("`validate` is required")).toBeInTheDocument();
   expect(screen.getByText("no materiality threshold given")).toBeInTheDocument();
@@ -62,13 +62,13 @@ it("builds a capability from answers with no model, and says when no model is co
   renderAt("/authoring", "/authoring", <Authoring />);
   expect(screen.getByRole("tab", { name: /Answer questions/ })).toHaveAttribute("aria-selected", "true");
   await userEvent.type(screen.getByLabelText("Name"), "Equities breaks");
-  await userEvent.click(screen.getByRole("button", { name: /Next: Case and data/ }));          // a short step at a time
+  await userEvent.click(screen.getByRole("button", { name: /Next: Task and data/ }));          // a short step at a time
   await userEvent.selectOptions(await screen.findByLabelText("Items come from"), "mbrec.breaks");
   await userEvent.click(screen.getByRole("button", { name: /Next: Who decides/ }));
   await userEvent.click(screen.getByLabelText("a person (no model)"));
   await userEvent.click(screen.getByRole("button", { name: /Next: Checks/ }));
   await userEvent.type(screen.getByLabelText(/Sign-off checklist/), "Is the root cause evidenced?");
-  await userEvent.click(screen.getByRole("button", { name: /Build the capability/ }));
+  await userEvent.click(screen.getByRole("button", { name: /Build the agent/ }));
   await waitFor(() => expect(calls.some((c) => c.path === "/authoring/guided")).toBe(true));
   expect(calls.find((c) => c.path === "/authoring/guided")!.body).toMatchObject({
     name: "Equities breaks", kind: "investigate", source_tool: "mbrec.breaks", decided_by: "person",

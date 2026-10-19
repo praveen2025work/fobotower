@@ -48,16 +48,16 @@ export default function Audit() {
     <div>
       <PageHeader
         title="Audit"
-        subtitle="The system of record. Model behaviour (prompts, timings, tokens) is in Phoenix, joined on the case."
+        subtitle="The system of record. Model behaviour (prompts, timings, tokens) is in Phoenix, joined on the task."
         actions={
           <div className="flex min-w-0 flex-wrap gap-2">
             <select
-              aria-label="Capability"
+              aria-label="Agent"
               value={capability}
               onChange={(e) => setCapability(e.target.value)}
               className="min-w-0 max-w-full rounded-lg border border-surface-300 bg-card px-2 py-1.5 text-sm"
             >
-              <option value="">All capabilities</option>
+              <option value="">All agents</option>
               {caps.data?.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -80,13 +80,13 @@ export default function Audit() {
         }
       />
       {support && events.data && rows.length === 0 ? (
-        <SupportGuide what="Case events (connector calls, sign-offs, releases)" />
+        <SupportGuide what="Task events (connector calls, sign-offs, releases)" />
       ) : (
         <Card>
           {events.isLoading && <Loading what="audit" />}
           {events.error && <ErrorState error={events.error} />}
           {events.data && rows.length === 0 && (
-            <Empty>No events for this filter. You see the events of the cases you may see.</Empty>
+            <Empty>No events for this filter. You see the events of the tasks you may see.</Empty>
           )}
           {rows.length > 0 && (
             <div className="overflow-x-auto">
@@ -100,7 +100,7 @@ export default function Audit() {
                       Who
                     </th>
                     <th scope="col" className="px-2 py-2 font-medium">
-                      Case
+                      Task
                     </th>
                     <th scope="col" className="px-2 py-2 font-medium">
                       What

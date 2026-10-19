@@ -21,6 +21,7 @@ import VersionsPanel from "../components/capability/VersionsPanel";
 import OrchestratorEditor from "../components/orchestrator/OrchestratorEditor";
 import StatusBadge from "../components/StatusBadge";
 import { Card, Empty, ErrorState, Fold, Loading, PageHeader, formatTime } from "../components/ui";
+import { configOnly } from "../scope";
 
 export default function GroupDetail() {
   const { id = "", group = "" } = useParams();
@@ -59,9 +60,7 @@ export default function GroupDetail() {
         </span>
         <span>Reviewed by {g.review_roles.join(", ")}</span>
         <span>
-          {g.sets.length
-            ? `Changes ${g.sets.length} of the capability's settings`
-            : "Runs on the capability's defaults"}
+          {g.sets.length ? `Changes ${g.sets.length} of the agent's settings` : "Runs on the agent's defaults"}
         </span>
       </p>
 
@@ -69,35 +68,37 @@ export default function GroupDetail() {
         className="mb-4 flex max-w-full overflow-x-auto rounded-lg border border-surface-200 bg-card p-1 sm:inline-flex"
         role="tablist"
       >
-        {["configure", "insights", "data", "workflow", "versions"].map((t) => (
-          <button
-            key={t}
-            role="tab"
-            aria-selected={tab === t}
-            onClick={() => setTab(t)}
-            className={clsx(
-              "shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium",
-              tab === t ? "bg-brand-accent text-brand-accent-fg" : "text-surface-600 hover:bg-surface-50",
-            )}
-          >
-            {
+        {["configure", "insights", "data", "workflow", "versions"]
+          .filter((t) => !configOnly() || t !== "insights")
+          .map((t) => (
+            <button
+              key={t}
+              role="tab"
+              aria-selected={tab === t}
+              onClick={() => setTab(t)}
+              className={clsx(
+                "shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium",
+                tab === t ? "bg-brand-accent text-brand-accent-fg" : "text-surface-600 hover:bg-surface-50",
+              )}
+            >
               {
-                configure: "Configure",
-                insights: "Insights",
-                data: "Data needed",
-                workflow: "Workflow",
-                versions: "Versions",
-              }[t]
-            }
-          </button>
-        ))}
+                {
+                  configure: "Configure",
+                  insights: "Insights",
+                  data: "Data needed",
+                  workflow: "Workflow",
+                  versions: "Versions",
+                }[t]
+              }
+            </button>
+          ))}
       </div>
 
       {tab === "configure" && (
         <>
           <p className="mb-2 text-xs text-surface-500">
             {g.is_owner
-              ? "Change what this group may set; what the capability decides is shown locked."
+              ? "Change what this group may set; what the agent decides is shown locked."
               : "Its owners change it."}{" "}
             Changes go to another owner for approval.
           </p>
@@ -115,7 +116,7 @@ export default function GroupDetail() {
           >
             <div className="flex flex-wrap gap-1.5">
               {g.sets.length === 0 ? (
-                <span className="text-sm text-surface-500">Nothing: it runs on the capability's defaults.</span>
+                <span className="text-sm text-surface-500">Nothing: it runs on the agent's defaults.</span>
               ) : (
                 g.sets.map((p) => (
                   <code key={p} className="rounded bg-surface-100 px-1.5 py-0.5 text-xs text-surface-700">
@@ -125,7 +126,7 @@ export default function GroupDetail() {
               )}
             </div>
             <p className="mt-2 text-xs text-surface-500">
-              Everything else (workflow, gates, write-back, ownership) is the capability's.
+              Everything else (workflow, gates, write-back, ownership) is the agent's.
             </p>
           </Fold>
           {g.is_owner && (

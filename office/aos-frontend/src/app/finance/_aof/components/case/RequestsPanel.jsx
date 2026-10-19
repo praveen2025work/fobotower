@@ -23,7 +23,7 @@ export default function RequestsPanel({ c }) {
   const [group, setGroup] = useState("");
   const [question, setQuestion] = useState("");
   if (!targets.length && !requests.length) return null;
-  const label = (gid) => (gid ? (c.groups.find((g) => g.group_id === gid)?.label ?? gid) : "whole case");
+  const label = (gid) => (gid ? (c.groups.find((g) => g.group_id === gid)?.label ?? gid) : "whole task");
 
   return (
     <section className="rounded-lg border border-surface-200 bg-card p-3" aria-label="Questions">
@@ -127,7 +127,7 @@ export default function RequestsPanel({ c }) {
               onChange={(e) => setGroup(e.target.value)}
               className="mt-0.5 block w-full rounded-lg border border-surface-300 bg-card px-2 py-1"
             >
-              <option value="">the whole case</option>
+              <option value="">the whole task</option>
               {c.groups.map((g) => (
                 <option key={g.group_id} value={g.group_id}>
                   {g.label}

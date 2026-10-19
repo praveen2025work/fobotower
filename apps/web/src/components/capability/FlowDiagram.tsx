@@ -117,7 +117,7 @@ export default function FlowDiagram({ capabilityId, teamGroup }: { capabilityId:
       <ol className="relative space-y-3 border-l-2 border-surface-200 pl-5">
         <li className="relative">
           <span className="absolute -left-[1.85rem] top-1 flex h-5 w-5 items-center justify-center rounded-full bg-surface-200 text-surface-700"><CalendarClock size={11} /></span>
-          <p className="text-sm font-semibold text-surface-900">A case opens</p>
+          <p className="text-sm font-semibold text-surface-900">A task opens</p>
           <p className="text-xs text-surface-600">{opensText(f.opens)}{f.opens.events && f.opens.on !== "event" && "; other systems may also open one by event"}.</p>
         </li>
         {parts.map((b, i) => {

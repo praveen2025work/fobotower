@@ -17,6 +17,7 @@ import VersionsPanel from "../components/capability/VersionsPanel";
 import OrchestratorEditor from "../components/orchestrator/OrchestratorEditor";
 import StatusBadge from "../components/StatusBadge";
 import { Card, Empty, ErrorState, Fold, Loading, PageHeader, formatTime } from "../components/ui";
+import { configOnly } from "../scope";
 
 export default function CapabilityDetail() {
   const { id = "" } = useParams();
@@ -25,10 +26,12 @@ export default function CapabilityDetail() {
   const groups = useGroups(id);
   const hasGroups = (groups.data?.length ?? 0) > 0;
   const [chosen, setTab] = useState(null);
-  // What most visitors come for: the cases. Owners go to Groups or Configure when they need to.
-  const tab = chosen ?? "cases";
+  // What most visitors come for: the tasks. Owners go to Groups or Configure when they need to.
+  // A config-only snapshot has no tasks or evals, so it opens on Configure.
+  const config = configOnly();
+  const tab = chosen ?? (config ? "configure" : "cases");
 
-  if (cap.isLoading) return <Loading what="capability" />;
+  if (cap.isLoading) return <Loading what="agent" />;
   if (cap.error) return <ErrorState error={cap.error} />;
   if (!cap.data) return <Empty>Not found.</Empty>;
   const m = cap.data.manifest;
@@ -52,27 +55,29 @@ export default function CapabilityDetail() {
         {m.steps.length} steps
         {m.pause_before.length > 0 && <> · stops for a person before {m.pause_before.join(" and ")}</>} ·{" "}
         <button type="button" onClick={() => setTab("flow")} className="font-medium text-primary-700 hover:underline">
-          see how a case runs
+          see how a task runs
         </button>
       </p>
       <div
         className="mb-4 flex max-w-full overflow-x-auto rounded-lg border border-surface-200 bg-card p-1 sm:inline-flex"
         role="tablist"
       >
-        {["cases", ...(hasGroups ? ["groups"] : []), "configure", "flow", "evals", "versions"].map((t) => (
-          <button
-            key={t}
-            role="tab"
-            aria-selected={tab === t}
-            onClick={() => setTab(t)}
-            className={clsx(
-              "shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium capitalize",
-              tab === t ? "bg-brand-accent text-brand-accent-fg" : "text-surface-600 hover:bg-surface-50",
-            )}
-          >
-            {t === "cases" ? "Cases" : t === "flow" ? <span className="normal-case">How it runs</span> : t}
-          </button>
-        ))}
+        {["cases", ...(hasGroups ? ["groups"] : []), "configure", "flow", "evals", "versions"]
+          .filter((t) => !config || (t !== "cases" && t !== "evals"))
+          .map((t) => (
+            <button
+              key={t}
+              role="tab"
+              aria-selected={tab === t}
+              onClick={() => setTab(t)}
+              className={clsx(
+                "shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium capitalize",
+                tab === t ? "bg-brand-accent text-brand-accent-fg" : "text-surface-600 hover:bg-surface-50",
+              )}
+            >
+              {t === "cases" ? "Tasks" : t === "flow" ? <span className="normal-case">How it runs</span> : t}
+            </button>
+          ))}
       </div>
       {tab === "groups" && <GroupsTab id={id} groups={groups.data ?? []} configurable={m.configurable} />}
       {tab === "cases" && <CasesTab id={id} manifest={m} groups={groups.data ?? []} />}
@@ -108,7 +113,7 @@ export default function CapabilityDetail() {
         </>
       )}
       {tab === "flow" && (
-        <Card title="How a case runs">
+        <Card title="How a task runs">
           <FlowDiagram capabilityId={id} />
         </Card>
       )}
@@ -141,7 +146,7 @@ function GroupsTab({ id, groups, configurable }) {
   return (
     <div>
       <p className="mb-3 text-sm text-surface-500">
-        Each team runs this capability with its own settings, within the {configurable.length} the capability allows.
+        Each team runs this agent with its own settings, within the {configurable.length} the agent allows.
       </p>
       <div className="grid gap-4 lg:grid-cols-2">
         {groups.map((g) => (
@@ -176,9 +181,7 @@ function GroupsTab({ id, groups, configurable }) {
               {g.case_label} per {g.case_key.join(" × ")} · reviewed by {g.review_roles.join(", ")}
             </p>
             <p className="mt-1 text-xs text-surface-400">
-              {g.sets.length === 0
-                ? "Uses the capability's defaults"
-                : `Sets ${g.sets.length} of the capability's settings`}
+              {g.sets.length === 0 ? "Uses the agent's defaults" : `Sets ${g.sets.length} of the agent's settings`}
             </p>
           </Link>
         ))}
@@ -216,7 +219,7 @@ function CasesTab({ id, manifest, groups }) {
   return (
     <div>
       <Card
-        title="Cases"
+        title="Tasks"
         aside={
           <div className="flex items-center gap-2">
             {groups.length > 0 && (
@@ -250,10 +253,10 @@ function CasesTab({ id, manifest, groups }) {
         {opening && (
           <div className="mb-4 rounded-lg border border-surface-200 bg-surface-50 p-3">
             <p className="mb-2 text-xs text-surface-500">
-              Cases usually open by themselves (an event or a schedule). Open one by hand here.
+              Tasks usually open by themselves (an event or a schedule). Open one by hand here.
             </p>
             {groups.length > 0 && openable.length === 0 ? (
-              <Empty>None of this capability's groups lets you open cases.</Empty>
+              <Empty>None of this agent's groups lets you open tasks.</Empty>
             ) : (
               <form
                 onSubmit={submit}
@@ -298,9 +301,9 @@ function CasesTab({ id, manifest, groups }) {
             )}
           </div>
         )}
-        {cases.isLoading && <Loading what="cases" />}
+        {cases.isLoading && <Loading what="tasks" />}
         {cases.error && <ErrorState error={cases.error} />}
-        {cases.data?.length === 0 && <Empty>No cases yet.</Empty>}
+        {cases.data?.length === 0 && <Empty>No tasks yet.</Empty>}
         <ul className="divide-y divide-surface-100">
           {cases.data?.map((c) => (
             <li key={c.case_id}>

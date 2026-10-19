@@ -90,7 +90,7 @@ function DecidedBy({ by }) {
 const TABS = [
   { id: "proposal", label: "Proposal" },
   { id: "session", label: "Model session" },
-  { id: "ask", label: "Ask about this case" },
+  { id: "ask", label: "Ask about this task" },
   { id: "history", label: "Run history" },
 ];
 
@@ -105,7 +105,7 @@ export default function CaseWorkspace() {
   // Case details (key, workflow, evidence, questions, write-back) stay folded away unless asked for.
   const [details, setDetails] = useRemembered("case-details", false);
 
-  if (detail.isLoading) return <Loading what="case" />;
+  if (detail.isLoading) return <Loading what="task" />;
   if (detail.error) return <ErrorState error={detail.error} />;
   if (!detail.data) return <Empty>Not found.</Empty>;
   const c = detail.data;
@@ -158,7 +158,7 @@ export default function CaseWorkspace() {
           <div className="flex items-center gap-1.5 sm:ml-auto">
             <button
               onClick={() => void download(`/cases/${encodeURIComponent(c.case_id)}/export.xlsx`, `${c.case_id}.xlsx`)}
-              title="Download the case as Excel"
+              title="Download the task as Excel"
               className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-surface-600 hover:bg-surface-100"
             >
               <FileSpreadsheet size={13} /> Excel
@@ -171,7 +171,7 @@ export default function CaseWorkspace() {
                 details ? "bg-primary-50 text-primary-700" : "text-surface-600 hover:bg-surface-100",
               )}
             >
-              <PanelRight size={13} /> Case details
+              <PanelRight size={13} /> Task details
               {openQuestions > 0 && (
                 <span className="rounded-full bg-orange-100 px-1.5 text-[10px] font-semibold text-orange-800">
                   {openQuestions}
@@ -188,7 +188,7 @@ export default function CaseWorkspace() {
           <p className="mt-1 text-sm text-surface-600">
             Late items for{" "}
             <Link to={`/cases/${encodeURIComponent(c.follow_up_of)}`} className="text-primary-700 hover:underline">
-              the day's case
+              the day's task
             </Link>
             : only the breaks it did not have.
           </p>
@@ -231,13 +231,13 @@ export default function CaseWorkspace() {
       <div
         className="sticky top-0 z-10 -mx-3 mb-2 bg-surface-50/95 px-3 py-1.5 backdrop-blur lg:hidden"
         role="tablist"
-        aria-label="Case sections"
+        aria-label="Task sections"
       >
         <div className="grid grid-cols-3 gap-1 rounded-lg border border-surface-200 bg-card p-1">
           {[
             ["list", `Proposals ${decided}/${c.groups.length}`],
             ["detail", "Review"],
-            ["case", "Case"],
+            ["case", "Task"],
           ].map(([id, label]) => (
             <button
               key={id}
@@ -358,7 +358,7 @@ export default function CaseWorkspace() {
             details ? "lg:block" : "lg:hidden",
             pane !== "case" && "hidden",
           )}
-          aria-label="Case details"
+          aria-label="Task details"
         >
           <ContextPanel c={c} />
         </aside>
@@ -977,7 +977,7 @@ function LegalHold({ c }) {
       </h2>
       {c.legal_hold ? (
         <p className="mt-1 text-xs text-surface-700">
-          On hold: {c.legal_hold_reason}. Retention will not remove this case.
+          On hold: {c.legal_hold_reason}. Retention will not remove this task.
         </p>
       ) : (
         <p className="mt-1 text-xs text-surface-600">Kept until its retention period ends.</p>
@@ -1033,7 +1033,7 @@ function ContextPanel({ c }) {
           </h2>
           <p className="mt-1 text-xs text-surface-600">
             Approved results go to <code>{c.publish.tool}</code> once someone with {c.publish.approver_roles.join(", ")}{" "}
-            who did not review this case releases it.
+            who did not review this task releases it.
           </p>
           {c.status === "awaiting_publish" && c.publish.can_release && (
             <p className="mt-2 text-xs font-medium text-primary-700">
@@ -1097,10 +1097,10 @@ function ContextPanel({ c }) {
 
       <LegalHold c={c} />
 
-      <Fold title="Case record" summary={`opened ${formatTime(c.opened_at)}`} remember="case-record">
+      <Fold title="Task record" summary={`opened ${formatTime(c.opened_at)}`} remember="case-record">
         <div className="space-y-4">
           <div>
-            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-surface-500">Case</h2>
+            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-surface-500">Task</h2>
             <dl className="space-y-1">
               {Object.entries(c.case_key).map(([k, v]) => (
                 <div key={k} className="flex justify-between gap-2">

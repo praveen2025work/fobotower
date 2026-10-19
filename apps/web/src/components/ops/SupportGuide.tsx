@@ -8,8 +8,8 @@ import { Activity, Plug, Power, ScrollText, ShieldCheck } from "lucide-react";
 const DO = [
   { icon: Activity, text: "Check platform health, cost and errors", where: "Operations: the health strip", to: "/operations" },
   { icon: Plug, text: "See every connector and whether it answers", where: "Connectors", to: "/connectors" },
-  { icon: Power, text: "Switch a capability or connector off during an incident", where: "Operations: Off switches", to: "/operations" },
-  { icon: ScrollText, text: "Follow model behaviour (prompts, timings, tokens)", where: "Phoenix, by case id", to: null },
+  { icon: Power, text: "Switch an agent or connector off during an incident", where: "Operations: Off switches", to: "/operations" },
+  { icon: ScrollText, text: "Follow model behaviour (prompts, timings, tokens)", where: "Phoenix, by task id", to: null },
 ] as const;
 
 /** A guided empty state for platform support. */

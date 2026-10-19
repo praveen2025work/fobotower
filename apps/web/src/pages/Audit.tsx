@@ -36,11 +36,11 @@ export default function Audit(): JSX.Element {
     <div>
       <PageHeader
         title="Audit"
-        subtitle="The system of record. Model behaviour (prompts, timings, tokens) is in Phoenix, joined on the case."
+        subtitle="The system of record. Model behaviour (prompts, timings, tokens) is in Phoenix, joined on the task."
         actions={
           <div className="flex min-w-0 flex-wrap gap-2">
-            <select aria-label="Capability" value={capability} onChange={(e) => setCapability(e.target.value)} className="min-w-0 max-w-full rounded-lg border border-surface-300 bg-card px-2 py-1.5 text-sm">
-              <option value="">All capabilities</option>
+            <select aria-label="Agent" value={capability} onChange={(e) => setCapability(e.target.value)} className="min-w-0 max-w-full rounded-lg border border-surface-300 bg-card px-2 py-1.5 text-sm">
+              <option value="">All agents</option>
               {caps.data?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
             <select aria-label="Event kind" value={kind} onChange={(e) => setKind(e.target.value)} className="min-w-0 max-w-full rounded-lg border border-surface-300 bg-card px-2 py-1.5 text-sm">
@@ -53,11 +53,11 @@ export default function Audit(): JSX.Element {
           </div>
         }
       />
-      {support && events.data && rows.length === 0 ? <SupportGuide what="Case events (connector calls, sign-offs, releases)" /> : (
+      {support && events.data && rows.length === 0 ? <SupportGuide what="Task events (connector calls, sign-offs, releases)" /> : (
       <Card>
         {events.isLoading && <Loading what="audit" />}
         {events.error && <ErrorState error={events.error} />}
-        {events.data && rows.length === 0 && <Empty>No events for this filter. You see the events of the cases you may see.</Empty>}
+        {events.data && rows.length === 0 && <Empty>No events for this filter. You see the events of the tasks you may see.</Empty>}
         {rows.length > 0 && (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[40rem] text-left text-sm">
@@ -65,7 +65,7 @@ export default function Audit(): JSX.Element {
                 <tr>
                   <th scope="col" className="px-2 py-2 font-medium">When</th>
                   <th scope="col" className="px-2 py-2 font-medium">Who</th>
-                  <th scope="col" className="px-2 py-2 font-medium">Case</th>
+                  <th scope="col" className="px-2 py-2 font-medium">Task</th>
                   <th scope="col" className="px-2 py-2 font-medium">What</th>
                 </tr>
               </thead>

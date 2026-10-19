@@ -96,10 +96,10 @@ export function InboxTable({ rows }) {
                 Needs
               </th>
               <th scope="col" className="px-2 py-2 font-medium">
-                Case
+                Task
               </th>
               <th scope="col" className="px-2 py-2 font-medium">
-                Capability
+                Agent
               </th>
               <th scope="col" className="px-2 py-2 font-medium">
                 What's left
@@ -130,7 +130,7 @@ export function InboxTable({ rows }) {
                   {r.follow_up_of && !/late items/i.test(r.subject) && (
                     <Link
                       to={`/cases/${encodeURIComponent(r.follow_up_of)}`}
-                      title="Late items for a book and date already worked — see the day's case"
+                      title="Late items for a book and date already worked — see the day's task"
                       className="ml-2 rounded bg-surface-100 px-1.5 py-0.5 text-[10px] font-semibold text-surface-800 hover:underline"
                     >
                       late items
@@ -200,7 +200,7 @@ export default function InboxPage() {
 
   return (
     <div>
-      <PageHeader title="Inbox" subtitle="Cases waiting for your review or your release of a write-back." />
+      <PageHeader title="Inbox" subtitle="Tasks waiting for your review or your release of a write-back." />
       <QuestionsForYou />
       <Card>
         {inbox.isLoading && <Loading what="inbox" />}
@@ -237,12 +237,12 @@ export default function InboxPage() {
               <div className="flex w-full flex-wrap gap-2 sm:ml-auto sm:w-auto">
                 {capabilities.length > 1 && (
                   <select
-                    aria-label="Capability"
+                    aria-label="Agent"
                     value={capability}
                     onChange={(e) => setCapability(e.target.value)}
                     className="rounded-lg border border-surface-300 bg-card px-2 py-1 text-xs"
                   >
-                    <option value="">All capabilities</option>
+                    <option value="">All agents</option>
                     {capabilities.map(([id, name]) => (
                       <option key={id} value={id}>
                         {name}

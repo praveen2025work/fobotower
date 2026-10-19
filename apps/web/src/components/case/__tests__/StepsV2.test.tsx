@@ -37,7 +37,7 @@ describe("steps v2 on a case", () => {
       clocks: [{ id: "final", label: "Final response", due_at: "2000-01-01T00:00:00Z", warn_before_hours: 4, warned: true, breached: true }],
     } as unknown as CaseDetail;
     renderAt("/", "/", <CaseLinks c={c} />);
-    expect(screen.getByRole("link", { name: "its parent case" }).getAttribute("href")).toBe("/cases/p1");
+    expect(screen.getByRole("link", { name: "its parent task" }).getAttribute("href")).toBe("/cases/p1");
     expect(screen.getByText(/1 of 2 finished/)).toBeTruthy();
     expect(screen.getByText(/breached/)).toBeTruthy();
   });

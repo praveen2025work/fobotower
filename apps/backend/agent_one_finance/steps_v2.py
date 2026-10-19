@@ -543,7 +543,7 @@ def _mus(group: list[dict], fld: str, n: int, rng: random.Random) -> list[dict]:
 
 
 register(StepType(
-    "sample", "Sample", "Selects a reproducible sample (random, largest, or by value; stratified; some always included); the rest stay on the case, marked.",
+    "sample", "Sample", "Selects a reproducible sample (random, largest, or by value; stratified; some always included); the rest stay on the task, marked.",
     SampleCfg, _sample, expressions=lambda c: [("always_include_when", c.always_include_when)] if c.always_include_when else []))
 
 
@@ -672,7 +672,7 @@ async def _await(state, cfg: AwaitCfg, step_id):
 
 
 register(StepType(
-    "await", "Wait for an event", "The run waits here for an event (a reply, a confirmation, a file) or for its child cases, with a timeout.",
+    "await", "Wait for an event", "The run waits here for an event (a reply, a confirmation, a file) or for its child tasks, with a timeout.",
     AwaitCfg, _await, needs=lambda c: {"children"} if c.event == "children" else set(),
     produces=lambda c: set(), extra={"wait": True}))
 
@@ -701,7 +701,7 @@ async def _spawn(state, cfg: SpawnCfg, step_id):
 
 
 register(StepType(
-    "spawn", "Child cases", "Opens a child case per item (per account, per sample, per client) in a capability; an `await` for `children` then rolls their outcomes up.",
+    "spawn", "Child tasks", "Opens a child task per item (per account, per sample, per client) in an agent; an `await` for `children` then rolls their outcomes up.",
     SpawnCfg, _spawn, produces=lambda c: {"children"}))
 
 
@@ -729,7 +729,7 @@ async def _report(state, cfg: ReportCfg, step_id):
 
 
 register(StepType(
-    "report", "Report", "Writes the case's report (configuration, findings, decisions, data used, sign-off) as a PDF kept with the case.",
+    "report", "Report", "Writes the task's report (configuration, findings, decisions, data used, sign-off) as a PDF kept with the task.",
     ReportCfg, _report, needs=lambda c: {"decisions"}, produces=lambda c: set()))
 
 
@@ -1060,7 +1060,7 @@ async def _link(state, cfg: LinkCfg, step_id):
 
 
 register(StepType(
-    "link", "Related cases", "Finds earlier cases about the same client, account or counterparty (any capability) and shows how they ended.",
+    "link", "Related tasks", "Finds earlier tasks about the same client, account or counterparty (any agent) and shows how they ended.",
     LinkCfg, _link))
 
 

@@ -16,11 +16,11 @@ export interface StepTypeInfo { type: string; label: string; family: string; say
 export const DATA_TYPES: StepTypeInfo[] = [
   // data
   { type: "dataset", family: "Data", label: "Reference data", says: "Reads a named data set beside the items: FX rates, a budget, limits, prior periods.", empty: { name: "", tool: "", args: {} } },
-  { type: "derive", family: "Data", label: "Computed fields", says: "Adds fields computed from each item, the case and policy (age, ratios, flags).", empty: { fields: {} } },
-  { type: "filter", family: "Data", label: "Filter", says: "Keeps the items that match; the others stay on the case, marked with the reason.", empty: { keep_when: "", reason: "filtered out" } },
-  { type: "convert", family: "Data", label: "Currency conversion", says: "Converts amounts to one currency with the case's own rates; a missing rate is flagged, never assumed.", empty: { amounts: [], currency_field: "currency", to: "GBP", rates: "" } },
+  { type: "derive", family: "Data", label: "Computed fields", says: "Adds fields computed from each item, the task and policy (age, ratios, flags).", empty: { fields: {} } },
+  { type: "filter", family: "Data", label: "Filter", says: "Keeps the items that match; the others stay on the task, marked with the reason.", empty: { keep_when: "", reason: "filtered out" } },
+  { type: "convert", family: "Data", label: "Currency conversion", says: "Converts amounts to one currency with the task's own rates; a missing rate is flagged, never assumed.", empty: { amounts: [], currency_field: "currency", to: "GBP", rates: "" } },
   { type: "bucket", family: "Data", label: "Bands", says: "Puts each item in a band of a field: ageing, size, service level.", empty: { field: "", as: "", bands: [{ label: "", upto: null }] } },
-  { type: "dedupe", family: "Data", label: "Duplicates", says: "Finds items with the same key fields; duplicates are set aside (kept on the case) or marked.", empty: { keys: [], drop: true } },
+  { type: "dedupe", family: "Data", label: "Duplicates", says: "Finds items with the same key fields; duplicates are set aside (kept on the task) or marked.", empty: { keys: [], drop: true } },
   { type: "aggregate", family: "Data", label: "Roll up", says: "Rolls items up by key fields with totals and counts — into the items or into a data set.", empty: { by: [], sum: [], into: "items" } },
   { type: "transform", family: "Data", label: "Team logic (tool)", says: "Sends the items to the team's own tool and uses what it returns — for logic expressions cannot hold.", empty: { tool: "", args: {}, send: [], returns: "fields" } },
   // accounting actions
@@ -36,7 +36,7 @@ export const DATA_TYPES: StepTypeInfo[] = [
   { type: "anomaly", family: "Assurance", label: "Unusual against history", says: "Flags items far from their own history (a z-score threshold) — statistics, no model.", empty: { history: "", key: "", value: "amount", history_value: "value", threshold: 3 } },
   { type: "consistency", family: "Assurance", label: "Consistency checks", says: "Checks totals across data sets (sub-ledger = GL); each failing check becomes an item to investigate.",
     empty: { checks: [{ id: "", left: { source: "items", field: "amount" }, right: { source: "", field: "" }, tolerance: 0.01, message: "" }] } },
-  { type: "sample", family: "Assurance", label: "Sample", says: "A reproducible sample (random, largest or by value; stratified); the rest stay on the case, marked.", empty: { method: "random", size: 25, field: null, stratify_by: null, always_include_when: null } },
+  { type: "sample", family: "Assurance", label: "Sample", says: "A reproducible sample (random, largest or by value; stratified); the rest stay on the task, marked.", empty: { method: "random", size: 25, field: null, stratify_by: null, always_include_when: null } },
   { type: "score", family: "Assurance", label: "Risk score", says: "A weighted score from named factors, with its reasons and a band review lanes can use.", empty: { factors: [{ when: "", weight: 10, label: "" }], as: "score", bands: [] } },
   { type: "attest", family: "Assurance", label: "Owner attestation", says: "An owner certifies a statement at a tollgate; recorded with who, when, evidence and expiry.", place: "groups", person: true,
     empty: { statement: "", roles: [], evidence_required: false, valid_for_days: null } },
@@ -48,11 +48,11 @@ export const DATA_TYPES: StepTypeInfo[] = [
   { type: "fuzzy_match", family: "Algorithms", label: "Near-identical references", says: "References that differ only by a typo or format (Jaro-Winkler), optionally with a similar amount — candidates for a person.", empty: { field: "", pool: "items", pool_field: null, when: null, amount: null, pool_amount: null, amount_within_pct: null, threshold: 0.88, as: "near" } },
   { type: "benford", family: "Algorithms", label: "Benford and round amounts", says: "First-digit test against Benford's law (Nigrini's bands) and round-amount flags, for journal and payment controls.", empty: { field: "amount", min_items: 100, round_to: 1000, as: "benford" } },
   // orchestration
-  { type: "await", family: "Orchestration", label: "Wait for an event", says: "The run waits for an event (a reply, a confirmation) or for its child cases, with a timeout.", empty: { event: "", timeout_hours: 24, on_timeout: "escalate", roles: [] } },
-  { type: "spawn", family: "Orchestration", label: "Child cases", says: "Opens a child case per item in another capability; a later wait for `children` rolls them up.", empty: { capability: "", key: {}, max_children: 200 } },
+  { type: "await", family: "Orchestration", label: "Wait for an event", says: "The run waits for an event (a reply, a confirmation) or for its child tasks, with a timeout.", empty: { event: "", timeout_hours: 24, on_timeout: "escalate", roles: [] } },
+  { type: "spawn", family: "Orchestration", label: "Child tasks", says: "Opens a child task per item in another agent; a later wait for `children` rolls them up.", empty: { capability: "", key: {}, max_children: 200 } },
   { type: "compose", family: "Orchestration", label: "Draft a message", says: "Drafts each group's outbound message for the reviewer; sent only by an approved outreach step.", place: "groups",
     empty: { when: "status == 'proposed'", to: "", subject: "", body: "" } },
-  { type: "report", family: "Orchestration", label: "Report", says: "Writes the case's report (configuration, findings, decisions, data used) as a PDF kept with the case.", place: "after_record", empty: { name: "case-report" } },
+  { type: "report", family: "Orchestration", label: "Report", says: "Writes the task's report (configuration, findings, decisions, data used) as a PDF kept with the task.", place: "after_record", empty: { name: "case-report" } },
   // acquisition
   { type: "match_n", family: "Acquisition", label: "Match several systems", says: "Matches two or more systems by key (order, receipt, invoice) with many-to-one sums; keeps what does not agree.",
     empty: { keys: [], tolerance: 0.01, many_to_one: true, sources: [{ label: "", tool: "", args: {}, amount_field: "amount" }, { label: "", tool: "", args: {}, amount_field: "amount" }] } },
@@ -63,7 +63,7 @@ export const DATA_TYPES: StepTypeInfo[] = [
   { type: "clock", family: "Time and parties", label: "Clocks", says: "Service-level or regulatory clocks per item (hours or business days); people are warned before and told on breach.",
     empty: { clocks: [{ id: "", label: "", starts: "case_opened", hours: 24, business_days: null, warn_before_hours: 4 }] } },
   { type: "timeline", family: "Time and parties", label: "Timeline", says: "One ordered timeline of events from several systems, for the reviewer and the model.", empty: { sources: [{ tool: "", args: {}, time_field: "", label: "" }], into: "timeline", for_model: true } },
-  { type: "link", family: "Time and parties", label: "Related cases", says: "Earlier cases about the same client, account or counterparty, and how they ended.", empty: { match_on: [], lookback_days: 365, capabilities: [], limit: 5 } },
+  { type: "link", family: "Time and parties", label: "Related tasks", says: "Earlier tasks about the same client, account or counterparty, and how they ended.", empty: { match_on: [], lookback_days: 365, capabilities: [], limit: 5 } },
   { type: "screen", family: "Time and parties", label: "Name screening (candidates)", says: "Fuzzy-matches names against a list and marks candidates for a person; never clears or confirms a match.", empty: { list: "", fields: [], list_field: "name", threshold: 0.85 } },
   { type: "outreach", family: "Time and parties", label: "Send to the other party", says: "Sends each drafted message through the bank's channel, after a person approves sending at the tollgate before it.", place: "groups", person: true,
     empty: { tool: "", roles: [], when: "status == 'proposed'" } },
@@ -115,7 +115,7 @@ function fields(id: string, type: string): FieldSpec[] {
         columns: [{ key: "label", label: "Label", wide: true }, { key: "upto", label: "Up to (empty = the rest)", kind: "number" }] }];
     case "dedupe": return [
       { kind: "list", path: `${w}.keys`, label: "Same when these fields match" },
-      { kind: "bool", path: `${w}.drop`, label: "Set duplicates aside (kept on the case)" }];
+      { kind: "bool", path: `${w}.drop`, label: "Set duplicates aside (kept on the task)" }];
     case "aggregate": return [
       { kind: "list", path: `${w}.by`, label: "Roll up by" },
       { kind: "list", path: `${w}.sum`, label: "Total these fields" },
@@ -150,7 +150,7 @@ function fields(id: string, type: string): FieldSpec[] {
     case "post": return [
       { kind: "tool", path: `${w}.tool`, label: "Ledger write tool", access: "write" },
       { kind: "tool", path: `${w}.dry_run_tool`, label: "Ledger check (called first)", access: "read" }, args,
-      { kind: "list", path: `${w}.approver_roles`, label: "Released by (roles; never a reviewer of the case)" }];
+      { kind: "list", path: `${w}.approver_roles`, label: "Released by (roles; never a reviewer of the task)" }];
     case "flux": return [...history, { kind: "text", path: `${w}.prefix`, label: "Field prefix" }];
     case "anomaly": return [...history, { kind: "number", path: `${w}.threshold`, label: "Unusual from (z-score)", min: 0.5, step: 0.5 }];
     case "consistency": return [
@@ -176,16 +176,16 @@ function fields(id: string, type: string): FieldSpec[] {
     case "attest": return [
       { kind: "textarea", path: `${w}.statement`, label: "Statement the owner certifies" },
       { kind: "list", path: `${w}.roles`, label: "Attested by (roles)" },
-      { kind: "bool", path: `${w}.evidence_required`, label: "Evidence must be on the case first" },
+      { kind: "bool", path: `${w}.evidence_required`, label: "Evidence must be on the task first" },
       { kind: "number", path: `${w}.valid_for_days`, label: "Valid for (days)", min: 1, nullable: true }];
     case "await": return [
-      { kind: "text", path: `${w}.event`, label: "Event", placeholder: "bank_confirmation, or children", help: "`children`: the child cases a `Child cases` step opened, all finished." },
+      { kind: "text", path: `${w}.event`, label: "Event", placeholder: "bank_confirmation, or children", help: "`children`: the child tasks a `Child tasks` step opened, all finished." },
       { kind: "number", path: `${w}.timeout_hours`, label: "Timeout (hours)", min: 0, nullable: true },
       { kind: "select", path: `${w}.on_timeout`, label: "On timeout", options: [{ value: "escalate", label: "escalate to a person" }, { value: "continue", label: "carry on" }] },
       { kind: "list", path: `${w}.roles`, label: "May deliver it by hand (roles)" }];
     case "spawn": return [
-      { kind: "text", path: `${w}.capability`, label: "Child capability" },
-      { kind: "kv", path: `${w}.key`, label: "Child case key", keyLabel: "Key field", valueLabel: "$item.<field>, $case.<field> or a value" },
+      { kind: "text", path: `${w}.capability`, label: "Child agent" },
+      { kind: "kv", path: `${w}.key`, label: "Child task key", keyLabel: "Key field", valueLabel: "$item.<field>, $case.<field> or a value" },
       { kind: "number", path: `${w}.max_children`, label: "At most", min: 1, max: 2000 }];
     case "compose": return [
       { kind: "expr", path: `${w}.when`, label: "For groups where" },
@@ -227,7 +227,7 @@ function fields(id: string, type: string): FieldSpec[] {
     case "link": return [
       { kind: "list", path: `${w}.match_on`, label: "Same when these fields match", placeholder: "client, account" },
       { kind: "number", path: `${w}.lookback_days`, label: "Look back (days)", min: 1, max: 3650 },
-      { kind: "list", path: `${w}.capabilities`, label: "In capabilities (empty = all)" },
+      { kind: "list", path: `${w}.capabilities`, label: "In agents (empty = all)" },
       { kind: "number", path: `${w}.limit`, label: "At most", min: 1, max: 50 }];
     case "screen": return [
       { kind: "select", path: `${w}.list`, label: "List (a data set)", options: datasetNames },
@@ -262,7 +262,7 @@ function fields(id: string, type: string): FieldSpec[] {
       { kind: "text", path: `${w}.amount`, label: "Amount field (optional)" },
       { kind: "number", path: `${w}.within_pct`, label: "Amounts within %", min: 1, nullable: true },
       { kind: "number", path: `${w}.min_count`, label: "Systemic from (places)", min: 2 },
-      { kind: "tool", path: `${w}.peers_tool`, label: "Read the other places with (empty = this case)", access: "read" },
+      { kind: "tool", path: `${w}.peers_tool`, label: "Read the other places with (empty = this task)", access: "read" },
       { kind: "kv", path: `${w}.peers_args`, label: "Arguments", keyLabel: "Argument", valueLabel: "Value ($case.<field>)" },
       { kind: "bool", path: `${w}.show_where`, label: "Name the other places (they may be outside a user's scope)" }];
     case "fuzzy_match": return [
@@ -391,7 +391,7 @@ export default function PrepareSteps({ ctx, setWorking, stepsLocked }: {
           </button>
         </div>
       )}
-      {stepsLocked && <p className="text-[11px] text-surface-500">Which steps run is {stepsLocked === "set by the capability" ? "set by the capability" : "for its owners to change"}; settings it allows are editable here.</p>}
+      {stepsLocked && <p className="text-[11px] text-surface-500">Which steps run is {stepsLocked === "set by the agent" ? "set by the agent" : "for its owners to change"}; settings it allows are editable here.</p>}
     </div>
   );
 }

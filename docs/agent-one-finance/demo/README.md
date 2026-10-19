@@ -11,34 +11,17 @@ follow-through (an adjustment that did not clear stays open).
 that opens in any browser with no setup. It is read-only and uses recorded dev data. Send it
 to your team or open it after the video.
 
-The snapshot was refreshed on 2026-10-15 from the latest version, with demo cases built that
-day. It is seen as Dana, a dev user who sees every team's work across all thirteen
-capabilities, and holds all 56 of her cases. Every case is on a current business date: COB
-14 October was run and mostly signed off that morning, COB 15 October is the day's work in
-progress, and month-end items are for September. It includes:
+The snapshot, refreshed on 2026-10-19, is a configuration view of three agents: Reconciliation
+investigation, Break investigation and Month-end accruals. It shows the Agents list and, for
+each agent, its team groups, the Configure editor with every stage and the platform's check
+result, How it runs, and Versions (any two compared, each one exportable), plus each team
+group's configuration, data needed, workflow and versions, and the Connectors page. It holds
+no tasks: the work pages (overview, inbox, operations, audit, authoring) and the Tasks, Evals
+and Insights tabs are left out, and links to them open the Agents list. It is seen as Dana,
+who can see every team, and nothing in it can be saved or approved.
 
-- CATS vs MOTIF reconciliation for six Prime and four Rates books, and the cash ledger: COB
-  14 October signed off (two Prime books still waiting), COB 15 October waiting for review;
-- FOBO break investigations: COB 14 October signed off; COB 15 October with three books at
-  the tollgate and three waiting for review; the FOBO skill's curated books (COB 9 October),
-  both step by step and as one model session;
-- the FOBO examples from the [guide](../guide/example/README.md): a book's price and position
-  check, and a named P&L run as one case across its master books (PRIME-FINANCING-EMEA
-  signed off for 14 October and waiting for review for 15 October; PRIME-FINANCING-US at the
-  tollgate);
-- payments exceptions, a complaints day at its send tollgate with a drafted message and clocks,
-  and a control test waiting on its sample cases;
-- September month-end: accruals with balanced journals and the authority matrix, the accruals
-  review signed off, variance commentary (UK01 approved and waiting for its publish release,
-  US01 waiting for review, August published), and the management report validated;
-- the eval sets for FOBO break investigation and variance commentary, rerun over these cases.
-
-Everything you can open in it is recorded: every case the lists link to, each run history
-step, eval runs, any two versions to compare, the filters, and the downloads (a case's Excel
-export and evidence pack, each version's export). The Configure tab shows the real check
-result for each stored configuration; once you edit it, it says checks need the live
-service. Anything that changes data or asks the model (approving, sending, asking about a
-case) says the snapshot is read-only.
+The console calls capabilities **agents** and cases **tasks**. Configuration keys keep their
+names (`case.key`, `$case.cob`), so the YAML is unchanged.
 
 The console's motion is in the snapshot too:
 
@@ -49,7 +32,7 @@ The console's motion is in the snapshot too:
 - switching theme opens the new theme as a circle from the switch;
 - all motion stops when the viewer's system asks for reduced motion.
 
-To rebuild the snapshot for another day:
+To rebuild the snapshot (steps 1 to 3 build demo tasks, needed only for a snapshot with tasks):
 
 1. Copy the dev database and clear its cases, keeping capabilities, groups and their
    versions (the copy leaves your own dev data alone):
@@ -74,7 +57,16 @@ To rebuild the snapshot for another day:
    and `npm run dev`.
 3. Build the cases: `python build-demo-cases.py --today 2026-10-15` (this folder). It opens,
    runs and decides each case through the API as the right person, then reruns the evals.
-4. Record: `SNAPSHOT_USER=dana node scripts/capture-snapshot.mjs` in `apps/web`.
+4. Record in `apps/web`. This snapshot (the three agents' configuration only):
+
+   ```bash
+   SNAPSHOT_USER=dana SNAPSHOT_SCOPE=config \
+   SNAPSHOT_AGENTS=recon.investigation,break.investigation,fin.accruals \
+   node scripts/capture-snapshot.mjs
+   ```
+
+   Leave out `SNAPSHOT_SCOPE` for a snapshot with the tasks too (steps 1 to 3 build them), and
+   `SNAPSHOT_AGENTS` for every agent.
 5. Run `npm run build:snapshot` in `apps/web`, and copy `dist-snapshot/agent-one-finance-snapshot.html` here.
 
 The narrated version below (2026-10-04) is kept for sending to people who will watch it alone.

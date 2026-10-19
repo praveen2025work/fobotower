@@ -17,14 +17,14 @@ const DO = [
   { icon: Plug, text: "See every connector and whether it answers", where: "Connectors", to: "/connectors" },
   {
     icon: Power,
-    text: "Switch a capability or connector off during an incident",
+    text: "Switch an agent or connector off during an incident",
     where: "Operations: Off switches",
     to: "/operations",
   },
   {
     icon: ScrollText,
     text: "Follow model behaviour (prompts, timings, tokens)",
-    where: "Phoenix, by case id",
+    where: "Phoenix, by task id",
     to: null,
   },
 ];

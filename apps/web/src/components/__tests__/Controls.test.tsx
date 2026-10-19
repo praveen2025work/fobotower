@@ -48,7 +48,7 @@ describe("run-the-bank controls", () => {
     mockApi({ "GET /schedules": [{ capability_id: "recon.investigation", team_group: "cats-motif", schedule: "30 6 * * 1-5", next_run: "2026-10-05T06:30:00Z", opens_as: "aof-scheduler", keys: [{}, {}], timezone: "UTC" }] });
     renderAt("/", "/", <SchedulesPanel />);
     expect(await screen.findByText("30 6 * * 1-5")).toBeInTheDocument();
-    expect(screen.getByText(/2 case\(s\) each run, as aof-scheduler/)).toBeInTheDocument();
+    expect(screen.getByText(/2 task\(s\) each run, as aof-scheduler/)).toBeInTheDocument();
   });
 });
 

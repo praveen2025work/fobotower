@@ -47,6 +47,14 @@ if (typeof DecompressionStream === "undefined") {
 } else {
   unpack(packed).then((snap) => {
     installSnapshot(snap);
+    // A config-only snapshot opens on the agents and stays on configuration pages.
+    if (snap.scope === "config") {
+      const onConfig = () => {
+        if (!/^#\/(capabilities|connectors)(\/|$)/.test(location.hash)) location.replace("#/capabilities");
+      };
+      onConfig();
+      window.addEventListener("hashchange", onConfig);
+    }
     ReactDOM.createRoot(root).render(
       <React.StrictMode>
         <QueryClientProvider client={queryClient}>

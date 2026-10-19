@@ -25,21 +25,21 @@ export const DATA_TYPES = [
     type: "derive",
     family: "Data",
     label: "Computed fields",
-    says: "Adds fields computed from each item, the case and policy (age, ratios, flags).",
+    says: "Adds fields computed from each item, the task and policy (age, ratios, flags).",
     empty: { fields: {} },
   },
   {
     type: "filter",
     family: "Data",
     label: "Filter",
-    says: "Keeps the items that match; the others stay on the case, marked with the reason.",
+    says: "Keeps the items that match; the others stay on the task, marked with the reason.",
     empty: { keep_when: "", reason: "filtered out" },
   },
   {
     type: "convert",
     family: "Data",
     label: "Currency conversion",
-    says: "Converts amounts to one currency with the case's own rates; a missing rate is flagged, never assumed.",
+    says: "Converts amounts to one currency with the task's own rates; a missing rate is flagged, never assumed.",
     empty: { amounts: [], currency_field: "currency", to: "GBP", rates: "" },
   },
   {
@@ -53,7 +53,7 @@ export const DATA_TYPES = [
     type: "dedupe",
     family: "Data",
     label: "Duplicates",
-    says: "Finds items with the same key fields; duplicates are set aside (kept on the case) or marked.",
+    says: "Finds items with the same key fields; duplicates are set aside (kept on the task) or marked.",
     empty: { keys: [], drop: true },
   },
   {
@@ -153,7 +153,7 @@ export const DATA_TYPES = [
     type: "sample",
     family: "Assurance",
     label: "Sample",
-    says: "A reproducible sample (random, largest or by value; stratified); the rest stay on the case, marked.",
+    says: "A reproducible sample (random, largest or by value; stratified); the rest stay on the task, marked.",
     empty: { method: "random", size: 25, field: null, stratify_by: null, always_include_when: null },
   },
   {
@@ -261,14 +261,14 @@ export const DATA_TYPES = [
     type: "await",
     family: "Orchestration",
     label: "Wait for an event",
-    says: "The run waits for an event (a reply, a confirmation) or for its child cases, with a timeout.",
+    says: "The run waits for an event (a reply, a confirmation) or for its child tasks, with a timeout.",
     empty: { event: "", timeout_hours: 24, on_timeout: "escalate", roles: [] },
   },
   {
     type: "spawn",
     family: "Orchestration",
-    label: "Child cases",
-    says: "Opens a child case per item in another capability; a later wait for `children` rolls them up.",
+    label: "Child tasks",
+    says: "Opens a child task per item in another agent; a later wait for `children` rolls them up.",
     empty: { capability: "", key: {}, max_children: 200 },
   },
   {
@@ -283,7 +283,7 @@ export const DATA_TYPES = [
     type: "report",
     family: "Orchestration",
     label: "Report",
-    says: "Writes the case's report (configuration, findings, decisions, data used) as a PDF kept with the case.",
+    says: "Writes the task's report (configuration, findings, decisions, data used) as a PDF kept with the task.",
     place: "after_record",
     empty: { name: "case-report" },
   },
@@ -343,8 +343,8 @@ export const DATA_TYPES = [
   {
     type: "link",
     family: "Time and parties",
-    label: "Related cases",
-    says: "Earlier cases about the same client, account or counterparty, and how they ended.",
+    label: "Related tasks",
+    says: "Earlier tasks about the same client, account or counterparty, and how they ended.",
     empty: { match_on: [], lookback_days: 365, capabilities: [], limit: 5 },
   },
   {
@@ -466,7 +466,7 @@ function fields(id, type) {
     case "dedupe":
       return [
         { kind: "list", path: `${w}.keys`, label: "Same when these fields match" },
-        { kind: "bool", path: `${w}.drop`, label: "Set duplicates aside (kept on the case)" },
+        { kind: "bool", path: `${w}.drop`, label: "Set duplicates aside (kept on the task)" },
       ];
     case "aggregate":
       return [
@@ -552,7 +552,7 @@ function fields(id, type) {
         { kind: "tool", path: `${w}.tool`, label: "Ledger write tool", access: "write" },
         { kind: "tool", path: `${w}.dry_run_tool`, label: "Ledger check (called first)", access: "read" },
         args,
-        { kind: "list", path: `${w}.approver_roles`, label: "Released by (roles; never a reviewer of the case)" },
+        { kind: "list", path: `${w}.approver_roles`, label: "Released by (roles; never a reviewer of the task)" },
       ];
     case "flux":
       return [...history, { kind: "text", path: `${w}.prefix`, label: "Field prefix" }];
@@ -642,7 +642,7 @@ function fields(id, type) {
       return [
         { kind: "textarea", path: `${w}.statement`, label: "Statement the owner certifies" },
         { kind: "list", path: `${w}.roles`, label: "Attested by (roles)" },
-        { kind: "bool", path: `${w}.evidence_required`, label: "Evidence must be on the case first" },
+        { kind: "bool", path: `${w}.evidence_required`, label: "Evidence must be on the task first" },
         { kind: "number", path: `${w}.valid_for_days`, label: "Valid for (days)", min: 1, nullable: true },
       ];
     case "await":
@@ -652,7 +652,7 @@ function fields(id, type) {
           path: `${w}.event`,
           label: "Event",
           placeholder: "bank_confirmation, or children",
-          help: "`children`: the child cases a `Child cases` step opened, all finished.",
+          help: "`children`: the child tasks a `Child tasks` step opened, all finished.",
         },
         { kind: "number", path: `${w}.timeout_hours`, label: "Timeout (hours)", min: 0, nullable: true },
         {
@@ -668,11 +668,11 @@ function fields(id, type) {
       ];
     case "spawn":
       return [
-        { kind: "text", path: `${w}.capability`, label: "Child capability" },
+        { kind: "text", path: `${w}.capability`, label: "Child agent" },
         {
           kind: "kv",
           path: `${w}.key`,
-          label: "Child case key",
+          label: "Child task key",
           keyLabel: "Key field",
           valueLabel: "$item.<field>, $case.<field> or a value",
         },
@@ -787,7 +787,7 @@ function fields(id, type) {
       return [
         { kind: "list", path: `${w}.match_on`, label: "Same when these fields match", placeholder: "client, account" },
         { kind: "number", path: `${w}.lookback_days`, label: "Look back (days)", min: 1, max: 3650 },
-        { kind: "list", path: `${w}.capabilities`, label: "In capabilities (empty = all)" },
+        { kind: "list", path: `${w}.capabilities`, label: "In agents (empty = all)" },
         { kind: "number", path: `${w}.limit`, label: "At most", min: 1, max: 50 },
       ];
     case "screen":
@@ -847,7 +847,7 @@ function fields(id, type) {
         {
           kind: "tool",
           path: `${w}.peers_tool`,
-          label: "Read the other places with (empty = this case)",
+          label: "Read the other places with (empty = this task)",
           access: "read",
         },
         {
@@ -1084,9 +1084,8 @@ export default function PrepareSteps({ ctx, setWorking, stepsLocked }) {
       )}
       {stepsLocked && (
         <p className="text-[11px] text-surface-500">
-          Which steps run is{" "}
-          {stepsLocked === "set by the capability" ? "set by the capability" : "for its owners to change"}; settings it
-          allows are editable here.
+          Which steps run is {stepsLocked === "set by the agent" ? "set by the agent" : "for its owners to change"};
+          settings it allows are editable here.
         </p>
       )}
     </div>

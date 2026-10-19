@@ -77,7 +77,7 @@ describe("FleetTable", () => {
   it("shows the empty-state message when no agents are returned", () => {
     renderTable([]);
     // Agent One Finance wording: a fleet row is a capability × team group in the user's scope
-    expect(screen.getByText(/no cases in your scope/i)).toBeInTheDocument();
+    expect(screen.getByText(/no tasks in your scope/i)).toBeInTheDocument();
   });
 
   it("renders error state and retry button when isError is true", () => {

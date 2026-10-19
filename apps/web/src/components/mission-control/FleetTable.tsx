@@ -75,7 +75,7 @@ function FleetTable({ agents, isLoading, isError, onRetry, emptyMessage }: Fleet
 
   return (
     <section
-      aria-label="Capability fleet"
+      aria-label="Agent fleet"
       className="flex h-full flex-col overflow-hidden rounded-xl border border-surface-200 bg-card"
     >
       <header className="flex items-center justify-between border-b border-surface-200 px-4 py-3">
@@ -154,7 +154,7 @@ function FleetTable({ agents, isLoading, isError, onRetry, emptyMessage }: Fleet
               {!isLoading && agents && agents.length === 0 && (
                 <tr>
                   <td colSpan={5} className="p-6 text-center text-sm text-surface-500">
-                    {emptyMessage ?? "No cases in your scope yet."}
+                    {emptyMessage ?? "No tasks in your scope yet."}
                   </td>
                 </tr>
               )}

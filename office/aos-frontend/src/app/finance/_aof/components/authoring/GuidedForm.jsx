@@ -26,7 +26,7 @@ const KINDS = [
   { value: "review", label: "Review a list", help: "e.g. attestations or exceptions, one decision per group" },
 ];
 
-const STEPS = ["The work", "Case and data", "Who decides", "Checks (optional)"];
+const STEPS = ["The work", "Task and data", "Who decides", "Checks (optional)"];
 
 const list = (s) =>
   s
@@ -187,7 +187,7 @@ export default function GuidedForm({ onBuild, pending }) {
         <>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className={label}>
-              One case is one… (key fields)
+              One task is one… (key fields)
               <input
                 value={a.case_key}
                 onChange={(e) => set("case_key", e.target.value)}
@@ -196,7 +196,7 @@ export default function GuidedForm({ onBuild, pending }) {
               />
             </label>
             <label className={label}>
-              Who sees a case is limited by
+              Who sees a task is limited by
               <select
                 aria-label="Data scope field"
                 value={a.scope_field}
@@ -210,7 +210,7 @@ export default function GuidedForm({ onBuild, pending }) {
               </select>
             </label>
             <label className={label}>
-              A case is called
+              A task is called
               <input value={a.case_label} onChange={(e) => set("case_label", e.target.value)} className={input} />
             </label>
             <label className={label}>
@@ -403,9 +403,9 @@ export default function GuidedForm({ onBuild, pending }) {
               <input value={a.owner_role} onChange={(e) => set("owner_role", e.target.value)} className={input} />
             </label>
             <label className={label}>
-              A case opens
+              A task opens
               <select
-                aria-label="A case opens"
+                aria-label="A task opens"
                 value={a.opens}
                 onChange={(e) => set("opens", e.target.value)}
                 className={input}
@@ -419,7 +419,7 @@ export default function GuidedForm({ onBuild, pending }) {
               {a.opens === "event" && (
                 <label className="flex items-center gap-1.5">
                   <input type="checkbox" checked={a.late_items} onChange={(e) => set("late_items", e.target.checked)} />{" "}
-                  Late items open a follow-up case
+                  Late items open a follow-up task
                 </label>
               )}
               {key.length >= 2 && (
@@ -489,7 +489,7 @@ export default function GuidedForm({ onBuild, pending }) {
                   <input
                     value={a.clock_starts}
                     onChange={(e) => set("clock_starts", e.target.value)}
-                    placeholder="when the case opens"
+                    placeholder="when the task opens"
                     className={input}
                   />
                 </label>
@@ -588,8 +588,7 @@ export default function GuidedForm({ onBuild, pending }) {
               : "text-primary-700 hover:bg-primary-50",
           )}
         >
-          <ListChecks size={14} />{" "}
-          {pending ? "Building…" : step === STEPS.length - 1 ? "Build the capability" : "Build now"}
+          <ListChecks size={14} /> {pending ? "Building…" : step === STEPS.length - 1 ? "Build the agent" : "Build now"}
         </button>
       </div>
     </div>

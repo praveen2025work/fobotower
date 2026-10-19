@@ -119,7 +119,7 @@ describe("Orchestrator editor", () => {
     mockApi({ "GET /platform": platform });
     renderAt("/", "/", <OrchestratorEditor capabilityId="recon.investigation" manifest={manifest} mode={{ kind: "capability" }} canEdit={false} />);
     expect(await screen.findByText(/You can look; its owners change it/)).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: /A case is called/ })).toBeDisabled();
+    expect(screen.getByRole("textbox", { name: /A task is called/ })).toBeDisabled();
   });
 });
 

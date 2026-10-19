@@ -40,7 +40,7 @@ export default function Operations() {
       <div className="grid flex-1 grid-cols-12 gap-3 p-3 sm:gap-4 sm:p-4">
         {support ? (
           <div className="col-span-12 lg:col-span-9">
-            <SupportGuide what="Cases, reviews and their run figures" className="h-full" />
+            <SupportGuide what="Tasks, reviews and their run figures" className="h-full" />
           </div>
         ) : (
           <>
@@ -98,7 +98,7 @@ export default function Operations() {
           <SchedulesPanel
             emptyMessage={
               support
-                ? "Schedules belong to the business teams' capabilities; none are visible to platform support."
+                ? "Schedules belong to the business teams' agents; none are visible to platform support."
                 : undefined
             }
           />

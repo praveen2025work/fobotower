@@ -12,12 +12,12 @@ export default function Capabilities() {
   return (
     <div>
       <PageHeader
-        title="Capabilities"
-        subtitle="Each capability is a versioned manifest over onboarded connectors — no code per use case."
+        title="Agents"
+        subtitle="Each agent is a versioned manifest over onboarded connectors — no code per use case."
       />
-      {caps.isLoading && <Loading what="capabilities" />}
+      {caps.isLoading && <Loading what="agents" />}
       {caps.error && <ErrorState error={caps.error} />}
-      {caps.data?.length === 0 && <Empty>No capabilities for your roles.</Empty>}
+      {caps.data?.length === 0 && <Empty>No agents for your roles.</Empty>}
       <div className="hx-stagger grid gap-4 lg:grid-cols-2">
         {caps.data?.map((c) => (
           <Link

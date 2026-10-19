@@ -57,22 +57,22 @@ const hasPlaybook = (m) => !!get(m, "playbook");
 export const STAGES = [
   {
     id: "case",
-    title: "What a case is",
+    title: "What a task is",
     says: "What one unit of work is, who can see it, when it opens on its own, and when it is due.",
     owns: /^case\.|case\.(key|scopes|schedule|opens_as|due)|scheduled/,
     fields: [
-      { kind: "text", path: "case.label", label: "A case is called", placeholder: "Rec run" },
+      { kind: "text", path: "case.label", label: "A task is called", placeholder: "Rec run" },
       { kind: "text", path: "case.item_label", label: "An item is called", placeholder: "Break" },
       {
         kind: "list",
         path: "case.key",
-        label: "A case is identified by",
-        help: "The fields that make one case, e.g. book, cob.",
+        label: "A task is identified by",
+        help: "The fields that make one task, e.g. book, cob.",
       },
       {
         kind: "template",
         path: "case.subject",
-        label: "Case title",
+        label: "Task title",
         help: "A template over the key, e.g. {book} · COB {cob}.",
       },
       {
@@ -81,7 +81,7 @@ export const STAGES = [
         label: "Data scope checks",
         keyLabel: "Key field",
         valueLabel: "Entitlement scope",
-        help: "Who may see a case: each key field is checked against the person's data scope.",
+        help: "Who may see a task: each key field is checked against the person's data scope.",
       },
       {
         kind: "select",
@@ -105,36 +105,36 @@ export const STAGES = [
       {
         kind: "rows",
         path: "case.schedule_keys",
-        label: "Cases each run opens",
-        addLabel: "Add a case",
+        label: "Tasks each run opens",
+        addLabel: "Add a task",
         newRow: {},
-        help: "One row per case. Dates may use {prev_business_day}, {yesterday}, {today}, {prev_month}, {this_month}.",
+        help: "One row per task. Dates may use {prev_business_day}, {yesterday}, {today}, {prev_month}, {this_month}.",
         when: (m) => get(m, "case.opens_on") === "schedule",
         columns: (m) => keyFields(m).map((k) => ({ key: k.value, label: k.value, wide: true })),
       },
-      { kind: "bool", path: "case.events", label: "Other systems may open cases (POST /api/events)" },
+      { kind: "bool", path: "case.events", label: "Other systems may open tasks (POST /api/events)" },
       {
         kind: "select",
         path: "case.late_items",
         label: "When another notification arrives for a key already open",
         options: [
-          { value: "ignore", label: "Nothing new: the existing case is the answer" },
-          { value: "follow_up", label: "Open a follow-up case with only the new items" },
+          { value: "ignore", label: "Nothing new: the existing task is the answer" },
+          { value: "follow_up", label: "Open a follow-up task with only the new items" },
         ],
-        help: "e.g. MB Rec notifies late exceptions for a book and COB already being worked. A signed-off case is never changed.",
+        help: "e.g. MB Rec notifies late exceptions for a book and COB already being worked. A signed-off task is never changed.",
       },
       {
         kind: "text",
         path: "case.opens_as",
-        label: "Scheduled and event cases run as",
+        label: "Scheduled and event tasks run as",
         placeholder: "aof-scheduler",
-        help: "A service user with the roles and data scopes those cases need.",
+        help: "A service user with the roles and data scopes those tasks need.",
       },
       {
         kind: "object",
         path: "case.due",
         label: "Deadline",
-        toggle: "Cases have a deadline",
+        toggle: "Tasks have a deadline",
         empty: { from: "opened", business_days: 1, hours: 0, at: null, warn_hours: 2 },
         fields: [
           {
@@ -217,7 +217,7 @@ export const STAGES = [
     id: "prepare",
     custom: "prepare",
     title: "Prepare the data",
-    says: "Generic steps, in order: prepare the data, act on the accounts (journals, posting), test controls (sampling, attestation), wait for others or child cases, read files and documents, keep clocks and parties in view. Each can run only when something holds.",
+    says: "Generic steps, in order: prepare the data, act on the accounts (journals, posting), test controls (sampling, attestation), wait for others or child tasks, read files and documents, keep clocks and parties in view. Each can run only when something holds.",
     owns: /^step_settings|is not a core step|step type/,
     fields: [],
   },
@@ -242,7 +242,7 @@ export const STAGES = [
     step: "enrich",
     optional: true,
     title: "Enrich each item",
-    says: "Reads more data for each case (e.g. dated snapshots) and joins it onto the items.",
+    says: "Reads more data for each task (e.g. dated snapshots) and joins it onto the items.",
     owns: /^enrich|`enrich`/,
     clears: [{ path: "enrich", value: [] }],
     fields: [
@@ -455,7 +455,7 @@ export const STAGES = [
     says: "Collapses items into groups so one decision covers many — e.g. by category and side.",
     owns: /^group_by|^group_label/,
     fields: [
-      { kind: "list", path: "group_by", label: "Group by", help: "Item fields; empty = one group per case." },
+      { kind: "list", path: "group_by", label: "Group by", help: "Item fields; empty = one group per task." },
       { kind: "template", path: "group_label", label: "Group name", help: "e.g. {category_name} · {side_name}." },
     ],
   },
@@ -463,7 +463,7 @@ export const STAGES = [
     id: "agent",
     step: "agent",
     title: "Skill session",
-    says: "One model session runs the skill: it reads what it needs with the tools listed here (through the gateway) and returns a result per item. Validate, review and record follow, as for every capability.",
+    says: "One model session runs the skill: it reads what it needs with the tools listed here (through the gateway) and returns a result per item. Validate, review and record follow, as for every agent.",
     owns: /`agent`|^reasoning\.(skill_file|verdicts|escalate_verdicts|result_fields|max_turns)|`load`, `match` or `agent`/,
     fields: [
       { kind: "tools", path: "reasoning.tools", label: "Tools the model may call (read only)", access: "read" },
@@ -556,7 +556,7 @@ export const STAGES = [
       {
         kind: "number",
         path: "limits.max_cost_usd_per_case",
-        label: "Model spend cap per case (USD)",
+        label: "Model spend cap per task (USD)",
         min: 0,
         nullable: true,
         when: (m) => get(m, "reasoning.reasoner") === "llm",
@@ -575,7 +575,7 @@ export const STAGES = [
     id: "draft",
     step: "draft",
     title: "Draft the summary",
-    says: "Writes the case summary a reviewer reads first: what is in scope, what was proposed, what was escalated.",
+    says: "Writes the task summary a reviewer reads first: what is in scope, what was proposed, what was escalated.",
     owns: /^draft/,
     fields: [
       {
@@ -592,7 +592,7 @@ export const STAGES = [
     step: "validate",
     gate: true,
     title: "Check every figure",
-    says: "Every figure the model states must trace to the case's data or a tool result; anything that does not is escalated to a person. Always on.",
+    says: "Every figure the model states must trace to the task's data or a tool result; anything that does not is escalated to a person. Always on.",
     owns: /^validate/,
     fields: [],
   },
@@ -696,7 +696,7 @@ export const STAGES = [
         kind: "bool",
         path: "review.opener_may_decide",
         more: true,
-        label: "Whoever opened a case may also sign it off",
+        label: "Whoever opened a task may also sign it off",
       },
       {
         kind: "bool",
@@ -753,7 +753,7 @@ export const STAGES = [
         kind: "bool",
         path: "requests.allow_attachments",
         more: true,
-        label: "An answer may come with a file (kept as the case's evidence)",
+        label: "An answer may come with a file (kept as the task's evidence)",
       },
       {
         kind: "rows",
@@ -829,8 +829,8 @@ export const STAGES = [
         toggle: "Show items that keep coming back",
         empty: { same: [], lookback_cases: 10, min_runs: 2 },
         fields: [
-          { kind: "list", path: "same", label: "In earlier cases with the same" },
-          { kind: "number", path: "lookback_cases", label: "Look back over (cases)", min: 1, max: 100 },
+          { kind: "list", path: "same", label: "In earlier tasks with the same" },
+          { kind: "number", path: "lookback_cases", label: "Look back over (tasks)", min: 1, max: 100 },
           { kind: "number", path: "min_runs", label: "Seen in at least (runs)", min: 2, max: 100 },
         ],
       },
@@ -880,7 +880,7 @@ export const STAGES = [
         kind: "object",
         path: "retention",
         label: "Retention",
-        toggle: "Delete finished cases after a period (legal hold aside)",
+        toggle: "Delete finished tasks after a period (legal hold aside)",
         empty: { days: 2555 },
         fields: [{ kind: "number", path: "days", label: "Keep for (days)", min: 1 }],
       },
@@ -908,7 +908,7 @@ export const STAGES = [
         label: "One write per",
         options: [
           { value: "group", label: "approved group" },
-          { value: "case", label: "case (one report)" },
+          { value: "case", label: "task (one report)" },
         ],
       },
       {
@@ -925,7 +925,7 @@ export const STAGES = [
     id: "owners",
     capabilityOnly: true,
     title: "Owners and team settings",
-    says: "Who may change this capability (four-eyes: the drafter cannot approve), and what each team group may set for itself.",
+    says: "Who may change this agent (four-eyes: the drafter cannot approve), and what each team group may set for itself.",
     owns: /^owners|^configurable|cannot be set by a group/,
     fields: [
       { kind: "list", path: "owners.people", label: "Owners (people)" },
@@ -943,7 +943,7 @@ export const STAGES = [
 
 /** The editor's navigation, in the order a person sets a capability up. */
 export const SECTIONS = [
-  { title: "The case", ids: ["case", "thresholds"] },
+  { title: "The task", ids: ["case", "thresholds"] },
   { title: "Data", ids: ["source", "prepare", "compare", "enrich", "resolve"] },
   { title: "Decide", ids: ["classify", "group", "agent", "reason", "draft"] },
   { title: "People and gates", ids: ["validate", "review", "record", "publish"] },

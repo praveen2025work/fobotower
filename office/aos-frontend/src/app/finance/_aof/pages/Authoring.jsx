@@ -74,7 +74,7 @@ export default function Authoring() {
     <div>
       <PageHeader
         title="Authoring"
-        subtitle="Build a capability in four short steps, from a BRD, or from a template. The platform checks it; another owner approves it."
+        subtitle="Build an agent in four short steps, from a BRD, or from a template. The platform checks it; another owner approves it."
       />
       <div className="grid gap-4 xl:grid-cols-2">
         <Card
@@ -137,7 +137,7 @@ export default function Authoring() {
                 disabled={draft.isPending || !brd.trim()}
                 className="mt-3 inline-flex items-center gap-2 rounded-lg bg-brand-accent px-4 py-2 text-sm font-medium text-brand-accent-fg hover:bg-brand-accent-strong disabled:opacity-50"
               >
-                <Sparkles size={14} /> {draft.isPending ? "Drafting…" : "Draft capability"}
+                <Sparkles size={14} /> {draft.isPending ? "Drafting…" : "Draft agent"}
               </button>
               {draft.error && (
                 <div className="mt-3">
@@ -316,7 +316,7 @@ function PendingDrafts() {
             </span>
             {d.new && (
               <span className="rounded bg-accent-50 px-1.5 py-0.5 text-[10px] font-medium text-accent-700">
-                new capability
+                new agent
               </span>
             )}
             <span className="text-xs text-surface-500">
@@ -344,7 +344,7 @@ function PendingDrafts() {
         <p className="mt-2 text-sm text-green-700">
           Approved — now live in{" "}
           <Link className="underline" to="/capabilities">
-            Capabilities
+            Agents
           </Link>
           .
         </p>

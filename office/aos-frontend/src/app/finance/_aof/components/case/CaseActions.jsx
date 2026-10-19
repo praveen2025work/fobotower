@@ -156,7 +156,7 @@ function WaitCard({ c }) {
     <Shell tone={w.you ? "action" : "waiting"} icon={Clock3} title={`Waiting: ${w.label ?? w.wait}`}>
       {w.event === "children" ? (
         <p>
-          {done} of {kids.length} child cases finished. The run continues when every one has.
+          {done} of {kids.length} child tasks finished. The run continues when every one has.
         </p>
       ) : (
         <p>

@@ -16,7 +16,7 @@ function OverviewHero({ review, overdue, release }: { review?: number; overdue: 
     <section aria-label="Overview" className="hx-hero hx-rise mb-5 grid gap-5 p-5 sm:p-7 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
       <div className="min-w-0">
         <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-          {waiting ? `${waiting} ${waiting === 1 ? "case is" : "cases are"} waiting on you` : "Nothing is waiting on you"}
+          {waiting ? `${waiting} ${waiting === 1 ? "task is" : "tasks are"} waiting on you` : "Nothing is waiting on you"}
         </h1>
         {waiting > 0 && (
           <Link to="/inbox" className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-nav-mark px-3.5 py-2 text-sm font-semibold text-nav-bg hover:opacity-90">
@@ -77,9 +77,9 @@ export default function Overview(): JSX.Element {
               {inbox.data && (inbox.data.length === 0 ? <Empty>Nothing is waiting on you.</Empty> : <InboxTable rows={urgentFirst.slice(0, 8)} />)}
             </Card>
 
-            <Card title="Capabilities">
+            <Card title="Agents">
               {overview.data.capabilities.length === 0 ? (
-                <Empty>No capabilities for your roles.</Empty>
+                <Empty>No agents for your roles.</Empty>
               ) : (
                 <ul className="-my-1 divide-y divide-surface-100">
                   {[...overview.data.capabilities].map((c) => {

@@ -115,7 +115,7 @@ export default function OrchestratorEditor({ capabilityId, manifest, mode, canEd
     if (!canEdit) return "owners change this";
     // a group may edit a field when it, or something inside it (policy.*), is configurable
     if (isGroup && !allowed(mode.configurable, path) && !mode.configurable.some((c) => c.startsWith(`${path}.`)))
-      return "set by the capability";
+      return "set by the agent";
     return null;
   };
   const ctx = {
@@ -390,7 +390,7 @@ export default function OrchestratorEditor({ capabilityId, manifest, mode, canEd
                       kind: "list",
                       path: `tollgates.${stage.step}.roles`,
                       label: "Passed by (roles)",
-                      help: "Empty = the capability's reviewers.",
+                      help: "Empty = the agent's reviewers.",
                     }}
                   />
                   <Field
@@ -422,7 +422,7 @@ export default function OrchestratorEditor({ capabilityId, manifest, mode, canEd
           {stepLocked && stage.step && (stage.optional || stage.id === "source") && (
             <p className="mt-2 text-[11px] text-surface-500">
               <Lock size={10} className="mr-0.5 inline" /> Which steps run is{" "}
-              {isGroup ? "set by the capability" : "for its owners to change"}.
+              {isGroup ? "set by the agent" : "for its owners to change"}.
             </p>
           )}
 
@@ -438,9 +438,7 @@ export default function OrchestratorEditor({ capabilityId, manifest, mode, canEd
             <PrepareSteps ctx={ctx} setWorking={setWorking} stepsLocked={stepLocked} />
           ) : isOn(working, stage) ? (
             stage.fields.length === 0 ? (
-              <p className="mt-4 text-sm text-surface-500">
-                Nothing to set: this gate works the same for every capability.
-              </p>
+              <p className="mt-4 text-sm text-surface-500">Nothing to set: this gate works the same for every agent.</p>
             ) : stage.fields.some((f) => !f.when || f.when(working)) ? (
               <StageFields fields={stage.fields} ctx={ctx} />
             ) : (

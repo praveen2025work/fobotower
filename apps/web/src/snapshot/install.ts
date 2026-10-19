@@ -14,6 +14,8 @@ interface Recorded {
 export interface Snapshot {
   user: string;
   captured_at: string;
+  /** "config": agents and their configuration only (see src/scope.ts). */
+  scope?: "all" | "config";
   responses: Record<string, Recorded>;
 }
 
@@ -36,6 +38,7 @@ export function installSnapshot(snap: Snapshot, apiBase = "/api"): void {
   } catch {
     /* storage unavailable: the app falls back to its default user */
   }
+  (globalThis as { __aofSnapshotScope?: string }).__aofSnapshotScope = snap.scope ?? "all";
   const real = window.fetch.bind(window);
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url, location.href);

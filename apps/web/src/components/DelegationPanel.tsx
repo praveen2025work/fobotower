@@ -37,7 +37,7 @@ export default function DelegationPanel({ me }: { me: string | null }) {
         )}
       </div>
       <p className="mt-1 text-xs text-surface-500">
-        A colleague decides on your behalf, only where the capability allows it and only within your data scope. Both names are recorded.
+        A colleague decides on your behalf, only where the agent allows it and only within your data scope. Both names are recorded.
       </p>
 
       {open && (

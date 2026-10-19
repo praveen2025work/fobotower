@@ -54,7 +54,7 @@ export function SwitchesPanel() {
           Kind
           <select aria-label="Switch kind" value={kind} onChange={(e) => { setKind(e.target.value as typeof kind); setTarget(""); }}
             className="mt-1 block rounded-md border border-surface-300 px-2 py-1">
-            <option value="capability">capability</option>
+            <option value="capability">agent</option>
             <option value="group">team group</option>
             <option value="connector">connector</option>
           </select>
@@ -102,7 +102,7 @@ export function SchedulesPanel({ emptyMessage = "No schedules you can see." }: {
               <span className="text-surface-400">{s.timezone}</span>
               <span className="ml-auto text-surface-600">next {s.next_run ? formatTime(s.next_run) : "—"}</span>
             </div>
-            <p className="mt-0.5 text-surface-500">{s.keys.length} case(s) each run, as {s.opens_as}</p>
+            <p className="mt-0.5 text-surface-500">{s.keys.length} task(s) each run, as {s.opens_as}</p>
           </li>
         ))}
         {schedules.data?.length === 0 && <li className="px-4 py-3 text-xs text-surface-400">{emptyMessage}</li>}

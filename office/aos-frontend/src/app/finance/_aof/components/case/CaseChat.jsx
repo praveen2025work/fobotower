@@ -25,7 +25,7 @@ function Bubble({ m }) {
         {unverified.length > 0 && (
           <p className="mt-2 flex items-start gap-1.5 text-xs text-orange-700">
             <AlertTriangle size={12} className="mt-0.5 shrink-0" />
-            Not traceable to this case's data: {unverified.map((n) => n.toLocaleString()).join(", ")}
+            Not traceable to this task's data: {unverified.map((n) => n.toLocaleString()).join(", ")}
           </p>
         )}
       </div>
@@ -47,8 +47,8 @@ export default function CaseChat({ caseId }) {
   return (
     <div className="flex h-full flex-col gap-3">
       <p className="text-xs text-surface-500">
-        Ask about this case in plain words. Answers use only the case's data and its capability's read tools; every
-        lookup is audited.
+        Ask about this task in plain words. Answers use only the task's data and its agent's read tools; every lookup is
+        audited.
       </p>
       <ul className="flex-1 space-y-2" aria-label="Conversation">
         {(thread.data ?? []).map((m, i) => (

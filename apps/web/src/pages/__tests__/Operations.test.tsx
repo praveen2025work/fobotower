@@ -46,7 +46,7 @@ it("tells platform support why case panels are empty and what they can do instea
   setCurrentUser("pat");
   renderAt("/operations", "/operations", <Operations />);
   const guide = await screen.findByRole("region", { name: "Platform support" });
-  expect(guide).toHaveTextContent("Cases, reviews and their run figures belong to the business teams");
+  expect(guide).toHaveTextContent("Tasks, reviews and their run figures belong to the business teams");
   expect(screen.getByRole("link", { name: "Connectors" })).toHaveAttribute("href", "/connectors");
   expect(screen.queryByText("Waiting on people")).not.toBeInTheDocument();
 });

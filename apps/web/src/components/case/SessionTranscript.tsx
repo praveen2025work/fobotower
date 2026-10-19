@@ -86,7 +86,7 @@ export default function SessionTranscript({ session }: { session: SessionInfo })
     <div className="space-y-4">
       <div className="rounded-lg border border-surface-200 p-3">
         <p className="text-sm text-surface-700">
-          One model session ran this case: the skill, the case key and only the tools below. Each tool call went
+          One model session ran this task: the skill, the task key and only the tools below. Each tool call went
           through the gateway and is an audit row under <em>Data used</em>.
         </p>
         <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-3">

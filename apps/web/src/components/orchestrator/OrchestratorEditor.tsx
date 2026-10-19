@@ -107,7 +107,7 @@ export default function OrchestratorEditor({ capabilityId, manifest, mode, canEd
   const locked = (path: string): string | null => {
     if (!canEdit) return "owners change this";
     // a group may edit a field when it, or something inside it (policy.*), is configurable
-    if (isGroup && !allowed(mode.configurable, path) && !mode.configurable.some((c) => c.startsWith(`${path}.`))) return "set by the capability";
+    if (isGroup && !allowed(mode.configurable, path) && !mode.configurable.some((c) => c.startsWith(`${path}.`))) return "set by the agent";
     return null;
   };
   const ctx: Ctx = {
@@ -272,7 +272,7 @@ export default function OrchestratorEditor({ capabilityId, manifest, mode, canEd
               </p>
               {pauses.includes(stage.step) && (
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <Field ctx={{ ...ctx, locked: () => pauseLocked }} spec={{ kind: "list", path: `tollgates.${stage.step}.roles`, label: "Passed by (roles)", help: "Empty = the capability's reviewers." }} />
+                  <Field ctx={{ ...ctx, locked: () => pauseLocked }} spec={{ kind: "list", path: `tollgates.${stage.step}.roles`, label: "Passed by (roles)", help: "Empty = the agent's reviewers." }} />
                   <Field ctx={{ ...ctx, locked: () => pauseLocked }} spec={{ kind: "text", path: `tollgates.${stage.step}.check`, label: "What they check", placeholder: "e.g. Are both sides complete for the COB?" }} />
                   <Field ctx={{ ...ctx, locked: () => pauseLocked }} spec={{ kind: "bool", path: `tollgates.${stage.step}.stop_needs_comment`, label: "Stopping the run needs a reason" }} />
                 </div>
@@ -283,7 +283,7 @@ export default function OrchestratorEditor({ capabilityId, manifest, mode, canEd
             <p className="mt-3 inline-flex items-center gap-1.5 text-xs text-surface-600"><Hand size={12} className="text-primary-600" /> The run always stops here for a person.</p>
           )}
           {(stepLocked && stage.step && (stage.optional || stage.id === "source")) && (
-            <p className="mt-2 text-[11px] text-surface-500"><Lock size={10} className="mr-0.5 inline" /> Which steps run is {isGroup ? "set by the capability" : "for its owners to change"}.</p>
+            <p className="mt-2 text-[11px] text-surface-500"><Lock size={10} className="mr-0.5 inline" /> Which steps run is {isGroup ? "set by the agent" : "for its owners to change"}.</p>
           )}
 
           {byStage[stage.id] && (
@@ -296,7 +296,7 @@ export default function OrchestratorEditor({ capabilityId, manifest, mode, canEd
             <PrepareSteps ctx={ctx} setWorking={setWorking} stepsLocked={stepLocked} />
           ) : isOn(working, stage) ? (
             stage.fields.length === 0 ? (
-              <p className="mt-4 text-sm text-surface-500">Nothing to set: this gate works the same for every capability.</p>
+              <p className="mt-4 text-sm text-surface-500">Nothing to set: this gate works the same for every agent.</p>
             ) : stage.fields.some((f) => !f.when || f.when(working)) ? (
               <StageFields fields={stage.fields} ctx={ctx} />
             ) : (

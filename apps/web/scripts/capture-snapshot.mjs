@@ -4,12 +4,15 @@
 // opens when someone clicks (run history steps, eval runs, version diffs,
 // filters, downloads). Run against a live stack: node scripts/capture-snapshot.mjs
 //   AOF_WEB (http://localhost:5180), SNAPSHOT_USER (frank), PLAYWRIGHT (module path),
-//   SNAPSHOT_CASES (extra case ids to include)
+//   SNAPSHOT_CASES (extra case ids to include), SNAPSHOT_AGENTS (agent ids to include;
+//   default all), SNAPSHOT_SCOPE (all, or config: the agents' configuration only, no tasks)
 import fs from "fs";
 import zlib from "zlib";
 const { chromium } = await import(process.env.PLAYWRIGHT ?? "playwright");
 const WEB = process.env.AOF_WEB ?? "http://localhost:5180";
 const USER = process.env.SNAPSHOT_USER ?? "frank";
+const AGENTS = (process.env.SNAPSHOT_AGENTS ?? "").split(",").filter(Boolean);
+const CONFIG = process.env.SNAPSHOT_SCOPE === "config";
 const OUT = new URL("../src/snapshot/data.b64", import.meta.url);
 
 const b = await chromium.launch({ executablePath: process.env.CHROMIUM });
@@ -68,10 +71,12 @@ const HEADERS = { "X-AOF-User": USER };
 const api = async (path) => (await (await fetch(`http://localhost:8300${path}`, { headers: HEADERS })).json());
 const enc = encodeURIComponent;
 
-await visit("/");
-await visit("/inbox");
+if (!CONFIG) {
+  await visit("/");
+  await visit("/inbox");
+}
 await visit("/capabilities");
-const caps = await api("/api/capabilities");
+const caps = (await api("/api/capabilities")).filter((c) => !AGENTS.length || AGENTS.includes(c.id));
 const groupsOf = {};
 for (const c of caps) {
   await visit(`/capabilities/${c.id}`);
@@ -82,11 +87,13 @@ for (const c of caps) {
 // SNAPSHOT_CASES: anything the snapshot links to must open in it.
 const extra = (process.env.SNAPSHOT_CASES ?? "").split(",").filter(Boolean);
 const listed = [];
-for (const c of caps) listed.push(...(await api(`/api/capabilities/${enc(c.id)}/cases`)).map((x) => x.case_id));
-listed.push(...(await api("/api/inbox")).map((i) => i.case_id));
-const caseIds = [...new Set([...extra, ...listed])];
+if (!CONFIG) {
+  for (const c of caps) listed.push(...(await api(`/api/capabilities/${enc(c.id)}/cases`)).map((x) => x.case_id));
+  if (!AGENTS.length) listed.push(...(await api("/api/inbox")).map((i) => i.case_id));
+}
+const caseIds = CONFIG ? [] : [...new Set([...extra, ...listed])];
 for (const id of caseIds) await visit(`/cases/${id}`);
-for (const path of ["/operations", "/authoring", "/audit", "/connectors"]) await visit(path);
+for (const path of CONFIG ? ["/connectors"] : ["/operations", "/authoring", "/audit", "/connectors"]) await visit(path);
 await b.close();
 
 // What the console asks for only when someone picks or opens something (a run
@@ -122,16 +129,36 @@ for (const c of caps) {
     for (const v of gv) await get(`/api/capabilities/${id}/versions/${v}/export?group=${g}`);
     for (const [a, v] of pairs(gv)) await get(`/api/capabilities/${id}/groups/${g}/versions/${a}/diff/${v}`);
   }
-  for (const run of (await get(`/api/capabilities/${id}/evals`)) ?? []) await get(`/api/evals/${enc(run.run_id)}`);
+  if (!CONFIG) for (const run of (await get(`/api/capabilities/${id}/evals`)) ?? []) await get(`/api/evals/${enc(run.run_id)}`);
   for (const q of ["", ...groups.map((g) => `?team_group=${g}`)]) {
-    for (const part of ["cases", "evals/available", "flow", "contract", "learning", "recurring"]) await get(`/api/capabilities/${id}/${part}${q}`);
+    for (const part of CONFIG ? ["flow", "contract"] : ["cases", "evals/available", "flow", "contract", "learning", "recurring"]) {
+      await get(`/api/capabilities/${id}/${part}${q}`);
+    }
   }
-  await get(`/api/audit?capability_id=${id}`);
+  if (!CONFIG) await get(`/api/audit?capability_id=${id}`);
+}
+// The chosen agents only; a config-only snapshot keeps their configuration and the
+// connectors, and nothing about tasks (the inbox and notifications are empty).
+if (AGENTS.length || CONFIG) {
+  const keep = new Set(caps.map((c) => c.id));
+  data["/api/capabilities"].body = data["/api/capabilities"].body.filter((c) => keep.has(c.id));
+  for (const key of Object.keys(data)) {
+    const m = key.match(/^(?:POST )?\/api\/capabilities\/([^/?\s]+)/);
+    if (m && !keep.has(decodeURIComponent(m[1]))) delete data[key];
+  }
+}
+if (CONFIG) {
+  const config = [/^\/api\/(me|me\/delegations|dev\/users|platform|capabilities)$/, /^(POST )?\/api\/capabilities\/[^/?\s]+(\/(groups(\/[^/?]+)?|flow|contract|versions\/.+|groups\/[^/]+\/versions\/.+|check))?(\?team_group=[^&]+)?( \S+)?$/,
+    /^\/api\/operations$/];
+  for (const key of Object.keys(data)) if (!config.some((re) => re.test(key))) delete data[key];
+  data["/api/inbox"] = { status: 200, body: [] };
+  data["/api/notifications"] = { status: 200, body: { unread: 0, items: [] } };
+  data["/api/requests"] = { status: 200, body: [] };
 }
 // Cases named anywhere in what was recorded (a follow-up, a sampled child case,
 // a notification) open too.
 const caseRef = new RegExp(`"((?:${caps.map((c) => c.id.replace(/[.]/g, "\\.")).join("|")})\\.[0-9a-f]{12}(?:\\.f\\d+)?)"`, "g");
-for (let more = true; more;) {
+for (let more = !CONFIG; more;) {
   const named = new Set([...JSON.stringify(Object.values(data).map((r) => r.body)).matchAll(caseRef)].map((m) => m[1]));
   const missing = [...named].filter((id) => !data[`/api/cases/${enc(id)}`]);
   more = false;
@@ -139,7 +166,7 @@ for (let more = true; more;) {
 }
 
 // Stored compressed (most of it is run state that repeats); the snapshot unpacks it.
-const json = JSON.stringify({ user: USER, captured_at: new Date().toISOString(), responses: data });
+const json = JSON.stringify({ user: USER, captured_at: new Date().toISOString(), scope: CONFIG ? "config" : "all", responses: data });
 fs.writeFileSync(OUT, zlib.gzipSync(json, { level: 9 }).toString("base64"));
 const cases = Object.keys(data).filter((k) => /^\/api\/cases\/[^/]+$/.test(k)).length;
 console.log(`captured ${Object.keys(data).length} responses, ${cases} cases (${(json.length / 1e6).toFixed(1)} MB) → src/snapshot/data.b64 (${(fs.statSync(OUT).size / 1e6).toFixed(1)} MB)`);

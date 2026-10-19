@@ -40,7 +40,8 @@ class CaseSpec(Strict):
     label: str = "Case"               # what the UI calls one unit of work
     item_label: str = "Item"
     key: list[str]                    # fields that identify a case, e.g. [entity, period]
-    subject: str | None = None        # display template, e.g. "{entity} · {period}"
+    subject: str | None = None        # display template, e.g. "{entity} · {period}"; "{book_label}" is a
+                                      # fact the reference data holds about the key value (cases.subject_facts)
     # case-key field -> entitlement data scope it is checked against
     scopes: dict[str, str] = Field(default_factory=dict)
     opens_on: Literal["manual", "api", "schedule", "event"] = "manual"

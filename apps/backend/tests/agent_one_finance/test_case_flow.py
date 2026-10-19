@@ -103,7 +103,7 @@ async def test_a_second_capability_runs_on_the_same_platform(api):
                       group=CASH)
     case = res.json()
     assert case["status"] == "awaiting_review", res.text
-    assert case["labels"] == {"case": "Rec run", "item": "Break", "capability": "Reconciliation investigation"}
+    assert case["labels"] == {"case": "Bank vs ledger", "item": "Break", "capability": "Reconciliation investigation"}
     assert {i["break_type"] for i in case["items"]} <= {"missing_bank", "missing_ledger", "amount_break"}
     tools = {(c["tool"], c["requested_by"]) for c in case["tool_calls"]}
     assert {("bank.statement", "match"), ("ledger.postings", "match")} <= tools

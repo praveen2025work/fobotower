@@ -200,3 +200,15 @@ async def test_the_same_break_in_several_books_is_one_systemic_cause(api):
     cdx = next(i for i in case["items"] if i["instrument"] == "CDX IG")
     assert cdx["systemic"] and cdx["systemic_count"] >= 3 and cdx["category"] == "Y"
     assert "systemic_where" not in cdx                       # other books stay unnamed on this book's case
+
+
+async def test_a_task_is_named_by_the_books_product_from_the_reference_data(api):
+    # From 13 October each master book holds one product, and the reference data names
+    # it: the title reads "MB Rec breaks: Govt bonds (PRIME-MB-01) · COB …".
+    case = await _open(api, "PRIME-MB-01", "2026-10-19")
+    assert case["labels"]["case"] == "MB Rec breaks"
+    assert case["subject"] == "Govt bonds (PRIME-MB-01) · COB 2026-10-19"
+    assert {i["instrument"] for i in case["items"]} <= set(finance.PRODUCTS["Govt bonds"])
+    # Before then the reference data holds no product: the book code stands in.
+    earlier = await _open(api, "PRIME-MB-01", "2026-09-30")
+    assert earlier["subject"] == "PRIME-MB-01 · COB 2026-09-30"

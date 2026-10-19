@@ -19,7 +19,7 @@ owners:
   four_eyes: true
 
 case:
-  label: Accruals run
+  label: Month-end accruals
   item_label: Purchase order line
   key: [entity, period]
   subject: "{entity} · {period}"

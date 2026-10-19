@@ -153,14 +153,64 @@ def build_ledger() -> MCPServer:
 INSTRUMENTS = ["UST 2Y", "UST 10Y", "BUND 10Y", "GILT 5Y", "JGB 10Y", "EURUSD FWD",
                "GBPUSD FWD", "IRS 5Y USD", "IRS 10Y EUR", "CDX IG", "ITRAXX MAIN", "SOFR FUT"]
 DESKS = {"UST": "Rates", "BUND": "Rates", "GILT": "Rates", "JGB": "Rates", "IRS": "Rates",
-         "EURUSD": "FX", "GBPUSD": "FX", "CDX": "Credit", "ITRAXX": "Credit", "SOFR": "Rates"}
+         "EURUSD": "FX", "GBPUSD": "FX", "CDX": "Credit", "ITRAXX": "Credit", "SOFR": "Rates",
+         "ESTR": "Rates", "SONIA": "Rates", "EURIBOR": "Rates", "BASIS": "Rates", "SWPTN": "Rates",
+         "USCPI": "Rates", "UKRPI": "Rates", "EUHICP": "Rates", "XCCY": "Rates",
+         "USDJPY": "FX", "AUDUSD": "FX", "USDCHF": "FX",
+         "OAT": "Rates", "TIPS": "Rates", "BOBL": "Rates", "USDCAD": "FX", "EURGBP": "FX",
+         "TBILL": "Money markets", "UKTB": "Money markets", "CP": "Money markets", "REPO": "Money markets"}
+
+# Each master book holds one product, on COBs from PRODUCTS_FROM (earlier COBs keep
+# the mixed books the tests were written against). The products are reference data
+# too (config/agent-one-finance/knowledge/fobo-reference.yaml), which names the tasks.
+PRODUCTS_FROM = "2026-10-13"
+TENORS = ["1Y", "2Y", "3Y", "5Y", "7Y", "10Y", "15Y", "20Y", "30Y"]
+PRODUCTS = {
+    "Govt bonds": ["UST 2Y", "UST 5Y", "UST 10Y", "UST 30Y", "BUND 2Y", "BUND 10Y", "BUND 30Y",
+                   "GILT 5Y", "GILT 10Y", "GILT 30Y", "OAT 10Y", "JGB 10Y"],
+    "US Treasuries": ["UST 1Y", "UST 2Y", "UST 3Y", "UST 5Y", "UST 7Y", "UST 10Y", "UST 20Y", "UST 30Y",
+                      "TIPS 5Y", "TIPS 10Y"],
+    "USD swaps": [*(f"IRS {t} USD" for t in TENORS), "SOFR OIS 1Y", "SOFR OIS 3Y", "BASIS SOFR-FF 5Y"],
+    "EUR swaps": [*(f"IRS {t} EUR" for t in TENORS), "ESTR OIS 1Y", "ESTR OIS 3Y"],
+    "GBP swaps": [*(f"IRS {t} GBP" for t in TENORS), "SONIA OIS 1Y", "SONIA OIS 3Y"],
+    "Rates futures": ["SOFR FUT Z6", "SOFR FUT H7", "SOFR FUT M7", "EURIBOR FUT Z6", "EURIBOR FUT H7",
+                      "SONIA FUT Z6", "SONIA FUT H7", "UST 2Y FUT", "UST 10Y FUT", "BUND FUT", "BOBL FUT", "GILT FUT"],
+    "USD swaptions": ["SWPTN 3M10Y USD", "SWPTN 6M5Y USD", "SWPTN 1Y5Y USD", "SWPTN 1Y10Y USD",
+                      "SWPTN 2Y10Y USD", "SWPTN 5Y5Y USD", "SWPTN 5Y10Y USD", "SWPTN 10Y10Y USD"],
+    "Inflation swaps": ["USCPI ZC 2Y", "USCPI ZC 5Y", "USCPI ZC 10Y", "USCPI ZC 30Y", "UKRPI ZC 5Y", "UKRPI ZC 10Y",
+                        "UKRPI ZC 20Y", "UKRPI ZC 30Y", "EUHICP ZC 5Y", "EUHICP ZC 10Y", "EUHICP ZC 20Y"],
+    "Cross-currency swaps": ["XCCY EURUSD 2Y", "XCCY EURUSD 5Y", "XCCY EURUSD 10Y", "XCCY GBPUSD 2Y", "XCCY GBPUSD 5Y",
+                             "XCCY GBPUSD 10Y", "XCCY USDJPY 5Y", "XCCY USDJPY 10Y", "XCCY AUDUSD 5Y", "XCCY USDCAD 5Y"],
+    "FX forwards": ["EURUSD FWD 1M", "EURUSD FWD 3M", "EURUSD FWD 6M", "GBPUSD FWD 1M", "GBPUSD FWD 3M",
+                    "USDJPY FWD 1M", "USDJPY FWD 3M", "AUDUSD FWD 1M", "AUDUSD FWD 3M", "USDCHF FWD 1M",
+                    "USDCAD FWD 1M", "EURGBP FWD 3M"],
+    "Credit indices": ["CDX IG 5Y", "CDX IG 10Y", "CDX HY 5Y", "CDX EM 5Y", "ITRAXX MAIN 5Y", "ITRAXX MAIN 10Y",
+                       "ITRAXX XOVER 5Y", "ITRAXX SNRFIN 5Y", "ITRAXX SUBFIN 5Y"],
+    "Money markets": ["TBILL 1M", "TBILL 3M", "TBILL 6M", "TBILL 12M", "UKTB 1M", "UKTB 3M", "CP USD 1M",
+                      "CP USD 3M", "CP EUR 3M", "REPO UST O/N", "REPO GILT O/N", "REPO BUND T/N"],
+}
+BOOK_PRODUCTS = {
+    "PRIME-MB-01": "Govt bonds", "PRIME-MB-02": "FX forwards", "PRIME-MB-03": "Credit indices",
+    "PRIME-MB-04": "Inflation swaps", "PRIME-MB-05": "Cross-currency swaps", "PRIME-MB-06": "Money markets",
+    "PRIME-MB-07": "Govt bonds", "PRIME-MB-08": "FX forwards", "PRIME-MB-09": "Credit indices",
+    "PRIME-MB-10": "USD swaps", "PRIME-MB-11": "EUR swaps", "PRIME-MB-12": "Inflation swaps",
+    "RATES-LDN-01": "USD swaps", "RATES-LDN-02": "EUR swaps", "RATES-LDN-03": "GBP swaps", "RATES-LDN-04": "Rates futures",
+    "RATES-NY-01": "US Treasuries", "RATES-NY-02": "USD swaptions",
+}
+ALL_INSTRUMENTS = sorted({*INSTRUMENTS, *(i for p in PRODUCTS.values() for i in p)})
+
+
+def _instruments(book: str, cob: str) -> list[str]:
+    """The instruments a book holds on a COB: its product's, or the mixed set before PRODUCTS_FROM."""
+    product = BOOK_PRODUCTS.get(book)
+    return PRODUCTS[product] if product and cob >= PRODUCTS_FROM else INSTRUMENTS
 
 
 def _fo_positions(book: str, cob: str) -> list[dict]:
     r = _rng("cats", book, cob)
     return [{"book": book, "instrument": ins, "desk": DESKS[ins.split()[0]],
              "quantity": r.randint(1, 500) * 1000,
-             "mtm": round(r.uniform(-900_000, 900_000), 2)} for ins in INSTRUMENTS]
+             "mtm": round(r.uniform(-900_000, 900_000), 2)} for ins in _instruments(book, cob)]
 
 
 def cats_positions(book: str, cob: str) -> dict:
@@ -245,12 +295,13 @@ def _scenario(book: str, cob: str) -> dict:
         return {}
     fo = {p["instrument"]: p for p in _fo_positions(book, cob)}
     base = {p["instrument"]: p for p in _motif_base(book, cob)}
-    clean = [i for i in INSTRUMENTS if i in base and base[i]["mtm"] == fo[i]["mtm"]]
-    out: dict = {"alias": sorted(i for i in INSTRUMENTS
+    held = _instruments(book, cob)
+    clean = [i for i in held if i in base and base[i]["mtm"] == fo[i]["mtm"]]
+    out: dict = {"alias": sorted(i for i in held
                                  if i not in base and _rng("alias", book, cob, i).random() < 0.5)}
     s = _rng("systemic", cob)
     if s.random() < 0.5:
-        ins = s.choice(INSTRUMENTS)
+        ins = s.choice(INSTRUMENTS if cob < PRODUCTS_FROM else ALL_INSTRUMENTS)
         delta = round(s.uniform(20_000, 60_000), 2)
         if ins in clean and _rng("sys-book", book, cob).random() < 0.5:
             out["systemic"] = (ins, round(delta * (1 + _rng("sys-amt", book, cob).uniform(-0.1, 0.1)), 2))
@@ -297,7 +348,7 @@ def motif_positions(book: str, cob: str) -> dict:
         by[k]["mtm"] = round(by[k]["mtm"] - amount, 2)          # the second partial booking is missing
     fo = {p["instrument"]: p for p in _fo_positions(book, cob)}
     aliases = [{**fo[i], "instrument": i.replace(" ", "", 1)} for i in sc["alias"]]
-    return {"rows": [by[i] for i in INSTRUMENTS if i in by] + aliases}
+    return {"rows": [by[i] for i in _instruments(book, cob) if i in by] + aliases}
 
 
 # The cause each instrument's break has, as FOBO's six cause checks would find
@@ -313,7 +364,7 @@ def break_snapshots(book: str, cob: str) -> dict:
         return {"rows": sim.snapshots(book)}
     rows = []
     scenario = _scenario_instruments(book, cob)
-    for ins in INSTRUMENTS:
+    for ins in _instruments(book, cob):
         cause = None if ins in scenario else _rng("cause", book, cob, ins).choice(CAUSES)
         rows.append({
             "instrument": ins,
@@ -377,7 +428,7 @@ def booking_events(book: str, cob: str, break_type: str | None = None,
         return {"rows": sim.booking_events(book, instrument)}
     r = _rng("events", book, cob, break_type or instrument or "all")
     kinds = ["late booking", "price amendment", "FX fixing", "cancel/rebook", "settlement fail"]
-    rows = [{"event": r.choice(kinds), "instrument": r.choice(INSTRUMENTS),
+    rows = [{"event": r.choice(kinds), "instrument": r.choice(_instruments(book, cob)),
              "amount": round(r.uniform(-50_000, 50_000), 2),
              "booked_at": f"{cob}T{r.randint(16, 23):02d}:{r.randint(0, 59):02d}"}
             for _ in range(3)]
@@ -452,7 +503,7 @@ def bond_metadata(instrument: str) -> dict:
     amortising or not, and whether static data exists at all."""
     found = sim.bond_metadata(instrument)
     if found is None:
-        found = {"instrument": instrument, "isin": None, "static_present": instrument in INSTRUMENTS,
+        found = {"instrument": instrument, "isin": None, "static_present": instrument in ALL_INSTRUMENTS,
                  "amortising": False}
     return {"rows": [found]}
 

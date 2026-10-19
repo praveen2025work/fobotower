@@ -19,7 +19,7 @@ owners:
   four_eyes: true
 
 case:
-  label: Rec run
+  label: Reconciliation
   item_label: Break
   key: [entity, date]
   subject: "{entity} · {date}"

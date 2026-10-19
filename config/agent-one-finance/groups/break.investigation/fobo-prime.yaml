@@ -22,9 +22,9 @@ owners:
   four_eyes: true
 set:
   case:
-    label: Break run
+    label: MB Rec breaks
     item_label: Break
-    subject: "{book} · COB {cob}"
+    subject: "{book_label} · COB {cob}"
     # A case opens when MB Rec finishes its end-of-day run for a book and posts
     # the COB to POST /api/events — the breaks exist only once MB Rec has
     # reconciled. (The CATS vs MOTIF matching group keeps the 06:30 schedule.)

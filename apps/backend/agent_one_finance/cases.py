@@ -18,13 +18,13 @@ from sqlalchemy import String, and_, cast, func, not_, or_, select
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.exc import IntegrityError
 
-from agent_one_finance import asks, capabilities, deadlines, escalation, follow_through, review, rules, runner
+from agent_one_finance import asks, capabilities, deadlines, escalation, follow_through, knowledge, review, rules, runner
 from agent_one_finance.db import get_session
 from agent_one_finance.entitlement import Caller
 from agent_one_finance.manifest import Manifest
 from agent_one_finance.models import Case, CaseItem, Decision, GateDecision, ProposalGroup, PublishApproval, ToolCall
 from agent_one_finance.observability import span
-from agent_one_finance.rules import render
+from agent_one_finance.rules import render, template_fields
 
 
 class CaseError(ValueError):
@@ -132,14 +132,36 @@ async def _resolve(capability_id: str, team_group: str | None,
     return version, group_version, m
 
 
+async def subject_facts(m: Manifest, key: dict) -> dict:
+    """What a subject template may use besides the key: `{<field>_<fact>}`, a fact the
+    reference data holds about a key value (`{book_label}` for book PRIME-MB-01), as of
+    the case's business date. A fact it does not hold shows the key value itself."""
+    wanted = [f for f in template_fields(m.case.subject or "") if f not in key]
+    fields = {k for k in key for f in wanted if f.startswith(f"{k}_")}
+    if not fields:
+        return {}
+    facts: dict = {}
+    if m.knowledge.reference:
+        as_of = key.get(m.knowledge.as_of) if m.knowledge.as_of else None
+        nodes = await knowledge.walk(m.knowledge.reference, {f"{k}:{key[k]}" for k in fields}, [], as_of=as_of)
+        for k in fields:
+            node = nodes.get(f"{k}:{key[k]}")
+            facts.update({f"{k}_{attr}": v for attr, v in (node.attrs if node else {}).items()})
+    for f in wanted:
+        k = next((k for k in fields if f.startswith(f"{k}_")), None)
+        if k and f not in facts:
+            facts[f] = key[k]
+    return facts
+
+
 def _new_case(case_id: str, root: str, attempt: int, capability_id: str, version: int,
               team_group: str | None, group_version: int | None, m: Manifest, key: dict,
-              caller: Caller, rerun_of: str | None = None) -> Case:
+              caller: Caller, rerun_of: str | None = None, facts: dict | None = None) -> Case:
     return Case(case_id=case_id, root_case_id=root, attempt=attempt, rerun_of=rerun_of,
                 capability_id=capability_id, manifest_version=version,
                 team_group=team_group, team_group_version=group_version,
                 manifest=m.model_dump(by_alias=True), case_key=key,
-                subject=render(m.case.subject or " · ".join("{" + k + "}" for k in m.case.key), key),
+                subject=render(m.case.subject or " · ".join("{" + k + "}" for k in m.case.key), {**key, **(facts or {})}),
                 scope={scope: key[field] for field, scope in m.case.scopes.items()},
                 status="running", opened_by=caller.user_id, run_as=caller.as_dict(),
                 due_at=deadlines.due_at(m, key, datetime.now(timezone.utc)))
@@ -163,6 +185,7 @@ async def open_case(capability_id: str, case_key: dict, caller: Caller,
     await _not_switched_off(capability_id, team_group)
     key = _check_key(m, case_key, caller)
     root = case_id_for(capability_id, {**key, "__group": team_group} if team_group else key)
+    facts = await subject_facts(m, key)
     async with get_session() as s:
         if (existing := await _latest_attempt(s, root)) is not None:
             if not (late and m.case.late_items == "follow_up"):
@@ -170,13 +193,13 @@ async def open_case(capability_id: str, case_key: dict, caller: Caller,
             n = (await s.execute(select(func.count()).select_from(Case).where(
                 Case.follow_up_of == root))).scalar_one() + 1
             follow = _new_case(f"{root}.f{n}", f"{root}.f{n}", 1, capability_id, version, team_group,
-                               group_version, m, key, caller)
+                               group_version, m, key, caller, facts=facts)
             follow.follow_up_of, follow.subject = root, f"{follow.subject} · late items {n}"
             s.add(follow)
             await s.commit()
             await runner.submit(follow.case_id, "open")
             return follow.case_id
-        new = _new_case(root, root, 1, capability_id, version, team_group, group_version, m, key, caller)
+        new = _new_case(root, root, 1, capability_id, version, team_group, group_version, m, key, caller, facts=facts)
         new.parent_case_id = parent        # a child case opened by a `spawn` step
         s.add(new)
         try:
@@ -300,9 +323,10 @@ async def rerun_case(case_id: str, caller: Caller) -> str:
     await _not_switched_off(case.capability_id, case.team_group)
     key = _check_key(m, case.case_key, caller)
     new_id = f"{root}.r{latest.attempt + 1}"
+    facts = await subject_facts(m, key)
     async with get_session() as s:
         s.add(_new_case(new_id, root, latest.attempt + 1, case.capability_id, version,
-                        case.team_group, group_version, m, key, caller, rerun_of=case_id))
+                        case.team_group, group_version, m, key, caller, rerun_of=case_id, facts=facts))
         try:
             await s.commit()
         except IntegrityError as e:

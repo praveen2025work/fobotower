@@ -15,14 +15,21 @@ The snapshot, refreshed on 2026-10-19, covers three agents with their tasks and 
 Reconciliation investigation and Break investigation (the FOBO use case) and Month-end
 accruals. Its 33 tasks were built that day:
 
-- FOBO CATS vs MOTIF reconciliation for six Prime and four Rates books, and the cash ledger:
-  Friday's COB (16 October) signed off, two Prime books still waiting and overdue; COB 19
-  October waiting for review;
+- FOBO CATS vs MOTIF reconciliation for six Prime and four Rates master books, and the cash
+  ledger: Friday's COB (16 October) signed off, two Prime books still waiting and overdue; COB
+  19 October waiting for review;
 - FOBO break investigation: COB 16 October signed off; COB 19 October with three books at
   the tollgate and three waiting for review (two Prime, one Rates), each with its proposals,
   playbook verdicts, judgement calls, run history and downloads; its eval set rerun over the
   signed-off tasks;
 - month-end accruals for September, waiting for review.
+
+Each task is named after its reconciliation and the master book's product, e.g. "CATS vs MOTIF:
+USD swaps (RATES-LDN-01) · COB 2026-10-19", "MB Rec breaks: Govt bonds (PRIME-MB-01) · COB
+2026-10-19", "Bank vs ledger: UK01 · 2026-10-19". The label is the team group's `case.label`;
+the product comes from the reference data (`knowledge/fobo-reference.yaml`, each book's
+`label`), which the subject template reads as `{book_label}`. The demo's books hold only their
+product's instruments from 13 October.
 
 The overview, inbox and notifications count only these agents. The platform pages
 (operations, audit, authoring) are left out; Connectors is in. It is seen as Dana, who can

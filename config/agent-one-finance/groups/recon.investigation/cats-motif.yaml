@@ -24,10 +24,10 @@ owners:
   four_eyes: true
 set:
   case:
-    label: Rec run
+    label: CATS vs MOTIF
     item_label: Break
     key: [book, cob]
-    subject: "{book} · COB {cob}"
+    subject: "{book_label} · COB {cob}"      # e.g. USD swaps (RATES-LDN-01): the book's reference label
     scopes: { book: book }
     # Each business morning, open yesterday's COB for every Prime book; MOTIF's
     # end-of-day feed can also open one as soon as it lands (POST /api/events).

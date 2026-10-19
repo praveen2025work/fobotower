@@ -73,7 +73,7 @@ export const STAGES = [
         kind: "template",
         path: "case.subject",
         label: "Task title",
-        help: "A template over the key, e.g. {book} · COB {cob}.",
+        help: "A template over the key, e.g. {book} · COB {cob}; {book_label} uses the book's label from the reference data.",
       },
       {
         kind: "kv",

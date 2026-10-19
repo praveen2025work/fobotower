@@ -21,10 +21,10 @@ owners:
   four_eyes: true
 
 case:
-  label: Break run
+  label: MB Rec breaks
   item_label: Break
   key: [book, cob]
-  subject: "{book} · COB {cob}"
+  subject: "{book_label} · COB {cob}"        # the book's reference label, e.g. USD swaps (RATES-LDN-01)
   scopes: { book: book }
 
 items:

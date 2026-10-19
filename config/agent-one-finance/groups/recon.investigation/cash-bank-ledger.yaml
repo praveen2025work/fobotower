@@ -8,6 +8,8 @@ owners:
   role: AOF_CASH_RECON_OWNER
   four_eyes: true
 set:
+  case:
+    label: Bank vs ledger
   policy:
     write_off_limit: { value: 100, unit: GBP }
   # Follow-through: each approved break is checked on the next day's run for

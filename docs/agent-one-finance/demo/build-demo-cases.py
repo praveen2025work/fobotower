@@ -1,6 +1,6 @@
 """Build the demo cases the console snapshot is recorded from, dated around a day you choose.
 
-    python build-demo-cases.py --today 2026-10-15 [--api http://localhost:8300] [capability ...]
+    python build-demo-cases.py --today 2026-10-15 [--api http://localhost:8300] [--no-sim] [capability ...]
 
 Run it against a dev stack whose database has the capabilities but no cases (see README.md,
 "To rebuild the snapshot"). Every case is opened, run and decided through the API the way
@@ -129,6 +129,7 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("--today", default=dt.date.today().isoformat(), help="the COB of today's cases (default: today)")
     p.add_argument("--api", default=API)
+    p.add_argument("--no-sim", action="store_true", help="leave out the FOBO skill's curated books (their COB is fixed)")
     p.add_argument("only", nargs="*", help="capabilities to build (default: all)")
     a = p.parse_args()
     today = dt.date.fromisoformat(a.today)
@@ -157,10 +158,11 @@ def main():
                  ("PRIME-MB-04", "tollgate"), ("PRIME-MB-06", "tollgate")]:
         plan.append(("break.investigation", "fobo-prime", {"book": b, "cob": T}, t, "frank"))
     plan.append(("break.investigation", "fobo-rates", {"book": "RATES-LDN-01", "cob": T}, "review", "rita"))
-    plan.append(("break.investigation", "fobo-prime", {"book": "PRIME-SIM-01", "cob": SIM}, "review", "frank"))
-    plan.append(("break.investigation", "fobo-prime", {"book": "PRIME-SIM-02", "cob": SIM}, "tollgate", "frank"))
+    if not a.no_sim:
+        plan.append(("break.investigation", "fobo-prime", {"book": "PRIME-SIM-01", "cob": SIM}, "review", "frank"))
+        plan.append(("break.investigation", "fobo-prime", {"book": "PRIME-SIM-02", "cob": SIM}, "tollgate", "frank"))
     # The FOBO skill as one model session.
-    for b, cob in [("PRIME-SIM-01", SIM), ("PRIME-SIM-02", SIM), ("PRIME-MB-10", T), ("PRIME-MB-11", T)]:
+    for b, cob in [*([] if a.no_sim else [("PRIME-SIM-01", SIM), ("PRIME-SIM-02", SIM)]), ("PRIME-MB-10", T), ("PRIME-MB-11", T)]:
         plan.append(("break.investigation.skill", None, {"book": b, "cob": cob}, "review", "frank"))
     # The guide's examples: price and position per book, and one case per named P&L.
     plan.append(("fobo.price.position", "prime", {"book": "PRIME-MB-01", "cob": Y}, "done", "frank"))

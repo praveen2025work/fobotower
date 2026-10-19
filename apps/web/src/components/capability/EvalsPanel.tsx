@@ -42,7 +42,7 @@ function Result({ r }: { r: EvalRunRow }) {
           agree with people
         </p>
         <p className="text-xs text-surface-500">
-          {s.groups_compared} decisions in {s.cases} past {s.cases === 1 ? "case" : "cases"}
+          {s.groups_compared} decisions in {s.cases} past {s.cases === 1 ? "task" : "tasks"}
           {s.verdict_match_rate != null && ` · same verdict ${pct(s.verdict_match_rate)}`}
           {s.wording_mean != null && ` · wording ${pct(s.wording_mean)} alike`}
           {` · model cost $${s.cost_usd.toFixed(2)}`}

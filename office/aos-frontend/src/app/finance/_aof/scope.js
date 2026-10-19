@@ -1,8 +1,17 @@
 // Generated from apps/web/src/scope.ts by apps/web/office/convert.mjs. Office changes to this file are
 // kept by aof_sync.py on the next update; see office/README.md.
-// What a read-only snapshot shows. A config-only snapshot (SNAPSHOT_SCOPE=config in
-// scripts/capture-snapshot.mjs) shows agents and their configuration, without tasks,
-// inbox or operations; the live console always shows everything.
+// What a read-only snapshot shows (scripts/capture-snapshot.mjs): everything ("all"),
+// chosen agents with their tasks ("agents", SNAPSHOT_AGENTS), or only their
+// configuration ("config", SNAPSHOT_SCOPE=config). The live console always shows everything.
+
+const scope = () => globalThis.__aofSnapshotScope ?? "all";
+
+/** Agents and their configuration only: no tasks, inbox or operations. */
 export function configOnly() {
-  return globalThis.__aofSnapshotScope === "config";
+  return scope() === "config";
+}
+
+/** The platform pages (operations, audit, authoring), left out of a snapshot of chosen agents. */
+export function platformPages() {
+  return scope() === "all";
 }

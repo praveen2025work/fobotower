@@ -11,14 +11,22 @@ follow-through (an adjustment that did not clear stays open).
 that opens in any browser with no setup. It is read-only and uses recorded dev data. Send it
 to your team or open it after the video.
 
-The snapshot, refreshed on 2026-10-19, is a configuration view of three agents: Reconciliation
-investigation, Break investigation and Month-end accruals. It shows the Agents list and, for
-each agent, its team groups, the Configure editor with every stage and the platform's check
-result, How it runs, and Versions (any two compared, each one exportable), plus each team
-group's configuration, data needed, workflow and versions, and the Connectors page. It holds
-no tasks: the work pages (overview, inbox, operations, audit, authoring) and the Tasks, Evals
-and Insights tabs are left out, and links to them open the Agents list. It is seen as Dana,
-who can see every team, and nothing in it can be saved or approved.
+The snapshot, refreshed on 2026-10-19, covers three agents with their tasks and configuration:
+Reconciliation investigation and Break investigation (the FOBO use case) and Month-end
+accruals. Its 33 tasks were built that day:
+
+- FOBO CATS vs MOTIF reconciliation for six Prime and four Rates books, and the cash ledger:
+  Friday's COB (16 October) signed off, two Prime books still waiting and overdue; COB 19
+  October waiting for review;
+- FOBO break investigation: COB 16 October signed off; COB 19 October with three books at
+  the tollgate and three waiting for review (two Prime, one Rates), each with its proposals,
+  playbook verdicts, judgement calls, run history and downloads; its eval set rerun over the
+  signed-off tasks;
+- month-end accruals for September, waiting for review.
+
+The overview, inbox and notifications count only these agents. The platform pages
+(operations, audit, authoring) are left out; Connectors is in. It is seen as Dana, who can
+see every team, and nothing in it can be saved or approved.
 
 The console calls capabilities **agents** and cases **tasks**. Configuration keys keep their
 names (`case.key`, `$case.cob`), so the YAML is unchanged.
@@ -32,7 +40,7 @@ The console's motion is in the snapshot too:
 - switching theme opens the new theme as a circle from the switch;
 - all motion stops when the viewer's system asks for reduced motion.
 
-To rebuild the snapshot (steps 1 to 3 build demo tasks, needed only for a snapshot with tasks):
+To rebuild the snapshot:
 
 1. Copy the dev database and clear its cases, keeping capabilities, groups and their
    versions (the copy leaves your own dev data alone):
@@ -55,18 +63,20 @@ To rebuild the snapshot (steps 1 to 3 build demo tasks, needed only for a snapsh
 
 2. Run the API on the copy (`AOF_DATABASE_URL=postgresql+asyncpg://fobo:fobo@localhost:5433/fobo_demo`)
    and `npm run dev`.
-3. Build the cases: `python build-demo-cases.py --today 2026-10-15` (this folder). It opens,
-   runs and decides each case through the API as the right person, then reruns the evals.
-4. Record in `apps/web`. This snapshot (the three agents' configuration only):
+3. Build the tasks: `python build-demo-cases.py --today 2026-10-19 --no-sim
+   recon.investigation break.investigation fin.accruals` (this folder; name no agents for all
+   of them). It opens, runs and decides each task through the API as the right person, then
+   reruns the evals. `--no-sim` leaves out the FOBO skill's curated books, whose COB is fixed
+   at 9 October.
+4. Record in `apps/web`. This snapshot (three agents with their tasks):
 
    ```bash
-   SNAPSHOT_USER=dana SNAPSHOT_SCOPE=config \
-   SNAPSHOT_AGENTS=recon.investigation,break.investigation,fin.accruals \
+   SNAPSHOT_USER=dana SNAPSHOT_AGENTS=recon.investigation,break.investigation,fin.accruals \
    node scripts/capture-snapshot.mjs
    ```
 
-   Leave out `SNAPSHOT_SCOPE` for a snapshot with the tasks too (steps 1 to 3 build them), and
-   `SNAPSHOT_AGENTS` for every agent.
+   Add `SNAPSHOT_SCOPE=config` for the agents' configuration only (no tasks; steps 1 to 3 are
+   then not needed), and leave out `SNAPSHOT_AGENTS` for every agent and the platform pages.
 5. Run `npm run build:snapshot` in `apps/web`, and copy `dist-snapshot/agent-one-finance-snapshot.html` here.
 
 The narrated version below (2026-10-04) is kept for sending to people who will watch it alone.

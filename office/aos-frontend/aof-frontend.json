@@ -180,7 +180,7 @@
       "from": "apps/web/src/components/ErrorBoundary.tsx"
     },
     "src/app/finance/_aof/components/Layout.jsx": {
-      "sha": "d902ee1b99bc9b01",
+      "sha": "d8c5231005a17564",
       "from": "apps/web/src/components/Layout.tsx"
     },
     "src/app/finance/_aof/components/NotificationBell.jsx": {
@@ -212,7 +212,7 @@
       "from": "apps/web/src/components/capability/DataContractPanel.tsx"
     },
     "src/app/finance/_aof/components/capability/EvalsPanel.jsx": {
-      "sha": "1af0da3585bfa8d5",
+      "sha": "9213232d790d612e",
       "from": "apps/web/src/components/capability/EvalsPanel.tsx"
     },
     "src/app/finance/_aof/components/capability/FlowDiagram.jsx": {
@@ -408,7 +408,7 @@
       "from": "apps/web/src/queryClient.ts"
     },
     "src/app/finance/_aof/scope.js": {
-      "sha": "6bd9e706baaf76e1",
+      "sha": "f4958149181393fc",
       "from": "apps/web/src/scope.ts"
     },
     "src/app/finance/_aof/theme.js": {

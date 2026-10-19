@@ -13,6 +13,8 @@ const WEB = process.env.AOF_WEB ?? "http://localhost:5180";
 const USER = process.env.SNAPSHOT_USER ?? "frank";
 const AGENTS = (process.env.SNAPSHOT_AGENTS ?? "").split(",").filter(Boolean);
 const CONFIG = process.env.SNAPSHOT_SCOPE === "config";
+// Chosen agents with their tasks: the platform pages (operations, audit, authoring) are left out.
+const SCOPE = CONFIG ? "config" : AGENTS.length ? "agents" : "all";
 const OUT = new URL("../src/snapshot/data.b64", import.meta.url);
 
 const b = await chromium.launch({ executablePath: process.env.CHROMIUM });
@@ -89,11 +91,11 @@ const extra = (process.env.SNAPSHOT_CASES ?? "").split(",").filter(Boolean);
 const listed = [];
 if (!CONFIG) {
   for (const c of caps) listed.push(...(await api(`/api/capabilities/${enc(c.id)}/cases`)).map((x) => x.case_id));
-  if (!AGENTS.length) listed.push(...(await api("/api/inbox")).map((i) => i.case_id));
+  listed.push(...(await api("/api/inbox")).filter((i) => !AGENTS.length || AGENTS.includes(i.capability_id)).map((i) => i.case_id));
 }
 const caseIds = CONFIG ? [] : [...new Set([...extra, ...listed])];
 for (const id of caseIds) await visit(`/cases/${id}`);
-for (const path of CONFIG ? ["/connectors"] : ["/operations", "/authoring", "/audit", "/connectors"]) await visit(path);
+for (const path of SCOPE === "all" ? ["/operations", "/authoring", "/audit", "/connectors"] : ["/connectors"]) await visit(path);
 await b.close();
 
 // What the console asks for only when someone picks or opens something (a run
@@ -135,7 +137,7 @@ for (const c of caps) {
       await get(`/api/capabilities/${id}/${part}${q}`);
     }
   }
-  if (!CONFIG) await get(`/api/audit?capability_id=${id}`);
+  if (SCOPE === "all") await get(`/api/audit?capability_id=${id}`);
 }
 // The chosen agents only; a config-only snapshot keeps their configuration and the
 // connectors, and nothing about tasks (the inbox and notifications are empty).
@@ -146,6 +148,21 @@ if (AGENTS.length || CONFIG) {
     const m = key.match(/^(?:POST )?\/api\/capabilities\/([^/?\s]+)/);
     if (m && !keep.has(decodeURIComponent(m[1]))) delete data[key];
   }
+}
+if (SCOPE === "agents") {
+  // Lists shared by every agent keep only the chosen agents' tasks.
+  const ours = (caseId) => caps.some((c) => new RegExp(`^${c.id.replace(/[.]/g, "\\.")}\\.[0-9a-f]{12}`).test(caseId ?? ""));
+  if (data["/api/inbox"]) data["/api/inbox"].body = data["/api/inbox"].body.filter((i) => ours(i.case_id));
+  if (data["/api/requests"]) data["/api/requests"].body = data["/api/requests"].body.filter((r) => ours(r.case_id));
+  if (data["/api/notifications"]) {
+    const items = data["/api/notifications"].body.items.filter((n) => !n.case_id || ours(n.case_id));
+    data["/api/notifications"].body = { ...data["/api/notifications"].body, items, unread: items.filter((n) => !n.read).length };
+  }
+  if (data["/api/overview"]) {
+    const keep = new Set(caps.map((c) => c.id));
+    data["/api/overview"].body.capabilities = data["/api/overview"].body.capabilities.filter((c) => keep.has(c.id));
+  }
+  for (const key of Object.keys(data)) if (/^\/api\/(operations|audit|authoring|schedules|switches)\b/.test(key)) delete data[key];
 }
 if (CONFIG) {
   const config = [/^\/api\/(me|me\/delegations|dev\/users|platform|capabilities)$/, /^(POST )?\/api\/capabilities\/[^/?\s]+(\/(groups(\/[^/?]+)?|flow|contract|versions\/.+|groups\/[^/]+\/versions\/.+|check))?(\?team_group=[^&]+)?( \S+)?$/,
@@ -166,7 +183,7 @@ for (let more = !CONFIG; more;) {
 }
 
 // Stored compressed (most of it is run state that repeats); the snapshot unpacks it.
-const json = JSON.stringify({ user: USER, captured_at: new Date().toISOString(), scope: CONFIG ? "config" : "all", responses: data });
+const json = JSON.stringify({ user: USER, captured_at: new Date().toISOString(), scope: SCOPE, responses: data });
 fs.writeFileSync(OUT, zlib.gzipSync(json, { level: 9 }).toString("base64"));
 const cases = Object.keys(data).filter((k) => /^\/api\/cases\/[^/]+$/.test(k)).length;
 console.log(`captured ${Object.keys(data).length} responses, ${cases} cases (${(json.length / 1e6).toFixed(1)} MB) → src/snapshot/data.b64 (${(fs.statSync(OUT).size / 1e6).toFixed(1)} MB)`);

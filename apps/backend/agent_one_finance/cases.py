@@ -913,7 +913,7 @@ def _waiting_on(case: Case, m: Manifest, caller: Caller, decisions: list[Decisio
         if not may_decide:
             why_not = f"reviewing needs one of: {', '.join(m.review.roles)}"
         elif not m.review.opener_may_decide and case.opened_by in (caller.user_id, on_behalf_of):
-            why_not = "you opened this case, and its capability needs someone else to sign it off"
+            why_not = "you opened this task, and its agent needs someone else to sign it off"
         return {"step": "review", "roles": list(m.review.roles), "you": why_not is None, "why_not": why_not}
     if case.status.startswith("waiting_") and case.status[8:] in m.steps:
         step = case.status[8:]
@@ -924,14 +924,14 @@ def _waiting_on(case: Case, m: Manifest, caller: Caller, decisions: list[Decisio
         return {"step": "event", "event": event, "wait": step, "label": (m.step_settings[step].label if step in m.step_settings else None) or step,
                 "since": case.waiting_since, "timeout_hours": getattr(cfg, "timeout_hours", None),
                 "on_timeout": getattr(cfg, "on_timeout", None), "roles": roles, "you": by_hand,
-                "why_not": None if by_hand else ("it continues when every child case has finished" if event == "children"
+                "why_not": None if by_hand else ("it continues when every child task has finished" if event == "children"
                                                  else f"delivering it by hand needs one of: {', '.join(roles)}")}
     if case.status == "awaiting_publish" and m.release_step():
         why_not = None
         if not caller.has_any_role(m.release_roles()):
             why_not = f"releasing needs one of: {', '.join(m.release_roles())}"
         elif caller.user_id in deciders:
-            why_not = "you reviewed this case; a second person who did not review it releases it"
+            why_not = "you reviewed this task; a second person who did not review it releases it"
         return {"step": "release", "roles": list(m.release_roles()), "you": why_not is None,
                 "why_not": why_not, "reviewed_by": sorted(deciders)}
     return None

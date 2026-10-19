@@ -86,7 +86,7 @@ describe("developer tools", () => {
     });
     renderAt("/", "/", <EvalsPanel capabilityId="fin" versions={[1, 2]} groups={[]} />);
     expect(await screen.findByText("75%")).toBeInTheDocument();                       // agree with people
-    expect(screen.getByText(/12 decisions in 4 past cases/)).toBeInTheDocument();
+    expect(screen.getByText(/12 decisions in 4 past tasks/)).toBeInTheDocument();
     await userEvent.selectOptions(screen.getByLabelText("Eval version"), "2");
     await userEvent.click(screen.getByRole("button", { name: "Run eval" }));
     await waitFor(() => expect(calls.find((c) => c.method === "POST")?.body).toEqual({ version: 2, team_group: null }));

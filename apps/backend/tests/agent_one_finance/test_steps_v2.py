@@ -313,7 +313,7 @@ async def test_the_case_shows_what_it_waits_for_its_children_clocks_and_approval
     case = await _open(api, CONTROLS, {"entity": "UK01", "date": "2026-10-11"}, "tess")
     w = case["waiting_on"]
     assert (w["step"], w["event"], w["wait"], w["label"], w["you"]) == ("event", "children", "tests", "All sample tests finished", False)
-    assert w["timeout_hours"] == 72 and "child case" in w["why_not"]
+    assert w["timeout_hours"] == 72 and "child task" in w["why_not"]
     assert len(case["children"]) == 3 and all(k["capability_id"] == "controls.sample-test" for k in case["children"])
     child = (await api.get(f"/api/cases/{case['children'][0]['case_id']}", headers=api.as_user("tess"))).json()
     assert child["parent_case_id"] == case["case_id"]

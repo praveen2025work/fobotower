@@ -16,7 +16,7 @@ npm run build:snapshot                # → dist-snapshot/agent-one-finance-snap
 
 **`agent-one-finance-snapshot.html` is one file with everything inside it.** Double-click it, or send it
 to your team by email or Teams, and it opens in any browser: no server, no install, no login.
-It also works on a phone. The current copy (the configuration of three agents, recorded 2026-10-19) is in
+It also works on a phone. The current copy (three agents with their tasks, recorded 2026-10-19) is in
 [`../demo/agent-one-finance-snapshot.html`](../demo/agent-one-finance-snapshot.html).
 
 The capture records everything the console offers to open: every case it lists or names
@@ -40,7 +40,7 @@ Options for the capture script (environment variables):
 | `AOF_WEB` | `http://localhost:5180` | the running web app |
 | `SNAPSHOT_USER` | `frank` | who the screens are recorded as |
 | `SNAPSHOT_CASES` | — | extra case ids to include, comma-separated (every listed case is already in) |
-| `SNAPSHOT_AGENTS` | all | the agents to include, comma-separated ids, e.g. `recon.investigation,fin.accruals` |
+| `SNAPSHOT_AGENTS` | all | the agents to include, comma-separated ids, e.g. `recon.investigation,fin.accruals`; their tasks only, without the platform pages |
 | `SNAPSHOT_SCOPE` | `all` | `config`: the agents' configuration only, no tasks, inbox or operations |
 | `PLAYWRIGHT` | `playwright` | module path, if Playwright is installed globally |
 | `CHROMIUM` | — | a Chromium executable, if Playwright's own is not installed |

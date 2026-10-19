@@ -14,8 +14,8 @@ interface Recorded {
 export interface Snapshot {
   user: string;
   captured_at: string;
-  /** "config": agents and their configuration only (see src/scope.ts). */
-  scope?: "all" | "config";
+  /** "agents": chosen agents and their tasks; "config": their configuration only (see src/scope.ts). */
+  scope?: "all" | "agents" | "config";
   responses: Record<string, Recorded>;
 }
 

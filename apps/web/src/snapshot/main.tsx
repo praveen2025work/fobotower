@@ -47,14 +47,16 @@ if (typeof DecompressionStream === "undefined") {
 } else {
   unpack(packed).then((snap) => {
     installSnapshot(snap);
-    // A config-only snapshot opens on the agents and stays on configuration pages.
-    if (snap.scope === "config") {
-      const onConfig = () => {
-        if (!/^#\/(capabilities|connectors)(\/|$)/.test(location.hash)) location.replace("#/capabilities");
-      };
-      onConfig();
-      window.addEventListener("hashchange", onConfig);
-    }
+    // A config-only snapshot opens on the agents and stays on configuration pages; a
+    // snapshot of chosen agents has no platform pages.
+    const allowed = (hash: string) =>
+      snap.scope === "config" ? /^#\/(capabilities|connectors)(\/|$)/.test(hash)
+        : snap.scope !== "agents" || !/^#\/(operations|audit|authoring)(\/|$)/.test(hash);
+    const onPage = () => {
+      if (!allowed(location.hash)) location.replace(snap.scope === "config" ? "#/capabilities" : "#/");
+    };
+    onPage();
+    window.addEventListener("hashchange", onPage);
     ReactDOM.createRoot(root).render(
       <React.StrictMode>
         <QueryClientProvider client={queryClient}>

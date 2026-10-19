@@ -178,7 +178,7 @@ async def overview(caller: Caller) -> dict:
         "hours_saved_30d": {
             "value": round(saved["minutes"] / 60, 1),
             "basis": (f"{saved['items']} items grouped into {saved['groups']} decisions "
-                      f"({saved['items'] - saved['groups']} avoided) at each capability's declared "
+                      f"({saved['items'] - saved['groups']} avoided) at each agent's declared "
                       f"manual minutes per item; {saved['settled']} groups settled by rule or playbook"),
         },
         "measured_review": _measured(measured),
@@ -371,7 +371,7 @@ async def operations(caller: Caller) -> dict:
             incident(("error", t.tool), f"Connector errors from {t.tool}", t.connector_id, t.called_at, "error")
     for c, m in cases_now:
         if c.status == "failed":
-            incident(("failed", c.capability_id), "Failed case runs", m.name, c.opened_at, "error")
+            incident(("failed", c.capability_id), "Failed task runs", m.name, c.opened_at, "error")
     incident_rows = [{**{k: v for k, v in i.items() if k != "first"},
                       "sinceMinutes": int((now - i["first"]).total_seconds() // 60)}
                      for i in incidents.values()]

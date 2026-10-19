@@ -51,7 +51,7 @@ def known(m: Manifest, finding: dict | None, items: list[dict], evidence: list[d
         if q.prefill == "tests":
             k = _tests(items)
         elif q.prefill == "evidence":
-            parts = [f"{len(evidence)} file(s) on the case"] if evidence else []
+            parts = [f"{len(evidence)} file(s) on the task"] if evidence else []
             parts += [f"{a['target_name']}: {a['answer']}" for a in answers]
             k = "; ".join(parts)
         elif q.prefill == "verdict":

@@ -33,7 +33,7 @@ import { useDevUsers, useInbox, useMe, usePlatform } from "../api/aof";
 import { useTheme } from "../theme";
 import ErrorBoundary from "./ErrorBoundary";
 import NotificationBell from "./NotificationBell";
-import { configOnly } from "../scope";
+import { configOnly, platformPages } from "../scope";
 
 interface NavItem {
   readonly to: string;
@@ -130,10 +130,11 @@ function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
       ],
     },
   ];
-  // A config-only snapshot has agents and connectors, nothing about work in progress.
-  const sections = configOnly()
-    ? allSections.map((s) => ({ ...s, items: s.items.filter((i) => i.to === "/capabilities" || i.to === "/connectors") }))
-    : allSections;
+  // A config-only snapshot has agents and connectors, nothing about work in progress; a
+  // snapshot of chosen agents leaves out the platform pages.
+  const shown = (to: string) =>
+    configOnly() ? to === "/capabilities" || to === "/connectors" : platformPages() || !["/operations", "/audit", "/authoring"].includes(to);
+  const sections = allSections.map((s) => ({ ...s, items: s.items.filter((i) => shown(i.to)) }));
   // Collapsing is for the desktop sidebar; the phone menu always shows labels.
   const compact = collapsed && !mobileOpen;
   const fixtures = devUsers.data ?? [];

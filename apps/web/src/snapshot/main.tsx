@@ -1,5 +1,6 @@
 // Entry for the read-only snapshot build (npm run build:snapshot): the real
-// app, hash-routed, over recorded data, with a banner saying what it is.
+// app, hash-routed, over recorded data, with a banner saying what it is and, for
+// a snapshot of chosen agents, the walkthrough of its example tasks.
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { HashRouter } from "react-router-dom";
@@ -7,6 +8,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "../App";
 import "../index.css";
 import { installSnapshot, type Snapshot } from "./install";
+import Walkthrough from "./Walkthrough";
 
 // Written by scripts/capture-snapshot.mjs: the recorded responses, gzipped and
 // base64-encoded (most of it is run state that repeats).
@@ -19,13 +21,6 @@ async function unpack(b64: string | undefined): Promise<Snapshot> {
   return JSON.parse(text) as Snapshot;
 }
 
-// A showcase: the sidebar opens with its labels (a viewer's own choice still wins).
-try {
-  if (localStorage.getItem("aof.nav.collapsed") === null) localStorage.setItem("aof.nav.collapsed", "0");
-} catch {
-  /* storage unavailable: the sidebar keeps its default */
-}
-
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false, refetchInterval: false, staleTime: Infinity } },
 });
@@ -34,7 +29,7 @@ function Banner({ capturedAt }: { capturedAt: string }) {
   const when = new Date(capturedAt).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   return (
     // On phones it sits above the bottom navigation, not over its labels.
-    <div className="hx-topbar hx-pop pointer-events-none fixed bottom-[calc(env(safe-area-inset-bottom)+4rem)] right-3 z-50 flex items-center lg:bottom-3 gap-2 rounded-full border border-surface-200 px-3 py-1.5 text-[11px] font-medium text-surface-700 shadow-lg">
+    <div className="wt-banner hx-topbar hx-pop pointer-events-none fixed bottom-[calc(env(safe-area-inset-bottom)+4rem)] right-3 z-50 flex items-center lg:bottom-3 gap-2 rounded-full border border-surface-200 px-3 py-1.5 text-[11px] font-medium text-surface-700 shadow-lg">
       <span className="hx-live text-accent-500" aria-hidden="true" />
       Agent One Finance · read-only snapshot · {when}
     </div>
@@ -47,6 +42,13 @@ if (typeof DecompressionStream === "undefined") {
 } else {
   unpack(packed).then((snap) => {
     installSnapshot(snap);
+    // A showcase: the sidebar opens with its labels, unless the walkthrough needs the
+    // room (a viewer's own choice still wins).
+    try {
+      if (snap.scope !== "agents" && localStorage.getItem("aof.nav.collapsed") === null) localStorage.setItem("aof.nav.collapsed", "0");
+    } catch {
+      /* storage unavailable: the sidebar keeps its default */
+    }
     // A config-only snapshot opens on the agents and stays on configuration pages; a
     // snapshot of chosen agents has no platform pages.
     const allowed = (hash: string) =>
@@ -63,6 +65,7 @@ if (typeof DecompressionStream === "undefined") {
           <HashRouter>
             <App />
             <Banner capturedAt={snap.captured_at} />
+            {snap.scope === "agents" && <Walkthrough recorded={(route) => `/api${route}` in snap.responses} />}
           </HashRouter>
         </QueryClientProvider>
       </React.StrictMode>,

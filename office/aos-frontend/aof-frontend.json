@@ -392,7 +392,7 @@
       "from": "apps/web/src/pages/GroupDetail.tsx"
     },
     "src/app/finance/_aof/pages/Inbox.jsx": {
-      "sha": "0fc3167b25010b40",
+      "sha": "b3d6116f0733cd9d",
       "from": "apps/web/src/pages/Inbox.tsx"
     },
     "src/app/finance/_aof/pages/Operations.jsx": {

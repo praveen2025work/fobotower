@@ -40,7 +40,7 @@ Options for the capture script (environment variables):
 | `AOF_WEB` | `http://localhost:5180` | the running web app |
 | `SNAPSHOT_USER` | `frank` | who the screens are recorded as |
 | `SNAPSHOT_CASES` | — | extra case ids to include, comma-separated (every listed case is already in) |
-| `SNAPSHOT_AGENTS` | all | the agents to include, comma-separated ids, e.g. `recon.investigation,fin.accruals`; their tasks only, without the platform pages |
+| `SNAPSHOT_AGENTS` | all | the agents to include, comma-separated ids, e.g. `recon.investigation,fin.accruals`; their tasks only, without the platform pages, with the walkthrough of the demo's example tasks (`src/snapshot/walkthrough.ts`) beside them |
 | `SNAPSHOT_SCOPE` | `all` | `config`: the agents' configuration only, no tasks, inbox or operations |
 | `PLAYWRIGHT` | `playwright` | module path, if Playwright is installed globally |
 | `CHROMIUM` | — | a Chromium executable, if Playwright's own is not installed |

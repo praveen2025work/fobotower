@@ -120,7 +120,7 @@ export function InboxTable({ rows }) {
                 <td className="px-2 py-2">
                   <StatusBadge status={r.action} />
                 </td>
-                <td className="px-2 py-2">
+                <td className="min-w-[14rem] px-2 py-2">
                   <Link
                     to={`/cases/${encodeURIComponent(r.case_id)}`}
                     className="font-medium text-primary-700 hover:underline"

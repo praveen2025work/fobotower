@@ -1,6 +1,7 @@
 """Build the demo cases the console snapshot is recorded from, dated around a day you choose.
 
     python build-demo-cases.py --today 2026-10-15 [--api http://localhost:8300] [--no-sim] [capability ...]
+    python build-demo-cases.py --today 2026-10-20 --examples
 
 Run it against a dev stack whose database has the capabilities but no cases (see README.md,
 "To rebuild the snapshot"). Every case is opened, run and decided through the API the way
@@ -8,6 +9,10 @@ people would in the console: the previous business day's COB signed off this mor
 COB in progress (some at the tollgate, some waiting for review), month-end items for the
 previous month. The FOBO skill's curated books exist only on their own COB, so those cases
 keep it. Name capabilities to build only those.
+
+--examples builds only the two tasks the snapshot's walkthrough explains (src/snapshot/walkthrough.ts
+in apps/web), each with the previous COB's task for the same book signed off: MB Rec breaks for
+RATES-LDN-04 and CATS vs MOTIF for RATES-LDN-01, reviewed by Rita.
 """
 import argparse
 import datetime as dt
@@ -130,12 +135,22 @@ def main():
     p.add_argument("--today", default=dt.date.today().isoformat(), help="the COB of today's cases (default: today)")
     p.add_argument("--api", default=API)
     p.add_argument("--no-sim", action="store_true", help="leave out the FOBO skill's curated books (their COB is fixed)")
+    p.add_argument("--examples", action="store_true", help="only the walkthrough's two tasks and the day before's")
     p.add_argument("only", nargs="*", help="capabilities to build (default: all)")
     a = p.parse_args()
     today = dt.date.fromisoformat(a.today)
     API, T, Y = a.api.rstrip("/"), today.isoformat(), business_day_before(today).isoformat()
     MONTH, PREV_MONTH = month_before(today), month_before(today.replace(day=1) - dt.timedelta(days=1))
     only = a.only
+    if a.examples:
+        for cap, group, key, target in [
+            ("break.investigation", "fobo-rates", {"book": "RATES-LDN-04", "cob": Y}, "done"),
+            ("recon.investigation", "cats-motif-rates", {"book": "RATES-LDN-01", "cob": Y}, "done"),
+            ("break.investigation", "fobo-rates", {"book": "RATES-LDN-04", "cob": T}, "review"),
+            ("recon.investigation", "cats-motif-rates", {"book": "RATES-LDN-01", "cob": T}, "review"),
+        ]:
+            drive(cap, group, key, target, decider="rita")
+        return
     plan = []
     prime = [f"PRIME-MB-{n:02d}" for n in range(1, 7)]
     rates = ["RATES-LDN-01", "RATES-LDN-02", "RATES-LDN-03", "RATES-LDN-04"]

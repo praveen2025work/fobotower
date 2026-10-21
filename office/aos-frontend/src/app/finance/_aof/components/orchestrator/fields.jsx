@@ -41,7 +41,7 @@ function ListInput({ value, onChange, disabled, placeholder, id }) {
   );
 }
 
-/** Tool arguments as one line, "book=$case.book, cob=$case.cob", kept as typed until the box is left. */
+/** Tool arguments as one line, "book=$task.book, cob=$task.cob", kept as typed until the box is left. */
 function ArgsInput({ value, onChange, disabled }) {
   const show = (v) =>
     Object.entries(v ?? {})
@@ -54,7 +54,7 @@ function ArgsInput({ value, onChange, disabled }) {
       aria-label="Arguments"
       value={text}
       disabled={disabled}
-      placeholder="book=$case.book, cob=$case.cob"
+      placeholder="book=$task.book, cob=$task.cob"
       onChange={(e) => setText(e.target.value)}
       onBlur={() =>
         onChange(

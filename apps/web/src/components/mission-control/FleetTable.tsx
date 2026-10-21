@@ -4,7 +4,7 @@ import Sparkline from "./Sparkline";
 import type { FleetAgent } from "../../api/missionControlApi";
 
 interface FleetTableProps {
-  /** What to say when there is nothing to list (e.g. why support sees no cases). */
+  /** What to say when there is nothing to list (e.g. why support sees no tasks). */
   emptyMessage?: string;
   agents: FleetAgent[] | undefined;
   isLoading: boolean;
@@ -65,7 +65,7 @@ function SkeletonRow() {
 
 /**
  * From aria-ai's Mission Control, adapted for Agent One Finance: a "fleet" row is a
- * capability × team group, and a click opens that group (agent.href).
+ * agent × team group, and a click opens that group (agent.href).
  *
  * Left column of the Mission Control grid — 6/12 cols, single source of
  * truth for "what are my agents doing right now". Click row → agent detail.
@@ -118,7 +118,7 @@ function FleetTable({ agents, isLoading, isError, onRetry, emptyMessage }: Fleet
                 : (agents ?? []).map((agent) => (
                     <tr
                       key={`${agent.team}/${agent.name}`}
-                      onClick={() => navigate(agent.href ?? "/capabilities")}
+                      onClick={() => navigate(agent.href ?? "/agents")}
                       className="cursor-pointer border-t border-surface-100 transition-colors hover:bg-surface-50"
                       data-testid="fleet-row"
                     >

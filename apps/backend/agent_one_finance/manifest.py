@@ -1,4 +1,4 @@
-"""The capability manifest: everything a use case is, as configuration.
+"""The agent manifest: everything a use case is, as configuration.
 
 `Manifest.model_validate` checks shape; `problems(manifest)` checks meaning —
 every step exists, the gates are present and in order, every step's inputs
@@ -29,39 +29,39 @@ class Owners(Strict):
 
 
 class DueSpec(Strict):
-    from_: str = Field(default="opened", alias="from")   # "opened" or a case-key date field (e.g. cob)
+    from_: str = Field(default="opened", alias="from")   # "opened" or a task-key date field (e.g. cob)
     business_days: int = Field(default=0, ge=0, le=60)
     hours: float = Field(default=0, ge=0, le=24 * 30)
     at: str | None = Field(default=None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$")  # time of day, HH:MM (schedule time zone)
     warn_hours: float = Field(default=2, ge=0, le=72)    # "due soon" this long before
 
 
-class CaseSpec(Strict):
-    label: str = "Case"               # what the UI calls one unit of work
+class TaskSpec(Strict):
+    label: str = "Task"               # what the UI calls one unit of work
     item_label: str = "Item"
-    key: list[str]                    # fields that identify a case, e.g. [entity, period]
+    key: list[str]                    # fields that identify a task, e.g. [entity, period]
     subject: str | None = None        # display template, e.g. "{entity} · {period}"; "{book_label}" is a
-                                      # fact the reference data holds about the key value (cases.subject_facts)
-    # case-key field -> entitlement data scope it is checked against
+                                      # fact the reference data holds about the key value (tasks.subject_facts)
+    # task-key field -> entitlement data scope it is checked against
     scopes: dict[str, str] = Field(default_factory=dict)
     opens_on: Literal["manual", "api", "schedule", "event"] = "manual"
     schedule: str | None = None       # cron (min hour day month weekday), when opens_on = schedule
     # The keys a scheduled run opens, as templates over the run's date:
     # {today} {yesterday} {prev_business_day} {this_month} {prev_month}
     schedule_keys: list[dict[str, str]] = Field(default_factory=list)
-    events: bool = False              # may other systems open cases (POST /api/events)?
-    # The service user scheduled and event-opened cases run as — an account in
+    events: bool = False              # may other systems open tasks (POST /api/events)?
+    # The service user scheduled and event-opened tasks run as — an account in
     # the entitlements system with the roles and data scopes they need.
     opens_as: str | None = None
-    # When a case is due: from the moment it opened (or a date in its key),
+    # When a task is due: from the moment it opened (or a date in its key),
     # plus business days and hours, optionally at a time of day. Inboxes count
     # down to it; owners and reviewers are told when it is near and when missed.
     due: DueSpec | None = None
-    # When an event arrives for a key that already has a case (e.g. MB Rec
+    # When an event arrives for a key that already has a task (e.g. MB Rec
     # notifies late exceptions for a book and COB already being worked):
-    #   ignore     the existing case is the answer; nothing new is read
-    #   follow_up  a follow-up case linked to it reads the source again and
-    #              takes only the items no case for that key has yet
+    #   ignore     the existing task is the answer; nothing new is read
+    #   follow_up  a follow-up task linked to it reads the source again and
+    #              takes only the items no task for that key has yet
     late_items: Literal["ignore", "follow_up"] = "ignore"
     # What the agent's Summary groups a day's tasks by, outermost first: key fields,
     # or facts the reference data holds about a key value, as in subject — e.g.
@@ -71,7 +71,7 @@ class CaseSpec(Strict):
 
 class ToolCallSpec(Strict):
     tool: str                          # "connector.tool"
-    # literal values, or "$case.<field>" taken from the case key
+    # literal values, or "$task.<field>" taken from the task key
     args: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -121,7 +121,7 @@ class Rule(Strict):
 
 
 class EnrichSpec(ToolCallSpec):
-    """One read the `enrich` step makes per case; its rows are joined onto the
+    """One read the `enrich` step makes per task; its rows are joined onto the
     items by `keys` (e.g. a break snapshot per instrument)."""
     keys: list[str]
     prefix: str = ""                   # put before every joined field name
@@ -216,13 +216,13 @@ class PlaybookSpec(Strict):
 
 
 class KnowledgeSpec(Strict):
-    """What the capability learns from and looks up in the knowledge graph."""
+    """What the agent learns from and looks up in the knowledge graph."""
     # Fields whose values link a decision to the things it concerns
     # (account, book, counterparty…), so priors come from related groups too.
     entities: list[str] = Field(default_factory=list)
     # The reference namespace (config/agent-one-finance/knowledge/<file>.yaml) `resolve` reads.
     reference: str | None = None
-    # The case-key field holding the business date reference data is read as of.
+    # The task-key field holding the business date reference data is read as of.
     as_of: str | None = None
     # Only decisions this recent are used as priors (FOBO: 180 days). None = all.
     priors_lookback_days: int | None = Field(default=None, ge=1)
@@ -243,21 +243,21 @@ class ResolveSpec(Strict):
 
 
 class LimitsSpec(Strict):
-    """Model spend the capability may not exceed. Over a limit, groups that
+    """Model spend the agent may not exceed. Over a limit, groups that
     would go to the model are escalated to a person instead."""
-    max_cost_usd_per_case: float | None = Field(default=None, gt=0)
+    max_cost_usd_per_task: float | None = Field(default=None, gt=0)
     max_cost_usd_per_day: float | None = Field(default=None, gt=0)
 
 
 class RetentionSpec(Strict):
-    """How long the capability's finished cases are kept (legal hold aside)."""
+    """How long the agent's finished tasks are kept (legal hold aside)."""
     days: int = Field(ge=1)
 
 
 class SpecialistSpec(Strict):
     """A subagent the model may hand part of a group to (e.g. an FX specialist).
-    Its tools are a subset of the capability's reasoning tools, served by the
-    same gateway — a specialist can do no more than the capability can."""
+    Its tools are a subset of the agent's reasoning tools, served by the
+    same gateway — a specialist can do no more than the agent can."""
     name: str = Field(pattern=r"^[a-z][a-z0-9-]{1,40}$")
     description: str                   # when to use it — the main agent reads this
     instructions: str
@@ -266,7 +266,7 @@ class SpecialistSpec(Strict):
 
 class SectionSpec(Strict):
     """One part of the model's answer, returned as its own field (e.g. root
-    cause, remediation, end state) so the case shows it, a reviewer can check
+    cause, remediation, end state) so the task shows it, a reviewer can check
     it and it can be reported on."""
     id: str = Field(pattern=r"^[a-z][a-z0-9_]{0,40}$")
     label: str
@@ -301,19 +301,19 @@ class PublishSpec(Strict):
     """Write approved results back to a bank system, after a second approval."""
     tool: str                          # a connector tool with access: write
     # group: one call per approved group (e.g. commentary per account);
-    # case: one call for the whole case (e.g. one PDF report)
-    per: Literal["group", "case"] = "group"
-    # Argument values: literals, "$case.<field>", "$case_id", "$subject".
+    # task: one call for the whole task (e.g. one PDF report)
+    per: Literal["group", "task"] = "group"
+    # Argument values: literals, "$task.<field>", "$task_id", "$subject".
     # per group: "$group.<field>" (group key), "$comment" (the approved
     #   explanation: the reviewer's comment, else the finding's).
-    # per case: "$approved" (one section per approved group: heading, body,
+    # per task: "$approved" (one section per approved group: heading, body,
     #   columns, rows), "$sign_off" (who decided, who released, when).
     args: dict[str, Any] = Field(default_factory=dict)
     approver_roles: list[str]          # who may release the write-back
 
     def arg_problems(self) -> list[str]:
-        only = {"group": ("$group.", "$comment"), "case": ("$approved", "$sign_off")}
-        wrong = only["case" if self.per == "group" else "group"]
+        only = {"group": ("$group.", "$comment"), "task": ("$approved", "$sign_off")}
+        wrong = only["task" if self.per == "group" else "group"]
         return [f"publish.args.{k}: `{v}` cannot be used with per: {self.per}"
                 for k, v in self.args.items() if isinstance(v, str) and v.startswith(wrong)]
 
@@ -328,9 +328,9 @@ class RequestTarget(Strict):
 
 class RequestsSpec(Strict):
     """Asking for evidence instead of assuming it (FOBO skill §13). A reviewer
-    asks a target a question about a group (or the case); they are notified and
+    asks a target a question about a group (or the task); they are notified and
     answer in Agent One Finance (or a bot answers for them through the API). The answer is
-    kept on the case and reaches the model as context."""
+    kept on the task and reaches the model as context."""
     targets: list[RequestTarget] = Field(default_factory=list)
     # A group with an open question waits for the answer before it is decided.
     hold_decision: bool = True
@@ -340,7 +340,7 @@ class RequestsSpec(Strict):
     remind_after_hours: float | None = Field(default=None, gt=0)
     # …and tell the reviewers (and whoever asked) after this many.
     escalate_after_hours: float | None = Field(default=None, gt=0)
-    # May an answer come with a file (kept as the case's evidence)?
+    # May an answer come with a file (kept as the task's evidence)?
     allow_attachments: bool = True
 
 
@@ -348,7 +348,7 @@ class TollgateSpec(Strict):
     """A person approves the run's work so far before it goes on — e.g. the
     matched breaks before the model investigates them. The run waits at the
     gate (pause_before) until someone continues it or stops it."""
-    # Who may pass it; empty = the capability's reviewers.
+    # Who may pass it; empty = the agent's reviewers.
     roles: list[str] = Field(default_factory=list)
     # What the person checks, shown at the gate, e.g. "Are both sides complete?"
     check: str = ""
@@ -364,7 +364,7 @@ class ChecklistItem(Strict):
     # Must be answered yes (or n/a) to approve; otherwise answering is optional.
     required: bool = True
     # What Agent One Finance already knows, shown next to the question: tests (the tests
-    # run, failed and not run), evidence (evidence and answers on the case),
+    # run, failed and not run), evidence (evidence and answers on the task),
     # verdict, category, or a reasoning section id.
     prefill: str | None = None
 
@@ -374,9 +374,9 @@ class FollowThroughSpec(Strict):
     gone has cleared; one still there carries what was decided
     (carried_verdict, carried_from, carried_runs) for the rules to act on —
     e.g. after an adjustment, BO + adjustments must equal FO on the next COB."""
-    # Case-key fields that stay the same run to run, e.g. [book].
+    # Task-key fields that stay the same run to run, e.g. [book].
     series: list[str]
-    # The case-key field that advances, e.g. cob.
+    # The task-key field that advances, e.g. cob.
     order_by: str
     # Verdicts to follow; empty = every approved group.
     verdicts: list[str] = Field(default_factory=list)
@@ -416,7 +416,7 @@ class ReviewSpec(Strict):
     # When a decision must carry the reviewer's own words.
     require_comment: list[Literal["reject", "escalated"]] = Field(
         default_factory=lambda: ["reject", "escalated"])
-    # Maker-checker: may whoever opened the case also sign it off?
+    # Maker-checker: may whoever opened the task also sign it off?
     opener_may_decide: bool = True
     # Expression over a group (total, count, its key fields, policy): when it
     # holds, the group needs approvals from two different people.
@@ -447,16 +447,16 @@ class ReviewSpec(Strict):
 
 
 class RecurringSpec(Strict):
-    """Items that keep coming back: the same item id in earlier cases of the
-    same capability (and group) whose `same` key fields match this case's."""
+    """Items that keep coming back: the same item id in earlier tasks of the
+    same agent (and group) whose `same` key fields match this task's."""
     same: list[str] = Field(default_factory=list)    # e.g. [book]: the same book, earlier COBs
-    lookback_cases: int = Field(default=10, ge=1, le=100)
+    lookback_tasks: int = Field(default=10, ge=1, le=100)
     min_runs: int = Field(default=2, ge=2, le=100)   # seen in at least this many runs, this one included
 
 
 class UnexplainedSpec(Strict):
     """Items nothing explained: no check was positive (playbook), or the
-    category is one of these (e.g. FOBO's H Novel). Listed across cases for
+    category is one of these (e.g. FOBO's H Novel). Listed across tasks for
     the playbook's owners to turn into new checks."""
     categories: list[str] = Field(default_factory=list)
     lookback_days: int = Field(default=30, ge=1, le=365)
@@ -473,20 +473,20 @@ class InsightsSpec(Strict):
 class EscalationSpec(Strict):
     """Raise a ticket for the team that owns a problem — after review, through
     a write tool on a ticketing connector (ServiceNow, Jira…). One call per
-    group that matches `when`, idempotent per case and group."""
+    group that matches `when`, idempotent per task and group."""
     tool: str                          # a connector tool with access: write
     # Expression over the group and its outcome: its key fields, total, count,
     # verdict, status (proposed|escalated), action (approve|reject), category,
     # side, escalate_to, policy.
     when: str
-    # Argument values: literals, "$case.<field>", "$case_id", "$subject",
+    # Argument values: literals, "$task.<field>", "$task_id", "$subject",
     # "$group.<field>", "$label", "$comment", "$verdict", "$escalate_to",
     # "$total", "$decided_by".
     args: dict[str, Any] = Field(default_factory=dict)
 
 
 class ExportSpec(Strict):
-    """The case's Excel download: item columns (default: items.display)."""
+    """The task's Excel download: item columns (default: items.display)."""
     columns: list[str] = Field(default_factory=list)
 
 
@@ -495,13 +495,13 @@ class StepSettings(Strict):
     own section (load, match, enrich…) or when it should run only sometimes:
 
         step_settings:
-          fx:  {type: dataset, with: {name: fx, tool: refdata.fx_rates, args: {date: $case.date}}}
-          age: {type: derive, when: "case.region == 'EU'", with: {fields: {...}}}
+          fx:  {type: dataset, with: {name: fx, tool: refdata.fx_rates, args: {date: $task.date}}}
+          age: {type: derive, when: "task.region == 'EU'", with: {fields: {...}}}
     """
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
     # The step type; default: the step's id (a core step).
     type: str | None = None
-    # Run the step only when this holds: an expression over `case.<field>`,
+    # Run the step only when this holds: an expression over `task.<field>`,
     # `policy.<name>` and `count` (items so far). Absent = always.
     when: str | None = None
     label: str | None = None
@@ -514,7 +514,7 @@ class Manifest(Strict):
     name: str
     description: str = ""
     owners: Owners
-    case: CaseSpec
+    task: TaskSpec
     items: ItemsSpec = Field(default_factory=ItemsSpec)
     match: MatchSpec | None = None
     compare: CompareSpec | None = None
@@ -553,15 +553,15 @@ class Manifest(Strict):
     # Decisions reserved for named people (credit, sanctions, AML, KYC, release…).
     boundaries: list[Boundary] = Field(default_factory=list)
     export: ExportSpec = Field(default_factory=ExportSpec)
-    # What a group (a team's configuration of this capability, e.g. one rec group)
-    # may set: dotted paths; "x.*" = anything under x. Owners stay the capability's.
+    # What a group (a team's configuration of this agent, e.g. one rec group)
+    # may set: dotted paths; "x.*" = anything under x. Owners stay the agent's.
     configurable: list[str] = Field(default_factory=list)
 
     @model_validator(mode="before")
     @classmethod
     def _session_gates(cls, data: Any) -> Any:
         """`steps: [agent]` is a whole workflow: the platform adds draft and
-        the gates (validate, review, record), which no capability can drop."""
+        the gates (validate, review, record), which no agent can drop."""
         if isinstance(data, dict) and "agent" in (data.get("steps") or []):
             steps = list(data["steps"])
             steps += [s for s in AGENT_FOLLOWS if s not in steps]
@@ -576,7 +576,7 @@ class Manifest(Strict):
         return (st.type if st and st.type else step_id)
 
     def waits(self) -> list[str]:
-        """Steps the run waits before for an event or child cases (`await`)."""
+        """Steps the run waits before for an event or child tasks (`await`)."""
         return [s for s in self.steps if self.step_type(s) == "await"]
 
     def pauses(self) -> list[str]:
@@ -752,8 +752,8 @@ def problems(m: Manifest) -> list[str]:
         if m.step_type(sid) == "spawn":
             later = m.steps[m.steps.index(sid) + 1:]
             if not any(m.step_type(x) == "await" and getattr(configs.get(x), "event", "") == "children" for x in later):
-                out.append(f"`{sid}` opens child cases: add a later `await` step with event `children`")
-            if cfg.capability == m.id and not cfg.team_group:
+                out.append(f"`{sid}` opens child tasks: add a later `await` step with event `children`")
+            if cfg.agent == m.id and not cfg.team_group:
                 pass
     out += order_problems(m.steps, m.pause_before, m.step_types(), configs)
 
@@ -774,11 +774,11 @@ def problems(m: Manifest) -> list[str]:
         out.append(f"escalation.tool `{m.escalation.tool}` is not a write tool")
     if m.escalation and "record" not in m.steps:
         out.append("`escalation` raises tickets in the `record` step, which the workflow lacks")
-    if m.case.due and m.case.due.from_ != "opened" and m.case.due.from_ not in m.case.key:
-        out.append(f"case.due.from `{m.case.due.from_}` is not a case-key field (or `opened`)")
+    if m.task.due and m.task.due.from_ != "opened" and m.task.due.from_ not in m.task.key:
+        out.append(f"task.due.from `{m.task.due.from_}` is not a task-key field (or `opened`)")
     if m.insights.recurring:
-        out += [f"insights.recurring.same: `{f}` is not a case-key field"
-                for f in m.insights.recurring.same if f not in m.case.key]
+        out += [f"insights.recurring.same: `{f}` is not a task-key field"
+                for f in m.insights.recurring.same if f not in m.task.key]
     reads = set(m.reasoning.tools) | ({m.items.load.tool} if m.items.load else set())
     if m.match:
         reads |= {m.match.left.tool, m.match.right.tool}
@@ -831,9 +831,9 @@ def problems(m: Manifest) -> list[str]:
         out.append(f"pause_before: the run cannot stop before its first step `{m.steps[0]}`; there is nothing to check yet")
     if m.follow_through:
         ft = m.follow_through
-        out += [f"follow_through.series: `{f}` is not in case.key" for f in ft.series if f not in m.case.key]
-        if ft.order_by not in m.case.key:
-            out.append(f"follow_through.order_by: `{ft.order_by}` is not in case.key")
+        out += [f"follow_through.series: `{f}` is not in task.key" for f in ft.series if f not in m.task.key]
+        if ft.order_by not in m.task.key:
+            out.append(f"follow_through.order_by: `{ft.order_by}` is not in task.key")
         elif ft.order_by in ft.series:
             out.append(f"follow_through.order_by: `{ft.order_by}` advances run to run; it cannot also be in series")
     ids = [s.id for s in m.reasoning.sections]
@@ -848,8 +848,8 @@ def problems(m: Manifest) -> list[str]:
     if (m.requests.remind_after_hours and m.requests.escalate_after_hours
             and m.requests.escalate_after_hours <= m.requests.remind_after_hours):
         out.append("requests.escalate_after_hours: escalate after the reminder, not before it")
-    if m.knowledge.as_of and m.knowledge.as_of not in m.case.key:
-        out.append(f"knowledge.as_of: `{m.knowledge.as_of}` is not in case.key")
+    if m.knowledge.as_of and m.knowledge.as_of not in m.task.key:
+        out.append(f"knowledge.as_of: `{m.knowledge.as_of}` is not in task.key")
     if "compare" in m.steps and m.compare is None:
         out.append("step `compare` needs a `compare` section")
     if not {"load", "match", "agent"} & set(m.steps):
@@ -866,31 +866,31 @@ def problems(m: Manifest) -> list[str]:
             except rules.ExpressionError as e:
                 out.append(f"{name}: {e}")
 
-    if m.case.opens_on == "schedule":
+    if m.task.opens_on == "schedule":
         from agent_one_finance.scheduler import CronError, parse_cron
-        if not m.case.schedule:
-            out.append("case.schedule: a scheduled capability needs a cron schedule")
+        if not m.task.schedule:
+            out.append("task.schedule: a scheduled agent needs a cron schedule")
         else:
             try:
-                parse_cron(m.case.schedule)
+                parse_cron(m.task.schedule)
             except CronError as e:
-                out.append(f"case.schedule: {e}")
-        if not m.case.schedule_keys:
-            out.append("case.schedule_keys: say which cases a scheduled run opens")
-    for k in m.case.schedule_keys:
-        missing = [f for f in m.case.key if f not in k]
+                out.append(f"task.schedule: {e}")
+        if not m.task.schedule_keys:
+            out.append("task.schedule_keys: say which tasks a scheduled run opens")
+    for k in m.task.schedule_keys:
+        missing = [f for f in m.task.key if f not in k]
         if missing:
-            out.append(f"case.schedule_keys: {k} misses {', '.join(missing)}")
-    if (m.case.opens_on == "schedule" or m.case.events) and not m.case.opens_as:
-        out.append("case.opens_as: scheduled or event-opened cases need a service user to run as")
-    for field in m.case.scopes:
-        if field not in m.case.key:
-            out.append(f"case.scopes: `{field}` is not in case.key")
-    for field in m.case.summarize_by:
-        if field not in m.case.key and not any(field.startswith(f"{k}_") for k in m.case.key):
-            out.append(f"case.summarize_by: `{field}` is neither a key field nor a fact about one (<key field>_<attribute>)")
-        elif field not in m.case.key and not m.knowledge.reference:
-            out.append(f"case.summarize_by: `{field}` is read from reference data; set knowledge.reference")
+            out.append(f"task.schedule_keys: {k} misses {', '.join(missing)}")
+    if (m.task.opens_on == "schedule" or m.task.events) and not m.task.opens_as:
+        out.append("task.opens_as: scheduled or event-opened tasks need a service user to run as")
+    for field in m.task.scopes:
+        if field not in m.task.key:
+            out.append(f"task.scopes: `{field}` is not in task.key")
+    for field in m.task.summarize_by:
+        if field not in m.task.key and not any(field.startswith(f"{k}_") for k in m.task.key):
+            out.append(f"task.summarize_by: `{field}` is neither a key field nor a fact about one (<key field>_<attribute>)")
+        elif field not in m.task.key and not m.knowledge.reference:
+            out.append(f"task.summarize_by: `{field}` is read from reference data; set knowledge.reference")
     if not m.owners.people and not m.owners.role:
         out.append("owners: name at least one person or a role")
     top = set(Manifest.model_fields)
@@ -900,7 +900,7 @@ def problems(m: Manifest) -> list[str]:
             out.append(f"configurable: `{path}` is not a manifest field")
         if head in ("id", "owners", "configurable", "steps", "pause_before", "tollgates", "publish", "retention", "limits"):
             out.append(f"configurable: `{path}` cannot be set by a group "
-                       "(identity, ownership, workflow gates, write-back, retention and spend limits stay with the capability)")
+                       "(identity, ownership, workflow gates, write-back, retention and spend limits stay with the agent)")
     for sp in m.reasoning.specialists:
         extra = sorted(set(sp.tools) - set(m.reasoning.tools))
         if extra:

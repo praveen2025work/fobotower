@@ -1,6 +1,6 @@
 # Review controls and everyday features
 
-**Date:** 2026-10-04. Each feature here is switched on by configuration, in a capability's
+**Date:** 2026-10-04. Each feature here is switched on by configuration, in an agent's
 manifest or in one team group's `set`. No feature is specific to FOBO; the FOBO Prime and
 Rates groups simply use all of them.
 
@@ -11,17 +11,17 @@ Rates groups simply use all of them.
 | [Explicit confirmation](#2-approve-all-and-confirmation) | A tick box and the reviewer's own words before approving a verdict that needs confirmation | `review.confirm` |
 | [Judgement marker](#2-approve-all-and-confirmation) | A "Needs your judgement" chip and a callout on calls the model investigated | always on (finding `sme_review`) |
 | [Next action](#3-next-action-money-at-stake-and-the-inbox) | "Next: 3 groups to decide · 1 needs your confirmation · 1 judgement call" | always on |
-| [Money at stake](#3-next-action-money-at-stake-and-the-inbox) | Total absolute difference per case, used to sort the inbox | `items.amount_field`, `items.amount_unit` |
-| [Deadlines](#4-deadlines) | Due and overdue badges, plus reminders before the deadline and when it is missed | `case.due` |
+| [Money at stake](#3-next-action-money-at-stake-and-the-inbox) | Total absolute difference per task, used to sort the inbox | `items.amount_field`, `items.amount_unit` |
+| [Deadlines](#4-deadlines) | Due and overdue badges, plus reminders before the deadline and when it is missed | `task.due` |
 | [Recurring items](#5-recurring-items) | A "3 runs" badge on an item, and a Recurring panel on the group page | `insights.recurring` |
 | [Escalation tickets](#6-escalation-tickets) | A ticket raised for the owning team after review, shown on the group | `escalation` |
-| [Excel download](#7-excel-download) | "Download Excel" on every case | `export.columns` (optional) |
+| [Excel download](#7-excel-download) | "Download Excel" on every task | `export.columns` (optional) |
 | [Cover while away](#8-cover-while-away) | Hand reviews to a colleague until a date. Their decisions say "for frank" | `review.allow_delegation` |
 | [Measured time saved](#9-measured-time-saved) | "Hours saved (measured)" on the overview, from time actually spent per group | always on |
-| [Configure the orchestrator](#10-configure-the-orchestrator) | Owners change every step's settings without YAML, checked as they go | the capability's `configurable` list |
+| [Configure the orchestrator](#10-configure-the-orchestrator) | Owners change every step's settings without YAML, checked as they go | the agent's `configurable` list |
 
-A group can set a feature only when its capability lists the path in `configurable`. The
-reconciliation capability allows all of these paths.
+A group can set a feature only when its agent lists the path in `configurable`. The
+reconciliation agent allows all of these paths.
 
 ## 1. Group names
 
@@ -67,7 +67,7 @@ items:
   amount_unit: GBP
 ```
 
-The draft step stores the case's `exposure`: the sum of the absolute amounts of the items
+The draft step stores the task's `exposure`: the sum of the absolute amounts of the items
 in scope.
 
 The inbox has:
@@ -76,31 +76,31 @@ The inbox has:
   covering for others.
 - **Sorting:** most urgent first (overdue, then due soonest, then oldest), most at stake,
   oldest, newest.
-- **Badges:** each row shows the case's age and its deadline.
+- **Badges:** each row shows the task's age and its deadline.
 
 ## 4. Deadlines
 
 ```yaml
-case:
+task:
   due:
-    from: cob            # "opened" (default) or a case-key date field (YYYY-MM-DD, or YYYY-MM = month end)
+    from: cob            # "opened" (default) or a task-key date field (YYYY-MM-DD, or YYYY-MM = month end)
     business_days: 1     # Monday to Friday
     hours: 0
     at: "11:00"          # time of day, in AOF_SCHEDULE_TZ
     warn_hours: 2
 ```
 
-- `due_at` is fixed when the case opens.
+- `due_at` is fixed when the task opens.
 - Every minute, the scheduler's leader runs `agent_one_finance/deadlines.py`. It sends **due soon** to
   the reviewers, and **missed** to the reviewers and the owners.
-- Each reminder is sent once per case, in the bell and to the Teams webhook.
-- A case stops counting once it leaves review and release.
+- Each reminder is sent once per task, in the bell and to the Teams webhook.
+- A task stops counting once it leaves review and release.
 
 ## 5. Recurring items
 
 ```yaml
 insights:
-  recurring: { same: [book], lookback_cases: 10, min_runs: 2 }
+  recurring: { same: [book], lookback_tasks: 10, min_runs: 2 }
 ```
 
 An item recurs when the same item id was in scope in an earlier run of the same group
@@ -109,9 +109,9 @@ one key count once.
 
 The data is served in two places:
 
-- `case.recurring` on the case: item id, run count and the earlier cases.
-- `GET /api/capabilities/{id}/recurring?team_group=` for the whole capability or group,
-  limited to cases the caller may see.
+- `task.recurring` on the task: item id, run count and the earlier tasks.
+- `GET /api/agents/{id}/recurring?team_group=` for the whole agent or group,
+  limited to tasks the caller may see.
 
 ## 6. Escalation tickets
 
@@ -128,19 +128,19 @@ escalation:
 
 The `record` step raises the tickets after people have decided:
 
-- One ticket per matching group, idempotent per case and group.
+- One ticket per matching group, idempotent per task and group.
 - The call goes through the gateway as `escalate`.
 - The gateway allows a write tool to `escalate` only when it is the manifest's own
   `escalation.tool` and someone has decided the group. The model can never call it.
 - The result is stored in `aof_ticket`. A failed ticket is recorded and never fails the
-  case.
+  task.
 
 **Expression fields.** `when` and the argument templates can use:
 
 - the group's key fields, plus `label`, `total` and `count`;
 - `verdict`, `status`, `category`, `category_name`, `side` and `escalate_to`;
 - `action`, `decided_by` and `comment`;
-- `case_id`, `subject`, the case key, and `policy`.
+- `task_id`, `subject`, the task key, and `policy`.
 
 **Connectors.**
 
@@ -150,15 +150,15 @@ The `record` step raises the tickets after people have decided:
 
 ## 7. Excel download
 
-`GET /api/cases/{id}/export.xlsx` returns three sheets:
+`GET /api/tasks/{id}/export.xlsx` returns three sheets:
 
 | Sheet | Rows |
 |---|---|
 | Items | Each item with its group, finding, verdict and decision, plus the item columns |
 | Groups | Each group's finding, verdict, confirmation, decision, comment and ticket |
-| Case | The case's key, status, version, due date and exporter |
+| Task | The task's key, status, version, due date and exporter |
 
-The workbook is built from the same read as the case page, so it shows only what the
+The workbook is built from the same read as the task page, so it shows only what the
 caller may see. To choose the item columns:
 
 ```yaml
@@ -179,9 +179,9 @@ most 60 days), and give a reason. The API is `POST /api/me/delegations`, and
 
 While the cover lasts:
 
-- **What the colleague sees.** The absent reviewer's cases appear in the colleague's inbox,
+- **What the colleague sees.** The absent reviewer's tasks appear in the colleague's inbox,
   marked "for frank".
-- **Where they may act.** Only on capabilities that allow delegation.
+- **Where they may act.** Only on agents that allow delegation.
 - **Whose rights apply.** The absent reviewer's own roles and data scope, as recorded when
   they handed over.
 - **What is recorded.** Each decision records `decided_by` (the colleague) and
@@ -197,7 +197,7 @@ While the cover lasts:
   before deciding (`review_seconds`). For bulk approval, the time on the page is shared
   equally across the groups.
 - **How it is reported.** The overview sets this measured time against working each item
-  by hand at the capability's declared `metrics.manual_minutes_per_item`. It shows the
+  by hand at the agent's declared `metrics.manual_minutes_per_item`. It shows the
   basis and the median seconds per decision.
 - **The declared figure stays.** The declared "Hours saved" figure remains, with its own
   basis.
@@ -207,7 +207,7 @@ While the cover lasts:
 This replaces the earlier settings form, which covered only thresholds, reviewers, schedule
 and deadline.
 
-- **Where it appears.** The *Configure* tab of a capability, and the *Configure this group's
+- **Where it appears.** The *Configure* tab of an agent, and the *Configure this group's
   orchestrator* section of a group page.
 - **What it covers.** Every step of the workflow:
   - which steps run, and where the run stops for a person;
@@ -222,23 +222,23 @@ and deadline.
   a group, only its configurable paths are sent. Another owner approves the draft. See the
   [user guide §7a](user-guide.md#7a-configure-the-orchestrator).
 
-## 11. Investigation features (any capability)
+## 11. Investigation features (any agent)
 
 Seven features, each switched on by configuration and used by FOBO, cash and variance
-commentary in their own ways. The [features by capability](features-by-capability.md) matrix
+commentary in their own ways. The [features by agent](features-by-agent.md) matrix
 shows each one's settings.
 
 | Feature | What a person sees |
 |---|---|
 | **Answer in sections** (`reasoning.sections`) | the model's proposal as named parts, e.g. root cause, remediation, end state |
 | **Sign-off checklist** (`review.checklist`) | yes / no / n/a questions above *Approve*, with Agent One Finance's answer next to each |
-| **Follow-through** (`follow_through`) | on the earlier case: what cleared on the next run and what is still open; on the item: *carried · MONITOR* |
-| **Learning from the work** (`insights.unexplained`, `.automation_after`) | on capability and group pages: what nothing explained, and what could be a rule |
-| **Data and parameters** (derived) | on capability (Configure tab) and group pages: the fields each check reads, the thresholds still to confirm |
+| **Follow-through** (`follow_through`) | on the earlier task: what cleared on the next run and what is still open; on the item: *carried · MONITOR* |
+| **Learning from the work** (`insights.unexplained`, `.automation_after`) | on agent and group pages: what nothing explained, and what could be a rule |
+| **Data and parameters** (derived) | on agent (Configure tab) and group pages: the fields each check reads, the thresholds still to confirm |
 | **Chasing questions** (`requests.remind_after_hours`, `.escalate_after_hours`) | reminders to the people asked, then a notice to the reviewers |
-| **Answers with a file** (`requests.allow_attachments`) | *Attach* when answering; the file is on the question and in the case's evidence |
+| **Answers with a file** (`requests.allow_attachments`) | *Attach* when answering; the file is on the question and in the task's evidence |
 
-Also: follow-up cases are marked *late items* in the inbox, and the day's case shows the day's
+Also: follow-up tasks are marked *late items* in the inbox, and the day's task shows the day's
 totals.
 
 ## Also in this release
@@ -246,8 +246,8 @@ totals.
 - **Pages load on demand.** The first download dropped from 765 KB to 261 KB.
 - **Platform details for platform support only.** The LLM and entitlement source, plus the
   model and refused-call tiles, show only to platform support.
-- **Clear empty states for platform support,** which sees no case data.
-- **"Data used"** replaces the second "Evidence" heading on the case page.
+- **Clear empty states for platform support,** which sees no task data.
+- **"Data used"** replaces the second "Evidence" heading on the task page.
 - **Table layout.** Numbers are right-aligned, long text wraps, and long group names wrap
   to two lines.
 
@@ -256,6 +256,6 @@ totals.
 | Area | Files |
 |---|---|
 | Backend | `agent_one_finance/review.py`, `agent_one_finance/escalation.py`, `agent_one_finance/deadlines.py`, `agent_one_finance/insights.py`, `agent_one_finance/export.py`; `manifest.py` (`DueSpec`, `RecurringSpec`, `EscalationSpec`, `ExportSpec`, `review.*`, `group_label`, `side_names`, `amount_unit`) |
-| Database | Migration `d224c0604a72`: `aof_ticket`, `aof_delegation`, case `due_at` / `due_notified` / `review_ready_at`, decision `confirmed` / `on_behalf_of` / `review_seconds` |
-| Web | `components/Urgency.tsx`, `components/DelegationPanel.tsx`, `components/orchestrator/` (the configuration editor), `components/capability/RecurringPanel.tsx`, plus the case workspace, inbox and overview pages |
+| Database | Migration `d224c0604a72`: `aof_ticket`, `aof_delegation`, task `due_at` / `due_notified` / `review_ready_at`, decision `confirmed` / `on_behalf_of` / `review_seconds` |
+| Web | `components/Urgency.tsx`, `components/DelegationPanel.tsx`, `components/orchestrator/` (the configuration editor), `components/agent/RecurringPanel.tsx`, plus the task workspace, inbox and overview pages |
 | Tests | `tests/agent_one_finance/test_review_features.py`, `src/pages/__tests__/Features.test.tsx`, `src/components/orchestrator/__tests__/` |

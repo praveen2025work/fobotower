@@ -98,7 +98,7 @@ Outside AWS/BCP.
 
 As a support analyst, I want Diagnostics results reconciled with Phoenix, so that I can trust what it shows.
 
-Compare counts, timings, errors and costs with Phoenix for sample cases.
+Compare counts, timings, errors and costs with Phoenix for sample tasks.
 
 | Sprint | Release | Points | Priority | Team | Environment | Status |
 |---|---|---|---|---|---|---|
@@ -106,7 +106,7 @@ Compare counts, timings, errors and costs with Phoenix for sample cases.
 
 **Acceptance criteria**
 
-- Given sample cases, when Diagnostics and Phoenix are compared, then counts, timings, errors and costs match.
+- Given sample tasks, when Diagnostics and Phoenix are compared, then counts, timings, errors and costs match.
 - Done when: Reconciliation report; defects logged
 
 ### E06-S54 Tests, data checks and security review
@@ -127,7 +127,7 @@ Automated checks; confirm finance data in traces is masked.
 
 As a delivery lead, I want Diagnostics views for the showcase, so that the Business sees how the agent runs.
 
-Run health, model calls, cost per case.
+Run health, model calls, cost per task.
 
 | Sprint | Release | Points | Priority | Team | Environment | Status |
 |---|---|---|---|---|---|---|

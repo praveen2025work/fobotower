@@ -8,7 +8,7 @@ End users: see [`user-guide.md`](user-guide.md).
 1. [Architecture](#1-architecture)
 2. [Repository layout](#2-repository-layout)
 3. [Run it locally](#3-run-it-locally)
-4. [Create a capability (spec walk-through)](#4-create-a-capability)
+4. [Create an agent (spec walk-through)](#4-create-an-agent)
 5. [Add a team group](#5-add-a-team-group)
 6. [Manifest specification](#6-manifest-specification)
 7. [Steps and gates](#7-steps-and-gates)
@@ -30,8 +30,8 @@ End users: see [`user-guide.md`](user-guide.md).
    │  /api  (identity header from SSO; X-AOF-User in dev)
    ▼
  Agent One Finance API  (FastAPI, apps/backend/agent_one_finance/web/main.py, :8300)
-   ├── capabilities / groups   versioned manifests, four-eyes approval, config_sync
-   ├── cases                   open → run → review → record → (release → publish)
+   ├── agents / groups   versioned manifests, four-eyes approval, config_sync
+   ├── tasks                   open → run → review → record → (release → publish)
    │     └── runner ── LangGraph StateGraph per manifest
    │            · AsyncPostgresSaver checkpoints · interrupt before review/publish
    │            · background runs, advisory lock, startup recovery
@@ -44,7 +44,7 @@ End users: see [`user-guide.md`](user-guide.md).
    ├── governance              mask / pseudonymize / scrub between data and the model
    ├── scheduler, events       cron + key templates; POST /api/events
    ├── notify, controls        bell + webhook; off switches; spend limits
-   ├── evidence, evals         uploads, evidence pack PDF; shadow runs on past cases
+   ├── evidence, evals         uploads, evidence pack PDF; shadow runs on past tasks
    └── devtools                diff, instructions, flow, templates, promotion bundles
    ▼
  Postgres 16 (SQLAlchemy async, Alembic)  ·  OpenTelemetry/OpenInference → Phoenix
@@ -52,33 +52,33 @@ End users: see [`user-guide.md`](user-guide.md).
 
 There are five rules the design holds to:
 
-1. **No code per use case.** A capability is a manifest. New work means a new YAML file.
+1. **No code per use case.** An agent is a manifest. New work means a new YAML file.
 2. **The model proposes; code and people decide.** Guards and validation run after the
    model, and people approve.
 3. **Every data access goes through the gateway**, which checks the allow-list and data
    scope, writes an audit row, and applies protection.
 4. **Gates cannot be removed.** validate, review and record are always present.
-5. **A case keeps the exact manifest it ran on.** Past runs never change.
+5. **A task keeps the exact manifest it ran on.** Past runs never change.
 
 ## 2. Repository layout
 
 | Path | What |
 |---|---|
-| `apps/backend/agent_one_finance/` | the platform: `manifest.py` (spec), `workflow.py` + `steps.py` (engine), `runner.py`, `cases.py`, `gateway.py`, `llm.py`, `llm_agent_sdk.py`, `governance.py`, `knowledge.py`, `groups.py`, `capabilities.py`, `scheduler.py`, `controls.py`, `notify.py`, `evidence.py`, `evals.py`, `devtools.py`, `config_sync.py`, `retention.py` |
+| `apps/backend/agent_one_finance/` | the platform: `manifest.py` (spec), `workflow.py` + `steps.py` (engine), `runner.py`, `tasks.py`, `gateway.py`, `llm.py`, `llm_agent_sdk.py`, `governance.py`, `knowledge.py`, `groups.py`, `agents.py`, `scheduler.py`, `controls.py`, `notify.py`, `evidence.py`, `evals.py`, `devtools.py`, `config_sync.py`, `retention.py` |
 | `apps/backend/agent_one_finance/web/main.py` | the HTTP API |
 | `apps/backend/agent_one_finance/mcp_services/documents.py` | documents MCP service: read PDF / Excel, build PDF reports |
 | `apps/backend/agent_one_finance/stub_connectors/` | dev stand-ins for GL, budget, bank, ledger, CATS, MOTIF |
 | `apps/backend/migrations/` | Alembic migrations (Agent One Finance and FOBO share the DB) |
 | `apps/backend/tests/agent_one_finance/` | Agent One Finance tests |
 | `apps/web/` | the Agent One Finance web app |
-| `config/agent-one-finance/capabilities/*.yaml` | live capabilities (seeded / synced) |
-| `config/agent-one-finance/groups/<capability>/*.yaml` | team groups |
+| `config/agent-one-finance/agents/*.yaml` | live agents (seeded / synced) |
+| `config/agent-one-finance/groups/<agent>/*.yaml` | team groups |
 | `config/agent-one-finance/connectors.yaml` | onboarded connectors and their tool allow-list |
 | `config/agent-one-finance/governance.yaml` | data protection rules |
 | `config/agent-one-finance/knowledge/*.yaml` | reference lineage (e.g. `fobo-reference`) |
 | `config/agent-one-finance/templates/*.yaml` | starting points in *Authoring* |
 | `config/agent-one-finance/dev-users.yaml` | dev entitlements stand-in |
-| `docs/agent-one-finance/examples/` | ready-to-install example capabilities |
+| `docs/agent-one-finance/examples/` | ready-to-install example agents |
 | `apps/backend/fobo`, `apps/console` | the FOBO app; unchanged and still running |
 
 ## 3. Run it locally
@@ -103,7 +103,7 @@ cd apps/backend && .venv/bin/python -m agent_one_finance.config_sync   # each ch
 
 Then approve the drafts in *Authoring* as a second owner.
 
-## 4. Create a capability
+## 4. Create an agent
 
 This is the walk-through behind the user guide's screenshots: **Accruals review**
 ([`../examples/accruals-review.yaml`](../examples/accruals-review.yaml)). The file has six
@@ -115,13 +115,13 @@ id: fin.accruals-review
 name: Accruals review
 owners: { people: [carol], role: AOF_FIN_VARCOMM_OWNER, four_eyes: true }
 
-# 2. What one case is, and how it opens
-case:
+# 2. What one task is, and how it opens
+task:
   label: Accruals
   item_label: Accrual line
-  key: [entity, period]                 # identifies a case
+  key: [entity, period]                 # identifies a task
   subject: "{entity} accruals · {period}"
-  scopes: { entity: entity }            # case field → entitlement dimension
+  scopes: { entity: entity }            # task field → entitlement dimension
   opens_on: schedule
   schedule: "0 9 3 * *"                 # 09:00 on the 3rd
   schedule_keys: [{ entity: UK01, period: "{prev_month}" }, { entity: US01, period: "{prev_month}" }]
@@ -129,7 +129,7 @@ case:
 
 # 3. Where the items come from, and which are in scope
 items:
-  load: { tool: gl.balances, args: { entity: $case.entity, period: $case.period } }
+  load: { tool: gl.balances, args: { entity: $task.entity, period: $task.period } }
   id_field: line_id
   amount_field: variance
   display: [account, account_name, cost_centre, actual, budget, variance]
@@ -155,14 +155,14 @@ reasoning:
 # 6. People and limits
 review: { roles: [FIN_PREPARER, FIN_REVIEWER], dual_review_when: "abs(total) >= 250000" }
 knowledge: { entities: [account, cost_centre] }
-limits: { max_cost_usd_per_case: 5, max_cost_usd_per_day: 50 }
+limits: { max_cost_usd_per_task: 5, max_cost_usd_per_day: 50 }
 retention: { days: 2555 }
 ```
 
 To get it live, do **one** of the following:
 
 - Paste it in *Authoring* and submit; a second owner approves it.
-- Put it in `config/agent-one-finance/capabilities/` and run `config_sync`; a second owner approves.
+- Put it in `config/agent-one-finance/agents/` and run `config_sync`; a second owner approves.
 - On a fresh database, it is seeded at startup.
 
 `POST /api/authoring/submit` runs the same validation as the UI. Before you submit, check:
@@ -175,8 +175,8 @@ To get it live, do **one** of the following:
 
 ## 5. Add a team group
 
-A capability lists `configurable` paths. A group file sets only those paths, and its own
-owners approve its changes. The capability's owners keep the workflow, gates, write-back
+An agent lists `configurable` paths. A group file sets only those paths, and its own
+owners approve its changes. The agent's owners keep the workflow, gates, write-back
 and retention.
 
 ```yaml
@@ -185,7 +185,7 @@ group: cats-motif-rates
 name: CATS vs MOTIF — Rates (FOBO)
 owners: { people: [rita, raj], role: AOF_FOBO_RATES_OWNER, four_eyes: true }
 set:
-  case:   { key: [book, cob], scopes: { book: book }, schedule: "15 7 * * 1-5", schedule_keys: [...] }
+  task:   { key: [book, cob], scopes: { book: book }, schedule: "15 7 * * 1-5", schedule_keys: [...] }
   match:  { left: { tool: cats.positions, ... }, right: { tool: motif.positions, ... }, tolerance: 1.0 }
   policy: { materiality_threshold: { value: 10000, unit: GBP }, ... }
   playbook: { ... }                     # same playbook as Prime
@@ -193,10 +193,10 @@ set:
   review: { roles: [FOBO_RATES_CONTROLLER] }
 ```
 
-A value at a configurable path **replaces** the capability's value; it is not merged. A
+A value at a configurable path **replaces** the agent's value; it is not merged. A
 path that is not configurable is refused with the list of allowed paths. Visibility is
-per group: a person sees a group's cases and schedule only when they hold its review
-role or are an owner, *and* the case is inside their data scope.
+per group: a person sees a group's tasks and schedule only when they hold its review
+role or are an owner, *and* the task is inside their data scope.
 
 ## 6. Manifest specification
 
@@ -209,7 +209,7 @@ Source of truth: `apps/backend/agent_one_finance/manifest.py` (Pydantic; unknown
 | `id` | `^[a-z0-9][a-z0-9.-]{1,62}$` | required | stable id |
 | `name`, `description` | str | | shown in the catalogue |
 | `owners` | Owners | required | who may change it |
-| `case` | CaseSpec | required | what a case is, how it opens |
+| `task` | TaskSpec | required | what a task is, how it opens |
 | `items` | ItemsSpec | required | where items come from |
 | `match` | MatchSpec | — | two-sided reconciliation (instead of `items.load`) |
 | `compare` | CompareSpec | — | measure vs baseline → a variance field |
@@ -220,7 +220,7 @@ Source of truth: `apps/backend/agent_one_finance/manifest.py` (Pydantic; unknown
 | `pause_before` | list | `[review]` | the run waits for people before these steps |
 | `tollgates` | {step: {roles, check, stop_needs_comment}} | {} | who passes each stop other than review and publish, and what they check (§7a) |
 | `requests` | {targets: [{id, name, roles, users}], hold_decision, reinvestigate_on_answer, remind_after_hours, escalate_after_hours, allow_attachments} | no targets | who reviewers may ask for evidence; an open question holds its group; an answer (optionally with a file) goes to the model; unanswered ones are chased, then escalated |
-| `follow_through` | {series, order_by, verdicts} | — | re-check each decision in the next run of the series: items still there carry `carried_verdict`, `carried_from`, `carried_runs` (and groups `carried`); the earlier case shows what cleared |
+| `follow_through` | {series, order_by, verdicts} | — | re-check each decision in the next run of the series: items still there carry `carried_verdict`, `carried_from`, `carried_runs` (and groups `carried`); the earlier task shows what cleared |
 | `group_by` | list | [] (one group) | item fields that form a group |
 | `rules` | list[Rule] | [] | settled before the model |
 | `reasoning` | ReasoningSpec | | the model; `reasoning.sections` [{id, label, hint, required}] makes it answer in named parts (a required one missing → escalated; every section's figures are validated) |
@@ -230,10 +230,10 @@ Source of truth: `apps/backend/agent_one_finance/manifest.py` (Pydantic; unknown
 | `playbook` | PlaybookSpec | — | deterministic checks, tests, verdicts (§9) |
 | `knowledge` | KnowledgeSpec | | priors and reference lineage |
 | `resolve` | list[ResolveSpec] | [] | graph lookups onto items |
-| `retention` | {days} | — | how long cases are kept (legal hold overrides) |
-| `insights` | {recurring, unexplained: {categories, lookback_days}, automation_after} | | items that keep coming back; items nothing explained; model proposals approved unchanged N times (rule candidates). `GET /api/capabilities/{id}/recurring`, `/learning` |
+| `retention` | {days} | — | how long tasks are kept (legal hold overrides) |
+| `insights` | {recurring, unexplained: {categories, lookback_days}, automation_after} | | items that keep coming back; items nothing explained; model proposals approved unchanged N times (rule candidates). `GET /api/agents/{id}/recurring`, `/learning` |
 | `metrics` | {manual_minutes_per_item: 12} | | basis of "hours saved" |
-| `limits` | {max_cost_usd_per_case, max_cost_usd_per_day} | — | spend caps; over the cap → escalate to people |
+| `limits` | {max_cost_usd_per_task, max_cost_usd_per_day} | — | spend caps; over the cap → escalate to people |
 | `configurable` | list of dotted paths (`x.*` allowed) | [] | what groups may set |
 
 ### Owners
@@ -244,32 +244,32 @@ Source of truth: `apps/backend/agent_one_finance/manifest.py` (Pydantic; unknown
 | `role` | — | an entitlement role |
 | `four_eyes` | true | the drafter of a version cannot approve it |
 
-### case
+### task
 
 | Field | Default | Meaning |
 |---|---|---|
-| `label`, `item_label` | Case / Item | wording in the UI |
-| `key` | required | fields identifying a case, e.g. `[entity, period]` |
+| `label`, `item_label` | Task / Item | wording in the UI |
+| `key` | required | fields identifying a task, e.g. `[entity, period]` |
 | `subject` | — | template, e.g. `"{book} · COB {cob}"` |
-| `scopes` | {} | case field → entitlement dimension, checked on every read |
+| `scopes` | {} | task field → entitlement dimension, checked on every read |
 | `opens_on` | manual | manual · api · schedule · event |
 | `schedule` | — | cron (`min hour dom mon dow`, in `AOF_SCHEDULE_TZ`) |
 | `schedule_keys` | [] | keys to open per tick; templates `{prev_business_day}`, `{prev_month}`, … |
-| `events` | false | may `POST /api/events` open cases |
-| `opens_as` | — | the service user scheduled or event cases run as |
+| `events` | false | may `POST /api/events` open tasks |
+| `opens_as` | — | the service user scheduled or event tasks run as |
 
-`case.late_items`: `ignore` (default) or `follow_up`. With `follow_up`, a later event for a key that
-already has a case opens a follow-up case (`<case>.f<n>`, `follow_up_of` set). Its `load` takes
-only the items no case for that key has yet. With nothing new, it closes as `no_new_items`.
+`task.late_items`: `ignore` (default) or `follow_up`. With `follow_up`, a later event for a key that
+already has a task opens a follow-up task (`<task>.f<n>`, `follow_up_of` set). Its `load` takes
+only the items no task for that key has yet. With nothing new, it closes as `no_new_items`.
 
-`case.summarize_by`: what the agent's **Summary** tab groups a day's tasks by, outermost
+`task.summarize_by`: what the agent's **Summary** tab groups a day's tasks by, outermost
 first — key fields, or facts the reference data holds about one (`<key field>_<attribute>`,
-as in `case.subject`), e.g. `[book_business, book_region, book_desk, book_product]`. The
+as in `task.subject`), e.g. `[book_business, book_region, book_desk, book_product]`. The
 reference data must carry those attributes (`knowledge/fobo-books-fi-credit.yaml` does for the
 FI Credit books). The Summary reads it from the group's current version, so changing it
 regroups past days too; it never changes how a task runs. `GET
-/api/capabilities/{id}/summary?date=` returns the day's tasks with those facts and their open
-proposals; `POST /api/capabilities/{id}/summary/decisions` decides `[{case_id, group_ids}]`
+/api/agents/{id}/summary?date=` returns the day's tasks with those facts and their open
+proposals; `POST /api/agents/{id}/summary/decisions` decides `[{task_id, group_ids}]`
 across tasks, each through the task's own bulk decision (every review rule applies, and what
 is refused comes back with its reason).
 
@@ -282,7 +282,7 @@ is refused comes back with its reason).
 | `compare` | `measure`, `baseline`, `as` (variance) |
 | `enrich[]` | `tool`, `args`, `keys` (join keys), `prefix` |
 
-Tool arguments can use `$case.<field>`, `$case_id` and `$subject`.
+Tool arguments can use `$task.<field>`, `$task_id` and `$subject`.
 
 ### rules[]
 
@@ -319,30 +319,30 @@ Tool arguments can use `$case.<field>`, `$case_id` and `$subject`.
 | Field | Meaning |
 |---|---|
 | `tool` | a connector tool with `access: write` |
-| `per` | `group` (one call per approved group) or `case` (one call, e.g. a PDF report) |
-| `args` | literals, `$case.*`, `$case_id`, `$subject`; per group `$group.<field>` and `$comment`; per case `$approved` and `$sign_off` |
+| `per` | `group` (one call per approved group) or `task` (one call, e.g. a PDF report) |
+| `args` | literals, `$task.*`, `$task_id`, `$subject`; per group `$group.<field>` and `$comment`; per task `$approved` and `$sign_off` |
 | `approver_roles` | who may release; a different person from the reviewer |
 
 ### knowledge, resolve
 
 | Spec | Fields |
 |---|---|
-| `knowledge` | `entities` (item fields linked in the graph, for priors), `reference` (namespace, e.g. `fobo-reference`), `as_of` (case field for bitemporal reads, e.g. `cob`), `priors_lookback_days` |
+| `knowledge` | `entities` (item fields linked in the graph, for priors), `reference` (namespace, e.g. `fobo-reference`), `as_of` (task field for bitemporal reads, e.g. `cob`), `priors_lookback_days` |
 | `resolve[]` | `node` (template, e.g. `"book:{book}"`), `path` (relations, e.g. `[belongs_to, escalates_to]`), `as` (item field to set), `take` (`name` or an attribute or `id`) |
 
 ## 7. Steps and gates
 
 | Step | Needs | Produces | Notes |
 |---|---|---|---|
-| `load` | case key | items | `items.load` |
-| `match` | case key | items | `match`; two sides, tolerance |
+| `load` | task key | items | `items.load` |
+| `match` | task key | items | `match`; two sides, tolerance |
 | `enrich` | items | items | joins `enrich[]` |
 | `resolve` | items | items | knowledge-graph lookups as of `knowledge.as_of` |
 | `classify` | items | items | playbook checks, tests, findings |
 | `compare` | items | items | `compare` |
 | `group` | items | groups | `group_by` |
 | `reason` | items, groups | findings | playbook table → rules → model (in parallel per group) → guards |
-| `agent` | case key | items, groups, findings | a skill session: the skill, the case key and `reasoning.tools` go to the model in one session; one result per item ([skill-session.md](skill-session.md)). `steps: [agent]` alone is a whole workflow: draft and the gates are added |
+| `agent` | task key | items, groups, findings | a skill session: the skill, the task key and `reasoning.tools` go to the model in one session; one result per item ([skill-session.md](skill-session.md)). `steps: [agent]` alone is a whole workflow: draft and the gates are added |
 | `draft` | groups, findings | draft | headline and summary |
 | `validate` ◆ | findings | findings, validation_errors | every figure must trace to the run's data or tool results; otherwise escalated |
 | `review` ◆ ⏸ | findings, draft | decisions | people |
@@ -369,7 +369,7 @@ breaks are exact, repeatable and the same on every run. By the time a group reac
    knowledge graph.
 
 The model then gets one group at a time with all of that, plus:
-- the read tools the capability allows (through the gateway);
+- the read tools the agent allows (through the gateway);
 - its instructions;
 - any specialists.
 
@@ -383,23 +383,23 @@ Any step except the first can have a **tollgate** (`pause_before` plus an option
 earlier steps produced and then either:
 
 - **continues** — the run resumes at that step from its checkpoint, or
-- **stops** — the case ends as `stopped`, with their reason, and may be re-run as a new
+- **stops** — the task ends as `stopped`, with their reason, and may be re-run as a new
   attempt.
 
 ```yaml
 pause_before: [reason, review, publish]
 tollgates:
   reason:                       # before the model is asked anything
-    roles: [FIN_REVIEWER]       # empty = the capability's reviewers
+    roles: [FIN_REVIEWER]       # empty = the agent's reviewers
     check: Do the variances tie to the ledger, and is the budget this month's?
     stop_needs_comment: true
 ```
 
-- **How it shows.** The case status is `paused_before_<step>`. It appears in the inbox of
+- **How it shows.** The task status is `paused_before_<step>`. It appears in the inbox of
   people with those roles (action `gate`), notifies them, and counts against the deadline.
 - **How it is recorded.** Each decision is stored in `aof_gate_decision` and shown on the
-  case.
-- **What crosses it.** A run crosses a tollgate only through `POST /api/cases/{id}/gates/{step}`
+  task.
+- **What crosses it.** A run crosses a tollgate only through `POST /api/tasks/{id}/gates/{step}`
   (`{action: continue|stop, comment, idempotency_key}`). A recovery or restart never skips
   it.
 - **Where to set it.** In *Configure*: each step has a "Tollgate" switch with who passes it
@@ -412,34 +412,34 @@ Typical places:
 
 ## 7b. Configurable steps (steps v2)
 
-Besides the core steps, a capability adds **generic data steps** by configuration, as many as it
+Besides the core steps, an agent adds **generic data steps** by configuration, as many as it
 needs and in any order, each under its own id:
 
 ```yaml
 steps: [load, fx, dedupe_refs, drop_tests, to_gbp, age, sla, risk, group, reason, draft, validate, review, record]
 step_settings:
-  fx:          {type: dataset,  with: {name: fx, tool: refdata.fx_rates, args: {date: $case.date}}}
+  fx:          {type: dataset,  with: {name: fx, tool: refdata.fx_rates, args: {date: $task.date}}}
   dedupe_refs: {type: dedupe,   with: {keys: [payment_ref, amount]}}
   drop_tests:  {type: filter,   with: {keep_when: "not is_test", reason: test payment}}
   to_gbp:      {type: convert,  with: {amounts: [amount], currency_field: currency, to: GBP, rates: fx}}
-  age:         {type: derive,   with: {fields: {age_hours: "hours_between(received_at, case.date + 'T18:00:00')"}}}
+  age:         {type: derive,   with: {fields: {age_hours: "hours_between(received_at, task.date + 'T18:00:00')"}}}
   sla:         {type: bucket,   with: {field: age_hours, as: sla_band, bands: [{label: within 4h, upto: 4}, {label: over 4h}]}}
   risk:        {type: transform, when: "count > 0", with: {tool: payments.risk_score, send: [amount_gbp, reason_code], returns: fields}}
 ```
 
 | Type | Does | Settings |
 |---|---|---|
-| `dataset` | reads a **named data set** beside the items (rates, limits, budget, prior periods); kept on the case | `name`, `tool`, `args` |
-| `derive` | computed fields from expressions over the item, `case.<field>` and `policy`; a failure gives `None` and `derive_errors`, never a guess | `fields: {name: expression}` |
-| `filter` | keeps matching items; the others **stay on the case** with `excluded_by` and `excluded_reason` | `keep_when`, `reason` |
+| `dataset` | reads a **named data set** beside the items (rates, limits, budget, prior periods); kept on the task | `name`, `tool`, `args` |
+| `derive` | computed fields from expressions over the item, `task.<field>` and `policy`; a failure gives `None` and `derive_errors`, never a guess | `fields: {name: expression}` |
+| `filter` | keeps matching items; the others **stay on the task** with `excluded_by` and `excluded_reason` | `keep_when`, `reason` |
 | `convert` | currency conversion with a data set of rates; a missing rate sets `fx_missing`, never assumed | `amounts`, `currency_field`, `to`, `rates`, `suffix` |
 | `bucket` | bands (ageing, size, service level) | `field`, `as`, `bands[{label, upto}]` |
 | `dedupe` | duplicates by key fields, set aside (kept) or marked | `keys`, `drop` |
 | `aggregate` | roll-up with totals and counts, into the items or a data set | `by`, `sum`, `keep`, `into` |
 | `transform` | sends the items (only the fields in `send`) to a **team's own tool** through the gateway and uses what it returns | `tool`, `args`, `send`, `returns: fields\|items` |
 
-`when` on any step (not the gates): an expression over `case.<field>`, `policy.<name>` and `count`
-(items so far). A step that does not run is recorded in the case's draft (`skipped_steps`).
+`when` on any step (not the gates): an expression over `task.<field>`, `policy.<name>` and `count`
+(items so far). A step that does not run is recorded in the task's draft (`skipped_steps`).
 
 The platform checks each step's settings against its schema and its expressions when the manifest
 is checked. It checks the order with what each step needs and produces, including named data sets:
@@ -448,7 +448,7 @@ ones the gateway allows. New types are added through the step SDK (`agent_one_fi
 schema, `needs`, `produces`, `tools`, `expressions` and a run function. The design and the next
 phases are in [`../design/step-catalogue-v2.md`](../design/step-catalogue-v2.md).
 
-Expressions gained `case.<field>`, `days_between`, `hours_between`, `weekday`, `coalesce`,
+Expressions gained `task.<field>`, `days_between`, `hours_between`, `weekday`, `coalesce`,
 `ifelse`, `lower`, `upper`, `int` and `sum`.
 
 ### The other families (phases 2–6)
@@ -466,16 +466,16 @@ Expressions gained `case.<field>`, `days_between`, `hours_between`, `weekday`, `
 | | `sample` | reproducible sample (seed kept): random, largest, weighted by value, or systematic monetary-unit (`mus`); stratified; some always in; the rest kept, marked | `method`, `size` or `percent`, `field`, `stratify_by`, `always_include_when` |
 | | `score` | weighted factors and/or a numeric formula → score, reasons and band (a priority: size, age, recurrence) | `factors[{when, weight, label}]`, `formula`, `as`, `bands` |
 | | `attest` | an owner certifies a statement at the tollgate before it; who, when, evidence, expiry kept (`attestations`) | `statement`, `roles`, `evidence_required`, `valid_for_days` |
-| Orchestration | `await` | the run waits (status `waiting_<step>`) for an event or for its child cases; times out to a person or carries on | `event` (`children` for child cases), `timeout_hours`, `on_timeout`, `roles` |
-| | `spawn` | one child case per item in another capability (`parent_case_id`) | `capability`, `team_group`, `key`, `max_children` |
+| Orchestration | `await` | the run waits (status `waiting_<step>`) for an event or for its child tasks; times out to a person or carries on | `event` (`children` for child tasks), `timeout_hours`, `on_timeout`, `roles` |
+| | `spawn` | one child task per item in another agent (`parent_task_id`) | `agent`, `team_group`, `key`, `max_children` |
 | | `compose` | drafts each group's message for the reviewer (never sent by itself) | `when`, `to`, `subject`, `body` |
-| | `report` | after `record`: the case's PDF report, kept with the case (`documents`) | `name` |
+| | `report` | after `record`: the task's PDF report, kept with the task (`documents`) | `name` |
 | Acquisition | `match_n` | matches 2–6 systems by key, many-to-one sums; keeps what does not agree (`amount_break`, `missing_<system>`) | `sources[{label, tool, args, amount_field}]`, `keys`, `tolerance` |
 | | `intake` | a workbook into items by column map; failing rows kept aside with `intake_problems` | `tool`, `columns`, `id_field`, `required`, `numbers` |
 | | `extract` | fields from a document: patterns, then the model (`extract` on the adapter); a value must appear in its quote and the quote in the document; below `accept_confidence`, or every value when `regulated`, goes to a person | `tool`, `fields[{name, hint, required, pattern}]`, `accept_confidence`, `regulated` |
 | Time and parties | `clock` | service-level or regulatory clocks per item (hours or business days, paused hours); warned before and on breach (scheduler) | `clocks[{id, label, starts, hours or business_days, warn_before_hours, pause_hours_field}]` |
 | | `timeline` | one ordered timeline from several systems; the model reads it (`for_model`) | `sources[{tool, args, time_field, label}]`, `into` |
-| | `link` | earlier cases on the same client/account/counterparty, in any capability | `match_on`, `lookback_days`, `capabilities`, `limit` |
+| | `link` | earlier tasks on the same client/account/counterparty, in any agent | `match_on`, `lookback_days`, `agents`, `limit` |
 | | `screen` | fuzzy name matching against a list data set: **candidates only**, never cleared by Agent One Finance | `list`, `fields`, `list_field`, `threshold` |
 | | `outreach` | sends each drafted message through a write tool after a person approves at the tollgate before it | `tool` (write), `roles`, `when` |
 | Algorithms ([guide](algorithms.md)) | `offsets` | pairs equal-and-opposite amounts in the same group | `amount`, `within`, `same`, `tolerance`, `as` |
@@ -495,12 +495,12 @@ Expressions gained `case.<field>`, `days_between`, `hours_between`, `weekday`, `
 - `await` steps pause the run by themselves.
 
 **Waiting and events.**
-- A case at an `await` step has status `waiting_<step>` and `waiting_since`.
-- A system delivers the event with `POST /api/cases/{id}/events/{step}`, sending
+- A task at an `await` step has status `waiting_<step>` and `waiting_since`.
+- A system delivers the event with `POST /api/tasks/{id}/events/{step}`, sending
   `X-AOF-Event-Secret` and a body of `{payload: {...}}`.
-- A person with the step's `roles` can deliver it from the case page.
+- A person with the step's `roles` can deliver it from the task page.
 - The scheduler continues a wait past `timeout_hours` with `{timed_out: true}`.
-- For `event: children` the run continues on its own once every child case has finished, and the
+- For `event: children` the run continues on its own once every child task has finished, and the
   children's outcomes land on the items as `child_status` and `child_outcome`.
 
 ### Authority and decision boundaries (E7)
@@ -523,12 +523,12 @@ boundaries:
   - A person without the tier's roles is refused ("above your authority").
   - The group needs `approvals` *different* people.
   - With `bulk: false` it is left out of "Approve all".
-  - The case shows `approvals: {needed, by, settled}` per group.
+  - The task shows `approvals: {needed, by, settled}` per group.
 - **Boundaries** reserve a decision for named roles (`finding.reserved`).
   - Nobody else may decide it, and it is never decided in bulk.
   - If the model proposed it and `model_may_propose` is false, the proposal is withheld
     (`withheld_proposal`) and the group goes to a person (`RESERVED: …`).
-- Who may see a case widens to the release, tier, boundary and tollgate roles.
+- Who may see a task widens to the release, tier, boundary and tollgate roles.
 
 ## 8. Expressions
 
@@ -579,7 +579,7 @@ connectors:
 
 Every call (`gateway.call`) is checked and recorded in order:
 
-1. The tool must be in the allow-list and used by this capability.
+1. The tool must be in the allow-list and used by this agent.
 2. The scope argument must be inside the caller's entitlements.
 3. A write tool is callable only by `publish` after release, never by the model.
 4. Pseudonymized values are reversed for the connector.
@@ -608,7 +608,7 @@ The graph is bitemporal: every edge has `valid_from` / `valid_to`.
 | Rule | Effect |
 |---|---|
 | `mask` | Irreversible `***MASKED***` for the model, traces and audit copies |
-| `pseudonymize` | Per-case tokens such as `«COUNTERPARTY:QXKD»`. The model reasons with tokens, the gateway reverses them for connectors, and reviewers see real values. |
+| `pseudonymize` | Per-task tokens such as `«COUNTERPARTY:QXKD»`. The model reasons with tokens, the gateway reverses them for connectors, and reviewers see real values. |
 | `scrub` | Protected values are also removed from free text: labels, comments, reviewer notes |
 | `trace_payloads: masked` | Hides payloads in auto-instrumented spans |
 
@@ -644,19 +644,19 @@ All routes are under `/api` and are identified by the identity header.
 | Area | Routes |
 |---|---|
 | Me / platform | `GET /me`, `GET /platform`, `GET /overview`, `GET /operations`, `GET /inbox`, `GET /audit` |
-| Capabilities | `GET /capabilities`, `GET /capabilities/{id}`, `POST /capabilities/{id}/versions`, `POST /capabilities/{id}/versions/{v}/approve`, `GET …/versions/{a}/diff/{b}`, `GET …/versions/{v}/export`, `GET …/flow`, `POST …/instructions`, `POST /cases/{id}/gates/{step}` (pass or stop at a tollgate), `POST /cases/{id}/requests` (ask for evidence), `GET /requests` (questions for me), `POST /requests/{rid}/answer` (an addressee, or a bot with the event secret and `answered_by`), `POST /requests/{rid}/answer-with-file` (multipart: answer, file, answered_by), `POST /requests/{rid}/cancel`, `GET /capabilities/{id}/contract?team_group=` (data needed, parameters to confirm), `GET …/learning` (unexplained items, rule candidates), `GET …/recurring`, `POST …/check` (a manifest or group config, checked without storing: `{ok, problems}`) |
-| Groups | `GET /capabilities/{id}/groups`, `GET …/groups/{g}`, `POST …/groups`, `POST …/groups/{g}/versions/{v}/approve`, `GET …/groups/{g}/versions/{a}/diff/{b}` |
+| Agents | `GET /agents`, `GET /agents/{id}`, `POST /agents/{id}/versions`, `POST /agents/{id}/versions/{v}/approve`, `GET …/versions/{a}/diff/{b}`, `GET …/versions/{v}/export`, `GET …/flow`, `POST …/instructions`, `POST /tasks/{id}/gates/{step}` (pass or stop at a tollgate), `POST /tasks/{id}/requests` (ask for evidence), `GET /requests` (questions for me), `POST /requests/{rid}/answer` (an addressee, or a bot with the event secret and `answered_by`), `POST /requests/{rid}/answer-with-file` (multipart: answer, file, answered_by), `POST /requests/{rid}/cancel`, `GET /agents/{id}/contract?team_group=` (data needed, parameters to confirm), `GET …/learning` (unexplained items, rule candidates), `GET …/recurring`, `POST …/check` (a manifest or group config, checked without storing: `{ok, problems}`) |
+| Groups | `GET /agents/{id}/groups`, `GET …/groups/{g}`, `POST …/groups`, `POST …/groups/{g}/versions/{v}/approve`, `GET …/groups/{g}/versions/{a}/diff/{b}` |
 | Authoring | `GET /authoring/modes` (which ways are offered), `POST /authoring/guided` (answers → manifest, no model), `POST /authoring/draft` (BRD → manifest; a model, or the nearest template without one), `POST /authoring/submit`, `GET /authoring/drafts`, `GET /authoring/templates`, `POST /promotion/import` |
-| Cases | `GET/POST /capabilities/{id}/cases`, `GET /cases/{id}`, `POST /cases/{id}/decisions` (with `checklist` answers when the capability has a sign-off checklist), `POST …/decisions/bulk`, `POST …/groups/{g}/reinvestigate`, `POST …/rerun`, `POST …/publish`, `POST …/publish/retry`, `GET …/documents/{name}` (published, or kept by a `report` step), `POST …/legal-hold`, `POST …/events/{step}` (the event a waiting case continues with: a system with the event secret, or a person with the step's roles) |
-| Evidence and chat | `POST /cases/{id}/evidence`, `GET …/evidence/{name}`, `GET …/evidence-pack`, `GET …/messages`, `POST …/ask`, `GET …/history`, `GET …/history/{checkpoint}` |
-| Operations | `GET /notifications`, `POST /notifications/read`, `POST /events`, `GET /schedules`, `GET/POST /switches`, `POST /capabilities/{id}/evals`, `GET …/evals`, `GET /evals/{run}`, `POST /entitlements/invalidate` |
+| Tasks | `GET/POST /agents/{id}/tasks`, `GET /tasks/{id}`, `POST /tasks/{id}/decisions` (with `checklist` answers when the agent has a sign-off checklist), `POST …/decisions/bulk`, `POST …/groups/{g}/reinvestigate`, `POST …/rerun`, `POST …/publish`, `POST …/publish/retry`, `GET …/documents/{name}` (published, or kept by a `report` step), `POST …/legal-hold`, `POST …/events/{step}` (the event a waiting task continues with: a system with the event secret, or a person with the step's roles) |
+| Evidence and chat | `POST /tasks/{id}/evidence`, `GET …/evidence/{name}`, `GET …/evidence-pack`, `GET …/messages`, `POST …/ask`, `GET …/history`, `GET …/history/{checkpoint}` |
+| Operations | `GET /notifications`, `POST /notifications/read`, `POST /events`, `GET /schedules`, `GET/POST /switches`, `POST /agents/{id}/evals`, `GET …/evals`, `GET /evals/{run}`, `POST /entitlements/invalidate` |
 
-To open a case from a script:
+To open a task from a script:
 
 ```bash
-curl -X POST localhost:8300/api/capabilities/fin.accruals-review/cases \
+curl -X POST localhost:8300/api/agents/fin.accruals-review/tasks \
   -H 'X-AOF-User: alice' -H 'Content-Type: application/json' \
-  -d '{"case_key": {"entity": "UK01", "period": "2026-09"}}'
+  -d '{"task_key": {"entity": "UK01", "period": "2026-09"}}'
 ```
 
 ## 15. Extension points
@@ -664,7 +664,7 @@ curl -X POST localhost:8300/api/capabilities/fin.accruals-review/cases \
 | To add | Do |
 |---|---|
 | A use case | A manifest (no code) |
-| A team on a shared capability | A group file (no code) |
+| A team on a shared agent | A group file (no code) |
 | A bank system | An MCP server + an entry in `connectors.yaml`; Agent One Finance code is unchanged |
 | An LLM connector | `AOF_LLM_ADAPTER=pkg.mod:obj`, an object with `name` and `async reason(request: ReasonRequest, tools)` (see `agent_one_finance/llm.py`) |
 | Tracing | `AOF_TRACING_SETUP=pkg.mod:fn`, called once at startup |
@@ -688,7 +688,7 @@ cd apps/console && npx vitest run                         # FOBO console
 | `tests/agent_one_finance/test_examples.py` | every example in `docs/agent-one-finance/examples/` validates, allowing only its listed missing connectors |
 | `tests/agent_one_finance/test_groups.py` | configurable paths, group ownership, merging |
 
-A new capability should come with a test that opens a case with `AOF_RUN_MODE=inline`
+A new agent should come with a test that opens a task with `AOF_RUN_MODE=inline`
 and asserts the groups and findings.
 
 ## 17. Deploying in the office
@@ -698,7 +698,7 @@ and asserts the groups and findings.
 2. Set `AOF_LLM_ADAPTER=agent_sdk` (Claude Agent SDK), `PHOENIX_COLLECTOR_ENDPOINT`,
    `AOF_ENTITLEMENT_URL`, `AOF_IDENTITY_HEADER` and `AOF_TRUSTED_PROXY_SECRET`.
 3. Run `alembic upgrade head`, start the API, and run `scripts/aof_office_smoke.py`.
-4. Promote capabilities from UAT using export → import → approve.
+4. Promote agents from UAT using export → import → approve.
 
 See [`../office-platform-and-roadmap.md`](../office-platform-and-roadmap.md) and
 [`../README.md`](../README.md#what-runs-where).

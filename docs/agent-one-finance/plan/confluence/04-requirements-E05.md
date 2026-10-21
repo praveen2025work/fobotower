@@ -44,8 +44,8 @@ Books, reviewers, owners.
 
 **Acceptance criteria**
 
-- Given a Prime book and date, when the case runs, then each break group has a proposal ready for review.
-- Done when: A Prime case runs end to end in UAT
+- Given a Prime book and date, when the task runs, then each break group has a proposal ready for review.
+- Done when: A Prime task runs end to end in UAT
 
 **Blocked by:** E05-S39, E04-S31
 
@@ -90,8 +90,8 @@ As Prime, for Rates books.
 
 **Acceptance criteria**
 
-- Given a Rates book and date, when the case runs, then each break group has a proposal ready for review.
-- Done when: A Rates case runs end to end in UAT
+- Given a Rates book and date, when the task runs, then each break group has a proposal ready for review.
+- Done when: A Rates task runs end to end in UAT
 
 **Blocked by:** E05-S40
 
@@ -144,9 +144,9 @@ History, systemic and trend checks.
 
 ### E05-S47 Next-day follow-up and late breaks
 
-As a FOBO controller, I want decisions re-checked the next day and late breaks in their own case, so that nothing is missed.
+As a FOBO controller, I want decisions re-checked the next day and late breaks in their own task, so that nothing is missed.
 
-Re-check decisions on the next business day; late breaks get their own case.
+Re-check decisions on the next business day; late breaks get their own task.
 
 | Sprint | Release | Points | Priority | Team | Environment | Status |
 |---|---|---|---|---|---|---|
@@ -154,6 +154,6 @@ Re-check decisions on the next business day; late breaks get their own case.
 
 **Acceptance criteria**
 
-- Given a decision that a break would clear, when the next business day runs, then the case shows whether it cleared.
+- Given a decision that a break would clear, when the next business day runs, then the task shows whether it cleared.
 - Done when: Shown in UAT
 

@@ -20,4 +20,4 @@
 | I2 | Issue | Converting each AOF release by hand lost styles and screens | High | Take each release with the sync tool from Sprint 3 | Frontend |
 | D1 | Dependency | MB Rec: extra data and end-of-day notification |  | Weekly session; dates in plan | PM |
 | D2 | Dependency | FAS: test access in UAT and Prod connection |  | Dates in plan | PM |
-| D3 | Dependency | Agent One team: session per capability per case |  | Design agreed in Sprint 3 | Architect |
+| D3 | Dependency | Agent One team: session per agent per task |  | Design agreed in Sprint 3 | Architect |

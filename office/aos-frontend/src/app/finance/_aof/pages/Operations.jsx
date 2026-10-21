@@ -24,7 +24,7 @@ export default function Operations() {
   const ops = useOperations();
   const inbox = useInbox();
   const me = useMe(currentUser());
-  // Platform support holds no data scope: say why case panels are empty.
+  // Platform support holds no data scope: say why task panels are empty.
   const support = !!me.data?.is_admin && Object.keys(me.data?.data_scopes ?? {}).length === 0;
 
   return (
@@ -60,15 +60,15 @@ export default function Operations() {
                 </header>
                 <ul className="flex-1 divide-y divide-surface-100 overflow-y-auto">
                   {(inbox.data ?? []).map((r) => (
-                    <li key={r.case_id} className="px-4 py-2.5">
+                    <li key={r.task_id} className="px-4 py-2.5">
                       <Link
-                        to={`/cases/${encodeURIComponent(r.case_id)}`}
+                        to={`/tasks/${encodeURIComponent(r.task_id)}`}
                         className="text-sm font-medium text-primary-700 hover:underline"
                       >
                         {r.subject}
                       </Link>
                       <div className="mt-0.5 flex items-center gap-2 text-[11px] text-surface-500">
-                        <StatusBadge status={r.action} /> {r.capability_name}
+                        <StatusBadge status={r.action} /> {r.agent_name}
                       </div>
                     </li>
                   ))}

@@ -43,7 +43,7 @@ const SKIP = [/^main\.tsx$/, /^App\.tsx$/, /\.d\.ts$/, /(^|\/)__tests__\//, /^te
 const REWRITES = [
   [/./, /from "react-router-dom"/g, (rel) => `from "${rel("office/router")}"`, 0],
   [/^api\/client\.ts$/, /import\.meta\.env\.VITE_AOF_API/g, () => "process.env.NEXT_PUBLIC_AOF_API", 1],
-  [/^pages\/CaseWorkspace\.tsx$/, /import\.meta\.env\.VITE_AOF_TRACE_URL/g, () => "process.env.NEXT_PUBLIC_AOF_TRACE_URL", 1],
+  [/^pages\/TaskWorkspace\.tsx$/, /import\.meta\.env\.VITE_AOF_TRACE_URL/g, () => "process.env.NEXT_PUBLIC_AOF_TRACE_URL", 1],
   [/^components\/ui\.tsx$/, /import\.meta\.env\.MODE === "test"/g, () => 'process.env.NODE_ENV === "test"', 1],
   // The office app is never the offline snapshot, so it always has the pitch page.
   [/^components\/Layout\.tsx$/, /import\.meta\.env\.MODE !== "snapshot"/g, () => "true", 1],
@@ -226,7 +226,7 @@ async function build() {
     dependencies: Object.fromEntries(needs.map((n) => [n, pkg.dependencies[n]])),
     peer: { next: ">=15", react: ">=18.3", "next-themes": ">=0.3" },
     office_owned: [`${COMPONENTS}/office/auth.js`],
-    env: { NEXT_PUBLIC_AOF_API: "the AOF API base, default /api", NEXT_PUBLIC_AOF_TRACE_URL: "optional: link to a case's traces" },
+    env: { NEXT_PUBLIC_AOF_API: "the AOF API base, default /api", NEXT_PUBLIC_AOF_TRACE_URL: "optional: link to a task's traces" },
     icons: [...icons].sort(),
     files: Object.fromEntries(Object.entries(files).sort().map(([p, f]) => [p, { sha: sha(f.text), from: f.from }])),
   };

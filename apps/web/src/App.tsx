@@ -9,9 +9,9 @@ import Overview from "./pages/Overview";
 // Every page but the home page loads when first opened, so the first download stays small.
 const Audit = lazy(() => import("./pages/Audit"));
 const Authoring = lazy(() => import("./pages/Authoring"));
-const Capabilities = lazy(() => import("./pages/Capabilities"));
-const CapabilityDetail = lazy(() => import("./pages/CapabilityDetail"));
-const CaseWorkspace = lazy(() => import("./pages/CaseWorkspace"));
+const Agents = lazy(() => import("./pages/Agents"));
+const AgentDetail = lazy(() => import("./pages/AgentDetail"));
+const TaskWorkspace = lazy(() => import("./pages/TaskWorkspace"));
 const Connectors = lazy(() => import("./pages/Connectors"));
 const GroupDetail = lazy(() => import("./pages/GroupDetail"));
 const InboxPage = lazy(() => import("./pages/Inbox"));
@@ -36,10 +36,10 @@ function App(): JSX.Element {
       <Route element={<Layout onUserChange={onUserChange} />}>
         <Route path="/" element={<Overview />} />
         <Route path="/inbox" element={page(<InboxPage />)} />
-        <Route path="/capabilities" element={page(<Capabilities />)} />
-        <Route path="/capabilities/:id" element={page(<CapabilityDetail />)} />
-        <Route path="/capabilities/:id/groups/:group" element={page(<GroupDetail />)} />
-        <Route path="/cases/:caseId" element={page(<CaseWorkspace />)} />
+        <Route path="/agents" element={page(<Agents />)} />
+        <Route path="/agents/:id" element={page(<AgentDetail />)} />
+        <Route path="/agents/:id/groups/:group" element={page(<GroupDetail />)} />
+        <Route path="/tasks/:taskId" element={page(<TaskWorkspace />)} />
         <Route path="/authoring" element={page(<Authoring />)} />
         <Route path="/operations" element={page(<Operations />)} />
         <Route path="/audit" element={page(<Audit />)} />

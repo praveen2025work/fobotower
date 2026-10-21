@@ -1,5 +1,5 @@
 // Away? Hand your reviews to a colleague until a date. They decide on your
-// behalf — only on capabilities that allow it (review.allow_delegation) and
+// behalf — only on agents that allow it (review.allow_delegation) and
 // within your data scope; both names are recorded on every decision.
 
 import { useState } from "react";

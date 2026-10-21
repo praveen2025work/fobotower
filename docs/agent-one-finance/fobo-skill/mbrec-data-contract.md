@@ -4,9 +4,9 @@
 parameters), and the FOBO Prime group owners.
 
 Agent One Finance derives this from the configuration (`fobo-prime.yaml`); it is never typed by hand. The
-same list is live in the console: *Capabilities → Balance Recon Agent → Groups → FOBO Prime →
-Data and parameters*. For any other capability or group the panel shows its own contract. The
-API is `GET /api/capabilities/{id}/contract?team_group={group}`.
+same list is live in the console: *Agents → Balance Recon Agent → Groups → FOBO Prime →
+Data and parameters*. For any other agent or group the panel shows its own contract. The
+API is `GET /api/agents/{id}/contract?team_group={group}`.
 
 ## How missing data behaves
 
@@ -93,7 +93,7 @@ Agent One Finance computes the rest itself: the category, side, cause and cause 
    steps ([algorithms](../guide/algorithms.md)). Without it, those fields are empty and nothing
    is assumed.
 8. **`breaks_all(cob)`**: every book's open breaks for a COB (`book`, `instrument`,
-   `difference` only). The cluster step keeps only the count of other books on a case. MB Rec
+   `difference` only). The cluster step keeps only the count of other books on a task. MB Rec
    decides whether this tool may be offered without a book scope.
 
 MOTIF's `booking_events` (with an `event_id`) and `positions` feed the split-booking and
@@ -126,7 +126,7 @@ Two are **not used by any rule yet**:
   after the cut-off goes to MONITOR rather than ESCALATE.
 
 To set one: *Configure → Thresholds* on the group, then a second owner approves. The change is
-versioned, and past cases keep the values they ran on.
+versioned, and past tasks keep the values they ran on.
 
 ### Also to confirm (not parameters)
 

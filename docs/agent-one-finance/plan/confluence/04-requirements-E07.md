@@ -122,7 +122,7 @@ Text from source systems is treated as data, never as instructions.
 
 **Acceptance criteria**
 
-- Given a break comment containing an instruction, when the case runs, then the group goes to a person and nothing is proposed automatically.
+- Given a break comment containing an instruction, when the task runs, then the group goes to a person and nothing is proposed automatically.
 - Done when: Test cases with hidden instructions go to a person
 
 ### E07-S65 Security scans clean

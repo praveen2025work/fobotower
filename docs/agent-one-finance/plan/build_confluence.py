@@ -43,7 +43,7 @@ p += ("## Summary\n\nCore Agent One Finance, integrated with Agent One, investig
       "Sprints are two weeks, Tuesday to Monday. Sprint 1 (Diagnostics) is done, Sprint 2 (AOF skeleton on AWS) is under way, "
       f"and Sprint 3 starts on {d(SPR['S3'][0])}.\n\n"
       "## Scope\n\n**In:** FOBO Prime and Rates on AOF; MB Rec and MOTIF data; approved adjustments posted to MOTIF "
-      "through FAS; Agent One sessions per capability per case; Agent One Finance Diagnostics; UAT and Prod.\n\n"
+      "through FAS; Agent One sessions per agent per task; Agent One Finance Diagnostics; UAT and Prod.\n\n"
       "**Out:** other use cases; CATS.\n\n"
       "## Epics\n\n| Jira | Epic | Team | Status |\n|---|---|---|---|\n"
       + "".join(f"| {e[0]} | {cell(e[1])} | {cell(e[3])} | {EST.get(e[0], 'To Do')} |\n" for e in EPICS)
@@ -111,7 +111,7 @@ DECISIONS = [
     ("D01", "Environments are UAT and Prod", "Agreed", "No separate Dev environment is set up for this delivery."),
     ("D02", "CATS is out of scope", "Agreed", "FOBO uses MB Rec and MOTIF data."),
     ("D03", "Adjustments are posted to MOTIF through FAS", "Agreed", "Only after a reviewer approves and a different person releases; each posted once; read back from MOTIF."),
-    ("D04", "Agent One sessions per capability per case", "Agreed (design to sign)", "Not per user login; optionally per break group inside a case. Session runs with the case's rights."),
+    ("D04", "Agent One sessions per agent per task", "Agreed (design to sign)", "Not per user login; optionally per break group inside a task. Session runs with the task's rights."),
     ("D05", "Diagnostics hosted outside AWS/BCP", "Agreed (platform to confirm)", "Separate build and deployment from AOF."),
     ("D06", "Change freeze 11 Dec to 4 Jan", "Confirmed", "Prod built by 10 Dec; application released on 5 Jan."),
     ("D07", "Scope and go/no-go owned by the Business", "Agreed", "Sign-off by the Business (the FOBO controllers' lead, Product Control), Risk, Security and Operations."),
@@ -141,7 +141,7 @@ RAID = [
     ("I2", "Issue", "Converting each AOF release by hand lost styles and screens", "High", "Take each release with the sync tool from Sprint 3", "Frontend"),
     ("D1", "Dependency", "MB Rec: extra data and end-of-day notification", "", "Weekly session; dates in plan", "PM"),
     ("D2", "Dependency", "FAS: test access in UAT and Prod connection", "", "Dates in plan", "PM"),
-    ("D3", "Dependency", "Agent One team: session per capability per case", "", "Design agreed in Sprint 3", "Architect"),
+    ("D3", "Dependency", "Agent One team: session per agent per task", "", "Design agreed in Sprint 3", "Architect"),
 ]
 p = header("RAID log", "Risks, assumptions, issues and dependencies")
 p += "| ID | Type | Description | Rating | Action | Owner |\n|---|---|---|---|---|---|\n"

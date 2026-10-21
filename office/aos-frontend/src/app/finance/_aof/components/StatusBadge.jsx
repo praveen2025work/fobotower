@@ -14,7 +14,7 @@ const STATUS_STYLES = {
   archived: "bg-surface-100 text-surface-500 border-surface-200",
   unknown: "bg-surface-100 text-surface-500 border-surface-200",
   degraded: "bg-orange-100 text-orange-700 border-orange-200",
-  // Agent One Finance case, finding and decision states
+  // Agent One Finance task, finding and decision states
   running: "bg-primary-50 text-primary-700 border-primary-200",
   awaiting_review: "bg-primary-50 text-primary-700 border-primary-200",
   awaiting_publish: "bg-primary-50 text-primary-700 border-primary-200",

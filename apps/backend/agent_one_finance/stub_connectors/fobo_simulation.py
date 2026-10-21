@@ -18,7 +18,7 @@ when followed exactly (section numbers refer to the skill):
   PRIME-SIM-02 (In Progress)
     two breaks        R5: do not begin                     ESCALATE (hold)
 
-Used by: the single-session capability (break.investigation.skill, which reads
+Used by: the single-session agent (break.investigation.skill, which reads
 the components through the tools itself) and the multi-step one
 (break.investigation + fobo-prime, which reads mbrec.breaks and the snapshots).
 """

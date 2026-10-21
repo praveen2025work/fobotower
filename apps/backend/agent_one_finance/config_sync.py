@@ -1,11 +1,11 @@
-"""Bring a running deployment's capabilities and groups in line with the
+"""Bring a running deployment's agents and groups in line with the
 config files — through the same four-eyes approval as any change.
 
-The YAML files under config/agent-one-finance seed a fresh database. Once a capability
+The YAML files under config/agent-one-finance seed a fresh database. Once an agent
 or group is live, its file is only a proposal: this command drafts a new
 version wherever the file differs from what is active, as
 "system:config-sync", and an owner approves it in the console (Authoring,
-or the group's page). A group whose new file needs a newer capability
+or the group's page). A group whose new file needs a newer agent
 version waits: run the command again after that version is approved.
 
     python -m agent_one_finance.config_sync            # draft what changed
@@ -19,12 +19,12 @@ import json
 import yaml
 from sqlalchemy import func, select
 
-from agent_one_finance import capabilities
+from agent_one_finance import agents
 from agent_one_finance import groups as team_groups
 from agent_one_finance.config import settings
 from agent_one_finance.db import get_session
 from agent_one_finance.manifest import Manifest, problems
-from agent_one_finance.models import CapabilityVersion, GroupVersion
+from agent_one_finance.models import AgentVersion, GroupVersion
 
 SYNC_USER = "system:config-sync"
 
@@ -51,20 +51,20 @@ def _config(stored: dict) -> dict:
         return stored
 
 
-async def _capabilities(dry_run: bool) -> list[str]:
+async def _agents(dry_run: bool) -> list[str]:
     out = []
-    for m in capabilities.seed_files():
+    for m in agents.seed_files():
         body = m.model_dump(by_alias=True)
         async with get_session() as s:
-            rows = (await s.execute(select(CapabilityVersion).where(
-                CapabilityVersion.capability_id == m.id))).scalars().all()
+            rows = (await s.execute(select(AgentVersion).where(
+                AgentVersion.agent_id == m.id))).scalars().all()
         active = next((r for r in rows if r.status == "active"), None)
         if active is not None and _same(_manifest(active.manifest), body):
             continue
         if any(r.status == "draft" and _same(_manifest(r.manifest), body) for r in rows):
             out.append(f"{m.id}: a draft with this file is waiting for approval")
             continue
-        # A capability that is not live yet (a new file) is drafted as version 1.
+        # An agent that is not live yet (a new file) is drafted as version 1.
         found = problems(Manifest.model_validate(body))
         if found:
             out.append(f"{m.id}: file has problems, not drafted: {'; '.join(found)}")
@@ -72,7 +72,7 @@ async def _capabilities(dry_run: bool) -> list[str]:
         if not dry_run:
             async with get_session() as s:
                 n = max((r.version for r in rows), default=0) + 1
-                s.add(CapabilityVersion(capability_id=m.id, version=n, manifest=body, status="draft",
+                s.add(AgentVersion(agent_id=m.id, version=n, manifest=body, status="draft",
                                         note="from config files (config-sync)", drafted_by=SYNC_USER))
                 await s.commit()
         out.append(f"{m.id}: {'would draft' if dry_run else 'drafted'} a new version — an owner approves it")
@@ -86,9 +86,9 @@ async def _groups(dry_run: bool) -> list[str]:
         return out
     for folder in sorted(p for p in root.iterdir() if p.is_dir()):
         try:
-            _, base = await capabilities.active(folder.name)
-        except capabilities.CapabilityError:
-            out += [f"{folder.name}/{p.stem}: waits for capability {folder.name} to be approved"
+            _, base = await agents.active(folder.name)
+        except agents.AgentError:
+            out += [f"{folder.name}/{p.stem}: waits for agent {folder.name} to be approved"
                     for p in sorted(folder.glob("*.yaml"))]
             continue
         for path in sorted(folder.glob("*.yaml")):
@@ -96,7 +96,7 @@ async def _groups(dry_run: bool) -> list[str]:
             body = cfg.model_dump()
             async with get_session() as s:
                 rows = (await s.execute(select(GroupVersion).where(
-                    GroupVersion.capability_id == folder.name, GroupVersion.group_id == cfg.group))).scalars().all()
+                    GroupVersion.agent_id == folder.name, GroupVersion.group_id == cfg.group))).scalars().all()
             active = next((r for r in rows if r.status == "active"), None)
             if active is not None and _same(_config(active.config), body):
                 continue
@@ -111,9 +111,9 @@ async def _groups(dry_run: bool) -> list[str]:
             if not dry_run:
                 async with get_session() as s:
                     n = ((await s.execute(select(func.max(GroupVersion.version)).where(
-                        GroupVersion.capability_id == folder.name,
+                        GroupVersion.agent_id == folder.name,
                         GroupVersion.group_id == cfg.group))).scalar_one() or 0) + 1
-                    s.add(GroupVersion(capability_id=folder.name, group_id=cfg.group, version=n, config=body,
+                    s.add(GroupVersion(agent_id=folder.name, group_id=cfg.group, version=n, config=body,
                                        status="draft", note="from config files (config-sync)", drafted_by=SYNC_USER))
                     await s.commit()
             out.append(f"{label}: {'would draft' if dry_run else 'drafted'} a new version — a group owner approves it")
@@ -121,7 +121,7 @@ async def _groups(dry_run: bool) -> list[str]:
 
 
 async def sync(dry_run: bool = False) -> list[str]:
-    return await _capabilities(dry_run) + await _groups(dry_run)
+    return await _agents(dry_run) + await _groups(dry_run)
 
 
 def main() -> None:

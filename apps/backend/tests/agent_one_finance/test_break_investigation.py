@@ -16,43 +16,43 @@ CAP, GROUP = "break.investigation", "fobo-prime"
 
 
 async def _open(api, book, cob):
-    res = await api.post(f"/api/capabilities/{CAP}/cases", headers=api.as_user("frank"),
-                         json={"case_key": {"book": book, "cob": cob}, "team_group": GROUP})
+    res = await api.post(f"/api/agents/{CAP}/tasks", headers=api.as_user("frank"),
+                         json={"task_key": {"book": book, "cob": cob}, "team_group": GROUP})
     assert res.status_code == 201, res.text
     return res.json()
 
 
-async def _continue(api, case, note=None):
-    res = await api.post(f"/api/cases/{case['case_id']}/gates/reason", headers=api.as_user("frank"),
+async def _continue(api, task, note=None):
+    res = await api.post(f"/api/tasks/{task['task_id']}/gates/reason", headers=api.as_user("frank"),
                          json={"action": "continue", "comment": note, "idempotency_key": uuid.uuid4().hex})
     after = res.json()
     assert after["status"] == "awaiting_review", after.get("error")
     return after
 
 
-def _findings(case):
-    return {g["group_key"]["category"]: g["finding"] for g in case["groups"]}
+def _findings(task):
+    return {g["group_key"]["category"]: g["finding"] for g in task["groups"]}
 
 
 async def test_breaks_come_from_mb_rec_and_wait_at_the_tollgate(api):
-    case = await _open(api, "PRIME-MB-01", "2026-09-29")
-    assert case["status"] == "paused_before_reason"
-    tools = {c["tool"] for c in case["tool_calls"]}
+    task = await _open(api, "PRIME-MB-01", "2026-09-29")
+    assert task["status"] == "paused_before_reason"
+    tools = {c["tool"] for c in task["tool_calls"]}
     assert "mbrec.breaks" in tools
     assert "cats.positions" not in tools                                    # no re-matching
     # MOTIF's positions are read only to look up instrument names (near_refs), not to make breaks
-    assert {c["requested_by"] for c in case["tool_calls"] if c["tool"] == "motif.positions"} <= {"bo_positions"}
-    assert len(case["items"]) == len(finance.mbrec_breaks(book="PRIME-MB-01", cob="2026-09-29")["rows"])
-    by = {i["instrument"]: i for i in case["items"]}
+    assert {c["requested_by"] for c in task["tool_calls"] if c["tool"] == "motif.positions"} <= {"bo_positions"}
+    assert len(task["items"]) == len(finance.mbrec_breaks(book="PRIME-MB-01", cob="2026-09-29")["rows"])
+    by = {i["instrument"]: i for i in task["items"]}
     assert by["IRS 5Y USD"]["category"] == "K"                                 # open 2+ COBs: aged
     assert by["UST 10Y"]["category"] == "F"                                    # §8 static outlier
-    assert not [c for c in case["tool_calls"] if c["requested_by"] == "llm"]    # the model has not run
-    assert case["waiting_on"]["roles"] == ["FOBO_CONTROLLER"] and case["waiting_on"]["you"]
+    assert not [c for c in task["tool_calls"] if c["requested_by"] == "llm"]    # the model has not run
+    assert task["waiting_on"]["roles"] == ["FOBO_CONTROLLER"] and task["waiting_on"]["you"]
 
 
 async def test_timing_is_monitored_and_the_desks_word_reaches_the_model(api):
-    case = await _open(api, "PRIME-MB-04", "2026-09-24")
-    after = await _continue(api, case, "Desk confirms the IRS swap was rebooked on Friday")
+    task = await _open(api, "PRIME-MB-04", "2026-09-24")
+    after = await _continue(api, task, "Desk confirms the IRS swap was rebooked on Friday")
     found = _findings(after)
     assert found["T"]["verdict"] == "MONITOR" and found["T"]["decided_by"] == "playbook"
     assert found["K"]["decided_by"].startswith("llm") and found["K"]["sme_review"] is True
@@ -82,7 +82,7 @@ async def test_r5_nothing_is_investigated_while_the_book_is_incomplete(api):
 def test_a_category_settled_whatever_the_side_needs_one_verdict_for_every_side():
     import yaml
 
-    from agent_one_finance.capabilities import seed_files
+    from agent_one_finance.agents import seed_files
     from agent_one_finance.groups import GroupConfig, effective
     base = next(m for m in seed_files() if m.id == CAP)
     raw = yaml.safe_load(open(settings().config_dir / "groups" / CAP / f"{GROUP}.yaml"))
@@ -102,15 +102,15 @@ async def test_late_exceptions_open_a_follow_up_with_only_the_new_breaks(api, mo
 
     async def notify():
         res = await api.post("/api/events", headers={"X-AOF-Event-Secret": "evt"},
-                             json={"capability_id": CAP, "team_group": GROUP, "case_key": key})
+                             json={"agent_id": CAP, "team_group": GROUP, "task_key": key})
         assert res.status_code == 201, res.text
-        return (await api.get(f"/api/cases/{res.json()['case_id']}", headers=api.as_user("frank"))).json()
+        return (await api.get(f"/api/tasks/{res.json()['task_id']}", headers=api.as_user("frank"))).json()
 
     day = await notify()
     assert day["follow_up_of"] is None and len(day["items"]) == 3
 
     nothing = await notify()                                   # MB Rec notifies again: nothing new
-    assert nothing["follow_up_of"] == day["case_id"]
+    assert nothing["follow_up_of"] == day["task_id"]
     assert (nothing["status"], nothing["outcome"], nothing["items"]) == ("completed", "no_new_items", [])
 
     first = finance.mbrec_breaks(**key)["rows"][0]
@@ -118,35 +118,35 @@ async def test_late_exceptions_open_a_follow_up_with_only_the_new_breaks(api, mo
             "cats_amount": 1250.0, "motif_amount": 0.0, "age_days": 0}
     monkeypatch.setitem(finance.LATE_BREAKS, (key["book"], key["cob"]), [late])
     follow = await notify()                                    # a late exception
-    assert follow["case_id"].endswith(".f2") and follow["subject"].endswith("late items 2")
+    assert follow["task_id"].endswith(".f2") and follow["subject"].endswith("late items 2")
     assert [i["instrument"] for i in follow["items"]] == ["SOFR FUT"]   # only the new break
     assert follow["status"] == "paused_before_reason"          # through the same tollgate
 
-    again = (await api.get(f"/api/cases/{day['case_id']}", headers=api.as_user("frank"))).json()
-    assert [f["case_id"] for f in again["follow_ups"]] == [nothing["case_id"], follow["case_id"]]
+    again = (await api.get(f"/api/tasks/{day['task_id']}", headers=api.as_user("frank"))).json()
+    assert [f["task_id"] for f in again["follow_ups"]] == [nothing["task_id"], follow["task_id"]]
     assert [f["items"] for f in again["follow_ups"]] == [0, 1]           # the day view counts late items
-    assert len(again["items"]) == 3                            # the day's case is unchanged
+    assert len(again["items"]) == 3                            # the day's task is unchanged
 
 
-async def test_rates_is_a_second_group_on_the_same_capability(api):
+async def test_rates_is_a_second_group_on_the_same_agent(api):
     """FOBO Rates: the same skill, its own books, reviewers and thresholds."""
-    res = await api.post(f"/api/capabilities/{CAP}/cases", headers=api.as_user("rita"),
-                         json={"case_key": {"book": "RATES-LDN-01", "cob": "2026-09-29"}, "team_group": "fobo-rates"})
+    res = await api.post(f"/api/agents/{CAP}/tasks", headers=api.as_user("rita"),
+                         json={"task_key": {"book": "RATES-LDN-01", "cob": "2026-09-29"}, "team_group": "fobo-rates"})
     assert res.status_code == 201, res.text
-    case = res.json()
-    assert case["status"] == "paused_before_reason" and case["waiting_on"]["roles"] == ["FOBO_RATES_CONTROLLER"]
-    assert {c["tool"] for c in case["tool_calls"]} >= {"mbrec.breaks", "motif.break_snapshots"}
-    after = (await api.post(f"/api/cases/{case['case_id']}/gates/reason", headers=api.as_user("rita"),
+    task = res.json()
+    assert task["status"] == "paused_before_reason" and task["waiting_on"]["roles"] == ["FOBO_RATES_CONTROLLER"]
+    assert {c["tool"] for c in task["tool_calls"]} >= {"mbrec.breaks", "motif.break_snapshots"}
+    after = (await api.post(f"/api/tasks/{task['task_id']}/gates/reason", headers=api.as_user("rita"),
                             json={"action": "continue", "idempotency_key": uuid.uuid4().hex})).json()
     assert after["status"] == "awaiting_review", after.get("error")
     # Product Control confirmed the Rates materiality and posting policy: a POST is not flagged
     posts = [g["finding"] for g in after["groups"] if g["finding"].get("verdict") == "POST"]
     assert all(not f.get("requires_confirmation") for f in posts)
     # Rita sees London books only; FOBO Prime's controller is not a Rates reviewer
-    ny = await api.post(f"/api/capabilities/{CAP}/cases", headers=api.as_user("rita"),
-                        json={"case_key": {"book": "RATES-NY-01", "cob": "2026-09-29"}, "team_group": "fobo-rates"})
+    ny = await api.post(f"/api/agents/{CAP}/tasks", headers=api.as_user("rita"),
+                        json={"task_key": {"book": "RATES-NY-01", "cob": "2026-09-29"}, "team_group": "fobo-rates"})
     assert ny.status_code in (403, 404)
-    gate = await api.post(f"/api/cases/{case['case_id']}/decisions", headers=api.as_user("frank"),
+    gate = await api.post(f"/api/tasks/{task['task_id']}/decisions", headers=api.as_user("frank"),
                           json={"group_id": after["groups"][0]["group_id"], "action": "approve", "comment": "x",
                                 "idempotency_key": uuid.uuid4().hex})
     assert gate.status_code in (403, 404)
@@ -176,8 +176,8 @@ async def test_algorithm_evidence_names_breaks_no_check_explained(api):
     booking, and an instrument MOTIF holds under a typo. The algorithm steps
     add the evidence; the playbook names the category; the verdict stays a
     person's (ESCALATE), as it was for these breaks before."""
-    case = await _open(api, "PRIME-MB-10", "2026-10-08")
-    by = {i["instrument"]: i for i in case["items"]}
+    task = await _open(api, "PRIME-MB-10", "2026-10-08")
+    by = {i["instrument"]: i for i in task["items"]}
     gilt, jgb = by["GILT 5Y"], by["JGB 10Y"]
     assert gilt["offset_with"] == "JGB 10Y" and jgb["offset_with"] == "GILT 5Y"
     assert (gilt["category"], jgb["category"]) == ("O", "O") and gilt["difference"] == -jgb["difference"]
@@ -191,24 +191,24 @@ async def test_algorithm_evidence_names_breaks_no_check_explained(api):
     for i in (gilt, jgb, sofr):
         assert i["trend_points"] >= 1 and "anomaly_z" in i
     assert {gilt["determinism"], sofr["determinism"]} == {"judgement"}     # not settled by the table: model, then a person
-    used = {c["requested_by"]: c["tool"] for c in case["tool_calls"]}
+    used = {c["requested_by"]: c["tool"] for c in task["tool_calls"]}
     assert used["history"] == "mbrec.break_history_book" and used["systemic"] == "mbrec.breaks_all"
 
 
 async def test_the_same_break_in_several_books_is_one_systemic_cause(api):
-    case = await _open(api, "PRIME-MB-01", "2026-10-12")
-    cdx = next(i for i in case["items"] if i["instrument"] == "CDX IG")
+    task = await _open(api, "PRIME-MB-01", "2026-10-12")
+    cdx = next(i for i in task["items"] if i["instrument"] == "CDX IG")
     assert cdx["systemic"] and cdx["systemic_count"] >= 3 and cdx["category"] == "Y"
-    assert "systemic_where" not in cdx                       # other books stay unnamed on this book's case
+    assert "systemic_where" not in cdx                       # other books stay unnamed on this book's task
 
 
 async def test_a_task_is_named_by_the_books_product_from_the_reference_data(api):
     # From 13 October each master book holds one product, and the reference data names
     # it: the title reads "MB Rec breaks: Govt bonds (PRIME-MB-01) · COB …".
-    case = await _open(api, "PRIME-MB-01", "2026-10-19")
-    assert case["labels"]["case"] == "MB Rec breaks"
-    assert case["subject"] == "Govt bonds (PRIME-MB-01) · COB 2026-10-19"
-    assert {i["instrument"] for i in case["items"]} <= set(finance.PRODUCTS["Govt bonds"])
+    task = await _open(api, "PRIME-MB-01", "2026-10-19")
+    assert task["labels"]["task"] == "MB Rec breaks"
+    assert task["subject"] == "Govt bonds (PRIME-MB-01) · COB 2026-10-19"
+    assert {i["instrument"] for i in task["items"]} <= set(finance.PRODUCTS["Govt bonds"])
     # Before then the reference data holds no product: the book code stands in.
     earlier = await _open(api, "PRIME-MB-01", "2026-09-30")
     assert earlier["subject"] == "PRIME-MB-01 · COB 2026-09-30"

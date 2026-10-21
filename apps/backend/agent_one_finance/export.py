@@ -1,12 +1,12 @@
-"""A case as an Excel workbook — for any capability.
+"""A task as an Excel workbook — for any agent.
 
 Sheets:
   Items      one row per item: its group, the group's finding and decision, and
              the item columns (manifest `export.columns`, default `items.display`)
   Groups     one row per group: finding, verdict, decision, who, when, ticket
-  Case       the case's key, status, version, due date, and who exported it
+  Task       the task's key, status, version, due date, and who exported it
 
-Built from the same read as the case page (`case_detail`), so it shows
+Built from the same read as the task page (`task_detail`), so it shows
 exactly what the caller may see — protected fields stay as the page shows them.
 """
 
@@ -16,7 +16,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
-from agent_one_finance.cases import case_detail
+from agent_one_finance.tasks import task_detail
 from agent_one_finance.entitlement import Caller
 from agent_one_finance.runner import pinned
 
@@ -47,14 +47,14 @@ def _sheet(wb: Workbook, title: str, header: list[str], rows: list[list], first:
     return ws
 
 
-async def workbook(case_id: str, caller: Caller) -> tuple[bytes, str]:
-    d = await case_detail(case_id, caller)
+async def workbook(task_id: str, caller: Caller) -> tuple[bytes, str]:
+    d = await task_detail(task_id, caller)
     from agent_one_finance.db import get_session
-    from agent_one_finance.models import Case
+    from agent_one_finance.models import Task
 
     async with get_session() as s:
-        case = await s.get(Case, case_id)
-    m = await pinned(case)
+        task = await s.get(Task, task_id)
+    m = await pinned(task)
     columns = m.export.columns or d["columns"]
     by_item = {}
     for g in d["groups"]:
@@ -85,15 +85,15 @@ async def workbook(case_id: str, caller: Caller) -> tuple[bytes, str]:
                           "explanation", "decision", "decided by", "decided at", "reviewer comment",
                           "ticket"], group_rows)
 
-    case_rows = [["capability", f"{m.name} ({m.id}) v{d['manifest_version']}"],
-                 ["team group", d.get("team_group") or ""], ["case", case_id], ["subject", d["subject"]],
-                 *[[k, v] for k, v in d["case_key"].items()],
+    task_rows = [["agent", f"{m.name} ({m.id}) v{d['manifest_version']}"],
+                 ["team group", d.get("team_group") or ""], ["task", task_id], ["subject", d["subject"]],
+                 *[[k, v] for k, v in d["task_key"].items()],
                  ["status", d["status"]], ["outcome", d.get("outcome") or ""],
                  ["opened", f"{_cell(d['opened_at'])} by {d['opened_by']}"],
                  ["due", _cell(d.get("due_at")) or ""],
                  ["exported by", caller.user_id]]
-    _sheet(wb, "Case", ["field", "value"], case_rows)
+    _sheet(wb, "Task", ["field", "value"], task_rows)
 
     buf = BytesIO()
     wb.save(buf)
-    return buf.getvalue(), f"{case_id}.xlsx"
+    return buf.getvalue(), f"{task_id}.xlsx"

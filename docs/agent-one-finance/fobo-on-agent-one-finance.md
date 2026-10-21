@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-04. The FOBO investigation console (`apps/backend/fobo`, `apps/console`)
 is unchanged and keeps running. This page shows how the same behaviour is expressed on
-Agent One Finance — as configuration of the shared reconciliation capability — so FOBO can move onto the
+Agent One Finance — as configuration of the shared reconciliation agent — so FOBO can move onto the
 platform when the team is ready, and other rec groups get the same machinery.
 
 **Where it lives:**
@@ -53,23 +53,23 @@ Status: **Same** = the same rule, now as Agent One Finance configuration ·
 | Grounding: every figure traces to a computed delta | `validate` gate: every figure traces to the run's data or tool results | **Same** |
 | Idempotent controller decisions per pattern | idempotent decisions per group; bulk decide; required comments | **Same** |
 | Reject-and-redraft cycles (`max_review_cycles`) | "Investigate again" with a reviewer note (`review.max_reinvestigations`) | **Different** |
-| Workflow versions, draft → four-eyes approval, a run keeps its version | capability + group versions; each case keeps the exact merged manifest it ran on; `config_sync` for file changes | **Same** |
-| A rec's investigation runs once, then replays its checkpoint | a case runs once per key (re-run makes attempt 2), off the request path; LangGraph checkpoints | **Same** |
-| Chat drawer (ask about a rec) | "Ask about this case" — grounded, audited, protected | **Same** |
+| Workflow versions, draft → four-eyes approval, a run keeps its version | agent + group versions; each task keeps the exact merged manifest it ran on; `config_sync` for file changes | **Same** |
+| A rec's investigation runs once, then replays its checkpoint | a task runs once per key (re-run makes attempt 2), off the request path; LangGraph checkpoints | **Same** |
+| Chat drawer (ask about a rec) | "Ask about this task" — grounded, audited, protected | **Same** |
 | Execution trace from checkpoints | "Run history" — each step, its time, the state "as it was" | **Same** |
-| Board per COB, notification bell | Inbox and case lists per group; the bell (and Teams via webhook) for review needed, release needed, published, failed, escalated | **Same** |
-| Hours-saved tile (breaks → patterns × 12 min, basis shown) | Overview "Hours saved (30 days)" — items grouped into decisions × the capability's declared manual minutes, with its basis | **Same** |
+| Board per COB, notification bell | Inbox and task lists per group; the bell (and Teams via webhook) for review needed, release needed, published, failed, escalated | **Same** |
+| Hours-saved tile (breaks → patterns × 12 min, basis shown) | Overview "Hours saved (30 days)" — items grouped into decisions × the agent's declared manual minutes, with its basis | **Same** |
 | Validation tests FO-1…FO-8, BO-1…BO-6 with evidence | `playbook.tests`: every test on every break — pass, fail, or not run (evidence missing, or threshold unset under P1); blocking failures (FO-1/2/4/7) hold a POST; FO-3 failing needs FO-6 | **Same** |
 | FO-6 findings A/B/C | `playbook.findings`: a finding that indicates a category explains a break no cause check did | **Same** |
-| A rec opens when its run lands (11:00 run, COB) | scheduled cases (`30 6 * * 1-5`, yesterday's COB per book) and events from MOTIF's feed (`POST /api/events`) | **Same** |
+| A rec opens when its run lands (11:00 run, COB) | scheduled tasks (`30 6 * * 1-5`, yesterday's COB per book) and events from MOTIF's feed (`POST /api/events`) | **Same** |
 | Controller confirms a POST made under an unset threshold | `review.confirm: tick_and_comment`; "Approve all" leaves such verdicts out (`review.bulk_exclude`) | **Same** (stricter: enforced by the server) |
-| Rec deadline (11:00 run) | `case.due: {from: cob, business_days: 1, at: "11:00"}` — due-soon and missed reminders | **Same** |
+| Rec deadline (11:00 run) | `task.due: {from: cob, business_days: 1, at: "11:00"}` — due-soon and missed reminders | **Same** |
 | Fix upstream goes to the owning team | `escalation` raises a ticket for `escalate_to` after the controller decides | **Different** (FOBO named the owner; Agent One Finance also raises the ticket) |
 | `rank` step (order candidate causes) | the first positive check in playbook order is the cause | **Different** |
 
 ## Changing FOBO's rules on Agent One Finance
 
-1. As a CATS vs MOTIF owner (frank, gina), open *Capabilities → Helix FOBO Agent →
+1. As a CATS vs MOTIF owner (frank, gina), open *Agents → Helix FOBO Agent →
    Groups → CATS vs MOTIF*.
 2. Edit the YAML — e.g. set `policy.materiality_threshold.value` once Product Control confirms
    it — and submit.

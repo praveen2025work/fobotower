@@ -1,4 +1,4 @@
-"""What a capability needs from its data, and what it is waiting for people
+"""What an agent needs from its data, and what it is waiting for people
 to confirm — derived from its configuration, never written by hand.
 
 data       every item field the configuration reads, and what reads it: the
@@ -11,7 +11,7 @@ parameters every policy value, where it is used, and whether it is set. An
            that need it do not run and verdicts that depend on it ask the
            reviewer for confirmation.
 
-The same function serves a capability and a team group (its effective
+The same function serves an agent and a team group (its effective
 manifest), so the FOBO Prime group, the cash group and variance commentary
 each get their own contract.
 """

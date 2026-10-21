@@ -2,7 +2,7 @@
 before approving a group — e.g. the FOBO skill's §14 completion checklist.
 
 Each question may show what Agent One Finance already knows (`prefill`): the tests run on
-the group's items, the evidence and answers on the case, the verdict, the
+the group's items, the evidence and answers on the task, the verdict, the
 category, or one of the model's answer sections. Approving needs every
 required question answered yes or n/a; the answers are kept on the decision.
 """

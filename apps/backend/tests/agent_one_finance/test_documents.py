@@ -1,5 +1,5 @@
 """The documents service (PDF and Excel in, PDF reports out) and the report
-validation capability built on it: Excel vs the ledger, four-eyes, a PDF."""
+validation agent built on it: Excel vs the ledger, four-eyes, a PDF."""
 
 import dataclasses
 import io
@@ -8,7 +8,7 @@ import pytest
 from pypdf import PdfReader
 
 from agent_one_finance import gateway
-from agent_one_finance.capabilities import seed_files
+from agent_one_finance.agents import seed_files
 from agent_one_finance.config import settings
 from agent_one_finance.entitlement import Caller
 from agent_one_finance.manifest import Manifest, problems
@@ -28,7 +28,7 @@ def reports_store(request, tmp_path, monkeypatch):
 
 def _ctx(user="alice", scopes=("UK01",), requested_by="match", tools=None):
     caller = Caller(user, frozenset({"FIN_PREPARER"}), {"entity": frozenset(scopes)})
-    return gateway.CallContext(capability_id=REPORT, caller=caller, requested_by=requested_by,
+    return gateway.CallContext(agent_id=REPORT, caller=caller, requested_by=requested_by,
                                allowed_tools=frozenset(tools or gateway.registry().all_tools()))
 
 
@@ -65,27 +65,27 @@ async def test_writing_a_report_is_publish_only():
 # ---------- report validation, end to end ----------
 
 async def _validated(api, user="alice"):
-    case = (await api.post(f"/api/capabilities/{REPORT}/cases", json={"case_key": KEY},
+    task = (await api.post(f"/api/agents/{REPORT}/tasks", json={"task_key": KEY},
                            headers=api.as_user(user))).json()
-    assert case["status"] == "awaiting_review", case
-    for g in case["groups"]:
-        res = await api.post(f"/api/cases/{case['case_id']}/decisions", headers=api.as_user(user),
+    assert task["status"] == "awaiting_review", task
+    for g in task["groups"]:
+        res = await api.post(f"/api/tasks/{task['task_id']}/decisions", headers=api.as_user(user),
                              json={"group_id": g["group_id"], "action": "approve",
-                                   "idempotency_key": f"{case['case_id']}-{g['group_id']}"})
+                                   "idempotency_key": f"{task['task_id']}-{g['group_id']}"})
         assert res.status_code == 201, res.text
         last = res.json()
-    return case, last["case"]
+    return task, last["task"]
 
 
 async def test_report_lines_are_matched_to_the_ledger(api):
-    case, _ = await _validated(api)
-    breaks = {(i["account"], i["cost_centre"]): i for i in case["items"]}
+    task, _ = await _validated(api)
+    breaks = {(i["account"], i["cost_centre"]): i for i in task["items"]}
     assert set(breaks) == {("6300", "CC10"), ("4000", "CC20"), ("7200", "CC20"), ("6900", "CC10")}
     assert breaks[("6300", "CC10")]["difference"] == 25000.0
     assert breaks[("7200", "CC20")]["break_type"] == "missing_report"
     assert breaks[("6900", "CC10")]["break_type"] == "missing_ledger"
-    assert all(g["finding"]["status"] == "proposed" for g in case["groups"]), case["groups"]
-    rounding = next(g for g in case["groups"] if g["group_key"] == {"account": "4000"})
+    assert all(g["finding"]["status"] == "proposed" for g in task["groups"]), task["groups"]
+    rounding = next(g for g in task["groups"] if g["group_key"] == {"account": "4000"})
     assert rounding["finding"]["rule"] == "rounding"
 
 
@@ -93,15 +93,15 @@ async def test_released_validation_publishes_one_pdf_report(api):
     _, reviewed = await _validated(api)
     assert reviewed["status"] == "awaiting_publish" and reviewed["documents"] == []
     with pytest.raises(documents.DocumentError):                      # nothing before release
-        await documents.load_report("UK01", f"{reviewed['case_id']}.pdf")
+        await documents.load_report("UK01", f"{reviewed['task_id']}.pdf")
 
-    res = await api.post(f"/api/cases/{reviewed['case_id']}/publish", headers=api.as_user("bob"),
+    res = await api.post(f"/api/tasks/{reviewed['task_id']}/publish", headers=api.as_user("bob"),
                          json={"idempotency_key": "release-report-1"})
     assert res.status_code == 201, res.text
-    done = res.json()["case"]
+    done = res.json()["task"]
     assert (done["status"], done["outcome"]) == ("completed", "published")
     [doc] = done["documents"]
-    assert doc["name"] == f"{done['case_id']}.pdf" and doc["pages"] >= 1
+    assert doc["name"] == f"{done['task_id']}.pdf" and doc["pages"] >= 1
 
     content, content_type = await documents.load_report("UK01", doc["name"])
     assert content_type == "application/pdf"
@@ -113,7 +113,7 @@ async def test_released_validation_publishes_one_pdf_report(api):
     got = await api.get(doc["url"], headers=api.as_user("bob"))
     assert got.status_code == 200 and got.content.startswith(b"%PDF")
     assert (await api.get(doc["url"], headers=api.as_user("viewer"))).status_code == 404
-    assert (await api.get(f"/api/cases/{done['case_id']}/documents/other.pdf",
+    assert (await api.get(f"/api/tasks/{done['task_id']}/documents/other.pdf",
                           headers=api.as_user("bob"))).status_code == 404
 
 
@@ -128,7 +128,7 @@ def test_publish_tokens_must_match_per():
     found = _report(publish={**base["publish"], "per": "group"})
     assert "publish.args.sections: `$approved` cannot be used with per: group" in found
     found = _report(publish={**base["publish"], "args": {**base["publish"]["args"], "x": "$comment"}})
-    assert "publish.args.x: `$comment` cannot be used with per: case" in found
+    assert "publish.args.x: `$comment` cannot be used with per: task" in found
     match = {**base["match"], "left": {"tool": "documents.render_pdf_report", "args": {}}}
     assert ("tool `documents.render_pdf_report` writes to a bank system; only `publish` may use it"
             in _report(match=match))

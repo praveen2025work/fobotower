@@ -8,8 +8,8 @@
          factory) with `name` and `async reason(request, tools)`
 
 The model never sees a connector directly. `tools` is a ToolInvoker bound to
-the case: every call it makes goes through the MCP gateway, which checks the
-tool is allowed for the capability, enforces the caller's data scope, and
+the task: every call it makes goes through the MCP gateway, which checks the
+tool is allowed for the agent, enforces the caller's data scope, and
 writes a aof_tool_call row — so whatever the model cites can be validated.
 Guards and validation run after, in code; the model's answer is a proposal.
 """
@@ -24,10 +24,10 @@ from agent_one_finance.config import settings
 
 @dataclass(frozen=True)
 class ReasonRequest:
-    capability_id: str
-    case_id: str
-    case_key: dict
-    skill: str                 # the capability's instructions to the model
+    agent_id: str
+    task_id: str
+    task_key: dict
+    skill: str                 # the agent's instructions to the model
     group: dict                # {group_id, label, group_key, items: [...], priors: [...]}
     allowed_tools: list[str]   # "connector.tool" names the model may call
     output: str                # verdict | commentary | classification
@@ -58,12 +58,12 @@ class ReasonResult:
 
 @dataclass(frozen=True)
 class SessionRequest:
-    """One skill session (the `agent` step): the model gets the case key, the
+    """One skill session (the `agent` step): the model gets the task key, the
     skill and the allowed tools, finds the data itself, and returns one result
     per item it investigated (e.g. per break), or none and a summary."""
-    capability_id: str
-    case_id: str
-    case_key: dict
+    agent_id: str
+    task_id: str
+    task_key: dict
     skill: str
     allowed_tools: list[str]
     id_field: str              # what identifies a result, e.g. instrument
@@ -92,18 +92,18 @@ class SessionResult:
 
 async def run_session(adapter, request: SessionRequest, tools: "ToolInvoker") -> SessionResult:
     """The adapter's own session when it has one (`investigate`); otherwise its
-    `reason` over the whole case as one group, so any office adapter works."""
+    `reason` over the whole task as one group, so any office adapter works."""
     if hasattr(adapter, "investigate"):
         return await adapter.investigate(request, tools)
     res = await adapter.reason(ReasonRequest(
-        capability_id=request.capability_id, case_id=request.case_id, case_key=request.case_key,
-        skill=request.skill, group={"group_id": "all", "label": "Whole case", "group_key": {},
+        agent_id=request.agent_id, task_id=request.task_id, task_key=request.task_key,
+        skill=request.skill, group={"group_id": "all", "label": "Whole task", "group_key": {},
                                     "items": [], "priors": []},
         allowed_tools=request.allowed_tools, output="verdict" if request.verdicts else "commentary",
         notes=request.notes, verdicts=request.verdicts or None, specialists=request.specialists,
         sections=request.sections), tools)
     return SessionResult(results=[], summary=res.comment, model=res.model, usage=res.usage, transcript=[
-        {"turn": 1, "role": "user", "kind": "prompt", "text": "The whole case as one group (the adapter has no session)."},
+        {"turn": 1, "role": "user", "kind": "prompt", "text": "The whole task as one group (the adapter has no session)."},
         {"turn": 1, "role": "model", "kind": "answer", "text": res.comment}]) if (
         res.status == "proposed" and not res.verdict and not res.sections) else SessionResult(
         results=[{"id": "all", "status": res.status, "comment": res.comment, "reason": res.reason,
@@ -112,10 +112,10 @@ async def run_session(adapter, request: SessionRequest, tools: "ToolInvoker") ->
 
 @dataclass(frozen=True)
 class AskRequest:
-    """A question about one case, answered from its data and tools."""
-    capability_id: str
-    case_id: str
-    case_key: dict
+    """A question about one task, answered from its data and tools."""
+    agent_id: str
+    task_id: str
+    task_key: dict
     skill: str
     question: str
     context: dict              # {subject, status, headline, groups: [...], items: [...]}
@@ -128,7 +128,7 @@ class ExtractRequest:
     """Fields to read from a document's text (an `extract` step). The answer
     for each field is {value, quote, confidence}; the quote must be the
     document's own words — the step checks it is, and sends anything else to a person."""
-    case_id: str
+    task_id: str
     text: str
     fields: list[dict]         # [{name, hint, required}]
 
@@ -159,7 +159,7 @@ class NoLlm:
         return ReasonResult(status="escalated", reason="NO_REASONER")
 
     async def ask(self, request, tools):
-        return AskResult(answer=_from_case(request) + " (No model is configured; this is the case's own record.)")
+        return AskResult(answer=_from_task(request) + " (No model is configured; this is the case's own record.)")
 
 
 def _mentioned(request: "AskRequest") -> list[dict]:
@@ -176,8 +176,8 @@ def _mentioned(request: "AskRequest") -> list[dict]:
     return out
 
 
-def _from_case(request: "AskRequest") -> str:
-    """An answer built only from the case's record — no model involved."""
+def _from_task(request: "AskRequest") -> str:
+    """An answer built only from the task's record — no model involved."""
     ctx = request.context
     groups = _mentioned(request) or ctx.get("groups", [])
     lines = [ctx.get("headline") or f"{ctx.get('subject')}: {ctx.get('status')}."]
@@ -193,7 +193,7 @@ def _from_case(request: "AskRequest") -> str:
 
 
 class StubLlm:
-    """Calls each allowed tool it can fill from the case and group keys once,
+    """Calls each allowed tool it can fill from the task and group keys once,
     then comments using the group's own figures. Deterministic, so tests and demos are stable."""
 
     name = "stub"
@@ -202,7 +202,7 @@ class StubLlm:
         from agent_one_finance.gateway import tool_schema
 
         evidence = []
-        args = {**request.case_key, **request.group["group_key"]}
+        args = {**request.task_key, **request.group["group_key"]}
         for tool in request.allowed_tools:
             # A model chooses its own arguments; the stub can only pass the keys
             # it has, so it skips tools that need more (e.g. a document name).
@@ -232,21 +232,21 @@ class StubLlm:
 
 
     async def investigate(self, request: "SessionRequest", tools) -> "SessionResult":
-        """Reads every allowed tool it can fill from the case key; the first
+        """Reads every allowed tool it can fill from the task key; the first
         whose rows carry the id field gives one result per row. It cannot judge,
         so it gives the first verdict offered and cites only the row's figures."""
         from agent_one_finance.gateway import tool_schema
 
         read, rows = [], []
         transcript = [{"turn": 1, "role": "user", "kind": "prompt",
-                       "text": f"Investigate each {request.item_label.lower()} for {request.case_key}."}]
+                       "text": f"Investigate each {request.item_label.lower()} for {request.task_key}."}]
         for tool in request.allowed_tools:
-            if not set((await tool_schema(tool)).get("required", [])) <= set(request.case_key):
+            if not set((await tool_schema(tool)).get("required", [])) <= set(request.task_key):
                 continue
             turn = len(transcript) // 2 + 1
             transcript.append({"turn": turn, "role": "model", "kind": "tool_call", "tool": tool,
-                               "input": dict(request.case_key)})
-            got = (await tools(tool, dict(request.case_key))).get("rows", []) or []
+                               "input": dict(request.task_key)})
+            got = (await tools(tool, dict(request.task_key))).get("rows", []) or []
             transcript.append({"turn": turn, "role": "tool", "kind": "tool_result", "tool": tool, "rows": len(got)})
             read.append(f"{len(got)} rows from {tool}")
             if not rows and any(isinstance(r, dict) and request.id_field in r for r in got):
@@ -258,8 +258,8 @@ class StubLlm:
             amount = r.get(request.amount_field) if request.amount_field else None
             comment = f"{rid}: " + (f"{request.amount_field} {_fmt(_num(amount))}; " if amount is not None else "") \
                 + f"reviewed {seen}."
-            fake = ReasonRequest(capability_id=request.capability_id, case_id=request.case_id,
-                                 case_key=request.case_key, skill="", group={}, allowed_tools=[], output="")
+            fake = ReasonRequest(agent_id=request.agent_id, task_id=request.task_id,
+                                 task_key=request.task_key, skill="", group={}, allowed_tools=[], output="")
             results.append({
                 "id": rid, "status": "proposed", "comment": comment,
                 "verdict": request.verdicts[0] if request.verdicts else None,
@@ -285,12 +285,12 @@ class StubLlm:
 
         evidence = []
         for g in _mentioned(request)[:3]:
-            args = {**request.case_key, **g["group_key"]}
+            args = {**request.task_key, **g["group_key"]}
             for tool in request.allowed_tools:
                 if set((await tool_schema(tool)).get("required", [])) <= set(args):
                     result = await tools(tool, args)
                     evidence.append(f"{len(result.get('rows', []))} rows from {tool} for {g['label']}")
-        answer = _from_case(request)
+        answer = _from_task(request)
         if evidence:
             answer += " I also looked at " + "; ".join(evidence) + "."
         return AskResult(answer=answer, model="stub")

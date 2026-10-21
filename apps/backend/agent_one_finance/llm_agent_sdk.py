@@ -3,9 +3,9 @@
 `AOF_LLM_ADAPTER=agent_sdk` selects it. One `reason()` call is one Agent SDK
 `query()` for one proposal group:
 
-  system prompt   the capability's `reasoning.skill`, plus Agent One Finance's output rules
-  prompt          the case key, the group (key, totals, items) and its priors, as JSON
-  tools           ONLY the capability's allowed connector tools, served by an
+  system prompt   the agent's `reasoning.skill`, plus Agent One Finance's output rules
+  prompt          the task key, the group (key, totals, items) and its priors, as JSON
+  tools           ONLY the agent's allowed connector tools, served by an
                   in-process SDK MCP server whose handlers call the Agent One Finance gateway
                   (`tools`) — so allow-list, data scope, audit row and figure
                   validation apply to every call the model makes. Built-in Claude
@@ -51,7 +51,7 @@ SERVER = "aof"
 OUTPUT_RULES = """
 You are working inside Agent One Finance, a governed workflow. Rules that override anything above:
 - Use only the tools provided. Every figure you state must come from a tool result
-  or from the case data in the prompt; figures that cannot be traced are rejected
+  or from the task data in the prompt; figures that cannot be traced are rejected
   and the group goes to a person.
 - If the evidence does not support a conclusion, set status to "escalated" and say
   why in `reason`. Do not guess.
@@ -130,8 +130,8 @@ def _gateway_tool(qualified: str, schema: dict, description: str, tools: ToolInv
 
 def _prompt(request: ReasonRequest) -> str:
     return json.dumps({
-        "capability": request.capability_id,
-        "case": request.case_key,
+        "agent": request.agent_id,
+        "task": request.task_key,
         "group": {k: request.group[k] for k in ("label", "group_key", "total", "count")
                   if k in request.group},
         "items": request.group.get("items", []),
@@ -227,7 +227,7 @@ class ClaudeAgentSdkAdapter:
 
     async def reason(self, request: ReasonRequest, tools: ToolInvoker) -> ReasonResult:
         with span("llm.agent_sdk", kind=AGENT, input=_prompt(request),
-                  case_id=request.case_id, capability_id=request.capability_id,
+                  task_id=request.task_id, agent_id=request.agent_id,
                   group_id=request.group.get("group_id"), model=self.model,
                   tools=",".join(request.allowed_tools)) as sp:
             options = await self._options(request, tools)
@@ -259,7 +259,7 @@ You are working inside Agent One Finance, a governed workflow. Rules that overri
 - Return one result per item you investigated, identified by `id`. Give a verdict only
   from the list offered. If the evidence does not support a conclusion, set the result's
   status to "escalated" and say why in `reason`. Do not guess.
-- `summary` is a short account of the whole case for the reviewer.
+- `summary` is a short account of the whole task for the reviewer.
 - Reply with the structured result only.
 """.strip()
 
@@ -291,9 +291,9 @@ def _session_schema(request: SessionRequest) -> dict:
 
 def _session_prompt(request: SessionRequest) -> str:
     return json.dumps({
-        "capability": request.capability_id,
-        "case": request.case_key,
-        "investigate": f"each {request.item_label.lower()} for this case; identify each by {request.id_field}",
+        "agent": request.agent_id,
+        "task": request.task_key,
+        "investigate": f"each {request.item_label.lower()} for this task; identify each by {request.id_field}",
         **({"verdicts_you_may_give": request.verdicts} if request.verdicts else {}),
         **({"fields_for_each_result": request.result_fields} if request.result_fields else {}),
         **({"answer_in_sections": [{"id": x["id"], "label": x["label"], "what_it_must_say": x.get("hint", ""),
@@ -304,10 +304,10 @@ def _session_prompt(request: SessionRequest) -> str:
 
 
 async def _investigate(self: "ClaudeAgentSdkAdapter", request: SessionRequest, tools: ToolInvoker) -> SessionResult:
-    """One skill session: one Agent SDK `query()` for the whole case, with the
+    """One skill session: one Agent SDK `query()` for the whole task, with the
     same gateway-backed tools and subagents as `reason`."""
-    as_reason = ReasonRequest(capability_id=request.capability_id, case_id=request.case_id,
-                              case_key=request.case_key, skill=request.skill, group={},
+    as_reason = ReasonRequest(agent_id=request.agent_id, task_id=request.task_id,
+                              task_key=request.task_key, skill=request.skill, group={},
                               allowed_tools=request.allowed_tools, output="", specialists=request.specialists)
     options = await self._options(as_reason, tools)
     options.system_prompt = f"{request.skill.strip()}\n\n{SESSION_RULES}" + (
@@ -315,8 +315,8 @@ async def _investigate(self: "ClaudeAgentSdkAdapter", request: SessionRequest, t
     options.output_format = {"type": "json_schema", "schema": _session_schema(request)}
     options.max_turns = request.max_turns or int(os.getenv("AOF_LLM_SESSION_MAX_TURNS") or 40)
     prompt = _session_prompt(request)
-    with span("llm.agent_sdk.session", kind=AGENT, input=prompt, case_id=request.case_id,
-              capability_id=request.capability_id, model=self.model, tools=",".join(request.allowed_tools)) as sp:
+    with span("llm.agent_sdk.session", kind=AGENT, input=prompt, task_id=request.task_id,
+              agent_id=request.agent_id, model=self.model, tools=",".join(request.allowed_tools)) as sp:
         result, transcript = None, [{"turn": 0, "role": "user", "kind": "prompt", "text": prompt}]
         turn = 0
         async for message in self._query(prompt=prompt, options=options):
@@ -377,8 +377,8 @@ def _tool_results(turn: int, message) -> list[dict]:
 ClaudeAgentSdkAdapter.investigate = _investigate
 
 ASK_RULES = """
-You are answering a reviewer's question about one case inside Agent One Finance, a governed
-workflow. Answer from the case data in the prompt and the tools provided only.
+You are answering a reviewer's question about one task inside Agent One Finance, a governed
+workflow. Answer from the task data in the prompt and the tools provided only.
 Every figure you state must come from them; say plainly when the data does not
 answer the question. Be brief and specific. Reply with the structured result only.
 """.strip()
@@ -407,11 +407,11 @@ async def _ask(self: "ClaudeAgentSdkAdapter", request, tools):
         permission_mode="dontAsk", max_turns=self.max_turns, max_budget_usd=self.max_budget_usd,
         model=self.model, effort=self.effort,
         output_format={"type": "json_schema", "schema": ASK_SCHEMA})
-    prompt = json.dumps({"case": request.case_key, "question": request.question,
-                         "earlier_turns": request.history, "case_data": request.context},
+    prompt = json.dumps({"task": request.task_key, "question": request.question,
+                         "earlier_turns": request.history, "task_data": request.context},
                         default=str, indent=1)
-    with span("llm.agent_sdk.ask", kind=AGENT, input=prompt, case_id=request.case_id,
-              capability_id=request.capability_id, model=self.model) as sp:
+    with span("llm.agent_sdk.ask", kind=AGENT, input=prompt, task_id=request.task_id,
+              agent_id=request.agent_id, model=self.model) as sp:
         result = await self._run(prompt, options)
         out = _parse_any(result)
         set_output(sp, out)
@@ -439,7 +439,7 @@ async def _extract(self: "ClaudeAgentSdkAdapter", request) -> dict:
     options = ClaudeAgentOptions(system_prompt=EXTRACT_RULES, tools=[], strict_mcp_config=True,
                                  permission_mode="dontAsk", max_turns=2, model=self.model, effort="low",
                                  output_format={"type": "json_schema", "schema": schema})
-    with span("llm.agent_sdk.extract", kind=AGENT, case_id=request.case_id, model=self.model) as sp:
+    with span("llm.agent_sdk.extract", kind=AGENT, task_id=request.task_id, model=self.model) as sp:
         out = _parse_any(await self._run(json.dumps({"fields": request.fields, "document": request.text}), options))
         set_output(sp, out)
         return {k: v for k, v in out.items() if isinstance(v, dict)}

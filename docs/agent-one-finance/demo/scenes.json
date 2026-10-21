@@ -21,12 +21,12 @@
  },
  {
   "id": "s05",
-  "text": "A front office cause never posts. That rule is enforced in code, not left to the model. And every figure is traced to the system call it came from. If a number cannot be traced, the case is escalated to a person.",
+  "text": "A front office cause never posts. That rule is enforced in code, not left to the model. And every figure is traced to the system call it came from. If a number cannot be traced, the task is escalated to a person.",
   "dur": 15.97
  },
  {
   "id": "s06",
-  "text": "Controllers can ask questions in plain English. Answers use only this case's data, and every lookup is audited.",
+  "text": "Controllers can ask questions in plain English. Answers use only this task's data, and every lookup is audited.",
   "dur": 8.72
  },
  {
@@ -46,7 +46,7 @@
  },
  {
   "id": "s10",
-  "text": "For technology, there is one platform to run. Every data access is checked against entitlements and audited. Sensitive fields are masked before the model sees them. Costs are capped, and any capability can be switched off in one click.",
+  "text": "For technology, there is one platform to run. Every data access is checked against entitlements and audited. Sensitive fields are masked before the model sees them. Costs are capped, and any agent can be switched off in one click.",
   "dur": 17.37
  },
  {

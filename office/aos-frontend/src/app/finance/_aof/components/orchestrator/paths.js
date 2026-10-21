@@ -1,7 +1,7 @@
 // Generated from apps/web/src/components/orchestrator/paths.ts by apps/web/office/convert.mjs. Office changes to this file are
 // kept by aof_sync.py on the next update; see office/README.md.
 // Dotted-path helpers over a manifest held as plain JSON, and the rules for
-// what a team group may set (its capability's `configurable` paths).
+// what a team group may set (its agent's `configurable` paths).
 
 export function get(obj, path) {
   return path.split(".").reduce((o, k) => (o && typeof o === "object" ? o[k] : undefined), obj);
@@ -15,7 +15,7 @@ export function setPath(obj, path, value) {
   return out;
 }
 
-/** May an owner with these `configurable` paths set `path`? null = anything (the capability's own owners). */
+/** May an owner with these `configurable` paths set `path`? null = anything (the agent's own owners). */
 export function allowed(configurable, path) {
   if (configurable === null) return true;
   return configurable.some(
@@ -40,7 +40,7 @@ export function changedPaths(before, after, prefix = "") {
 /**
  * A team group's `set` after an edit: for each configurable path whose value
  * changed, the new value is written at that path (a group replaces the
- * capability's value there, exactly as the server merges it).
+ * agent's value there, exactly as the server merges it).
  */
 export function groupSet(currentSet, configurable, before, after) {
   let out = currentSet;

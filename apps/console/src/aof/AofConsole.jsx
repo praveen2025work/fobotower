@@ -2,24 +2,24 @@
 
 import { useState } from 'react';
 
-import { fetchCapabilities, fetchDevUsers, setCurrentUser, currentUser } from './api';
-import CapabilityView from './CapabilityView';
+import { fetchAgents, fetchDevUsers, setCurrentUser, currentUser } from './api';
+import AgentView from './AgentView';
 import { Empty, ErrorNote, Loading } from './ui';
 import { useAsync } from './useAsync';
 
-/** The generic Agent One Finance shell: who you are, the capabilities you may use, and the selected one. */
+/** The generic Agent One Finance shell: who you are, the agents you may use, and the selected one. */
 export default function AofConsole() {
   const [user, setUser] = useState(() => currentUser());
   const [selectedId, setSelectedId] = useState(null);
   const users = useAsync(fetchDevUsers, []);
-  const capabilities = useAsync(() => (user ? fetchCapabilities() : Promise.resolve([])), [user]);
+  const agents = useAsync(() => (user ? fetchAgents() : Promise.resolve([])), [user]);
 
   const switchUser = (id) => {
     setCurrentUser(id);
     setUser(id);
     setSelectedId(null);
   };
-  const list = capabilities.data ?? [];
+  const list = agents.data ?? [];
   const selected = list.find((c) => c.id === selectedId) ?? list[0];
 
   return (
@@ -27,7 +27,7 @@ export default function AofConsole() {
       <header className="flex flex-wrap items-center justify-between gap-3 bg-[#0b2a5b] px-6 py-3 text-white">
         <div>
           <h1 className="text-lg font-semibold">Agent One Finance</h1>
-          <p className="text-xs text-blue-100">Capabilities onboarded as configuration</p>
+          <p className="text-xs text-blue-100">Agents onboarded as configuration</p>
         </div>
         {users.data?.length > 0 && (
           <label className="flex items-center gap-2 text-sm">
@@ -52,12 +52,12 @@ export default function AofConsole() {
       </header>
 
       <div className="flex flex-col gap-4 p-4 md:flex-row">
-        <nav aria-label="Capabilities" className="md:w-64 md:shrink-0">
-          {!user && <Empty>Choose a user to see their capabilities.</Empty>}
-          {user && capabilities.loading && <Loading what="capabilities" />}
-          {user && capabilities.error && <ErrorNote error={capabilities.error} />}
-          {user && !capabilities.loading && !capabilities.error && list.length === 0 && (
-            <Empty>No capabilities for this user's roles.</Empty>
+        <nav aria-label="Agents" className="md:w-64 md:shrink-0">
+          {!user && <Empty>Choose a user to see their agents.</Empty>}
+          {user && agents.loading && <Loading what="agents" />}
+          {user && agents.error && <ErrorNote error={agents.error} />}
+          {user && !agents.loading && !agents.error && list.length === 0 && (
+            <Empty>No agents for this user's roles.</Empty>
           )}
           <ul className="space-y-1">
             {list.map((c) => (
@@ -81,7 +81,7 @@ export default function AofConsole() {
         </nav>
 
         <main className="min-w-0 flex-1">
-          {selected && <CapabilityView key={`${user}:${selected.id}`} capability={selected} />}
+          {selected && <AgentView key={`${user}:${selected.id}`} agent={selected} />}
         </main>
       </div>
     </div>

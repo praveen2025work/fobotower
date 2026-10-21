@@ -1,6 +1,6 @@
 """Expressions for manifests: `in_scope`, rule `when`, comment templates.
 
-A capability is configuration, so its conditions are text. They are parsed
+An agent is configuration, so its conditions are text. They are parsed
 into a restricted AST — comparisons, arithmetic, and/or/not, `in`, names,
 `policy.x` lookups, and a few functions — and evaluated without `eval`.
 Anything else (imports, attribute access on objects, calls to other
@@ -9,9 +9,9 @@ functions) is refused when the manifest is validated, not at run time.
     abs(amount) >= policy.materiality
     account in ['7100', '7110'] and total < 0
     startswith(account, '61')
-    days_between(value_date, case.cob) > 30
+    days_between(value_date, task.cob) > 30
 
-`case.<field>` reads the case key (e.g. the COB); dates are ISO strings
+`task.<field>` reads the task key (e.g. the COB); dates are ISO strings
 (2026-09-30 or 2026-09-30T14:05:00Z).
 """
 
@@ -59,7 +59,7 @@ def _dt(v) -> datetime:
     return d.replace(tzinfo=None)
 
 # Objects whose fields an expression may read with a dot.
-_DOTTED = ("policy", "case")
+_DOTTED = ("policy", "task")
 
 
 class ExpressionError(ValueError):
@@ -76,7 +76,7 @@ def _check(node: ast.AST) -> None:
         if isinstance(n, ast.Attribute) and not (
             isinstance(n.value, ast.Name) and n.value.id in _DOTTED
         ):
-            raise ExpressionError("only `policy.<name>` and `case.<field>` lookups are allowed")
+            raise ExpressionError("only `policy.<name>` and `task.<field>` lookups are allowed")
         if isinstance(n, ast.Call) and not (
             isinstance(n.func, ast.Name) and n.func.id in _FUNCS and not n.keywords
         ):
@@ -119,11 +119,11 @@ def _eval(n: ast.AST, env: dict) -> Any:
             if attr not in policy:
                 raise ExpressionError(f"unknown policy `{attr}`")
             return policy[attr]
-        case ast.Attribute(value=ast.Name(id="case"), attr=attr):
-            case = env.get("case", {})
-            if attr not in case:
-                raise ExpressionError(f"unknown case field `{attr}`")
-            return case[attr]
+        case ast.Attribute(value=ast.Name(id="task"), attr=attr):
+            task = env.get("task", {})
+            if attr not in task:
+                raise ExpressionError(f"unknown task field `{attr}`")
+            return task[attr]
         case ast.List(elts=e) | ast.Tuple(elts=e):
             return [_eval(x, env) for x in e]
         case ast.UnaryOp(op=ast.Not(), operand=o):

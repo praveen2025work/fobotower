@@ -1,9 +1,9 @@
 // Generated from apps/web/src/components/orchestrator/PrepareSteps.tsx by apps/web/office/convert.mjs. Office changes to this file are
 // kept by aof_sync.py on the next update; see office/README.md.
-// "Prepare the data": the capability's configurable steps (steps v2) — add one
+// "Prepare the data": the agent's configurable steps (steps v2) — add one
 // of the generic types, set it up with a form, run it only `when` something
 // holds, put it in order, remove it. Each is checked by the server like any
-// other setting; team groups may change the settings their capability allows.
+// other setting; team groups may change the settings their agent allows.
 
 import { useState } from "react";
 import clsx from "clsx";
@@ -83,7 +83,7 @@ export const DATA_TYPES = [
     family: "Accounting",
     label: "Schedule over periods",
     says: "Spreads each item's amount over periods (prepayments, accrual release) into a data set.",
-    empty: { amount: "amount", periods: 12, start: "$case.period", into: "schedule" },
+    empty: { amount: "amount", periods: 12, start: "$task.period", into: "schedule" },
   },
   {
     type: "period_check",
@@ -100,7 +100,7 @@ export const DATA_TYPES = [
     place: "groups",
     empty: {
       when: "status == 'proposed'",
-      period: "$case.period",
+      period: "$task.period",
       chart: null,
       lines: [
         { account: "{account}", side: "debit", amount: "abs(total)", narrative: "{label}" },
@@ -269,7 +269,7 @@ export const DATA_TYPES = [
     family: "Orchestration",
     label: "Child tasks",
     says: "Opens a child task per item in another agent; a later wait for `children` rolls them up.",
-    empty: { capability: "", key: {}, max_children: 200 },
+    empty: { agent: "", key: {}, max_children: 200 },
   },
   {
     type: "compose",
@@ -285,7 +285,7 @@ export const DATA_TYPES = [
     label: "Report",
     says: "Writes the task's report (configuration, findings, decisions, data used) as a PDF kept with the task.",
     place: "after_record",
-    empty: { name: "case-report" },
+    empty: { name: "task-report" },
   },
   // acquisition
   {
@@ -330,7 +330,7 @@ export const DATA_TYPES = [
     label: "Clocks",
     says: "Service-level or regulatory clocks per item (hours or business days); people are warned before and told on breach.",
     empty: {
-      clocks: [{ id: "", label: "", starts: "case_opened", hours: 24, business_days: null, warn_before_hours: 4 }],
+      clocks: [{ id: "", label: "", starts: "task_opened", hours: 24, business_days: null, warn_before_hours: 4 }],
     },
   },
   {
@@ -345,7 +345,7 @@ export const DATA_TYPES = [
     family: "Time and parties",
     label: "Related tasks",
     says: "Earlier tasks about the same client, account or counterparty, and how they ended.",
-    empty: { match_on: [], lookback_days: 365, capabilities: [], limit: 5 },
+    empty: { match_on: [], lookback_days: 365, agents: [], limit: 5 },
   },
   {
     type: "screen",
@@ -387,7 +387,7 @@ function fields(id, type) {
     path: `${w}.args`,
     label: "Arguments",
     keyLabel: "Argument",
-    valueLabel: "Value ($case.<field>)",
+    valueLabel: "Value ($task.<field>)",
   };
   const history = [
     { kind: "select", path: `${w}.history`, label: "History (a data set)", options: datasetNames },
@@ -422,7 +422,7 @@ function fields(id, type) {
           path: `${w}.args`,
           label: "Arguments",
           keyLabel: "Argument",
-          valueLabel: "Value ($case.<field>)",
+          valueLabel: "Value ($task.<field>)",
         },
       ];
     case "derive":
@@ -432,7 +432,7 @@ function fields(id, type) {
           path: `${w}.fields`,
           label: "Fields",
           keyLabel: "New field",
-          valueLabel: "Expression, e.g. hours_between(received_at, case.date)",
+          valueLabel: "Expression, e.g. hours_between(received_at, task.date)",
         },
       ];
     case "filter":
@@ -482,7 +482,7 @@ function fields(id, type) {
           path: `${w}.args`,
           label: "Arguments",
           keyLabel: "Argument",
-          valueLabel: "Value ($case.<field>)",
+          valueLabel: "Value ($task.<field>)",
         },
         { kind: "list", path: `${w}.send`, label: "Fields sent (empty = all)", help: "Send only what the tool needs." },
         {
@@ -513,7 +513,7 @@ function fields(id, type) {
       return [
         { kind: "text", path: `${w}.amount`, label: "Amount field" },
         { kind: "number", path: `${w}.periods`, label: "Periods", min: 1, max: 600 },
-        { kind: "text", path: `${w}.start`, label: "First period", placeholder: "$case.period or an item field" },
+        { kind: "text", path: `${w}.start`, label: "First period", placeholder: "$task.period or an item field" },
         { kind: "text", path: `${w}.into`, label: "Into the data set" },
       ];
     case "period_check":
@@ -525,7 +525,7 @@ function fields(id, type) {
     case "propose_entries":
       return [
         { kind: "expr", path: `${w}.when`, label: "For groups where" },
-        { kind: "text", path: `${w}.period`, label: "Accounting period", placeholder: "$case.period" },
+        { kind: "text", path: `${w}.period`, label: "Accounting period", placeholder: "$task.period" },
         {
           kind: "select",
           path: `${w}.chart`,
@@ -668,13 +668,13 @@ function fields(id, type) {
       ];
     case "spawn":
       return [
-        { kind: "text", path: `${w}.capability`, label: "Child agent" },
+        { kind: "text", path: `${w}.agent`, label: "Child agent" },
         {
           kind: "kv",
           path: `${w}.key`,
           label: "Child task key",
           keyLabel: "Key field",
-          valueLabel: "$item.<field>, $case.<field> or a value",
+          valueLabel: "$item.<field>, $task.<field> or a value",
         },
         { kind: "number", path: `${w}.max_children`, label: "At most", min: 1, max: 2000 },
       ];
@@ -754,11 +754,11 @@ function fields(id, type) {
           path: `${w}.clocks`,
           label: "Clocks",
           addLabel: "Add a clock",
-          newRow: { id: "", label: "", starts: "case_opened", hours: 24, business_days: null, warn_before_hours: 4 },
+          newRow: { id: "", label: "", starts: "task_opened", hours: 24, business_days: null, warn_before_hours: 4 },
           columns: [
             { key: "id", label: "Id" },
             { key: "label", label: "Shown as", wide: true },
-            { key: "starts", label: "Starts (field or case_opened)" },
+            { key: "starts", label: "Starts (field or task_opened)" },
             { key: "hours", label: "Hours", kind: "number" },
             { key: "business_days", label: "…or business days", kind: "number" },
             { key: "warn_before_hours", label: "Warn before (h)", kind: "number" },
@@ -787,7 +787,7 @@ function fields(id, type) {
       return [
         { kind: "list", path: `${w}.match_on`, label: "Same when these fields match", placeholder: "client, account" },
         { kind: "number", path: `${w}.lookback_days`, label: "Look back (days)", min: 1, max: 3650 },
-        { kind: "list", path: `${w}.capabilities`, label: "In agents (empty = all)" },
+        { kind: "list", path: `${w}.agents`, label: "In agents (empty = all)" },
         { kind: "number", path: `${w}.limit`, label: "At most", min: 1, max: 50 },
       ];
     case "screen":
@@ -855,7 +855,7 @@ function fields(id, type) {
           path: `${w}.peers_args`,
           label: "Arguments",
           keyLabel: "Argument",
-          valueLabel: "Value ($case.<field>)",
+          valueLabel: "Value ($task.<field>)",
         },
         { kind: "bool", path: `${w}.show_where`, label: "Name the other places (they may be outside a user's scope)" },
       ];
@@ -1032,7 +1032,7 @@ export default function PrepareSteps({ ctx, setWorking, stepsLocked }) {
                       kind: "expr",
                       path: `step_settings.${id}.when`,
                       label: "Run only when (optional)",
-                      placeholder: "case.entity == 'US01'",
+                      placeholder: "task.entity == 'US01'",
                     }}
                   />
                   {fields(id, t.type).map((f) => (

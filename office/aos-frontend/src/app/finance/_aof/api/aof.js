@@ -6,88 +6,79 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api, newIdempotencyKey, upload } from "./client";
 
-/** A team group: one team's configuration of a capability (e.g. a rec group). */
+/** A team group: one team's configuration of an agent (e.g. a rec group). */
 /** Why a group needs more than a click (agent_one_finance/review.py). */
 /** One check a playbook ran on an item (e.g. FOBO's C1–C6); negatives are kept. */
 /** One sign-off checklist question, with what Agent One Finance already knows (review.checklist). */
 /** One entry of a skill session's conversation (the `agent` step). */
-/** The skill session that produced the case's results. */
+/** The skill session that produced the task's results. */
 /** A question to a desk, a trader or Operations, and its answer. */
 /** An open question addressed to the viewer, with just the rows it is about. */
-/** A report the case's publish step wrote (e.g. a PDF), served by the API. */
-/** One proposal still open in a task, as the agent's Summary lists it. */
-/** An agent's business date at a glance: every task, the facts it is grouped by, its open proposals. */
+/** A report the task's publish step wrote (e.g. a PDF), served by the API. */
 const enc = encodeURIComponent;
 
 export const useMe = (user) => useQuery({ queryKey: ["me", user], queryFn: () => api.get("/me"), enabled: !!user });
 export const useDevUsers = () => useQuery({ queryKey: ["dev-users"], queryFn: () => api.get("/dev/users") });
 export const useOverview = () => useQuery({ queryKey: ["overview"], queryFn: () => api.get("/overview") });
 export const useInbox = () => useQuery({ queryKey: ["inbox"], queryFn: () => api.get("/inbox") });
-export const useCapabilities = () => useQuery({ queryKey: ["capabilities"], queryFn: () => api.get("/capabilities") });
-export const useCapability = (id) =>
-  useQuery({ queryKey: ["capability", id], queryFn: () => api.get(`/capabilities/${enc(id)}`) });
+export const useAgents = () => useQuery({ queryKey: ["agents"], queryFn: () => api.get("/agents") });
+export const useAgent = (id) => useQuery({ queryKey: ["agent", id], queryFn: () => api.get(`/agents/${enc(id)}`) });
 export const useCases = (id, teamGroup) =>
   useQuery({
-    queryKey: ["cases", id, teamGroup ?? "all"],
-    queryFn: () => api.get(`/capabilities/${enc(id)}/cases${teamGroup ? `?team_group=${enc(teamGroup)}` : ""}`),
-  });
-export const useSummary = (id, date, enabled = true) =>
-  useQuery({
-    queryKey: ["summary", id, date ?? "latest"],
-    queryFn: () => api.get(`/capabilities/${enc(id)}/summary${date ? `?date=${enc(date)}` : ""}`),
-    enabled,
+    queryKey: ["tasks", id, teamGroup ?? "all"],
+    queryFn: () => api.get(`/agents/${enc(id)}/tasks${teamGroup ? `?team_group=${enc(teamGroup)}` : ""}`),
   });
 export const useGroups = (id, enabled = true) =>
-  useQuery({ queryKey: ["groups", id], queryFn: () => api.get(`/capabilities/${enc(id)}/groups`), enabled });
+  useQuery({ queryKey: ["groups", id], queryFn: () => api.get(`/agents/${enc(id)}/groups`), enabled });
 export const useGroup = (id, group) =>
   useQuery({
     queryKey: ["group", id, group],
-    queryFn: () => api.get(`/capabilities/${enc(id)}/groups/${enc(group)}`),
+    queryFn: () => api.get(`/agents/${enc(id)}/groups/${enc(group)}`),
   });
-/** A case; while its run is in progress the view polls until it pauses or ends. */
-export const useCase = (caseId) =>
+/** A task; while its run is in progress the view polls until it pauses or ends. */
+export const useCase = (taskId) =>
   useQuery({
-    queryKey: ["case", caseId],
-    queryFn: () => api.get(`/cases/${enc(caseId)}`),
+    queryKey: ["task", taskId],
+    queryFn: () => api.get(`/tasks/${enc(taskId)}`),
     refetchInterval: (q) => (q.state.data?.status === "running" ? 1500 : false),
   });
-export const useMessages = (caseId) =>
-  useQuery({ queryKey: ["messages", caseId], queryFn: () => api.get(`/cases/${enc(caseId)}/messages`) });
-export const useHistory = (caseId, enabled = true) =>
-  useQuery({ queryKey: ["history", caseId], queryFn: () => api.get(`/cases/${enc(caseId)}/history`), enabled });
-export const useAudit = (capabilityId) =>
+export const useMessages = (taskId) =>
+  useQuery({ queryKey: ["messages", taskId], queryFn: () => api.get(`/tasks/${enc(taskId)}/messages`) });
+export const useHistory = (taskId, enabled = true) =>
+  useQuery({ queryKey: ["history", taskId], queryFn: () => api.get(`/tasks/${enc(taskId)}/history`), enabled });
+export const useAudit = (agentId) =>
   useQuery({
-    queryKey: ["audit", capabilityId ?? "all"],
-    queryFn: () => api.get(`/audit${capabilityId ? `?capability_id=${enc(capabilityId)}` : ""}`),
+    queryKey: ["audit", agentId ?? "all"],
+    queryFn: () => api.get(`/audit${agentId ? `?agent_id=${enc(agentId)}` : ""}`),
   });
 export const usePlatform = () => useQuery({ queryKey: ["platform"], queryFn: () => api.get("/platform") });
 
-/** After anything that moves a case, refresh every view that summarises cases. */
-function useRefreshCases() {
+/** After anything that moves a task, refresh every view that summarises tasks. */
+function useRefreshTasks() {
   const qc = useQueryClient();
   return (detail) => {
-    if (detail) qc.setQueryData(["case", detail.case_id], detail);
-    for (const key of ["inbox", "overview", "audit", "cases", "summary"]) qc.invalidateQueries({ queryKey: [key] });
+    if (detail) qc.setQueryData(["task", detail.task_id], detail);
+    for (const key of ["inbox", "overview", "audit", "tasks"]) qc.invalidateQueries({ queryKey: [key] });
   };
 }
 
-export function useOpenCase(capabilityId) {
-  const refresh = useRefreshCases();
+export function useOpenTask(agentId) {
+  const refresh = useRefreshTasks();
   return useMutation({
     mutationFn: (v) =>
-      api.post(`/capabilities/${enc(capabilityId)}/cases`, {
-        case_key: v.caseKey,
+      api.post(`/agents/${enc(agentId)}/tasks`, {
+        task_key: v.taskKey,
         team_group: v.teamGroup ?? null,
       }),
     onSuccess: (detail) => refresh(detail),
   });
 }
 
-export function useDecide(caseId) {
-  const refresh = useRefreshCases();
+export function useDecide(taskId) {
+  const refresh = useRefreshTasks();
   return useMutation({
     mutationFn: (v) =>
-      api.post(`/cases/${enc(caseId)}/decisions`, {
+      api.post(`/tasks/${enc(taskId)}/decisions`, {
         group_id: v.groupId,
         action: v.action,
         comment: v.comment || null,
@@ -96,32 +87,32 @@ export function useDecide(caseId) {
         checklist: v.checklist ?? null,
         idempotency_key: newIdempotencyKey(),
       }),
-    onSuccess: (res) => refresh(res.case),
+    onSuccess: (res) => refresh(res.task),
   });
 }
 
-export function useRelease(caseId) {
-  const refresh = useRefreshCases();
+export function useRelease(taskId) {
+  const refresh = useRefreshTasks();
   return useMutation({
-    mutationFn: () => api.post(`/cases/${enc(caseId)}/publish`, { idempotency_key: newIdempotencyKey() }),
-    onSuccess: (res) => refresh(res.case),
+    mutationFn: () => api.post(`/tasks/${enc(taskId)}/publish`, { idempotency_key: newIdempotencyKey() }),
+    onSuccess: (res) => refresh(res.task),
   });
 }
 
-/** Ask a desk, a trader or Operations for evidence about a group or the case. */
-export function useAskForEvidence(caseId) {
+/** Ask a desk, a trader or Operations for evidence about a group or the task. */
+export function useAskForEvidence(taskId) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (v) => api.post(`/cases/${enc(caseId)}/requests`, v),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["case", caseId] }),
+    mutationFn: (v) => api.post(`/tasks/${enc(taskId)}/requests`, v),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["task", taskId] }),
   });
 }
 
-export function useCancelRequest(caseId) {
+export function useCancelRequest(taskId) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (requestId) => api.post(`/requests/${enc(requestId)}/cancel`, {}),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["case", caseId] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["task", taskId] }),
   });
 }
 
@@ -142,11 +133,11 @@ export function useAnswerQuestion() {
 }
 
 /** A person at a tollgate: continue the run, or stop it with a reason. */
-export function usePassGate(caseId) {
-  const refresh = useRefreshCases();
+export function usePassGate(taskId) {
+  const refresh = useRefreshTasks();
   return useMutation({
     mutationFn: (v) =>
-      api.post(`/cases/${enc(caseId)}/gates/${enc(v.step)}`, {
+      api.post(`/tasks/${enc(taskId)}/gates/${enc(v.step)}`, {
         action: v.action,
         comment: v.comment,
         idempotency_key: newIdempotencyKey(),
@@ -155,92 +146,75 @@ export function usePassGate(caseId) {
   });
 }
 
-/** Deliver the event a case waits for, by hand (a person the `await` step names). */
-export function useDeliverEvent(caseId) {
-  const refresh = useRefreshCases();
+/** Deliver the event a task waits for, by hand (a person the `await` step names). */
+export function useDeliverEvent(taskId) {
+  const refresh = useRefreshTasks();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (v) => api.post(`/cases/${enc(caseId)}/events/${enc(v.step)}`, { payload: v.payload }),
+    mutationFn: (v) => api.post(`/tasks/${enc(taskId)}/events/${enc(v.step)}`, { payload: v.payload }),
     onSuccess: () => {
       refresh();
-      qc.invalidateQueries({ queryKey: ["case", caseId] });
+      qc.invalidateQueries({ queryKey: ["task", taskId] });
     },
   });
 }
 
-export function useBulkDecide(caseId) {
-  const refresh = useRefreshCases();
+export function useBulkDecide(taskId) {
+  const refresh = useRefreshTasks();
   return useMutation({
     mutationFn: (v) =>
-      api.post(`/cases/${enc(caseId)}/decisions/bulk`, {
+      api.post(`/tasks/${enc(taskId)}/decisions/bulk`, {
         group_ids: v.groupIds,
         action: v.action,
         comment: v.comment || null,
         review_seconds: v.reviewSeconds ?? null,
         idempotency_key: newIdempotencyKey(),
       }),
-    onSuccess: (res) => refresh(res.case),
+    onSuccess: (res) => refresh(res.task),
   });
 }
 
-/** One decision on a pattern of proposals across many tasks; each task checks it as its own would. */
-export function useDecideAcross(capabilityId) {
-  const refresh = useRefreshCases();
+export function useReinvestigate(taskId) {
+  const refresh = useRefreshTasks();
   return useMutation({
     mutationFn: (v) =>
-      api.post(`/capabilities/${enc(capabilityId)}/summary/decisions`, {
-        targets: v.targets,
-        action: v.action,
-        comment: v.comment || null,
-        review_seconds: v.reviewSeconds ?? null,
-        checklist: v.checklist ?? null,
-        idempotency_key: newIdempotencyKey(),
-      }),
-    onSuccess: () => refresh(),
-  });
-}
-
-export function useReinvestigate(caseId) {
-  const refresh = useRefreshCases();
-  return useMutation({
-    mutationFn: (v) =>
-      api.post(`/cases/${enc(caseId)}/groups/${enc(v.groupId)}/reinvestigate`, {
+      api.post(`/tasks/${enc(taskId)}/groups/${enc(v.groupId)}/reinvestigate`, {
         note: v.note,
         idempotency_key: newIdempotencyKey(),
       }),
-    onSuccess: (res) => refresh(res.case),
+    onSuccess: (res) => refresh(res.task),
   });
 }
 
-export function useRerun(caseId) {
-  const refresh = useRefreshCases();
+export function useRerun(taskId) {
+  const refresh = useRefreshTasks();
   return useMutation({
-    mutationFn: () => api.post(`/cases/${enc(caseId)}/rerun`, {}),
+    mutationFn: () => api.post(`/tasks/${enc(taskId)}/rerun`, {}),
     onSuccess: (detail) => refresh(detail),
   });
 }
 
-export function useRetryPublish(caseId) {
-  const refresh = useRefreshCases();
+export function useRetryPublish(taskId) {
+  const refresh = useRefreshTasks();
   return useMutation({
-    mutationFn: () => api.post(`/cases/${enc(caseId)}/publish/retry`, {}),
-    onSuccess: (res) => refresh(res.case),
+    mutationFn: () => api.post(`/tasks/${enc(taskId)}/publish/retry`, {}),
+    onSuccess: (res) => refresh(res.task),
   });
 }
 
-export function useLegalHold(caseId) {
-  const refresh = useRefreshCases();
+export function useLegalHold(taskId) {
+  const refresh = useRefreshTasks();
   return useMutation({
-    mutationFn: (v) => api.post(`/cases/${enc(caseId)}/legal-hold`, { hold: v.hold, reason: v.reason ?? null }),
+    mutationFn: (v) => api.post(`/tasks/${enc(taskId)}/legal-hold`, { hold: v.hold, reason: v.reason ?? null }),
     onSuccess: (detail) => refresh(detail),
   });
 }
 
-export function useAsk(caseId) {
+export function useAsk(taskId) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (question) => api.post(`/cases/${enc(caseId)}/ask`, { question }),
-    onSuccess: (res) => qc.setQueryData(["messages", caseId], res.messages),
+    mutationFn: (question) => api.post(`/tasks/${enc(taskId)}/ask`, { question }),
+    onSuccess: (res) => qc.setQueryData(["messages", taskId], res.messages),
   });
 }
 
@@ -259,7 +233,7 @@ export function useSubmitDraft() {
   return useMutation({
     mutationFn: (v) => api.post("/authoring/submit", v),
     onSuccess: () => {
-      for (const key of ["drafts", "capability"]) qc.invalidateQueries({ queryKey: [key] });
+      for (const key of ["drafts", "agent"]) qc.invalidateQueries({ queryKey: [key] });
     },
   });
 }
@@ -267,19 +241,19 @@ export function useSubmitDraft() {
 export function useApproveVersion() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (v) => api.post(`/capabilities/${enc(v.capabilityId)}/versions/${v.version}/approve`, {}),
+    mutationFn: (v) => api.post(`/agents/${enc(v.agentId)}/versions/${v.version}/approve`, {}),
     onSuccess: () => {
-      for (const key of ["drafts", "capabilities", "capability", "overview"]) qc.invalidateQueries({ queryKey: [key] });
+      for (const key of ["drafts", "agents", "agent", "overview"]) qc.invalidateQueries({ queryKey: [key] });
     },
   });
 }
 
 /** What a draft would be refused for, checked without storing anything. */
-export function useConfigCheck(capabilityId, body) {
+export function useConfigCheck(agentId, body) {
   const key = body ? JSON.stringify(body) : "";
   return useQuery({
-    queryKey: ["config-check", capabilityId, key],
-    queryFn: () => api.post(`/capabilities/${enc(capabilityId)}/check`, body),
+    queryKey: ["config-check", agentId, key],
+    queryFn: () => api.post(`/agents/${enc(agentId)}/check`, body),
     enabled: !!body,
     staleTime: 60_000,
     retry: false,
@@ -288,21 +262,20 @@ export function useConfigCheck(capabilityId, body) {
 
 // ---------- team groups ----------
 
-export function useDraftGroup(capabilityId) {
+export function useDraftGroup(agentId) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (v) => api.post(`/capabilities/${enc(capabilityId)}/groups`, v),
+    mutationFn: (v) => api.post(`/agents/${enc(agentId)}/groups`, v),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["group"] }),
   });
 }
 
-export function useApproveGroup(capabilityId, group) {
+export function useApproveGroup(agentId, group) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (version) =>
-      api.post(`/capabilities/${enc(capabilityId)}/groups/${enc(group)}/versions/${version}/approve`, {}),
+    mutationFn: (version) => api.post(`/agents/${enc(agentId)}/groups/${enc(group)}/versions/${version}/approve`, {}),
     onSuccess: () => {
-      for (const key of ["group", "groups", "capabilities"]) qc.invalidateQueries({ queryKey: [key] });
+      for (const key of ["group", "groups", "agents"]) qc.invalidateQueries({ queryKey: [key] });
     },
   });
 }
@@ -340,16 +313,16 @@ export function useSetSwitch() {
 
 // ---------- evidence ----------
 
-export function useUploadEvidence(caseId) {
-  const refresh = useRefreshCases();
+export function useUploadEvidence(taskId) {
+  const refresh = useRefreshTasks();
   return useMutation({
     mutationFn: async (v) => {
       const form = new FormData();
       form.append("file", v.file);
       if (v.note) form.append("note", v.note);
-      return upload(`/cases/${enc(caseId)}/evidence`, form);
+      return upload(`/tasks/${enc(taskId)}/evidence`, form);
     },
-    onSuccess: (res) => refresh(res.case),
+    onSuccess: (res) => refresh(res.task),
   });
 }
 
@@ -358,20 +331,19 @@ export function useUploadEvidence(caseId) {
 export const useEvals = (id) =>
   useQuery({
     queryKey: ["evals", id],
-    queryFn: () => api.get(`/capabilities/${enc(id)}/evals`),
+    queryFn: () => api.get(`/agents/${enc(id)}/evals`),
     refetchInterval: (q) => (q.state.data?.some((r) => r.status === "running") ? 2000 : false),
   });
 
-/** How many past settled cases an eval would replay. */
+/** How many past settled tasks an eval would replay. */
 export const useEvalAvailable = (id, teamGroup) =>
   useQuery({
     queryKey: ["evals-available", id, teamGroup ?? ""],
-    queryFn: () =>
-      api.get(`/capabilities/${enc(id)}/evals/available${teamGroup ? `?team_group=${enc(teamGroup)}` : ""}`),
+    queryFn: () => api.get(`/agents/${enc(id)}/evals/available${teamGroup ? `?team_group=${enc(teamGroup)}` : ""}`),
     retry: false,
   });
 
-/** One eval run with what each replayed case produced. */
+/** One eval run with what each replayed task produced. */
 export const useEvalRun = (runId) =>
   useQuery({
     queryKey: ["eval", runId],
@@ -382,7 +354,7 @@ export const useEvalRun = (runId) =>
 export function useStartEval(id) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (v) => api.post(`/capabilities/${enc(id)}/evals`, v),
+    mutationFn: (v) => api.post(`/agents/${enc(id)}/evals`, v),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["evals", id] }),
   });
 }
@@ -392,7 +364,7 @@ export function useStartEval(id) {
 export const useFlow = (id, teamGroup) =>
   useQuery({
     queryKey: ["flow", id, teamGroup ?? ""],
-    queryFn: () => api.get(`/capabilities/${enc(id)}/flow${teamGroup ? `?team_group=${enc(teamGroup)}` : ""}`),
+    queryFn: () => api.get(`/agents/${enc(id)}/flow${teamGroup ? `?team_group=${enc(teamGroup)}` : ""}`),
   });
 
 export const useDiff = (id, a, b, group) =>
@@ -401,8 +373,8 @@ export const useDiff = (id, a, b, group) =>
     queryFn: () =>
       api.get(
         group
-          ? `/capabilities/${enc(id)}/groups/${enc(group)}/versions/${a}/diff/${b}`
-          : `/capabilities/${enc(id)}/versions/${a}/diff/${b}`,
+          ? `/agents/${enc(id)}/groups/${enc(group)}/versions/${a}/diff/${b}`
+          : `/agents/${enc(id)}/versions/${a}/diff/${b}`,
       ),
     enabled: a != null && b != null && a !== b,
   });
@@ -422,7 +394,7 @@ export function useImportBundle() {
 export const useRecurring = (id, teamGroup, enabled = true) =>
   useQuery({
     queryKey: ["recurring", id, teamGroup ?? "all"],
-    queryFn: () => api.get(`/capabilities/${enc(id)}/recurring${teamGroup ? `?team_group=${enc(teamGroup)}` : ""}`),
+    queryFn: () => api.get(`/agents/${enc(id)}/recurring${teamGroup ? `?team_group=${enc(teamGroup)}` : ""}`),
     enabled,
   });
 
@@ -430,14 +402,14 @@ export const useRecurring = (id, teamGroup, enabled = true) =>
 export const useDataContract = (id, teamGroup) =>
   useQuery({
     queryKey: ["contract", id, teamGroup ?? "all"],
-    queryFn: () => api.get(`/capabilities/${enc(id)}/contract${teamGroup ? `?team_group=${enc(teamGroup)}` : ""}`),
+    queryFn: () => api.get(`/agents/${enc(id)}/contract${teamGroup ? `?team_group=${enc(teamGroup)}` : ""}`),
   });
 
 /** What nothing explained, and model-proposed groups reviewers keep approving unchanged. */
 export const useLearning = (id, teamGroup) =>
   useQuery({
     queryKey: ["learning", id, teamGroup ?? "all"],
-    queryFn: () => api.get(`/capabilities/${enc(id)}/learning${teamGroup ? `?team_group=${enc(teamGroup)}` : ""}`),
+    queryFn: () => api.get(`/agents/${enc(id)}/learning${teamGroup ? `?team_group=${enc(teamGroup)}` : ""}`),
   });
 
 export const useDelegations = () =>

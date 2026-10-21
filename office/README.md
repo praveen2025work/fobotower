@@ -46,7 +46,7 @@ the AOF API on AWS next to the Agent One API. It is written for the structure of
 | `eslint.config.mjs` | Add `{ ignores: ["src/app/finance/_aof/**"] }`. That code is linted and type-checked in TypeScript before it reaches the pack. |
 | `src/app/globals.css` | Add `#aof-root { --aof-height: calc(100vh - <Agent One header height>); }` so the console fits under the header |
 | `src/components/sidebar/Sidebar.jsx` | The Finance entry links to `/finance` |
-| `src/components/finance/FinanceCasesWidget.jsx` | Re-point its imports from the old `src/app/finance/api/aof.js` to `@/app/finance/_aof/api/aof` |
+| `src/components/finance/FinanceTasksWidget.jsx` | Re-point its imports from the old `src/app/finance/api/aof.js` to `@/app/finance/_aof/api/aof` |
 | Left over from the hand conversion, outside `src/app/finance` | The `ui.tsx` split in `src/components/ui/`, `useIsPhone.js` and `useStickyBottom.js` in `src/components/financeagent/layout/`, and `docs/helix-ui-reference/`. Remove each one that nothing else imports. |
 | `src/components/financeagent/**`, `/financeagent` | **Not AOF.** This is Agent One's Finance Agent; never touched. |
 | `/fobo` | The original FOBO screens; removed after go-live |
@@ -68,7 +68,7 @@ already has them all.
 | `Dockerfile.helix` | Its contents become `hosting/Dockerfile.aof`, with the base image and pip mirror taken from `app/Dockerfile` |
 | `.gitlab-ci-aof.yml` | Add `aof_migrations/`, `aof_alembic.ini` and `seed_data/aof_documents/` to its trigger paths |
 | `ecs-task-definition-aof.json` | New, made from `ecs-task-definition-fobo.json` (section 6) |
-| Agent One API (`api/`, `app/`) | The `/finance/api/*` route calls the AOF service (section 6). `api/routes/aof_cases.py` and `aof_notifications.py` keep working, because they call the synced `agent_one_finance` package. |
+| Agent One API (`api/`, `app/`) | The `/finance/api/*` route calls the AOF service (section 6). `api/routes/aof_tasks.py` and `aof_notifications.py` keep working, because they call the synced `agent_one_finance` package. |
 | `Dockerfile.fobo`, `ecs-task-definition-fobo.json`, `infrastructure/fobo-alb-rules.json`, the FOBO pipeline trigger | Removed after go-live |
 
 ## 3. The sync report
@@ -135,7 +135,7 @@ Browser ─> aos-frontend (Next.js, basePath /agentone)
 |---|---|
 | Image | `Dockerfile.helix` = `hosting/Dockerfile.aof`, with the base image and pip mirror from `app/Dockerfile`. Built by `.gitlab-ci-aof.yml` as `financeagent-aof-backend`, with the same shared build component and Wiz scan as `.gitlab-ci-api.yml`. |
 | Task definition | `ecs-task-definition-aof.json`, copied from `ecs-task-definition-fobo.json`, then changed:<ul><li>family `agentone-aof-family`;</li><li>container `aof-backend`;</li><li>the image;</li><li>port 8300;</li><li>health check `curl -f http://localhost:8300/health`;</li><li>environment and secrets from section 5.</li></ul>Same roles, cluster, subnets and log settings as FOBO. |
-| Service | One task in UAT and two in Prod. Scheduled cases and case runs are safe across tasks and workers: each schedule minute is claimed once, and each case is locked while it runs. |
+| Service | One task in UAT and two in Prod. Scheduled tasks and task runs are safe across tasks and workers: each schedule minute is claimed once, and each task is locked while it runs. |
 | Network | A security group that lets only the Agent One API's tasks reach port 8300, behind an internal address (internal load balancer or service discovery). Set that address as `AOF_API_URL` on the Agent One API. |
 | Agent One API route | Find what serves `/finance` today: search `api/` and `app/` for `"/finance"` and `mount(`. Then:<ul><li>**Mounted in-process:** replace the mount with the forwarding route in `hosting/aof_forward.py`, using our existing sign-on dependency.</li><li>**Already a forwarding route** (the SSO bridge): point it at `AOF_API_URL` and add both headers.</li></ul>Either way, AOF then runs in one place only. |
 | Migrations | Before each deployment, a one-off task with the new image runs `alembic -c aof_alembic.ini upgrade head` |
@@ -155,7 +155,7 @@ is never trusted to set identity.
 
 - **aos-frontend**:
   - `npm run lint` and `npm run build:uat` both pass.
-  - In UAT, screenshots of `/agentone/finance`, a case and a capability's "How it runs" tab, in light and dark.
+  - In UAT, screenshots of `/agentone/finance`, a task and an agent's "How it runs" tab, in light and dark.
   - The console's left-menu icons show.
 - **aos-backend**:
   - The AOF tests pass. They need a Postgres with pgvector and a database name ending in `_test`; they empty
@@ -179,7 +179,7 @@ is never trusted to set identity.
 >    `src/lib/sso.js`) add the BAM token to AOF calls.
 > 2. **Dry run.** From `Skillgap`, run `python3 fobotower-main/office/aof_sync.py --upstream fobotower-main` and show me
 >    `aof-sync-report.md`. Then:
->    - List the files outside `src/app/finance` that import from it. Expect `FinanceCasesWidget.jsx`.
+>    - List the files outside `src/app/finance` that import from it. Expect `FinanceTasksWidget.jsx`.
 >    - List the leftovers from README section 2, saying for each whether anything else imports it.
 >    - For each backend `differs`, `merge` or `clash`, show me the diff.
 > 3. **Apply.** Once I agree, run it with `--apply --baseline --prune`. Show me the report and `git status` of both

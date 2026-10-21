@@ -266,7 +266,7 @@ class ClusterCfg(Cfg):
     amount: str | None = None
     within_pct: float | None = Field(default=50, gt=0)   # amounts within this % of each other; None = any
     min_count: int = Field(default=3, ge=2)    # places, this one included
-    peers_tool: str | None = None              # read the other places; None = the case's own items
+    peers_tool: str | None = None              # read the other places; None = the task's own items
     peers_args: dict[str, Any] = Field(default_factory=dict)
     peers_amount: str | None = None
     show_where: bool = False                   # list the other places (they may be outside the caller's scope)
@@ -278,7 +278,7 @@ async def _cluster(state, cfg: ClusterCfg, step_id):
     if cfg.peers_tool:
         try:
             peers = (await steps_v2._call(state, step_id, cfg.peers_tool,
-                                          _args(cfg.peers_args, state["case_key"]))).get("rows", [])
+                                          _args(cfg.peers_args, state["task_key"]))).get("rows", [])
         except (gateway.ToolDenied, gateway.ToolFailed) as e:
             return steps_v2._failed("PEERS_FAILED", e)
     else:

@@ -4,13 +4,13 @@
 
 ## Summary
 
-Agent One Finance gives every Finance team one governed way to run its case-based work: product control, financial control, financial reporting, treasury and accounts payable. FOBO is one use case: the first capability on the platform. It pulls the data in, prepares it, and proposes what to do: rules first, then the model, then a person. Named people decide, and only an approved outcome is ever written back. A team gets this by **configuration, not code**.
+Agent One Finance gives every Finance team one governed way to run its task-based work: product control, financial control, financial reporting, treasury and accounts payable. FOBO is one use case: the first agent on the platform. It pulls the data in, prepares it, and proposes what to do: rules first, then the model, then a person. Named people decide, and only an approved outcome is ever written back. A team gets this by **configuration, not code**.
 
 Today's build:
 
-- **44 building blocks.** 13 core steps every case can use, plus 31 configurable step types in 6 families.
+- **44 building blocks.** 13 core steps every task can use, plus 31 configurable step types in 6 families.
 - **Governance built in**: segregation of duties, the authority matrix, reserved decisions, release before write-back, audit, masking and retention.
-- **Ten capabilities running**, nine of them in Finance:
+- **Ten agents running**, nine of them in Finance:
   - product control: FOBO break investigation (Prime and Rates), and the same investigation as one skill session;
   - financial control: reconciliation, month-end accruals, control operating test and its per-sample control test;
   - financial reporting: P&L variance commentary, report validation;
@@ -41,7 +41,7 @@ The job is to give every team that speed inside one set of controls.
 
 ## What Agent One Finance provides
 
-Every use case gets the same platform. A team describes its work as a **capability**: what a case is, where the items come from, the steps, who decides and what is written back. Agent One Finance runs it the same way every time.
+Every use case gets the same platform. A team describes its work as a **agent**: what a task is, where the items come from, the steps, who decides and what is written back. Agent One Finance runs it the same way every time.
 
 ```mermaid
 flowchart LR
@@ -55,22 +55,22 @@ flowchart LR
 
 A tollgate can stop the run before any stage for a named person; nothing is written until a second person releases it.
 
-| Service | What every capability gets |
+| Service | What every agent gets |
 | --- | --- |
-| Cases | One case per unit of work (a book and date, an entity and period, a client). Opened by hand, on a schedule, or by another system's event. Deadlines, re-runs as new attempts, follow-up cases for late items |
+| Tasks | One task per unit of work (a book and date, an entity and period, a client). Opened by hand, on a schedule, or by another system's event. Deadlines, re-runs as new attempts, follow-up tasks for late items |
 | Data access | Every read through one gateway to MCP connectors: entitlements, data scope per user, masking, and an audit row per call. Systems stay the source of truth |
 | Proposals | Items grouped into one decision per pattern. Rules first, then the model with read-only tools, then a person. Every figure is checked against the data before anyone sees it |
 | Human review | Approve, reject, send back to the model, ask a desk or another team for evidence, sign-off checklists, bulk approval with exclusions, delegation while away |
 | Tollgates | The run stops before any step for a named person to approve the work so far |
 | Write-back | Only approved outcomes, only after a second person releases them, each write once |
 | Learning | Approved explanations reused next time, recurring items, unexplained items, rule candidates, decisions re-checked on the next run |
-| Evidence | Uploads, an evidence-pack PDF, reports kept with the case, retention and legal hold, run history step by step |
+| Evidence | Uploads, an evidence-pack PDF, reports kept with the task, retention and legal hold, run history step by step |
 | Configuration | Configure forms (no YAML needed), guided authoring with or without a model, every change checked as it is made and approved by a second owner, versions and diffs |
 | Operations | Notifications in the app, Teams or email; cost limits and off switches; eval sets and shadow runs before go-live; tracing |
 
 ## Building blocks
 
-A capability is a chain of generic steps. A team adds the ones its work needs, in order, with a form for each. A step can run only when a condition holds. No step holds one team's logic: thresholds are named policy values, logic is expressions, and anything else is the team's own service called through the gateway.
+An agent is a chain of generic steps. A team adds the ones its work needs, in order, with a form for each. A step can run only when a condition holds. No step holds one team's logic: thresholds are named policy values, logic is expressions, and anything else is the team's own service called through the gateway.
 
 | Family | Steps | What it is for |
 | --- | --- | --- |
@@ -78,30 +78,30 @@ A capability is a chain of generic steps. A team adds the ones its work needs, i
 | Data | reference data, computed fields, filter, currency conversion, bands, duplicates, roll-up, team's own tool | Prepare the items: rates, limits, ageing, service-level bands, scope, the team's own scoring |
 | Accounting | recompute and compare, schedule over periods, period open?, journal entries, post journals | Fees and interest checked against tariffs; accruals, prepayments and reserves as balanced journals; posting after release |
 | Assurance | change over periods, unusual against history, consistency checks, sample, risk score, owner attestation | Flux review, anomalies, cross-report rules, control testing samples, risk-based review, sign-off by owners |
-| Orchestration | wait for an event, child cases, draft a message, report | Wait for a reply or confirmation; one child case per account, sample or client; outbound drafts; a PDF pack |
+| Orchestration | wait for an event, child tasks, draft a message, report | Wait for a reply or confirmation; one child task per account, sample or client; outbound drafts; a PDF pack |
 | Acquisition | match several systems, file intake, read a document | Three-way and intercompany matching, workbooks from other teams, values from contracts and statements |
-| Time and parties | clocks, timeline, related cases, name screening, send to the other party | Service-level and regulatory clocks, one timeline across systems, earlier cases on a client, candidate matches, approved outreach |
+| Time and parties | clocks, timeline, related tasks, name screening, send to the other party | Service-level and regulatory clocks, one timeline across systems, earlier tasks on a client, candidate matches, approved outreach |
 
 New step types are added once, through a small SDK, and then every team can use them.
 
 ## Controls built in
 
-These hold for every capability, whatever its steps. A team cannot configure them away.
+These hold for every agent, whatever its steps. A team cannot configure them away.
 
 1. **People decide.** The model proposes, a person decides. When nothing settles a group, it goes to a person, not a guess.
 2. **Authority.** Tiers by amount, risk or verdict say who may approve and how many different people must. The matrix is held in Agent One Finance, or read from the bank's delegated-authority system.
 3. **Reserved decisions.** Credit, sanctions, AML, redress above a limit, payment release: only named roles decide, never in bulk. The model's proposal is withheld where it may not propose.
-4. **Segregation of duties.** The opener may be barred from signing off. Whoever releases a write-back did not review the case.
+4. **Segregation of duties.** The opener may be barred from signing off. Whoever releases a write-back did not review the task.
 5. **No silent writes.** Writes only through tools marked as writes, only by the release, posting or outreach step, after approval. Each write is idempotent; a ledger's own check runs first.
 6. **Grounded figures.** Every figure in a proposal is traced to the data. Values read from documents must appear in the document; low-confidence or regulated values go to a person.
-7. **Nothing dropped.** Items set aside stay on the case with the reason. Samples keep their seed, so they can be reproduced.
+7. **Nothing dropped.** Items set aside stay on the task with the reason. Samples keep their seed, so they can be reproduced.
 8. **Data protection.** Entitlements and data scope per user, masking of protected fields before any model sees them, an audit row for every call.
-9. **Change control.** Every configuration change is checked as it is made and approved by a second owner. A case keeps the version it ran on.
+9. **Change control.** Every configuration change is checked as it is made and approved by a second owner. A task keeps the version it ran on.
 10. **Model risk.** Eval sets and shadow runs before go-live, cost limits, off switches, instructions versioned and approved.
 
 ## Use cases by Finance area
 
-Each row is built only from the blocks above. The last rows show the same platform beyond Finance. “Running” means a capability exists in Agent One Finance today; the others need configuration and connectors to the team's systems, no new platform code.
+Each row is built only from the blocks above. The last rows show the same platform beyond Finance. “Running” means an agent exists in Agent One Finance today; the others need configuration and connectors to the team's systems, no new platform code.
 
 | Area | Use case | Steps that carry it | Who decides | Written back |
 | --- | --- | --- | --- | --- |
@@ -110,13 +110,13 @@ Each row is built only from the blocks above. The last rows show the same platfo
 | Product control | Limit breach investigation | reference data, change over periods, reason, authority tiers, follow-through | Risk, by authority | Temporary excess decision |
 | Financial control | Helix FOBO Agent (running) | match two systems, rules, reason, follow-through | Finance operations | Write-offs within limit |
 | Financial control | Month-end accruals (running) | period open?, chart and authority data, journal entries, post | Reviewers by authority; controller releases | Journals to the ledger |
-| Financial control | Balance-sheet substantiation | change over periods, risk score, child case per account, attestation, report | Account owners | Sign-off pack |
+| Financial control | Balance-sheet substantiation | change over periods, risk score, child task per account, attestation, report | Account owners | Sign-off pack |
 | Financial control | Intercompany matching | match several systems, currency, roll-up, journal entries | Both entities' owners | Elimination journals |
 | Financial control | Manual journal review | risk score, sample, reason | Financial control | — |
-| Financial control | Close calendar | parent case per entity, child tasks, wait for children, roll-up sign-off | Entity, region, group | Close sign-off |
+| Financial control | Close calendar | parent task per entity, child tasks, wait for children, roll-up sign-off | Entity, region, group | Close sign-off |
 | Financial reporting | P&L variance commentary (running) | compare to budget, reason in sections | Finance reviewers | Commentary to the reporting pack |
 | Financial reporting | Report validation (running) | match workbook to GL, reason | Reporting | PDF report |
-| Finance controls | Control operating test (running) | sample, child case per sample, wait for all, attestation, report | Testers; control owner attests | Test report |
+| Finance controls | Control operating test (running) | sample, child task per sample, wait for all, attestation, report | Testers; control owner attests | Test report |
 | Finance controls | Regulatory report validation | data sets, consistency checks, attestation, report | Report owner | Attestation pack |
 | Treasury and payments | Payment exceptions (running) | rates, duplicates, filter, currency, age, service-level bands, team's risk score | Payments operations | Repair instruction (released) |
 | Treasury and payments | Payment investigation | timeline, 24 h clock, outreach to the other bank, wait for reply | Payments operations | Customer reply |
@@ -128,25 +128,25 @@ Each row is built only from the blocks above. The last rows show the same platfo
 | Beyond Finance: client service | Fee and interest refunds | recompute from the tariff, draft client notice | Service, by authority | Refund instruction |
 | Beyond Finance: lending | Covenant monitoring | read the borrower's pack, computed ratios, classify breach | Credit officer (reserved) | Credit memo; re-checked next quarter |
 | Beyond Finance: financial crime | AML alert triage pack | timeline, related parties, screening candidates; model writes the narrative only | Analyst (reserved) | — |
-| Beyond Finance: financial crime | KYC periodic review | child case per client, outreach for documents, read documents | KYC officer (reserved) | Review outcome |
-| Beyond Finance: technology risk | User access review | child case per manager, attestation per line, report | Managers | Revocations (released) |
+| Beyond Finance: financial crime | KYC periodic review | child task per client, outreach for documents, read documents | KYC officer (reserved) | Review outcome |
+| Beyond Finance: technology risk | User access review | child task per manager, attestation per line, report | Managers | Revocations (released) |
 | Beyond Finance: operational risk | Loss event capture | file intake, computed losses, currency, reporting clock, attestation | Business owner | Event record |
 
 ## Running today
 
-Ten capabilities run on the platform. They use stub connectors here, and have office connector examples ready. Each one shows a different part of what the platform does.
+Ten agents run on the platform. They use stub connectors here, and have office connector examples ready. Each one shows a different part of what the platform does.
 
-| Capability | Area | What it shows |
+| Agent | Area | What it shows |
 | --- | --- | --- |
 | Balance Recon Agent (FOBO) | Product control | A full playbook (checks, categories, verdict table, guards); team groups for Prime and Rates; a tollgate before the model; follow-through on the next business day; tickets to owning teams |
 | Helix FOBO Agent | Financial control | Agent One Finance matches two systems itself; rules settle write-offs within limit, and nothing is written off twice |
 | P&L variance commentary | Financial reporting | Commentary in sections, published to the reporting pack after a second person releases it |
 | Report validation | Financial reporting | A workbook matched to GL balances; a PDF report written after release |
-| Payment exceptions | Treasury and payments | The first non-finance capability, built only from data steps; uses the payments team's own risk service |
+| Payment exceptions | Treasury and payments | The first non-finance agent, built only from data steps; uses the payments team's own risk service |
 | Month-end accruals | Financial control | A closed period stops the run; balanced journals; the bank's authority matrix with two approvers over 250k; posted after a controller releases |
 | Complaint handling | Beyond Finance | A timeline the model reads; related complaints; the 8-week clock; screening candidates; acknowledgements sent only after approval; redress above the limit reserved for the lead |
-| Control operating test | Finance controls | A reproducible sample; one child case per sample; the parent waits for them all; the control owner attests; a PDF report |
-| Control test — one sample | Finance controls | The operating test's child case: each attribute performed and evidenced, signed off by a tester |
+| Control operating test | Finance controls | A reproducible sample; one child task per sample; the parent waits for them all; the control owner attests; a PDF report |
+| Control test — one sample | Finance controls | The operating test's child task: each attribute performed and evidenced, signed off by a tester |
 | Balance Recon Agent (skill session) | Product control | The FOBO skill run as one model session per book and COB with MB Rec, MOTIF and CATS tools; figures checked against the tool results; a controller signs off every break |
 
 ## How a team adopts it
@@ -167,22 +167,22 @@ A new use case needs configuration and, at most, a connector to each system it r
    - tollgates;
    - what is written back and who releases it.
 4. **Approve the version.** A second owner approves it. Until then nothing runs on it.
-5. **Prove it.** Run an eval set and shadow runs against past cases before go-live.
-6. **Run it.** Cases open by hand, on a schedule or on another system's event.
+5. **Prove it.** Run an eval set and shadow runs against past tasks before go-live.
+6. **Run it.** Tasks open by hand, on a schedule or on another system's event.
 7. **Improve it.** Learning panels show:
    - recurring items;
    - what nothing explained;
    - which judgement calls are approved unchanged often enough to become rules.
-8. **Add team groups.** A team group runs the same capability with its own settings, within what the capability allows.
+8. **Add team groups.** A team group runs the same agent with its own settings, within what the agent allows.
 
 ## Fit and limits
 
 Agent One Finance fits work that comes as a list of items, each needing an investigation and a decision by an accountable person. It is not the right tool for everything.
 
-- **Not a system of record.** Ledgers, payment engines, KYC and case-management systems keep their data and their own controls. Agent One Finance reads them, and writes only approved outcomes back.
+- **Not a system of record.** Ledgers, payment engines, KYC and task-management systems keep their data and their own controls. Agent One Finance reads them, and writes only approved outcomes back.
 - **Not an autonomous decision-maker.** Credit, sanctions, AML, fraud and payment release stay with named people. Agent One Finance prepares and evidences; it never clears a screening hit or releases a payment.
-- **Not a workflow engine for everything.** Long multi-team processes are layered as parent and child cases. A process that is mostly forms and routing, with no investigation, is better served elsewhere.
-- **Not real-time.** Cases run in seconds to minutes. Pre-trade or in-flight payment checks belong in the transaction path.
+- **Not a workflow engine for everything.** Long multi-team processes are layered as parent and child tasks. A process that is mostly forms and routing, with no investigation, is better served elsewhere.
+- **Not real-time.** Tasks run in seconds to minutes. Pre-trade or in-flight payment checks belong in the transaction path.
 
 Each new use case still needs:
 

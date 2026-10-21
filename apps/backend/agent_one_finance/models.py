@@ -1,4 +1,4 @@
-"""Agent One Finance tables. Every row carries capability_id; one shared database.
+"""Agent One Finance tables. Every row carries agent_id; one shared database.
 
 Audit is these rows: append-only facts about who decided what, on which data,
 under which manifest version. Tracing (Phoenix) is separate and best effort.
@@ -24,19 +24,19 @@ from sqlalchemy.orm import Mapped, mapped_column
 from agent_one_finance.db import AofBase
 
 
-class CapabilityVersion(AofBase):
-    """A capability's manifest, versioned. Owners approve; drafter cannot."""
+class AgentVersion(AofBase):
+    """An agent's manifest, versioned. Owners approve; drafter cannot."""
 
-    __tablename__ = "aof_capability_version"
+    __tablename__ = "aof_agent_version"
     __table_args__ = (
-        # One active version per capability is a database guarantee.
+        # One active version per agent is a database guarantee.
         Index(
-            "uq_aof_capability_one_active", "capability_id", unique=True,
+            "uq_aof_agent_one_active", "agent_id", unique=True,
             postgresql_where=text("status = 'active'"),
         ),
     )
 
-    capability_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    agent_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     version: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)
     manifest: Mapped[dict] = mapped_column(JSONB)
     # draft | active | superseded | rejected
@@ -51,18 +51,18 @@ class CapabilityVersion(AofBase):
 
 
 class GroupVersion(AofBase):
-    """A team's configuration of a capability (e.g. one rec group), versioned.
+    """A team's configuration of an agent (e.g. one rec group), versioned.
     The group's owners draft and approve it (four-eyes)."""
 
     __tablename__ = "aof_group_version"
     __table_args__ = (
         Index(
-            "uq_aof_group_one_active", "capability_id", "group_id", unique=True,
+            "uq_aof_group_one_active", "agent_id", "group_id", unique=True,
             postgresql_where=text("status = 'active'"),
         ),
     )
 
-    capability_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    agent_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     group_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     version: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)
     config: Mapped[dict] = mapped_column(JSONB)
@@ -76,25 +76,25 @@ class GroupVersion(AofBase):
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
-class Case(AofBase):
-    """One unit of a capability's work, e.g. one entity's month-end."""
+class Task(AofBase):
+    """One unit of an agent's work, e.g. one entity's month-end."""
 
-    __tablename__ = "aof_case"
+    __tablename__ = "aof_task"
     __table_args__ = (
-        Index("idx_aof_case_cap", "capability_id", "opened_at"),
-        Index("idx_aof_case_scope", "scope", postgresql_using="gin"),
+        Index("idx_aof_task_cap", "agent_id", "opened_at"),
+        Index("idx_aof_task_scope", "scope", postgresql_using="gin"),
     )
 
-    case_id: Mapped[str] = mapped_column(String(128), primary_key=True)
-    capability_id: Mapped[str] = mapped_column(String(64))
+    task_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    agent_id: Mapped[str] = mapped_column(String(64))
     # The run is pinned to the manifest version active when it opened.
     manifest_version: Mapped[int] = mapped_column(Integer)
     # The group (team configuration) it runs under, and the exact manifest it ran
-    # on — capability merged with that group version — kept for audit and replay.
+    # on — agent merged with that group version — kept for audit and replay.
     team_group: Mapped[str | None] = mapped_column(String(64), nullable=True)
     team_group_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
     manifest: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    case_key: Mapped[dict] = mapped_column(JSONB)
+    task_key: Mapped[dict] = mapped_column(JSONB)
     subject: Mapped[str] = mapped_column(String(256))
     # running | awaiting_review | awaiting_publish | paused_before_<step> |
     # waiting_<step> | completed | escalated | failed | stopped
@@ -112,19 +112,19 @@ class Case(AofBase):
     # finish a run it did not start.
     run_as: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     # Re-runs: attempt 2, 3… of the same key. Attempt 1's id is the root.
-    root_case_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    root_task_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
     attempt: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
     rerun_of: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    # A follow-up for late items: the case of the same key it follows (its root).
+    # A follow-up for late items: the task of the same key it follows (its root).
     follow_up_of: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
-    # Data-scope values (scope -> value) the case belongs to, for filtering in SQL.
+    # Data-scope values (scope -> value) the task belongs to, for filtering in SQL.
     scope: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     legal_hold: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
-    # Trial runs: a hidden replay of a past case under another version, for an eval run.
+    # Trial runs: a hidden replay of a past task under another version, for an eval run.
     shadow_of: Mapped[str | None] = mapped_column(String(128), nullable=True)
     eval_run_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     legal_hold_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
-    # When the case is due (manifest case.due), and which reminder went out
+    # When the task is due (manifest task.due), and which reminder went out
     # (soon | missed) so each is sent once.
     due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
     due_notified: Mapped[str | None] = mapped_column(String(16), nullable=True)
@@ -133,20 +133,20 @@ class Case(AofBase):
     updated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=True
     )
-    # A child case opened by a `spawn` step: its parent, which waits for its children.
-    parent_case_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    # A child task opened by a `spawn` step: its parent, which waits for its children.
+    parent_task_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
     # When the run started waiting at an `await` step (for its timeout).
     waiting_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # Clocks (a `clock` step): {clock_id: {due_at, warned, breached}} — each notice sent once.
     clock_state: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
 
-class CaseItem(AofBase):
-    """What a case is about: one row per loaded item, payload as the connector returned it."""
+class TaskItem(AofBase):
+    """What a task is about: one row per loaded item, payload as the connector returned it."""
 
-    __tablename__ = "aof_case_item"
-    case_id: Mapped[str] = mapped_column(
-        String(128), ForeignKey("aof_case.case_id", ondelete="CASCADE"), primary_key=True
+    __tablename__ = "aof_task_item"
+    task_id: Mapped[str] = mapped_column(
+        String(128), ForeignKey("aof_task.task_id", ondelete="CASCADE"), primary_key=True
     )
     item_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     payload: Mapped[dict] = mapped_column(JSONB)
@@ -156,8 +156,8 @@ class ProposalGroup(AofBase):
     """Items collapsed into one decision, with what the run proposes for it."""
 
     __tablename__ = "aof_proposal_group"
-    case_id: Mapped[str] = mapped_column(
-        String(128), ForeignKey("aof_case.case_id", ondelete="CASCADE"), primary_key=True
+    task_id: Mapped[str] = mapped_column(
+        String(128), ForeignKey("aof_task.task_id", ondelete="CASCADE"), primary_key=True
     )
     group_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     label: Mapped[str] = mapped_column(String(256))
@@ -172,11 +172,11 @@ class ToolCall(AofBase):
     """Every call through the MCP gateway — allowed or refused. The grounding record."""
 
     __tablename__ = "aof_tool_call"
-    __table_args__ = (Index("idx_aof_tool_call_case", "case_id", "called_at"),)
+    __table_args__ = (Index("idx_aof_tool_call_task", "task_id", "called_at"),)
 
     call_id: Mapped[str] = mapped_column(String(64), primary_key=True)
-    case_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    capability_id: Mapped[str] = mapped_column(String(64))
+    task_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    agent_id: Mapped[str] = mapped_column(String(64))
     connector_id: Mapped[str] = mapped_column(String(64))
     tool: Mapped[str] = mapped_column(String(128))
     # step name, or "llm" when the model asked for it
@@ -202,8 +202,8 @@ class Decision(AofBase):
 
     __tablename__ = "aof_decision"
     decision_id: Mapped[str] = mapped_column(String(64), primary_key=True)
-    case_id: Mapped[str] = mapped_column(
-        String(128), ForeignKey("aof_case.case_id", ondelete="CASCADE")
+    task_id: Mapped[str] = mapped_column(
+        String(128), ForeignKey("aof_task.task_id", ondelete="CASCADE")
     )
     group_id: Mapped[str] = mapped_column(String(128))
     action: Mapped[str] = mapped_column(String(16))  # approve | reject
@@ -227,14 +227,14 @@ class Decision(AofBase):
 
 class InfoRequest(AofBase):
     """A reviewer asking someone (a desk, a trader, Operations) for evidence
-    about a case or one of its groups, and their answer."""
+    about a task or one of its groups, and their answer."""
 
     __tablename__ = "aof_info_request"
     request_id: Mapped[str] = mapped_column(String(64), primary_key=True)
-    case_id: Mapped[str] = mapped_column(
-        String(128), ForeignKey("aof_case.case_id", ondelete="CASCADE"), index=True
+    task_id: Mapped[str] = mapped_column(
+        String(128), ForeignKey("aof_task.task_id", ondelete="CASCADE"), index=True
     )
-    group_id: Mapped[str | None] = mapped_column(String(128), nullable=True)   # None = the whole case
+    group_id: Mapped[str | None] = mapped_column(String(128), nullable=True)   # None = the whole task
     target: Mapped[str] = mapped_column(String(64))
     target_name: Mapped[str] = mapped_column(String(128))
     roles: Mapped[list] = mapped_column(JSONB, default=list)
@@ -246,21 +246,21 @@ class InfoRequest(AofBase):
     answer: Mapped[str | None] = mapped_column(Text, nullable=True)
     answered_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
     answered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    # Evidence the answer came with (a case evidence document's name).
+    # Evidence the answer came with (a task evidence document's name).
     attachment: Mapped[str | None] = mapped_column(String(256), nullable=True)
     # When the addressees were reminded, and when it was escalated to the reviewers.
     reminded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     escalated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
-class CaseDataset(AofBase):
-    """A named data set a case read or built beside its items (a `dataset` or
+class TaskDataset(AofBase):
+    """A named data set a task read or built beside its items (a `dataset` or
     `aggregate` step): FX rates, a budget, limits, a roll-up. Kept with the
-    case so the reviewer and the auditor see exactly what the run used."""
+    task so the reviewer and the auditor see exactly what the run used."""
 
-    __tablename__ = "aof_case_dataset"
-    case_id: Mapped[str] = mapped_column(
-        String(128), ForeignKey("aof_case.case_id", ondelete="CASCADE"), primary_key=True
+    __tablename__ = "aof_task_dataset"
+    task_id: Mapped[str] = mapped_column(
+        String(128), ForeignKey("aof_task.task_id", ondelete="CASCADE"), primary_key=True
     )
     name: Mapped[str] = mapped_column(String(64), primary_key=True)
     step_id: Mapped[str] = mapped_column(String(64))
@@ -275,13 +275,13 @@ class FollowThrough(AofBase):
     (follow_through): cleared (gone) or still_open (still there)."""
 
     __tablename__ = "aof_follow_through"
-    case_id: Mapped[str] = mapped_column(
-        String(128), ForeignKey("aof_case.case_id", ondelete="CASCADE"), primary_key=True
+    task_id: Mapped[str] = mapped_column(
+        String(128), ForeignKey("aof_task.task_id", ondelete="CASCADE"), primary_key=True
     )
     item_id: Mapped[str] = mapped_column(String(256), primary_key=True)
     verdict: Mapped[str | None] = mapped_column(String(64), nullable=True)
     status: Mapped[str] = mapped_column(String(16))          # cleared | still_open
-    checked_in: Mapped[str] = mapped_column(String(128))     # the case that checked it
+    checked_in: Mapped[str] = mapped_column(String(128))     # the task that checked it
     checked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
@@ -291,8 +291,8 @@ class GateDecision(AofBase):
 
     __tablename__ = "aof_gate_decision"
     gate_id: Mapped[str] = mapped_column(String(64), primary_key=True)
-    case_id: Mapped[str] = mapped_column(
-        String(128), ForeignKey("aof_case.case_id", ondelete="CASCADE"), index=True
+    task_id: Mapped[str] = mapped_column(
+        String(128), ForeignKey("aof_task.task_id", ondelete="CASCADE"), index=True
     )
     step: Mapped[str] = mapped_column(String(32))     # the step it stopped before
     action: Mapped[str] = mapped_column(String(16))   # continue | stop
@@ -305,11 +305,11 @@ class GateDecision(AofBase):
 
 
 class PublishApproval(AofBase):
-    """The second person releasing a case's write-back. One per case."""
+    """The second person releasing a task's write-back. One per task."""
 
     __tablename__ = "aof_publish_approval"
-    case_id: Mapped[str] = mapped_column(
-        String(128), ForeignKey("aof_case.case_id", ondelete="CASCADE"), primary_key=True
+    task_id: Mapped[str] = mapped_column(
+        String(128), ForeignKey("aof_task.task_id", ondelete="CASCADE"), primary_key=True
     )
     approved_by: Mapped[str] = mapped_column(String(64))
     idempotency_key: Mapped[str] = mapped_column(String(128), unique=True)
@@ -319,7 +319,7 @@ class PublishApproval(AofBase):
 
 
 class KgNode(AofBase):
-    """Knowledge graph node. Namespaced per capability; bitemporal by valid_from/valid_to."""
+    """Knowledge graph node. Namespaced per agent; bitemporal by valid_from/valid_to."""
 
     __tablename__ = "aof_kg_node"
     __table_args__ = (Index("idx_aof_kg_node_kind", "namespace", "kind"),)
@@ -362,22 +362,22 @@ class Document(AofBase):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
-    # report: written by a publish step · evidence: uploaded into a case by a person
+    # report: written by a publish step · evidence: uploaded into a task by a person
     kind: Mapped[str] = mapped_column(String(16), default="report", server_default="report")
-    case_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    task_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
     uploaded_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
-class CaseMessage(AofBase):
-    """Ask-about-a-case: one question or answer. Answers keep what they cited."""
+class TaskMessage(AofBase):
+    """Ask-about-a-task: one question or answer. Answers keep what they cited."""
 
-    __tablename__ = "aof_case_message"
-    __table_args__ = (Index("idx_aof_case_message_case", "case_id", "created_at"),)
+    __tablename__ = "aof_task_message"
+    __table_args__ = (Index("idx_aof_task_message_task", "task_id", "created_at"),)
 
     message_id: Mapped[str] = mapped_column(String(64), primary_key=True)
-    case_id: Mapped[str] = mapped_column(
-        String(128), ForeignKey("aof_case.case_id", ondelete="CASCADE")
+    task_id: Mapped[str] = mapped_column(
+        String(128), ForeignKey("aof_task.task_id", ondelete="CASCADE")
     )
     role: Mapped[str] = mapped_column(String(16))          # user | assistant
     author: Mapped[str] = mapped_column(String(64))
@@ -390,12 +390,12 @@ class CaseMessage(AofBase):
 
 
 class RetentionEvent(AofBase):
-    """A case removed under its capability's retention policy — the record that it was."""
+    """A task removed under its agent's retention policy — the record that it was."""
 
     __tablename__ = "aof_retention_event"
     event_id: Mapped[str] = mapped_column(String(64), primary_key=True)
-    case_id: Mapped[str] = mapped_column(String(128))
-    capability_id: Mapped[str] = mapped_column(String(64))
+    task_id: Mapped[str] = mapped_column(String(128))
+    agent_id: Mapped[str] = mapped_column(String(64))
     subject: Mapped[str] = mapped_column(String(256))
     opened_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     retention_days: Mapped[int] = mapped_column(Integer)
@@ -406,16 +406,16 @@ class RetentionEvent(AofBase):
 
 
 class Notification(AofBase):
-    """Something a person should know about a case — waiting on them, done,
+    """Something a person should know about a task — waiting on them, done,
     failed. Addressed to roles and/or people; shown only to those who may see
-    the case."""
+    the task."""
 
     __tablename__ = "aof_notification"
     __table_args__ = (Index("idx_aof_notification_at", "created_at"),)
 
     notification_id: Mapped[str] = mapped_column(String(64), primary_key=True)
-    case_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    capability_id: Mapped[str] = mapped_column(String(64))
+    task_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    agent_id: Mapped[str] = mapped_column(String(64))
     kind: Mapped[str] = mapped_column(String(32))
     title: Mapped[str] = mapped_column(String(256))
     body: Mapped[str] = mapped_column(Text, default="")
@@ -438,12 +438,12 @@ class NotificationRead(AofBase):
 
 
 class Switch(AofBase):
-    """An off switch: a capability, one team's group, or a connector, stopped
+    """An off switch: an agent, one team's group, or a connector, stopped
     until switched back on. Every change is kept (who, when, why)."""
 
     __tablename__ = "aof_switch"
-    kind: Mapped[str] = mapped_column(String(16), primary_key=True)       # capability | group | connector
-    target: Mapped[str] = mapped_column(String(160), primary_key=True)    # id; group: "<capability>/<group>"
+    kind: Mapped[str] = mapped_column(String(16), primary_key=True)       # agent | group | connector
+    target: Mapped[str] = mapped_column(String(160), primary_key=True)    # id; group: "<agent>/<group>"
     off: Mapped[bool] = mapped_column(Boolean, default=False)
     reason: Mapped[str] = mapped_column(Text, default="")
     set_by: Mapped[str] = mapped_column(String(64))
@@ -453,12 +453,12 @@ class Switch(AofBase):
 
 
 class EvalRun(AofBase):
-    """A trial of one capability (or group) version against people's past
+    """A trial of one agent (or group) version against people's past
     decisions: the shadow runs it made, and how often it agreed."""
 
     __tablename__ = "aof_eval_run"
     run_id: Mapped[str] = mapped_column(String(64), primary_key=True)
-    capability_id: Mapped[str] = mapped_column(String(64), index=True)
+    agent_id: Mapped[str] = mapped_column(String(64), index=True)
     version: Mapped[int] = mapped_column(Integer)
     team_group: Mapped[str | None] = mapped_column(String(64), nullable=True)
     group_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -483,9 +483,9 @@ AOF_TABLES = [  # child tables first, for truncation in tests
     "aof_ticket", "aof_delegation",
     "aof_eval_run", "aof_switch", "aof_scheduler_tick",
     "aof_notification_read", "aof_notification",
-    "aof_case_message", "aof_document", "aof_retention_event",
-    "aof_publish_approval", "aof_decision", "aof_proposal_group", "aof_case_item", "aof_tool_call",
-    "aof_case", "aof_group_version", "aof_capability_version", "aof_kg_edge", "aof_kg_node",
+    "aof_task_message", "aof_document", "aof_retention_event",
+    "aof_publish_approval", "aof_decision", "aof_proposal_group", "aof_task_item", "aof_tool_call",
+    "aof_task", "aof_group_version", "aof_agent_version", "aof_kg_edge", "aof_kg_node",
 ]
 
 
@@ -493,8 +493,8 @@ class Ticket(AofBase):
     """A ticket raised for the team that owns a problem (manifest `escalation`)."""
 
     __tablename__ = "aof_ticket"
-    case_id: Mapped[str] = mapped_column(
-        String(128), ForeignKey("aof_case.case_id", ondelete="CASCADE"), primary_key=True
+    task_id: Mapped[str] = mapped_column(
+        String(128), ForeignKey("aof_task.task_id", ondelete="CASCADE"), primary_key=True
     )
     group_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     tool: Mapped[str] = mapped_column(String(128))

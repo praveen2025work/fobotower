@@ -1,4 +1,4 @@
-# Example — a third rec group of the shared reconciliation capability:
+# Example — a third rec group of the shared reconciliation agent:
 # intercompany. Entity A's receivable from B is matched to B's payable to A.
 # Same engine as CATS vs MOTIF and cash; this team only sets its sources,
 # keys, tolerance, rules, instructions and reviewers.
@@ -12,7 +12,7 @@ name: Intercompany — receivable vs payable
 description: Each entity pair's intercompany receivable matched to the counterpart's payable; differences explained and settled or escalated to the counterpart's accountant.
 owners: { people: [], role: AOF_IC_OWNER, four_eyes: true }
 set:
-  case:
+  task:
     label: IC pair
     item_label: IC difference
     key: [entity, counterparty_entity, period]
@@ -23,8 +23,8 @@ set:
     amount_field: difference
     display: [invoice_ref, currency, receivable_amount, payable_amount, difference, break_type]
   match:
-    left:  { tool: ic.receivables, args: { entity: $case.entity, counterparty: $case.counterparty_entity, period: $case.period } }
-    right: { tool: ic.payables,    args: { entity: $case.counterparty_entity, counterparty: $case.entity, period: $case.period } }
+    left:  { tool: ic.receivables, args: { entity: $task.entity, counterparty: $task.counterparty_entity, period: $task.period } }
+    right: { tool: ic.payables,    args: { entity: $task.counterparty_entity, counterparty: $task.entity, period: $task.period } }
     keys: [invoice_ref]
     amount_field: amount
     tolerance: 1.0

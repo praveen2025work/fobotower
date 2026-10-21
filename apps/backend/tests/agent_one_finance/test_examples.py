@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from agent_one_finance.capabilities import seed_files
+from agent_one_finance.agents import seed_files
 from agent_one_finance.groups import GroupConfig, effective
 from agent_one_finance.manifest import Manifest, problems
 

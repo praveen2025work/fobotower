@@ -1,7 +1,7 @@
 """Who may decide a group, and how many people: the authority matrix (with
 review lanes) and decision boundaries (decisions reserved for named people).
 
-Both are applied to every group's finding when it is proposed, so the case
+Both are applied to every group's finding when it is proposed, so the task
 shows them, and enforced when people decide:
 
   authority   review.authority tiers (first match wins), or the bank's

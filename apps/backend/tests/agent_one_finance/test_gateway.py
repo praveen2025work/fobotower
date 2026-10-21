@@ -10,8 +10,8 @@ UK = Caller("alice", frozenset({"FIN_PREPARER"}), {"entity": frozenset({"UK01"})
 
 
 def _ctx(tools=("gl.balances",), caller=UK):
-    return gateway.CallContext(capability_id="fin.variance-commentary", caller=caller,
-                               allowed_tools=frozenset(tools), case_id=None)
+    return gateway.CallContext(agent_id="fin.variance-commentary", caller=caller,
+                               allowed_tools=frozenset(tools), task_id=None)
 
 
 async def _rows():
@@ -28,8 +28,8 @@ async def test_an_allowed_call_reaches_the_connector_and_is_recorded():
     assert row.result == result
 
 
-async def test_a_tool_the_capability_was_not_given_is_refused_and_recorded():
-    with pytest.raises(gateway.ToolDenied, match="not allowed for capability"):
+async def test_a_tool_the_agent_was_not_given_is_refused_and_recorded():
+    with pytest.raises(gateway.ToolDenied, match="not allowed for agent"):
         await gateway.call(_ctx(tools=()), "gl.balances", {"entity": "UK01", "period": "2026-09"})
     [row] = await _rows()
     assert row.allowed is False and row.result is None

@@ -17,14 +17,14 @@ step. Code: `apps/backend/agent_one_finance/algorithms.py` and `steps_v2.py`. Te
 
 | Step type | Finds | How | Adds to each item |
 |---|---|---|---|
-| `offsets` | Equal-and-opposite amounts: booked to the wrong instrument, a cancel and rebook, a reversal across the cut-off | Pairs each positive amount with the closest unpaired negative of the same size (within the tolerance) in the same `within` group, e.g. the book. Sorted search, so it is fast on large cases | `offset`, `offset_with`, `offset_pair`; a data set of the pairs |
+| `offsets` | Equal-and-opposite amounts: booked to the wrong instrument, a cancel and rebook, a reversal across the cut-off | Pairs each positive amount with the closest unpaired negative of the same size (within the tolerance) in the same `within` group, e.g. the book. Sorted search, so it is fast on large tasks | `offset`, `offset_with`, `offset_pair`; a data set of the pairs |
 | `subset_match` | A few rows that together explain an amount: a split or partial booking | Searches sets of 1 to `max_size` (at most 5) rows from a data set, or from the other items, for one that sums to the target within the tolerance. It searches the smallest sets first and stops after 250,000 tries, saying so | `subset_found`, `subset_members`, `subset_sum`, `subset_unique` (false if another set also works), `subset_complete` |
 | `trend` | How an item moved over its own history: growing, shrinking, steady, or flipping sign | Least-squares slope over the history plus today, sign changes, and whether the size grew at every step | `trend_direction`, `trend_slope`, `trend_flips`, `trend_points`, `trend_growing` |
-| `cluster` | The same item breaking the same way in several books or entities: one systemic cause | Counts other places with the same key fields, the same sign and an amount within `within_pct`, either read through a tool or from the case's own items | `systemic`, `systemic_count`; `systemic_where` only if `show_where` is set |
+| `cluster` | The same item breaking the same way in several books or entities: one systemic cause | Counts other places with the same key fields, the same sign and an amount within `within_pct`, either read through a tool or from the task's own items | `systemic`, `systemic_count`; `systemic_where` only if `show_where` is set |
 | `fuzzy_match` | References that differ only by a typo or format | Jaro–Winkler similarity on references cleaned to letters and digits, optionally with an amount within a percentage. The output is candidates only | `near`, `near_candidates` (top 3, with scores) |
 | `benford` | Populations whose amounts look made up; round amounts | First-digit test against Benford's law, with Nigrini's conformity bands for the mean absolute deviation, a chi-square value, and a z-test per digit. Fewer than `min_items` amounts → "not run", never a pass | `benford_digit`, `benford_over`, `round_amount`; a summary data set |
 | `anomaly`, `flux` with `method: robust` | An item unusual against its own history, even when the history already has outliers | Median and 1.4826 × MAD instead of mean and standard deviation. `same: <field>` compares only with past rows that have the item's value of that field, e.g. month-end with month-end | `anomaly`, `anomaly_z`; `flux_*` |
-| `sample` with `method: mus` | An audit sample weighted by value | Systematic monetary-unit sampling: one point every *total ÷ size* currency units from a random start seeded by the case. An item at least one interval long is always in. The same case always gets the same sample | `sampled`; a data set with the seed |
+| `sample` with `method: mus` | An audit sample weighted by value | Systematic monetary-unit sampling: one point every *total ÷ size* currency units from a random start seeded by the task. An item at least one interval long is always in. The same task always gets the same sample | `sampled`; a data set with the seed |
 | `score` with `formula` | A priority to order the work | A numeric expression added to any weighted factors, e.g. `abs(difference) / 10000 + age_days * 5 + ifelse(recurring, 20, 0)`, with bands | the score, its reasons, its band |
 
 ### Learning checks from decisions
@@ -33,11 +33,11 @@ step. Code: `apps/backend/agent_one_finance/algorithms.py` and `steps_v2.py`. Te
 approved. For each category where people approved more than one verdict, it looks for the
 simplest condition on the items' own fields that predicts the verdict. That is one condition,
 or failing that two joined by `and`. It needs at least 95% precision and at least
-`insights.automation_after` cases (5 by default).
+`insights.automation_after` tasks (5 by default).
 
-Example: `trend_direction == 'shrinking'` → MONITOR in K (aged), 6 of 6 cases, never wrong. A
+Example: `trend_direction == 'shrinking'` → MONITOR in K (aged), 6 of 6 tasks, never wrong. A
 proposal is a valid playbook expression, but it changes nothing by itself. The playbook's
-owners replay it on past cases (an eval) and a second owner approves it before it becomes a
+owners replay it on past tasks (an eval) and a second owner approves it before it becomes a
 check. Code: `propose_checks` in `insights.py`.
 
 ## How FOBO uses them
@@ -52,7 +52,7 @@ MB Rec's breaks and the playbook:
 | `bo_positions` | dataset | `motif.positions` | MOTIF's instrument names (for near matches only; breaks still come only from MB Rec) |
 | `offsets` | offsets | the breaks | Booked to the wrong instrument |
 | `split_bookings` | subset_match | `events` | Partial bookings that add up to the break |
-| `systemic` | cluster | `mbrec.breaks_all` | The same instrument breaking in other books; only the count is kept on the case |
+| `systemic` | cluster | `mbrec.breaks_all` | The same instrument breaking in other books; only the count is kept on the task |
 | `near_refs` | fuzzy_match | `bo_positions` | A missing instrument MOTIF holds under a typo, with the same MTM within 1% |
 | `trend` | trend | `history` | Growing, shrinking, flipping |
 | `unusual` | anomaly (robust) | `history` | A break unusually large for its instrument |
@@ -77,13 +77,13 @@ fields and ask it to say which it used.
 
 ## Adding one for another team
 
-1. Open *Capabilities → name → Configure → Configurable steps → Add*, choose from
+1. Open *Agents → name → Configure → Configurable steps → Add*, choose from
    *Algorithms*, and fill in the form. The platform checks the settings and the order: a step
    that reads a data set must come after the step that makes it.
 2. To act on the evidence, add a check to the playbook or a rule. For example:
    `{ id: OFFSET, when: "offset", category: O, … }`, or a `score` factor
    `{ when: "systemic", weight: 30 }`.
-3. Replay last month's cases on the draft (an eval), then a second owner approves it.
+3. Replay last month's tasks on the draft (an eval), then a second owner approves it.
 
 Examples for other teams:
 - **Journal-entry controls:** `benford` and round amounts over the period's journals.

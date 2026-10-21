@@ -6,7 +6,7 @@ PHOENIX_COLLECTOR_ENDPOINT, AOF_ENTITLEMENT_URL, real connector URLs…):
     cd apps/backend
     .venv/bin/python scripts/aof_office_smoke.py --user <a real user id>
     .venv/bin/python scripts/aof_office_smoke.py --user <id> \\
-        --case recon.investigation --group cats-motif --key book=PRIME-MB-01 --key cob=2026-08-03
+        --task recon.investigation --group cats-motif --key book=PRIME-MB-01 --key cob=2026-08-03
 
 Checks, in order — each prints PASS / FAIL / SKIP and why:
   1. database      reachable, and its schema is at the latest migration
@@ -14,11 +14,11 @@ Checks, in order — each prints PASS / FAIL / SKIP and why:
   3. connectors    every onboarded connector answers list_tools
   4. llm           which adapter is configured (model, effort, budget)
   5. tracing       which backend is set up; Phoenix endpoint reachable
-  6. case          (with --case) one real case end to end: run, findings, the
+  6. task          (with --task) one real task end to end: run, findings, the
                    model's cost and turns, tool calls, and its Phoenix trace id
 
 Exit status is non-zero when any check fails. Nothing here writes to a bank
-system: a case stops at its review pause.
+system: a task stops at its review pause.
 """
 
 import argparse
@@ -120,22 +120,22 @@ async def check_tracing() -> None:
         report("tracing", "FAIL", f"{how}; endpoint unreachable: {type(e).__name__}: {e}")
 
 
-async def check_case(caller, capability: str, group: str | None, key: dict[str, str]) -> bool:
-    from agent_one_finance import capabilities, cases, groups, knowledge
+async def check_task(caller, agent: str, group: str | None, key: dict[str, str]) -> bool:
+    from agent_one_finance import agents, tasks, groups, knowledge
     from agent_one_finance.workflow import setup_checkpointer
 
     await setup_checkpointer()
-    await capabilities.seed()
+    await agents.seed()
     await groups.seed()
     await knowledge.seed_reference()
     try:
-        case_id = await cases.open_case(capability, key, caller, group)
-        d = await cases.case_detail(case_id, caller)
+        task_id = await tasks.open_task(agent, key, caller, group)
+        d = await tasks.task_detail(task_id, caller)
     except Exception as e:
-        report("case", "FAIL", f"{type(e).__name__}: {e}")
+        report("task", "FAIL", f"{type(e).__name__}: {e}")
         return False
     good = d["status"] in ("awaiting_review", "awaiting_publish", "completed")
-    report("case", "PASS" if good else "FAIL", f"{case_id}: {d['status']}" + (f" — {d['error']}" if d["error"] else ""))
+    report("task", "PASS" if good else "FAIL", f"{task_id}: {d['status']}" + (f" — {d['error']}" if d["error"] else ""))
     for g in d["groups"]:
         f = g["finding"] or {}
         usage = f.get("usage") or {}
@@ -151,9 +151,9 @@ async def check_case(caller, capability: str, group: str | None, key: dict[str, 
 async def main() -> int:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("--user")
-    p.add_argument("--case", help="capability id to open one case of")
-    p.add_argument("--group", help="its team group, when the capability has groups")
-    p.add_argument("--key", action="append", default=[], help="case key field=value (repeat)")
+    p.add_argument("--task", help="agent id to open one task of")
+    p.add_argument("--group", help="its team group, when the agent has groups")
+    p.add_argument("--key", action="append", default=[], help="task key field=value (repeat)")
     a = p.parse_args()
 
     if not await check_database():
@@ -162,13 +162,13 @@ async def main() -> int:
     await check_connectors()
     check_llm()
     await check_tracing()
-    if a.case:
+    if a.task:
         if caller is None:
-            report("case", "FAIL", "needs --user (a real user who may open it)")
+            report("task", "FAIL", "needs --user (a real user who may open it)")
         else:
-            await check_case(caller, a.case, a.group, dict(kv.split("=", 1) for kv in a.key))
+            await check_task(caller, a.task, a.group, dict(kv.split("=", 1) for kv in a.key))
     else:
-        report("case", "SKIP", "pass --case/--key to run one case end to end")
+        report("task", "SKIP", "pass --task/--key to run one task end to end")
     from agent_one_finance.db import engine
     await engine.dispose()
     failed = [r for r in RESULTS if r[1] == "FAIL"]

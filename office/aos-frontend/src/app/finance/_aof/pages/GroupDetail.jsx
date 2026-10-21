@@ -1,8 +1,8 @@
 // Generated from apps/web/src/pages/GroupDetail.tsx by apps/web/office/convert.mjs. Office changes to this file are
 // kept by aof_sync.py on the next update; see office/README.md.
-// One team group — a team's configuration of a capability (e.g. the CATS vs
+// One team group — a team's configuration of an agent (e.g. the CATS vs
 // MOTIF rec group): what it sets, its orchestrator step by step (editable by
-// its owners where the capability allows), its version history, and YAML for
+// its owners where the agent allows), its version history, and YAML for
 // those who prefer it. Owners draft; another owner approves.
 
 import { useMemo, useState } from "react";
@@ -13,11 +13,11 @@ import { parse, stringify } from "yaml";
 
 import { currentUser } from "../api/client";
 import { useApproveGroup, useDraftGroup, useGroup } from "../api/aof";
-import FlowDiagram from "../components/capability/FlowDiagram";
-import RecurringPanel from "../components/capability/RecurringPanel";
-import LearningPanel from "../components/capability/LearningPanel";
-import DataContractPanel from "../components/capability/DataContractPanel";
-import VersionsPanel from "../components/capability/VersionsPanel";
+import FlowDiagram from "../components/agent/FlowDiagram";
+import RecurringPanel from "../components/agent/RecurringPanel";
+import LearningPanel from "../components/agent/LearningPanel";
+import DataContractPanel from "../components/agent/DataContractPanel";
+import VersionsPanel from "../components/agent/VersionsPanel";
 import OrchestratorEditor from "../components/orchestrator/OrchestratorEditor";
 import StatusBadge from "../components/StatusBadge";
 import { Card, Empty, ErrorState, Fold, Loading, PageHeader, formatTime } from "../components/ui";
@@ -36,7 +36,7 @@ export default function GroupDetail() {
   return (
     <div>
       <Link
-        to={`/capabilities/${encodeURIComponent(id)}`}
+        to={`/agents/${encodeURIComponent(id)}`}
         className="inline-flex items-center gap-1 text-xs text-surface-500 hover:text-primary-700"
       >
         <ArrowLeft size={12} /> {g.manifest?.name ?? id}
@@ -103,7 +103,7 @@ export default function GroupDetail() {
             Changes go to another owner for approval.
           </p>
           <OrchestratorEditor
-            capabilityId={id}
+            agentId={id}
             manifest={g.manifest}
             mode={{ kind: "group", config: g.config, configurable: g.configurable }}
             canEdit={g.is_owner}
@@ -131,7 +131,7 @@ export default function GroupDetail() {
           </Fold>
           {g.is_owner && (
             <Fold className="mt-4" title="Edit as YAML" summary="for owners who prefer text">
-              <EditGroup capabilityId={id} config={g.config} />
+              <EditGroup agentId={id} config={g.config} />
             </Fold>
           )}
         </>
@@ -139,27 +139,27 @@ export default function GroupDetail() {
 
       {tab === "insights" && (
         <div className="space-y-4">
-          {!!g.manifest.insights?.recurring && <RecurringPanel capabilityId={id} teamGroup={group} />}
-          <LearningPanel capabilityId={id} teamGroup={group} />
+          {!!g.manifest.insights?.recurring && <RecurringPanel agentId={id} teamGroup={group} />}
+          <LearningPanel agentId={id} teamGroup={group} />
         </div>
       )}
-      {tab === "data" && <DataContractPanel capabilityId={id} teamGroup={group} />}
+      {tab === "data" && <DataContractPanel agentId={id} teamGroup={group} />}
       {tab === "workflow" && (
         <Card title="Workflow">
-          <FlowDiagram capabilityId={id} teamGroup={group} />
+          <FlowDiagram agentId={id} teamGroup={group} />
         </Card>
       )}
       {tab === "versions" && (
         <div className="grid gap-4 xl:grid-cols-2">
           <Versions
-            capabilityId={id}
+            agentId={id}
             group={group}
             versions={g.versions}
             isOwner={g.is_owner}
             fourEyes={g.owners.four_eyes}
           />
           <Card title="What changed between versions">
-            <VersionsPanel capabilityId={id} group={group} versions={g.versions} />
+            <VersionsPanel agentId={id} group={group} versions={g.versions} />
           </Card>
         </div>
       )}
@@ -167,12 +167,12 @@ export default function GroupDetail() {
   );
 }
 
-function EditGroup({ capabilityId, config }) {
+function EditGroup({ agentId, config }) {
   const initial = useMemo(() => stringify(config.set), [config.set]);
   const [text, setText] = useState(initial);
   const [note, setNote] = useState("");
   const [parseError, setParseError] = useState(null);
-  const draft = useDraftGroup(capabilityId);
+  const draft = useDraftGroup(agentId);
 
   const submit = () => {
     let set;
@@ -234,8 +234,8 @@ function EditGroup({ capabilityId, config }) {
   );
 }
 
-function Versions({ capabilityId, group, versions, isOwner, fourEyes }) {
-  const approve = useApproveGroup(capabilityId, group);
+function Versions({ agentId, group, versions, isOwner, fourEyes }) {
+  const approve = useApproveGroup(agentId, group);
   const me = currentUser(); // UX only: the server enforces four-eyes
   return (
     <Card title="Versions">

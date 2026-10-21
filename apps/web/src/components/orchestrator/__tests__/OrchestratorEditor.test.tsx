@@ -10,13 +10,13 @@ import { groupSet } from "../paths";
 const manifest = {
   id: "recon.investigation", name: "Reconciliation investigation", description: "",
   owners: { people: ["erin"], role: null, four_eyes: true },
-  case: { label: "Rec run", item_label: "Break", key: ["book", "cob"], subject: "{book} · COB {cob}", scopes: { book: "book" }, opens_on: "manual", schedule: null, schedule_keys: [], events: false, opens_as: null, due: null },
+  task: { label: "Rec run", item_label: "Break", key: ["book", "cob"], subject: "{book} · COB {cob}", scopes: { book: "book" }, opens_on: "manual", schedule: null, schedule_keys: [], events: false, opens_as: null, due: null },
   items: { load: null, id_field: "instrument", amount_field: "difference", amount_unit: "GBP", display: [], in_scope: null },
-  match: { left: { tool: "cats.positions", args: { book: "$case.book" } }, right: { tool: "motif.positions", args: { book: "$case.book" } }, keys: ["instrument"], amount_field: "mtm", tolerance: 0.5, left_label: "cats", right_label: "motif" },
+  match: { left: { tool: "cats.positions", args: { book: "$task.book" } }, right: { tool: "motif.positions", args: { book: "$task.book" } }, keys: ["instrument"], amount_field: "mtm", tolerance: 0.5, left_label: "cats", right_label: "motif" },
   policy: { materiality_threshold: { value: null, unit: "GBP" } },
   steps: ["match", "enrich", "group", "reason", "draft", "validate", "review", "record"],
   pause_before: ["review"],
-  enrich: [{ tool: "motif.break_snapshots", args: { book: "$case.book" }, keys: ["instrument"], prefix: "" }],
+  enrich: [{ tool: "motif.break_snapshots", args: { book: "$task.book" }, keys: ["instrument"], prefix: "" }],
   group_by: ["category"], group_label: null, rules: [],
   reasoning: { reasoner: "llm", skill: "Investigate.", tools: ["motif.booking_events"], specialists: [], output: "verdict" },
   review: { roles: ["FOBO_CONTROLLER"], require_comment: ["reject"], confirm: "tick_and_comment", bulk_exclude: ["confirmation"], dual_review_when: null, max_reinvestigations: 2, opener_may_decide: true, allow_delegation: false },
@@ -39,14 +39,14 @@ describe("Orchestrator editor", () => {
       set: { review: { roles: ["FOBO_CONTROLLER"] } } };
     const calls = mockApi({
       "GET /platform": platform,
-      "POST /capabilities/recon.investigation/check": { ok: true, problems: [] },
-      "POST /capabilities/recon.investigation/groups": { group_id: "cats-motif", version: 3 },
+      "POST /agents/recon.investigation/check": { ok: true, problems: [] },
+      "POST /agents/recon.investigation/groups": { group_id: "cats-motif", version: 3 },
     });
-    renderAt("/", "/", <OrchestratorEditor capabilityId="recon.investigation" manifest={manifest}
+    renderAt("/", "/", <OrchestratorEditor agentId="recon.investigation" manifest={manifest}
       mode={{ kind: "group", config, configurable: manifest.configurable }} canEdit />);
 
     expect(await screen.findByText("Passes every platform check")).toBeInTheDocument();
-    // the workflow is the capability's: its steps cannot be switched by a group
+    // the workflow is the agent's: its steps cannot be switched by a group
     await userEvent.click(screen.getByRole("button", { name: /Enrich/ }));
     expect(screen.getByRole("checkbox", { name: /This step runs/ })).toBeDisabled();
     // a threshold is the group's to set
@@ -69,18 +69,18 @@ describe("Orchestrator editor", () => {
     expect(await screen.findByText(/Version 3 of this group drafted/)).toBeInTheDocument();
   });
 
-  it("lets a capability owner switch steps and shows each problem on its step", async () => {
+  it("lets an agent owner switch steps and shows each problem on its step", async () => {
     const calls = mockApi({
       "GET /platform": platform,
-      "POST /capabilities/recon.investigation/check": (body: unknown) => {
+      "POST /agents/recon.investigation/check": (body: unknown) => {
         const steps = ((body as { manifest: { steps: string[] } }).manifest.steps);
         return steps.includes("classify")
           ? { ok: false, problems: ["playbook.default_category `` is not a category"] }
           : { ok: true, problems: [] };
       },
-      "POST /authoring/submit": { capability_id: "recon.investigation", version: 9 },
+      "POST /authoring/submit": { agent_id: "recon.investigation", version: 9 },
     });
-    renderAt("/", "/", <OrchestratorEditor capabilityId="recon.investigation" manifest={manifest} mode={{ kind: "capability" }} canEdit />);
+    renderAt("/", "/", <OrchestratorEditor agentId="recon.investigation" manifest={manifest} mode={{ kind: "agent" }} canEdit />);
     await screen.findByText("Passes every platform check");
 
     // gates show as always on, with nothing to switch
@@ -117,7 +117,7 @@ describe("Orchestrator editor", () => {
 
   it("is read-only for someone who does not own it", async () => {
     mockApi({ "GET /platform": platform });
-    renderAt("/", "/", <OrchestratorEditor capabilityId="recon.investigation" manifest={manifest} mode={{ kind: "capability" }} canEdit={false} />);
+    renderAt("/", "/", <OrchestratorEditor agentId="recon.investigation" manifest={manifest} mode={{ kind: "agent" }} canEdit={false} />);
     expect(await screen.findByText(/You can look; its owners change it/)).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: /A task is called/ })).toBeDisabled();
   });
@@ -127,8 +127,8 @@ describe("groupSet", () => {
   it("writes a changed value at its configurable path and keeps the rest", () => {
     const before = { policy: { a: { value: 1 }, b: { value: 2 } }, review: { roles: ["X"], confirm: "tick" } };
     const after = { policy: { a: { value: 1 }, b: { value: 5 } }, review: { roles: ["Y"], confirm: "none" } };
-    expect(groupSet({ case: { label: "Run" } }, ["policy.*", "review.roles"], before, after)).toEqual({
-      case: { label: "Run" }, policy: { b: { value: 5 } }, review: { roles: ["Y"] },   // review.confirm is not the group's
+    expect(groupSet({ task: { label: "Run" } }, ["policy.*", "review.roles"], before, after)).toEqual({
+      task: { label: "Run" }, policy: { b: { value: 5 } }, review: { roles: ["Y"] },   // review.confirm is not the group's
     });
   });
 });
@@ -137,10 +137,10 @@ describe("Configurable steps", () => {
   it("adds a data step after the item source, sets it up, and keeps it when a core step is switched", async () => {
     const calls = mockApi({
       "GET /platform": platform,
-      "POST /capabilities/recon.investigation/check": { ok: true, problems: [] },
-      "POST /authoring/submit": { capability_id: "recon.investigation", version: 9 },
+      "POST /agents/recon.investigation/check": { ok: true, problems: [] },
+      "POST /authoring/submit": { agent_id: "recon.investigation", version: 9 },
     });
-    renderAt("/", "/", <OrchestratorEditor capabilityId="recon.investigation" manifest={manifest} mode={{ kind: "capability" }} canEdit />);
+    renderAt("/", "/", <OrchestratorEditor agentId="recon.investigation" manifest={manifest} mode={{ kind: "agent" }} canEdit />);
     await userEvent.click(await screen.findByRole("button", { name: /Prepare the data/ }));
     await userEvent.selectOptions(screen.getByLabelText("Step type to add"), "filter");
     await userEvent.click(screen.getByRole("button", { name: "Add" }));
@@ -160,9 +160,9 @@ describe("Configurable steps", () => {
   it("puts group steps after the reason, write-back after record, and a person before those that need one", async () => {
     const calls = mockApi({
       "GET /platform": platform,
-      "POST /capabilities/recon.investigation/check": { ok: true, problems: [] },
+      "POST /agents/recon.investigation/check": { ok: true, problems: [] },
     });
-    renderAt("/", "/", <OrchestratorEditor capabilityId="recon.investigation" manifest={manifest} mode={{ kind: "capability" }} canEdit />);
+    renderAt("/", "/", <OrchestratorEditor agentId="recon.investigation" manifest={manifest} mode={{ kind: "agent" }} canEdit />);
     await userEvent.click(await screen.findByRole("button", { name: /Prepare the data/ }));
     for (const t of ["compose", "outreach", "report"]) {
       await userEvent.selectOptions(screen.getByLabelText("Step type to add"), t);

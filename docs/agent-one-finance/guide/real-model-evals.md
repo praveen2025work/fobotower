@@ -1,16 +1,16 @@
-# Runbook: evaluating a capability on the real model (office)
+# Runbook: evaluating an agent on the real model (office)
 
-**Date:** 2026-10-05 · **For:** the Agent One Finance team and a capability's owners, in the office
+**Date:** 2026-10-05 · **For:** the Agent One Finance team and an agent's owners, in the office
 environment where the model is reached through the Agent SDK.
 
 In dev and CI the model is the deterministic **stub**: it proves the plumbing, never the
-judgement. Before a capability or group goes live on the model, and after every change to its
+judgement. Before an agent or group goes live on the model, and after every change to its
 instructions, sections, tools or model, run this.
 
 ## What it measures
 
-An **eval** replays cases people already decided on the version under test, as hidden shadow
-cases. Nothing is written back, and a shadow never reaches publish. Agent One Finance then compares each
+An **eval** replays tasks people already decided on the version under test, as hidden shadow
+tasks. Nothing is written back, and a shadow never reaches publish. Agent One Finance then compares each
 group with the earlier decision:
 
 | Score | Meaning | Target before go-live |
@@ -24,7 +24,7 @@ group with the earlier decision:
 Also look at:
 - **sections**: required sections missing (`MISSING_SECTION`);
 - **validation**: `UNGROUNDED_FIGURE` escalations;
-- **cost**: each eval run, and each case, is a span in Phoenix with tokens and cost.
+- **cost**: each eval run, and each task, is a span in Phoenix with tokens and cost.
 
 ## 1. Prepare (once)
 
@@ -42,42 +42,42 @@ PHOENIX_COLLECTOR_ENDPOINT=…            # see the tracing section of the devel
 Then:
 1. Run the office smoke test: `python scripts/aof_office_smoke.py`. It checks that the
    connectors, the gateway, one model call and tracing all work.
-2. Set spend limits on the capability (`limits.max_cost_usd_per_case` and `…_per_day`). Over a
+2. Set spend limits on the agent (`limits.max_cost_usd_per_task` and `…_per_day`). Over a
    limit, groups go to a person rather than failing.
 
 ## 2. Build the test set
 
-An eval needs decided cases: approved and rejected groups, in the reviewers' own words.
+An eval needs decided tasks: approved and rejected groups, in the reviewers' own words.
 - **New on Agent One Finance** (for example FOBO Prime): run Agent One Finance in *shadow* alongside today's process for
-  one to two weeks. Controllers decide in Agent One Finance as they work, which gives at least 20 cases
+  one to two weeks. Controllers decide in Agent One Finance as they work, which gives at least 20 tasks
   across the books.
-- **Already live**: last month's cases are the test set.
+- **Already live**: last month's tasks are the test set.
 
-Include the hard cases on purpose:
+Include the hard tasks on purpose:
 - judgement categories: K aged, M missing side, G corporate action, H novel, U adjustment did
   not clear;
 - an answered question (the desk's answer must reach the model);
-- a case with a tollgate note.
+- a task with a tollgate note.
 
 ## 3. Run
 
-In the console, go to *Capabilities → name → Evals → Run on a version*. Choose the draft (or the
+In the console, go to *Agents → name → Evals → Run on a version*. Choose the draft (or the
 live version after a model change) and the team group.
 
 Or use the API:
 
 ```bash
-curl -X POST "$AOF/api/capabilities/break.investigation/evals" -H "$AUTH" -H 'Content-Type: application/json' \
+curl -X POST "$AOF/api/agents/break.investigation/evals" -H "$AUTH" -H 'Content-Type: application/json' \
   -d '{"team_group": "fobo-prime", "group_version": 3, "limit": 50}'
-curl "$AOF/api/evals/$RUN_ID" -H "$AUTH"         # scores, per case and per group
+curl "$AOF/api/evals/$RUN_ID" -H "$AUTH"         # scores, per task and per group
 ```
 
-A run of 50 FOBO cases costs roughly the cases' groups that go to the model × the per-group
+A run of 50 FOBO tasks costs roughly the tasks' groups that go to the model × the per-group
 cost. Phoenix shows the actual cost.
 
 ## 4. Read the result
 
-1. Investigate every **disagree**. Open the shadow case from the run. Either the instructions
+1. Investigate every **disagree**. Open the shadow task from the run. Either the instructions
    miss something, a tool returned less than the controller saw, or the earlier decision was
    wrong. Fix the instructions, tools or sections, not the scores.
 2. Every **verdict** mismatch on a deterministic category is a playbook bug, not a model
@@ -98,7 +98,7 @@ cost. Phoenix shows the actual cost.
 | disagreements on judgement groups only | keep `sme_review` (always on for judgement); go live with the reviewers watching for two weeks, then eval again |
 | verdict mismatches or repeated ungrounded figures | do not approve; fix and run again |
 
-Record the run id in the version note when approving. The eval stays on the capability's
+Record the run id in the version note when approving. The eval stays on the agent's
 history.
 
 ## 6. Re-run when
@@ -108,6 +108,6 @@ history.
 - a connector's data changes shape (check the *Data and parameters* panel first);
 - monthly, on the last month's decisions, to catch drift.
 
-The same runbook serves every capability. Only the test set and the targets above change: for
+The same runbook serves every agent. Only the test set and the targets above change: for
 variance commentary, **wording** and **agree** matter most, and for cash the rules decide most
 groups.

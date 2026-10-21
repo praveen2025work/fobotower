@@ -3,7 +3,7 @@ name: Price breaks — Prime
 owners: { people: [frank], role: AOF_FOBO_RECON_OWNER, four_eyes: true }
 set:
   enrich:
-    - { tool: motif.break_snapshots, args: { book: $case.book, cob: $case.cob }, keys: [instrument] }
+    - { tool: motif.break_snapshots, args: { book: $task.book, cob: $task.cob }, keys: [instrument] }
   policy:
     mtm_market_movement_tolerance: { value: null, unit: GBP }
   playbook:

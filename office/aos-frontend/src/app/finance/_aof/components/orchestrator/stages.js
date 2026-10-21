@@ -6,7 +6,7 @@
 
 import { get, setPath } from "./paths";
 
-const keyFields = (m) => (get(m, "case.key") ?? []).map((k) => ({ value: k }));
+const keyFields = (m) => (get(m, "task.key") ?? []).map((k) => ({ value: k }));
 const categories = (m) =>
   Object.entries(get(m, "playbook.categories") ?? {}).map(([k, c]) => ({ value: k, label: `${k} · ${c.name ?? ""}` }));
 const sides = (m) => [...(get(m, "playbook.sides") ?? []), "UNKNOWN"].map((s) => ({ value: s }));
@@ -56,34 +56,34 @@ const hasPlaybook = (m) => !!get(m, "playbook");
 
 export const STAGES = [
   {
-    id: "case",
+    id: "task",
     title: "What a task is",
     says: "What one unit of work is, who can see it, when it opens on its own, and when it is due.",
-    owns: /^case\.|case\.(key|scopes|schedule|opens_as|due)|scheduled/,
+    owns: /^task\.|task\.(key|scopes|schedule|opens_as|due)|scheduled/,
     fields: [
-      { kind: "text", path: "case.label", label: "A task is called", placeholder: "Rec run" },
-      { kind: "text", path: "case.item_label", label: "An item is called", placeholder: "Break" },
+      { kind: "text", path: "task.label", label: "A task is called", placeholder: "Rec run" },
+      { kind: "text", path: "task.item_label", label: "An item is called", placeholder: "Break" },
       {
         kind: "list",
-        path: "case.key",
+        path: "task.key",
         label: "A task is identified by",
         help: "The fields that make one task, e.g. book, cob.",
       },
       {
         kind: "template",
-        path: "case.subject",
+        path: "task.subject",
         label: "Task title",
         help: "A template over the key, e.g. {book} · COB {cob}; {book_label} uses the book's label from the reference data.",
       },
       {
         kind: "list",
-        path: "case.summarize_by",
+        path: "task.summarize_by",
         label: "The Summary groups a day's tasks by",
         help: "Outermost first: key fields, or facts the reference data holds about one, e.g. book_business, book_region, book_desk — for thousands of tasks a day.",
       },
       {
         kind: "kv",
-        path: "case.scopes",
+        path: "task.scopes",
         label: "Data scope checks",
         keyLabel: "Key field",
         valueLabel: "Entitlement scope",
@@ -91,7 +91,7 @@ export const STAGES = [
       },
       {
         kind: "select",
-        path: "case.opens_on",
+        path: "task.opens_on",
         label: "Opens",
         options: [
           { value: "manual", label: "When someone opens it" },
@@ -102,26 +102,26 @@ export const STAGES = [
       },
       {
         kind: "cron",
-        path: "case.schedule",
+        path: "task.schedule",
         label: "Schedule (cron: minute hour day month weekday)",
         placeholder: "30 6 * * 1-5",
         help: "30 6 * * 1-5 = 06:30 every business day.",
-        when: (m) => get(m, "case.opens_on") === "schedule",
+        when: (m) => get(m, "task.opens_on") === "schedule",
       },
       {
         kind: "rows",
-        path: "case.schedule_keys",
+        path: "task.schedule_keys",
         label: "Tasks each run opens",
         addLabel: "Add a task",
         newRow: {},
         help: "One row per task. Dates may use {prev_business_day}, {yesterday}, {today}, {prev_month}, {this_month}.",
-        when: (m) => get(m, "case.opens_on") === "schedule",
+        when: (m) => get(m, "task.opens_on") === "schedule",
         columns: (m) => keyFields(m).map((k) => ({ key: k.value, label: k.value, wide: true })),
       },
-      { kind: "bool", path: "case.events", label: "Other systems may open tasks (POST /api/events)" },
+      { kind: "bool", path: "task.events", label: "Other systems may open tasks (POST /api/events)" },
       {
         kind: "select",
-        path: "case.late_items",
+        path: "task.late_items",
         label: "When another notification arrives for a key already open",
         options: [
           { value: "ignore", label: "Nothing new: the existing task is the answer" },
@@ -131,14 +131,14 @@ export const STAGES = [
       },
       {
         kind: "text",
-        path: "case.opens_as",
+        path: "task.opens_as",
         label: "Scheduled and event tasks run as",
         placeholder: "aof-scheduler",
         help: "A service user with the roles and data scopes those tasks need.",
       },
       {
         kind: "object",
-        path: "case.due",
+        path: "task.due",
         label: "Deadline",
         toggle: "Tasks have a deadline",
         empty: { from: "opened", business_days: 1, hours: 0, at: null, warn_hours: 2 },
@@ -175,7 +175,7 @@ export const STAGES = [
         path: "match.left.args",
         label: "Left side arguments",
         keyLabel: "Argument",
-        valueLabel: "Value ($case.<field> from the key)",
+        valueLabel: "Value ($task.<field> from the key)",
         when: (m) => !!get(m, "match"),
       },
       { kind: "tool", path: "match.right.tool", label: "Right side", access: "read", when: (m) => !!get(m, "match") },
@@ -184,7 +184,7 @@ export const STAGES = [
         path: "match.right.args",
         label: "Right side arguments",
         keyLabel: "Argument",
-        valueLabel: "Value ($case.<field> from the key)",
+        valueLabel: "Value ($task.<field> from the key)",
         when: (m) => !!get(m, "match"),
       },
       { kind: "list", path: "match.keys", label: "Match on", when: (m) => !!get(m, "match") },
@@ -204,7 +204,7 @@ export const STAGES = [
         path: "items.load.args",
         label: "Arguments",
         keyLabel: "Argument",
-        valueLabel: "Value ($case.<field> from the key)",
+        valueLabel: "Value ($task.<field> from the key)",
         when: (m) => !get(m, "match"),
       },
       { kind: "text", path: "items.id_field", label: "Item id field" },
@@ -561,7 +561,7 @@ export const STAGES = [
       SPECIALISTS_FIELD,
       {
         kind: "number",
-        path: "limits.max_cost_usd_per_case",
+        path: "limits.max_cost_usd_per_task",
         label: "Model spend cap per task (USD)",
         min: 0,
         nullable: true,
@@ -833,10 +833,10 @@ export const STAGES = [
         path: "insights.recurring",
         label: "Recurring items",
         toggle: "Show items that keep coming back",
-        empty: { same: [], lookback_cases: 10, min_runs: 2 },
+        empty: { same: [], lookback_tasks: 10, min_runs: 2 },
         fields: [
           { kind: "list", path: "same", label: "In earlier tasks with the same" },
-          { kind: "number", path: "lookback_cases", label: "Look back over (tasks)", min: 1, max: 100 },
+          { kind: "number", path: "lookback_tasks", label: "Look back over (tasks)", min: 1, max: 100 },
           { kind: "number", path: "min_runs", label: "Seen in at least (runs)", min: 2, max: 100 },
         ],
       },
@@ -914,7 +914,7 @@ export const STAGES = [
         label: "One write per",
         options: [
           { value: "group", label: "approved group" },
-          { value: "case", label: "task (one report)" },
+          { value: "task", label: "task (one report)" },
         ],
       },
       {
@@ -929,7 +929,7 @@ export const STAGES = [
   },
   {
     id: "owners",
-    capabilityOnly: true,
+    agentOnly: true,
     title: "Owners and team settings",
     says: "Who may change this agent (four-eyes: the drafter cannot approve), and what each team group may set for itself.",
     owns: /^owners|^configurable|cannot be set by a group/,
@@ -947,9 +947,9 @@ export const STAGES = [
   },
 ];
 
-/** The editor's navigation, in the order a person sets a capability up. */
+/** The editor's navigation, in the order a person sets an agent up. */
 export const SECTIONS = [
-  { title: "The task", ids: ["case", "thresholds"] },
+  { title: "The task", ids: ["task", "thresholds"] },
   { title: "Data", ids: ["source", "prepare", "compare", "enrich", "resolve"] },
   { title: "Decide", ids: ["classify", "group", "agent", "reason", "draft"] },
   { title: "People and gates", ids: ["validate", "review", "record", "publish"] },

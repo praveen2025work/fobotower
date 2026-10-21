@@ -1,4 +1,4 @@
-# E03 Agent One integration: sessions per capability per case
+# E03 Agent One integration: sessions per agent per task
 
 | Owner | Status | Last updated | Purpose |
 |---|---|---|---|
@@ -8,11 +8,11 @@
 |---|---|---|---|
 | E03 | Agent One | 6 Oct 2026 to 30 Nov 2026 | To Do |
 
-**Objective:** Agent One sessions are opened per capability per case (and per break group where needed), instead of per user login
+**Objective:** Agent One sessions are opened per agent per task (and per break group where needed), instead of per user login
 
-**Deliverables:** Session design, per-case sessions in Agent One, case identity and data scope, session lifecycle, model approval, tracing, cost limits
+**Deliverables:** Session design, per-task sessions in Agent One, task identity and data scope, session lifecycle, model approval, tracing, cost limits
 
-**Exit criteria:** Each FOBO case has its own Agent One session, shared by everyone working the case; no session per login
+**Exit criteria:** Each FOBO task has its own Agent One session, shared by everyone working the task; no session per login
 
 **Dependencies:** Model and data approval; Agent One team
 
@@ -34,9 +34,9 @@ Which model, which data may be sent to it, and what is masked.
 
 ### E03-S21 Agree the session design with the Agent One team
 
-As an architect, I want the session design agreed with the Agent One team, so that sessions follow the case, not the user login.
+As an architect, I want the session design agreed with the Agent One team, so that sessions follow the task, not the user login.
 
-Today Agent One opens a session per user login. Target: one session per capability per case (for example one per FOBO book and date), optionally one per break group inside the case. Agree the session key, who it runs as, how long it lives and what is kept.
+Today Agent One opens a session per user login. Target: one session per agent per task (for example one per FOBO book and date), optionally one per break group inside the task. Agree the session key, who it runs as, how long it lives and what is kept.
 
 | Sprint | Release | Points | Priority | Team | Environment | Status |
 |---|---|---|---|---|---|---|
@@ -46,11 +46,11 @@ Today Agent One opens a session per user login. Target: one session per capabili
 
 - Done when: Design signed by the Agent One team and Architect
 
-### E03-S22 Open an Agent One session per capability per case
+### E03-S22 Open an Agent One session per agent per task
 
-As a FOBO controller, I want one Agent One session per capability per case, so that everyone working a case shares the same investigation.
+As a FOBO controller, I want one Agent One session per agent per task, so that everyone working a task shares the same investigation.
 
-When a case opens (by MB Rec's end-of-day trigger or by a person), AOF opens one Agent One session for that capability and case. Logging in no longer creates a session.
+When a task opens (by MB Rec's end-of-day trigger or by a person), AOF opens one Agent One session for that agent and task. Logging in no longer creates a session.
 
 | Sprint | Release | Points | Priority | Team | Environment | Status |
 |---|---|---|---|---|---|---|
@@ -58,18 +58,18 @@ When a case opens (by MB Rec's end-of-day trigger or by a person), AOF opens one
 
 **Acceptance criteria**
 
-- Given a FOBO case for a book and date, when two reviewers open it, then both use the same session.
-- Given two different cases, when they run, then they never share a session.
+- Given a FOBO task for a book and date, when two reviewers open it, then both use the same session.
+- Given two different tasks, when they run, then they never share a session.
 - Given a user, when they log in, then no session is created.
-- Done when: Two people on the same case use the same session; two cases never share one; no session per login
+- Done when: Two people on the same task use the same session; two tasks never share one; no session per login
 
 **Blocked by:** E03-S21, E03-S20
 
-### E03-S23 Session runs with the case's rights, not the user's
+### E03-S23 Session runs with the task's rights, not the user's
 
-As a risk officer, I want each session to run with the case's identity and book scope, so that a session can only read that case's books.
+As a risk officer, I want each session to run with the task's identity and book scope, so that a session can only read that task's books.
 
-The session uses the case's own identity and book scope (a service identity for cases opened automatically), so it only reads that case's books.
+The session uses the task's own identity and book scope (a service identity for tasks opened automatically), so it only reads that task's books.
 
 | Sprint | Release | Points | Priority | Team | Environment | Status |
 |---|---|---|---|---|---|---|
@@ -82,11 +82,11 @@ The session uses the case's own identity and book scope (a service identity for 
 
 **Blocked by:** E03-S22
 
-### E03-S24 Trace every model and system call by case
+### E03-S24 Trace every model and system call by task
 
-As a support analyst, I want every model and system call traceable by case number, so that I can explain any outcome.
+As a support analyst, I want every model and system call traceable by task number, so that I can explain any outcome.
 
-Each case's session can be traced end to end by its case number.
+Each task's session can be traced end to end by its task number.
 
 | Sprint | Release | Points | Priority | Team | Environment | Status |
 |---|---|---|---|---|---|---|
@@ -94,14 +94,14 @@ Each case's session can be traced end to end by its case number.
 
 **Acceptance criteria**
 
-- Given a case number, when I search the traces, then I see every model and system call for it.
-- Done when: Trace found by case number
+- Given a task number, when I search the traces, then I see every model and system call for it.
+- Done when: Trace found by task number
 
 ### E03-S25 Session per break group (where needed)
 
-As a FOBO controller, I want large cases investigated in parallel by break group, so that results are ready sooner.
+As a FOBO controller, I want large tasks investigated in parallel by break group, so that results are ready sooner.
 
-Large cases can use one session per break group so groups are investigated in parallel, still under the same case.
+Large tasks can use one session per break group so groups are investigated in parallel, still under the same task.
 
 | Sprint | Release | Points | Priority | Team | Environment | Status |
 |---|---|---|---|---|---|---|
@@ -109,8 +109,8 @@ Large cases can use one session per break group so groups are investigated in pa
 
 **Acceptance criteria**
 
-- Given a case with several break groups, when it runs, then groups are investigated in parallel under the same case.
-- Done when: Groups of one case run in parallel in UAT
+- Given a task with several break groups, when it runs, then groups are investigated in parallel under the same task.
+- Done when: Groups of one task run in parallel in UAT
 
 **Blocked by:** E03-S22
 
@@ -118,7 +118,7 @@ Large cases can use one session per break group so groups are investigated in pa
 
 As a support analyst, I want sessions that resume, close at sign-off and keep their record, so that no work is lost and audit is complete.
 
-A session resumes if a case is re-run or the service restarts, closes when the case is signed off, and its record stays with the case for audit.
+A session resumes if a task is re-run or the service restarts, closes when the task is signed off, and its record stays with the task for audit.
 
 | Sprint | Release | Points | Priority | Team | Environment | Status |
 |---|---|---|---|---|---|---|
@@ -126,17 +126,17 @@ A session resumes if a case is re-run or the service restarts, closes when the c
 
 **Acceptance criteria**
 
-- Given a case interrupted by a restart, when it is re-run, then the session resumes.
-- Given a signed-off case, when the session closes, then its record stays with the case.
-- Done when: Resume and close shown in UAT; record kept on the case
+- Given a task interrupted by a restart, when it is re-run, then the session resumes.
+- Given a signed-off task, when the session closes, then its record stays with the task.
+- Done when: Resume and close shown in UAT; record kept on the task
 
 **Blocked by:** E03-S22
 
-### E03-S27 Cost limits and off switches per capability and case
+### E03-S27 Cost limits and off switches per agent and task
 
 As a delivery lead, I want cost limits and off switches, so that spend is controlled and we can stop safely.
 
-Daily and per-case limits; FOBO and each connection can be switched off.
+Daily and per-task limits; FOBO and each connection can be switched off.
 
 | Sprint | Release | Points | Priority | Team | Environment | Status |
 |---|---|---|---|---|---|---|
@@ -144,15 +144,15 @@ Daily and per-case limits; FOBO and each connection can be switched off.
 
 **Acceptance criteria**
 
-- Given a case over its limit, when it reaches the model step, then it goes to a person instead.
-- Given FOBO switched off, when a case would open, then nothing runs.
+- Given a task over its limit, when it reaches the model step, then it goes to a person instead.
+- Given FOBO switched off, when a task would open, then nothing runs.
 - Done when: Over limit goes to a person; switch-off tested
 
-### E03-S28 Run the FOBO skill in the case's session
+### E03-S28 Run the FOBO skill in the task's session
 
-As a FOBO controller, I want the controllers' FOBO skill run in the case's session, so that we can compare it with the step-by-step set-up.
+As a FOBO controller, I want the controllers' FOBO skill run in the task's session, so that we can compare it with the step-by-step set-up.
 
-The controllers' skill runs end to end in the case's session, as an option to the step-by-step set-up.
+The controllers' skill runs end to end in the task's session, as an option to the step-by-step set-up.
 
 | Sprint | Release | Points | Priority | Team | Environment | Status |
 |---|---|---|---|---|---|---|
@@ -160,15 +160,15 @@ The controllers' skill runs end to end in the case's session, as an option to th
 
 **Acceptance criteria**
 
-- Done when: One case runs in UAT
+- Done when: One task runs in UAT
 
 **Blocked by:** E03-S22
 
-### E03-S29 Real-model evaluation on decided cases
+### E03-S29 Real-model evaluation on decided tasks
 
-As a FOBO controller, I want the real model checked against cases we already decided, so that we trust its proposals.
+As a FOBO controller, I want the real model checked against tasks we already decided, so that we trust its proposals.
 
-Replay cases the FOBO controllers decided and compare.
+Replay tasks the FOBO controllers decided and compare.
 
 | Sprint | Release | Points | Priority | Team | Environment | Status |
 |---|---|---|---|---|---|---|

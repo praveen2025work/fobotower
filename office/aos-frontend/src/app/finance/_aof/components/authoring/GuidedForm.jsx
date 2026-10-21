@@ -1,7 +1,7 @@
 // Generated from apps/web/src/components/authoring/GuidedForm.tsx by apps/web/office/convert.mjs. Office changes to this file are
 // kept by aof_sync.py on the next update; see office/README.md.
 // Authoring without a model: four short steps of plain questions build a
-// capability's configuration. The platform's validator judges it exactly as it judges a
+// agent's configuration. The platform's validator judges it exactly as it judges a
 // model's draft, and another owner approves it before it goes live.
 
 import { ToolSet } from "../orchestrator/fields";
@@ -44,9 +44,9 @@ export default function GuidedForm({ onBuild, pending }) {
     name: "",
     description: "",
     kind: "investigate",
-    case_key: "book, cob",
+    task_key: "book, cob",
     scope_field: "",
-    case_label: "Run",
+    task_label: "Run",
     item_label: "Item",
     source_tool: "",
     left_tool: "",
@@ -85,7 +85,7 @@ export default function GuidedForm({ onBuild, pending }) {
     reserved_reason: "",
   });
   const set = (k, v) => setA((x) => ({ ...x, [k]: v }));
-  const key = list(a.case_key);
+  const key = list(a.task_key);
   const tool = (k, text) => (
     <label className={label}>
       {text}
@@ -102,7 +102,7 @@ export default function GuidedForm({ onBuild, pending }) {
   const build = () =>
     onBuild({
       ...a,
-      case_key: key,
+      task_key: key,
       display: list(a.display),
       group_by: list(a.group_by),
       match_keys: list(a.match_keys),
@@ -189,8 +189,8 @@ export default function GuidedForm({ onBuild, pending }) {
             <label className={label}>
               One task is one… (key fields)
               <input
-                value={a.case_key}
-                onChange={(e) => set("case_key", e.target.value)}
+                value={a.task_key}
+                onChange={(e) => set("task_key", e.target.value)}
                 placeholder="book, cob"
                 className={input}
               />
@@ -211,7 +211,7 @@ export default function GuidedForm({ onBuild, pending }) {
             </label>
             <label className={label}>
               A task is called
-              <input value={a.case_label} onChange={(e) => set("case_label", e.target.value)} className={input} />
+              <input value={a.task_label} onChange={(e) => set("task_label", e.target.value)} className={input} />
             </label>
             <label className={label}>
               An item is called

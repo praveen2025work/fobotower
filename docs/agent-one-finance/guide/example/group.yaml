@@ -1,5 +1,5 @@
 # Example team group: the Prime controllers' rules on the FOBO price and
-# position check. The capability (capability.yaml) is the shape; this is what
+# position check. The agent (agent.yaml) is the shape; this is what
 # the team decides: the data joined to each break, the checks and tests, what
 # each category means, the verdicts, and the sign-off questions.
 
@@ -17,7 +17,7 @@ set:
   # Step 2 (enrich): join MOTIF's dated FO/BO snapshot to each break, by instrument.
   enrich:
     - tool: motif.break_snapshots
-      args: { book: $case.book, cob: $case.cob }
+      args: { book: $task.book, cob: $task.cob }
       keys: [instrument]
 
   # Rule P1: a threshold Product Control has not confirmed stays empty, and a

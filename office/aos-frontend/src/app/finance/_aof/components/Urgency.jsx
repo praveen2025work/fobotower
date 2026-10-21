@@ -1,7 +1,7 @@
 // Generated from apps/web/src/components/Urgency.tsx by apps/web/office/convert.mjs. Office changes to this file are
 // kept by aof_sync.py on the next update; see office/README.md.
-// How urgent a case is: its deadline (manifest case.due) and its age, shown
-// the same way wherever cases are listed.
+// How urgent a task is: its deadline (manifest task.due) and its age, shown
+// the same way wherever tasks are listed.
 
 import clsx from "clsx";
 import { Clock } from "lucide-react";

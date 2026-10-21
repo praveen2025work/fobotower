@@ -4,7 +4,7 @@ Connectors are what the Agent One Finance team onboards: config/agent-one-financ
 lists each MCP server, how to reach it, and which of its tools are
 allow-listed, with the argument that carries the data scope. Per call:
 
-  1. the tool is registered and allow-listed for this capability's manifest
+  1. the tool is registered and allow-listed for this agent's manifest
   2. the caller is entitled to the data-scope value in the arguments
   3. the call goes to the connector over MCP (in-process or streamable HTTP)
   4. a aof_tool_call row is written — allowed or refused — and a span emitted
@@ -105,10 +105,10 @@ class ToolFailed(RuntimeError):
 
 @dataclass
 class CallContext:
-    capability_id: str
+    agent_id: str
     caller: Caller
     allowed_tools: frozenset[str]
-    case_id: str | None = None
+    task_id: str | None = None
     requested_by: str = "step"
     calls: list[str] = field(default_factory=list)  # call ids made in this context
     # set only by the publish step, from the recorded publish approval — or by
@@ -119,13 +119,13 @@ class CallContext:
     # write tools a released or person-approved step may call (post, outreach),
     # with write_approved_by naming who approved
     write_tools: frozenset[str] = frozenset()
-    # Data protection for this case (agent_one_finance/governance.py). Built from the
+    # Data protection for this task (agent_one_finance/governance.py). Built from the
     # allowed tools when not given, so every call is protected by default.
     protector: Protector | None = None
 
     def __post_init__(self):
         if self.protector is None:
-            self.protector = Protector.for_tools(self.allowed_tools, self.case_id or "")
+            self.protector = Protector.for_tools(self.allowed_tools, self.task_id or "")
 
 
 @lru_cache
@@ -181,30 +181,30 @@ async def call(ctx: CallContext, qualified_tool: str, arguments: dict,
     if for_model:
         arguments = guard.reveal(arguments)
     base = dict(
-        call_id=call_id, case_id=ctx.case_id, capability_id=ctx.capability_id,
+        call_id=call_id, task_id=ctx.task_id, agent_id=ctx.agent_id,
         connector_id=connector_id, tool=qualified_tool, requested_by=ctx.requested_by,
         caller=ctx.caller.user_id, arguments=guard.protect(arguments, pseudonymize=False),
         idempotency_key=idempotency_key,
     )
     with span("mcp.call", kind=TOOL, input=guard.protect(arguments), tool=qualified_tool,
               connector_id=connector_id,
-              case_id=ctx.case_id, capability_id=ctx.capability_id,
+              task_id=ctx.task_id, agent_id=ctx.agent_id,
               requested_by=ctx.requested_by, user=ctx.caller.user_id) as sp:
         found = registry().tool(qualified_tool)
         denied = None
         if found is None:
             denied = f"{qualified_tool} is not an onboarded connector tool"
         elif qualified_tool not in ctx.allowed_tools:
-            denied = f"{qualified_tool} is not allowed for capability {ctx.capability_id}"
+            denied = f"{qualified_tool} is not allowed for agent {ctx.agent_id}"
         elif found[2].access == "write" and (for_model or not ctx.write_approved_by or not (
                 ctx.requested_by == "publish"
                 or (ctx.requested_by == "escalate" and qualified_tool == ctx.escalation_tool)
                 or qualified_tool in ctx.write_tools)):
             denied = (f"{qualified_tool} writes to a bank system: only the publish step may "
                       "call it, after a second person approves (or the record step, for the "
-                      "capability's escalation tickets, after review)")
+                      "agent's escalation tickets, after review)")
         elif why := (await controls.off_reason("connector", connector_id)
-                     or await controls.off_reason("capability", ctx.capability_id)):
+                     or await controls.off_reason("agent", ctx.agent_id)):
             denied = why
         elif found[2].scope is not None:
             rule = found[2].scope
@@ -256,8 +256,8 @@ def invoker(ctx: CallContext, requested_by: str = "llm"):
     assert requested_by in MODEL_CALLERS
     async def invoke(tool: str, arguments: dict) -> dict:
         model_ctx = CallContext(
-            capability_id=ctx.capability_id, caller=ctx.caller,
-            allowed_tools=ctx.allowed_tools, case_id=ctx.case_id,
+            agent_id=ctx.agent_id, caller=ctx.caller,
+            allowed_tools=ctx.allowed_tools, task_id=ctx.task_id,
             requested_by=requested_by, calls=ctx.calls, protector=ctx.protector,
         )
         return await call(model_ctx, tool, arguments)

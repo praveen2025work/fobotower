@@ -75,13 +75,13 @@ const scenes = {
   async s03(p, d) {
     await p.goto(`${W}/inbox`); await sleep(1800);
     return async () => {
-      await caption(p, "Cases open themselves at 06:30 — matched and classified before the controller arrives");
+      await caption(p, "Tasks open themselves at 06:30 — matched and classified before the controller arrives");
       await sleep(d * 300); await highlight(p, p.getByText(/PRIME-MB-04 · COB 2026-09-30/)); await sleep(d * 400);
       await highlight(p, p.locator("aside, nav").getByText("Inbox")); 
     };
   },
   async s04(p, d) {
-    await p.goto(`${W}/cases/recon.investigation.8c93e414cf1b`); await sleep(2200);
+    await p.goto(`${W}/tasks/recon.investigation.8c93e414cf1b`); await sleep(2200);
     return async () => {
       await caption(p, "FOBO's own playbook: 6 cause checks · 14 validation tests · a verdict table");
       await sleep(d * 250);
@@ -93,7 +93,7 @@ const scenes = {
     };
   },
   async s05(p, d) {
-    await p.goto(`${W}/cases/recon.investigation.8c93e414cf1b`); await sleep(2200);
+    await p.goto(`${W}/tasks/recon.investigation.8c93e414cf1b`); await sleep(2200);
     return async () => {
       await p.getByText(/Trade booking break/).first().click(); await sleep(500);
       await caption(p, "Rule R2, enforced in code: a front-office cause never posts");
@@ -105,11 +105,11 @@ const scenes = {
     };
   },
   async s06(p, d) {
-    await p.goto(`${W}/cases/recon.investigation.09209ca6f5f4`); await sleep(2000);
-    await p.getByRole("tab", { name: "Ask about this case" }).or(p.getByRole("button", { name: "Ask about this case" })).first().click();
+    await p.goto(`${W}/tasks/recon.investigation.09209ca6f5f4`); await sleep(2000);
+    await p.getByRole("tab", { name: "Ask about this task" }).or(p.getByRole("button", { name: "Ask about this task" })).first().click();
     await sleep(500);
     return async () => {
-      await caption(p, "Ask in plain English — answers use only this case's data, every lookup audited");
+      await caption(p, "Ask in plain English — answers use only this task's data, every lookup audited");
       const box = p.getByRole("textbox").first();
       await box.click(); await box.pressSequentially("Why is UST 10Y different, and who owns it?", { delay: 30 });
       await p.getByRole("button", { name: "Ask" }).click();
@@ -119,14 +119,14 @@ const scenes = {
   },
   async s07(p, d) {
     const cob = process.env.S07_COB || "2026-09-25";
-    const r = await fetch("http://localhost:8300/api/capabilities/recon.investigation/cases", { method: "POST",
+    const r = await fetch("http://localhost:8300/api/agents/recon.investigation/tasks", { method: "POST",
       headers: { "X-AOF-User": "rita", "Content-Type": "application/json" },
-      body: JSON.stringify({ case_key: { book: "RATES-LDN-02", cob }, team_group: "cats-motif-rates" }) });
-    const cid = (await r.json()).case_id;
-    for (let i = 0; i < 60; i++) { const c = await (await fetch(`http://localhost:8300/api/cases/${cid}`, { headers: { "X-AOF-User": "rita" } })).json();
-      if (c.case?.status === "awaiting_review" || c.status === "awaiting_review") break; await sleep(500); }
-    console.log("s07 case", cid);
-    await p.goto(`${W}/cases/${cid}`); await sleep(2200);
+      body: JSON.stringify({ task_key: { book: "RATES-LDN-02", cob }, team_group: "cats-motif-rates" }) });
+    const cid = (await r.json()).task_id;
+    for (let i = 0; i < 60; i++) { const c = await (await fetch(`http://localhost:8300/api/tasks/${cid}`, { headers: { "X-AOF-User": "rita" } })).json();
+      if (c.task?.status === "awaiting_review" || c.status === "awaiting_review") break; await sleep(500); }
+    console.log("s07 task", cid);
+    await p.goto(`${W}/tasks/${cid}`); await sleep(2200);
     return async () => {
       await caption(p, "Breaks grouped into patterns — one decision covers many breaks");
       await highlight(p, p.getByText("Proposals").locator("xpath=ancestor::div[2]"));
@@ -139,7 +139,7 @@ const scenes = {
     };
   },
   async s08(p, d) {
-    await p.goto(`${W}/capabilities/recon.investigation/groups/cats-motif-rates`); await sleep(2000);
+    await p.goto(`${W}/agents/recon.investigation/groups/cats-motif-rates`); await sleep(2000);
     return async () => {
       await caption(p, "Rates: same engine, same playbook — its own books, thresholds, schedule and reviewers");
       await hlUnion(p, p.getByText("People", { exact: true }), p.getByText("FOBO_RATES_CONTROLLER", { exact: true }));
@@ -168,7 +168,7 @@ const scenes = {
       await hlUnion(p, p.getByText(/^Live tail$/i), p.getByRole("button", { name: /Pause/ }));
       await sleep(d * 250); await clearHl(p);
       await p.getByText("Off switches").evaluate((e) => e.scrollIntoView({ block: "center", behavior: "smooth" })); await sleep(1200);
-      await caption(p, "Costs capped · any capability, team or connector switched off in one click");
+      await caption(p, "Costs capped · any agent, team or connector switched off in one click");
       await hlUnion(p, p.getByText("Off switches"), p.getByRole("button", { name: "Switch off" }));
     };
   },

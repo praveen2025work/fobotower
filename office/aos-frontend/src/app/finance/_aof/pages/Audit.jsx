@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Link } from "../office/router";
 
 import { currentUser } from "../api/client";
-import { useAudit, useCapabilities, useMe } from "../api/aof";
+import { useAudit, useAgents, useMe } from "../api/aof";
 import SupportGuide from "../components/ops/SupportGuide";
 import StatusBadge from "../components/StatusBadge";
 import { Card, Empty, ErrorState, Loading, PageHeader, formatTime } from "../components/ui";
@@ -34,10 +34,10 @@ function What({ e }) {
 
 /** Who did what, on which data — connector calls, sign-offs, releases — within the caller's scope. */
 export default function Audit() {
-  const [capability, setCapability] = useState("");
+  const [agent, setAgent] = useState("");
   const [kind, setKind] = useState("");
-  const caps = useCapabilities();
-  const events = useAudit(capability || undefined);
+  const caps = useAgents();
+  const events = useAudit(agent || undefined);
   const me = useMe(currentUser());
   const support = !!me.data?.is_admin && Object.keys(me.data?.data_scopes ?? {}).length === 0;
   const rows = (events.data ?? []).filter(
@@ -53,8 +53,8 @@ export default function Audit() {
           <div className="flex min-w-0 flex-wrap gap-2">
             <select
               aria-label="Agent"
-              value={capability}
-              onChange={(e) => setCapability(e.target.value)}
+              value={agent}
+              onChange={(e) => setAgent(e.target.value)}
               className="min-w-0 max-w-full rounded-lg border border-surface-300 bg-card px-2 py-1.5 text-sm"
             >
               <option value="">All agents</option>
@@ -115,7 +115,7 @@ export default function Audit() {
                       <td className="px-2 py-2 text-xs">
                         <Link
                           className="text-primary-700 hover:underline"
-                          to={`/cases/${encodeURIComponent(e.case_id)}`}
+                          to={`/tasks/${encodeURIComponent(e.task_id)}`}
                         >
                           {e.subject}
                         </Link>

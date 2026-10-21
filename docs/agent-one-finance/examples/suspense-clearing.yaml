@@ -1,4 +1,4 @@
-# Example — a capability: suspense account clearing. Items sitting in suspense
+# Example — an agent: suspense account clearing. Items sitting in suspense
 # are aged, matched to their likely home account, and a clearing journal is
 # posted only after a reviewer approves and a second person releases it.
 # Needs: `gl.suspense_items` (read) and `gl.post_journal` (access: write,
@@ -7,14 +7,14 @@ id: fin.suspense-clearing
 name: Suspense account clearing
 description: Suspense items aged and explained; clearing journals posted after sign-off and a four-eyes release.
 owners: { people: [carol], role: AOF_FIN_VARCOMM_OWNER, four_eyes: true }
-case:
+task:
   label: Suspense run
   item_label: Suspense item
   key: [entity, date]
   subject: "{entity} suspense · {date}"
   scopes: { entity: entity }
 items:
-  load: { tool: gl.suspense_items, args: { entity: $case.entity, as_of: $case.date } }
+  load: { tool: gl.suspense_items, args: { entity: $task.entity, as_of: $task.date } }
   id_field: item_ref
   amount_field: amount
   display: [item_ref, booked_on, age_days, amount, narrative, suggested_account]
@@ -39,6 +39,6 @@ reasoning:
 review: { roles: [FIN_PREPARER, FIN_REVIEWER] }
 publish:
   tool: gl.post_journal
-  args: { entity: $case.entity, account: $group.suggested_account, narrative: $comment }
+  args: { entity: $task.entity, account: $group.suggested_account, narrative: $comment }
   approver_roles: [FIN_REVIEWER]
 retention: { days: 2555 }

@@ -16,7 +16,7 @@ from langgraph.graph import END, StateGraph
 from agent_one_finance import steps
 from agent_one_finance.db import checkpoint_dsn
 from agent_one_finance.observability import span
-from agent_one_finance.steps import ESCALATED, CaseState
+from agent_one_finance.steps import ESCALATED, TaskState
 
 
 @dataclass(frozen=True)
@@ -34,15 +34,15 @@ def _s(*names: str) -> frozenset[str]:
 
 
 STEPS: dict[str, Step] = {s.name: s for s in [
-    Step("load", steps.load, "Load items", _s("case_key"), _s("items")),
-    Step("match", steps.match, "Match two sides", _s("case_key"), _s("items")),
+    Step("load", steps.load, "Load items", _s("task_key"), _s("items")),
+    Step("match", steps.match, "Match two sides", _s("task_key"), _s("items")),
     Step("enrich", steps.enrich, "Enrich items", _s("items"), _s("items")),
     Step("resolve", steps.resolve, "Reference lookups", _s("items"), _s("items")),
     Step("classify", steps.classify, "Cause checks", _s("items"), _s("items")),
     Step("compare", steps.compare, "Compare to baseline", _s("items"), _s("items")),
     Step("group", steps.group, "Group", _s("items"), _s("groups")),
     Step("reason", steps.reason, "Rules, then model", _s("items", "groups"), _s("findings")),
-    Step("agent", steps.agent, "Skill session (the model, with the allowed tools)", _s("case_key"),
+    Step("agent", steps.agent, "Skill session (the model, with the allowed tools)", _s("task_key"),
          _s("items", "groups", "findings")),
     Step("draft", steps.draft, "Draft", _s("groups", "findings"), _s("draft")),
     Step("validate", steps.validate, "Validate figures", _s("findings", "groups"),
@@ -60,9 +60,9 @@ GATES = ("validate", "review", "record")
 RELEASE_TYPES = ("publish", "post")
 # Step types allowed after `record`.
 AFTER_RECORD = ("publish", "post", "report")
-# Step types the run waits before for something other than a person (an event, child cases).
+# Step types the run waits before for something other than a person (an event, child tasks).
 WAIT_TYPES = ("await",)
-INITIAL = _s("case_id", "capability_id", "manifest_version", "manifest", "case_key", "caller")
+INITIAL = _s("task_id", "agent_id", "manifest_version", "manifest", "task_key", "caller")
 ON_RESUME = _s("decisions", "publish_approval")
 
 
@@ -142,17 +142,17 @@ def order_problems(order: list[str], pause_before: list[str], types: dict[str, s
 
 def _traced(step_id: str, step_type: str):
     """A node: runs a core step or a configurable one, unless its `when` says
-    to skip it this time (a skipped step is recorded on the case)."""
+    to skip it this time (a skipped step is recorded on the task)."""
     from agent_one_finance import rules, stepkit
     from agent_one_finance.manifest import Manifest
 
-    async def run(state: CaseState) -> dict:
+    async def run(state: TaskState) -> dict:
         m = Manifest.model_validate(state["manifest"])
         st = m.step_settings.get(step_id)
-        with span(f"step.{step_id}", case_id=state["case_id"], capability_id=state["capability_id"],
+        with span(f"step.{step_id}", task_id=state["task_id"], agent_id=state["agent_id"],
                   gate=step_type in GATES, step_type=step_type) as sp:
             if st and st.when:
-                env = {"case": dict(state["case_key"]), "policy": m.policy_values(),
+                env = {"task": dict(state["task_key"]), "policy": m.policy_values(),
                        "count": len(state.get("items") or [])}
                 try:
                     go = bool(rules.evaluate(st.when, env))
@@ -169,7 +169,7 @@ def _traced(step_id: str, step_type: str):
 
 def build_graph(order: list[str], pause_before: list[str], checkpointer, types: dict[str, str] | None = None):
     types = types or {}
-    g = StateGraph(CaseState)
+    g = StateGraph(TaskState)
     for name in order:
         g.add_node(name, _traced(name, types.get(name, name)))
     g.add_node("escalate", steps.escalate)

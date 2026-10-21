@@ -1,4 +1,4 @@
-"""The trusted SSO proxy, entitlement revocation, and case visibility filtered
+"""The trusted SSO proxy, entitlement revocation, and task visibility filtered
 in the database (with paging)."""
 
 import dataclasses
@@ -14,9 +14,9 @@ def _patch(monkeypatch, **changes):
     monkeypatch.setattr(main, "settings", lambda: patched)
 
 
-async def _open(api, user, capability, key, group=None):
-    res = await api.post(f"/api/capabilities/{capability}/cases",
-                         json={"case_key": key, "team_group": group}, headers=api.as_user(user))
+async def _open(api, user, agent, key, group=None):
+    res = await api.post(f"/api/agents/{agent}/tasks",
+                         json={"task_key": key, "team_group": group}, headers=api.as_user(user))
     assert res.status_code == 201, res.text
     return res.json()
 
@@ -45,22 +45,22 @@ async def test_the_entitlements_service_can_make_a_change_apply_now(api, monkeyp
     assert isinstance(entitlement.entitlements(), entitlement.CachedEntitlement)
 
 
-async def test_cases_are_filtered_by_data_scope_in_the_database(api):
+async def test_tasks_are_filtered_by_data_scope_in_the_database(api):
     await _open(api, "frank", RECON, {"book": "PRIME-MB-01", "cob": "2026-08-03"}, FOBO)
     await _open(api, "frank", RECON, {"book": "PRIME-MB-02", "cob": "2026-08-03"}, FOBO)
-    frank = (await api.get(f"/api/capabilities/{RECON}/cases", headers=api.as_user("frank"))).json()
-    gina = (await api.get(f"/api/capabilities/{RECON}/cases", headers=api.as_user("gina"))).json()
+    frank = (await api.get(f"/api/agents/{RECON}/tasks", headers=api.as_user("frank"))).json()
+    gina = (await api.get(f"/api/agents/{RECON}/tasks", headers=api.as_user("gina"))).json()
     assert len(frank) == 2
-    assert [c["case_key"]["book"] for c in gina] == ["PRIME-MB-01"]      # her one book
+    assert [c["task_key"]["book"] for c in gina] == ["PRIME-MB-01"]      # her one book
     inbox = (await api.get("/api/inbox", headers=api.as_user("gina"))).json()
     assert {r["subject"] for r in inbox} == {"PRIME-MB-01 · COB 2026-08-03"}
 
 
-async def test_case_lists_page(api):
+async def test_task_lists_page(api):
     for period in ("2026-07", "2026-08", "2026-09"):
         await _open(api, "bob", VARIANCE, {"entity": "UK01", "period": period})
-    url = f"/api/capabilities/{VARIANCE}/cases"
+    url = f"/api/agents/{VARIANCE}/tasks"
     first = (await api.get(url + "?limit=2", headers=api.as_user("bob"))).json()
     rest = (await api.get(url + "?limit=2&offset=2", headers=api.as_user("bob"))).json()
     assert len(first) == 2 and len(rest) == 1
-    assert {c["case_id"] for c in first}.isdisjoint({c["case_id"] for c in rest})
+    assert {c["task_id"] for c in first}.isdisjoint({c["task_id"] for c in rest})

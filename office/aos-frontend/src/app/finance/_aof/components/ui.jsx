@@ -72,7 +72,7 @@ export function Fold({ title, summary, children, defaultOpen = false, remember, 
         <ChevronRight size={13} className={clsx("shrink-0 transition-transform", open && "rotate-90")} />
         <span>{title}</span>
         {summary != null && !open && (
-          <span className="ml-1 truncate font-normal normal-case tracking-normal text-surface-400">{summary}</span>
+          <span className="ml-1 truncate font-normal normal-task tracking-normal text-surface-400">{summary}</span>
         )}
       </button>
       {open && <div className="mt-1.5">{children}</div>}
@@ -153,7 +153,7 @@ export function Empty({ children }) {
 
 const GATES = new Set(["validate", "review", "record"]);
 
-/** The capability's workflow as a stepper; `current` is where the case stands. */
+/** The agent's workflow as a stepper; `current` is where the task stands. */
 export function WorkflowStepper({ steps, pauseBefore = [], current }) {
   const at = current ? steps.indexOf(current) : -1;
   return (
@@ -198,7 +198,7 @@ export function formatTime(iso) {
   return new Date(iso).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
-/** Where a case stands in its workflow, from its status. */
+/** Where a task stands in its workflow, from its status. */
 export function currentStep(status) {
   if (status === "awaiting_review") return "review";
   if (status === "awaiting_publish") return "publish";

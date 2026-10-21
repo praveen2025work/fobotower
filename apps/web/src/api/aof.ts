@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api, newIdempotencyKey, upload } from "./client";
 
-export type CaseStatus =
+export type TaskStatus =
   | "running"
   | "awaiting_review"
   | "awaiting_publish"
@@ -30,14 +30,14 @@ export interface DevUser {
   roles: string[];
 }
 
-export interface CapabilitySummary {
+export interface AgentSummary {
   id: string;
   name: string;
   description: string;
   version: number;
-  case_label: string;
+  task_label: string;
   item_label: string;
-  case_key: string[];
+  task_key: string[];
   steps: string[];
   is_owner: boolean;
   can_decide: boolean;
@@ -45,18 +45,18 @@ export interface CapabilitySummary {
   groups: { group: string; name: string }[];
 }
 
-/** A team group: one team's configuration of a capability (e.g. a rec group). */
+/** A team group: one team's configuration of an agent (e.g. a rec group). */
 export interface TeamGroup {
-  capability_id: string;
+  agent_id: string;
   group: string;
   name: string;
   description: string;
   version: number;
   owners: { people: string[]; role: string | null; four_eyes: boolean };
   sets: string[];
-  case_label: string;
+  task_label: string;
   item_label: string;
-  case_key: string[];
+  task_key: string[];
   review_roles: string[];
   is_owner: boolean;
   can_open: boolean;
@@ -75,7 +75,7 @@ export interface TeamGroupDetail extends TeamGroup {
   config: GroupConfig;
   manifest: Manifest;
   configurable: string[];
-  versions: (CapabilityVersion & { config: GroupConfig })[];
+  versions: (AgentVersion & { config: GroupConfig })[];
 }
 
 export interface Manifest {
@@ -83,7 +83,7 @@ export interface Manifest {
   name: string;
   description: string;
   owners: { people: string[]; role: string | null; four_eyes: boolean };
-  case: { label: string; item_label: string; key: string[]; subject: string | null; scopes: Record<string, string>; opens_on: string };
+  task: { label: string; item_label: string; key: string[]; subject: string | null; scopes: Record<string, string>; opens_on: string };
   items: { load: { tool: string; args: Record<string, unknown> } | null; id_field: string; amount_field: string | null; display: string[]; in_scope: string | null };
   steps: string[];
   pause_before: string[];
@@ -97,7 +97,7 @@ export interface Manifest {
   configurable: string[];
 }
 
-export interface CapabilityVersion {
+export interface AgentVersion {
   version: number;
   status: string;
   note: string;
@@ -107,18 +107,18 @@ export interface CapabilityVersion {
   decided_at: string | null;
 }
 
-export interface CapabilityDetail {
+export interface AgentDetail {
   version: number;
   manifest: Manifest;
-  versions: CapabilityVersion[];
+  versions: AgentVersion[];
 }
 
-export interface CaseSummary {
-  case_id: string;
-  capability_id: string;
+export interface TaskSummary {
+  task_id: string;
+  agent_id: string;
   subject: string;
-  case_key: Record<string, string>;
-  status: CaseStatus;
+  task_key: Record<string, string>;
+  status: TaskStatus;
   outcome: string | null;
   manifest_version: number;
   team_group: string | null;
@@ -153,7 +153,7 @@ export interface Finding {
   rule?: string;
   model?: string | null;
   usage?: { cost_usd?: number | null; turns?: number | null; input_tokens?: number | null; output_tokens?: number | null };
-  // playbook capabilities (e.g. FOBO): what the playbook says about the group
+  // playbook agents (e.g. FOBO): what the playbook says about the group
   verdict?: string | null;
   category?: string | null;
   category_name?: string | null;
@@ -210,7 +210,7 @@ export interface Group {
   label: string;
   group_key: Record<string, string>;
   item_ids: string[];
-  priors: { comment: string; case_id: string; decided_by: string; at: string; match?: string }[];
+  priors: { comment: string; task_id: string; decided_by: string; at: string; match?: string }[];
   finding: Finding | null;
   decision: {
     action: "approve" | "reject";
@@ -259,7 +259,7 @@ export interface SessionTurn {
   error?: boolean;
 }
 
-/** The skill session that produced the case's results. */
+/** The skill session that produced the task's results. */
 export interface SessionInfo {
   adapter: string;
   model: string | null;
@@ -275,9 +275,9 @@ export interface SessionInfo {
   transcript: SessionTurn[];
 }
 
-export interface CaseDetail extends CaseSummary {
+export interface TaskDetail extends TaskSummary {
   draft: { headline: string; summary?: string; skipped_steps?: string[]; session?: SessionInfo } | null;
-  labels: { case: string; item: string; capability?: string };
+  labels: { task: string; item: string; agent?: string };
   steps: string[];
   pause_before: string[];
   columns: string[];
@@ -287,7 +287,7 @@ export interface CaseDetail extends CaseSummary {
   tool_calls: ToolCall[];
   documents: PublishedDocument[];
   evidence?: Evidence[];
-  attempts: { case_id: string; attempt: number; status: CaseStatus; outcome: string | null; opened_by: string; opened_at: string }[];
+  attempts: { task_id: string; attempt: number; status: TaskStatus; outcome: string | null; opened_by: string; opened_at: string }[];
   can_decide: boolean;
   /** Deciding on behalf of this absent colleague (delegation). */
   acting_for?: string | null;
@@ -297,7 +297,7 @@ export interface CaseDetail extends CaseSummary {
   id_field?: string;
   amount_field?: string | null;
   /** item_id -> how often it has come back (insights.recurring). */
-  recurring?: Record<string, { runs: number; earlier: { case_id: string; subject: string; opened_at: string }[] }>;
+  recurring?: Record<string, { runs: number; earlier: { task_id: string; subject: string; opened_at: string }[] }>;
   can_rerun: boolean;
   can_retry_publish: boolean;
   can_hold: boolean;
@@ -317,10 +317,10 @@ export interface CaseDetail extends CaseSummary {
     tool: string;
     approver_roles: string[];
     can_release: boolean;
-    per?: "group" | "case";
+    per?: "group" | "task";
     released?: { by: string; at: string } | null;
   } | null;
-  /** Who the case waits on; when it is not the viewer, why not. */
+  /** Who the task waits on; when it is not the viewer, why not. */
   waiting_on?: {
     step: "review" | "release" | "gate" | "event";
     /** Waiting at an `await` step: the event, since when, its timeout. */
@@ -338,17 +338,17 @@ export interface CaseDetail extends CaseSummary {
     check?: string;                // what the person checks there
     stop_needs_comment?: boolean;
   } | null;
-  /** A follow-up for late items: the day's case it follows; and the follow-ups of this case. */
+  /** A follow-up for late items: the day's task it follows; and the follow-ups of this task. */
   follow_up_of?: string | null;
-  follow_ups?: { case_id: string; subject: string; status: string; outcome: string | null; opened_at: string; items?: number }[];
+  follow_ups?: { task_id: string; subject: string; status: string; outcome: string | null; opened_at: string; items?: number }[];
   /** Questions asked for evidence, who may be asked, and whether the viewer may ask. */
   requests?: InfoRequest[];
   request_targets?: { id: string; name: string }[];
   can_ask?: boolean;
-  /** The capability's tollgates: human stops before steps other than review and publish. */
+  /** The agent's tollgates: human stops before steps other than review and publish. */
   tollgates?: { step: string; roles: string[]; check: string }[];
   gate_decisions?: { step: string; action: "continue" | "stop"; comment: string | null; decided_by: string; decided_at: string }[];
-  /** What became of this case's decisions in the next run of its series (follow_through). */
+  /** What became of this task's decisions in the next run of its series (follow_through). */
   follow_through?: {
     cleared: number;
     still_open: number;
@@ -361,9 +361,9 @@ export interface CaseDetail extends CaseSummary {
   excluded?: { item_id: string; by: string; reason: string }[];
   step_labels?: Record<string, string>;
   step_types?: Record<string, string>;
-  /** The case that opened this one (a `spawn` step), and the cases this one opened. */
-  parent_case_id?: string | null;
-  children?: { case_id: string; subject: string; status: CaseStatus; outcome: string | null; capability_id: string }[];
+  /** The task that opened this one (a `spawn` step), and the tasks this one opened. */
+  parent_task_id?: string | null;
+  children?: { task_id: string; subject: string; status: TaskStatus; outcome: string | null; agent_id: string }[];
   /** Service-level or regulatory clocks (a `clock` step), earliest per clock. */
   clocks?: { id: string; label: string; due_at: string; warn_before_hours: number; warned: boolean; breached: boolean }[];
 }
@@ -371,7 +371,7 @@ export interface CaseDetail extends CaseSummary {
 /** A question to a desk, a trader or Operations, and its answer. */
 export interface InfoRequest {
   request_id: string;
-  case_id: string;
+  task_id: string;
   group_id: string | null;
   target: string;
   target_name: string;
@@ -383,7 +383,7 @@ export interface InfoRequest {
   answered_by: string | null;
   answered_at: string | null;
   can_answer?: boolean;
-  /** A file the answer came with, kept as the case's evidence. */
+  /** A file the answer came with, kept as the task's evidence. */
   attachment?: { name: string; url: string } | null;
   reminded_at?: string | null;
   escalated_at?: string | null;
@@ -392,13 +392,13 @@ export interface InfoRequest {
 /** An open question addressed to the viewer, with just the rows it is about. */
 export interface QuestionForMe extends InfoRequest {
   subject: string;
-  case_label: string;
+  task_label: string;
   group_label: string | null;
   columns: string[];
   rows: Record<string, unknown>[];
 }
 
-export interface CaseMessage {
+export interface TaskMessage {
   message_id?: string;
   role: "user" | "assistant";
   author: string;
@@ -420,7 +420,7 @@ export interface HistoryEntry {
   findings: number;
 }
 
-/** A report the case's publish step wrote (e.g. a PDF), served by the API. */
+/** A report the task's publish step wrote (e.g. a PDF), served by the API. */
 export interface PublishedDocument {
   name: string;
   tool: string;
@@ -432,12 +432,12 @@ export interface PublishedDocument {
 }
 
 export interface InboxRow {
-  case_id: string;
-  capability_id: string;
-  capability_name: string;
-  case_label: string;
+  task_id: string;
+  agent_id: string;
+  agent_name: string;
+  task_label: string;
   subject: string;
-  status: CaseStatus;
+  status: TaskStatus;
   team_group: string | null;
   opened_at: string;
   opened_by: string;
@@ -455,70 +455,14 @@ export interface InboxRow {
   needs_confirmation?: number;
   judgement_calls?: number;
   acting_for?: string | null;
-  /** Late items for a key already worked: the day's case. */
+  /** Late items for a key already worked: the day's task. */
   follow_up_of?: string | null;
-  /** The business date the agent's Summary files the task under (its COB, date or period). */
-  summary_date?: string | null;
-}
-
-/** One proposal still open in a task, as the agent's Summary lists it. */
-export interface SummaryProposal {
-  group_id: string;
-  label: string;
-  verdict: string | null;
-  status: string;
-  items: number;
-  amount: number | null;
-  flags: ReviewFlag[];
-  blockers: string[];
-  /** The caller may approve it with others (not held for one-by-one review). */
-  ready: boolean;
-  needs_comment: boolean;
-}
-
-export interface SummaryTask {
-  case_id: string;
-  subject: string;
-  team_group: string | null;
-  status: CaseStatus;
-  outcome: string | null;
-  /** One value per dimension, in the order of `dimensions`. */
-  facts: (string | null)[];
-  items: number;
-  groups: number;
-  settled: number;
-  exposure: number | null;
-  unit: string | null;
-  due_at: string | null;
-  due_state: DueState;
-  can_decide: boolean;
-  open: SummaryProposal[];
-}
-
-/** An agent's business date at a glance: every task, the facts it is grouped by, its open proposals. */
-export interface AgentSummary {
-  capability_id: string;
-  capability_name: string;
-  case_label: string;
-  dates: string[];
-  date: string | null;
-  dimensions: { field: string; label: string }[];
-  groups: { group: string; name: string; case_label: string; checklist: { id: string; label: string; required: boolean }[] }[];
-  tasks: SummaryTask[];
-  totals: Record<string, number>;
-}
-
-export interface SummaryDecisionResult {
-  decided: number;
-  refused: { case_id: string; group_id: string; reason: string }[];
-  refused_count: number;
-  reasons: { reason: string; count: number }[];
 }
 
 export interface Overview {
   awaiting_my_review: number;
   awaiting_my_release: number;
-  open_cases: number;
+  open_tasks: number;
   escalated_groups: number;
   tool_calls_24h: number;
   refused_calls_24h: number;
@@ -527,15 +471,15 @@ export interface Overview {
   llm_groups: number;
   hours_saved_30d?: { value: number; basis: string };
   measured_review?: { decisions: number; median_seconds: number | null; hours_saved: number | null; basis: string };
-  capabilities: { id: string; name: string; case_label: string; statuses: Record<string, number>; escalated_groups: number }[];
+  agents: { id: string; name: string; task_label: string; statuses: Record<string, number>; escalated_groups: number }[];
 }
 
 export interface AuditEvent {
   kind: "tool_call" | "decision" | "release";
   at: string;
-  case_id: string;
+  task_id: string;
   subject: string;
-  capability_id: string;
+  agent_id: string;
   actor: string;
   requested_by?: string;
   tool?: string;
@@ -570,71 +514,65 @@ export const useOverview = () =>
   useQuery({ queryKey: ["overview"], queryFn: () => api.get<Overview>("/overview") });
 export const useInbox = () =>
   useQuery({ queryKey: ["inbox"], queryFn: () => api.get<InboxRow[]>("/inbox") });
-export const useCapabilities = () =>
-  useQuery({ queryKey: ["capabilities"], queryFn: () => api.get<CapabilitySummary[]>("/capabilities") });
-export const useCapability = (id: string) =>
-  useQuery({ queryKey: ["capability", id], queryFn: () => api.get<CapabilityDetail>(`/capabilities/${enc(id)}`) });
+export const useAgents = () =>
+  useQuery({ queryKey: ["agents"], queryFn: () => api.get<AgentSummary[]>("/agents") });
+export const useAgent = (id: string) =>
+  useQuery({ queryKey: ["agent", id], queryFn: () => api.get<AgentDetail>(`/agents/${enc(id)}`) });
 export const useCases = (id: string, teamGroup?: string) =>
   useQuery({
-    queryKey: ["cases", id, teamGroup ?? "all"],
+    queryKey: ["tasks", id, teamGroup ?? "all"],
     queryFn: () =>
-      api.get<CaseSummary[]>(`/capabilities/${enc(id)}/cases${teamGroup ? `?team_group=${enc(teamGroup)}` : ""}`),
-  });
-export const useSummary = (id: string, date?: string, enabled = true) =>
-  useQuery({
-    queryKey: ["summary", id, date ?? "latest"],
-    queryFn: () => api.get<AgentSummary>(`/capabilities/${enc(id)}/summary${date ? `?date=${enc(date)}` : ""}`),
-    enabled,
+      api.get<TaskSummary[]>(`/agents/${enc(id)}/tasks${teamGroup ? `?team_group=${enc(teamGroup)}` : ""}`),
   });
 export const useGroups = (id: string, enabled = true) =>
-  useQuery({ queryKey: ["groups", id], queryFn: () => api.get<TeamGroup[]>(`/capabilities/${enc(id)}/groups`), enabled });
+  useQuery({ queryKey: ["groups", id], queryFn: () => api.get<TeamGroup[]>(`/agents/${enc(id)}/groups`), enabled });
 export const useGroup = (id: string, group: string) =>
   useQuery({
     queryKey: ["group", id, group],
-    queryFn: () => api.get<TeamGroupDetail>(`/capabilities/${enc(id)}/groups/${enc(group)}`),
+    queryFn: () => api.get<TeamGroupDetail>(`/agents/${enc(id)}/groups/${enc(group)}`),
   });
-/** A case; while its run is in progress the view polls until it pauses or ends. */
-export const useCase = (caseId: string) =>
+/** A task; while its run is in progress the view polls until it pauses or ends. */
+export const useCase = (taskId: string) =>
   useQuery({
-    queryKey: ["case", caseId],
-    queryFn: () => api.get<CaseDetail>(`/cases/${enc(caseId)}`),
+    queryKey: ["task", taskId],
+    queryFn: () => api.get<TaskDetail>(`/tasks/${enc(taskId)}`),
     refetchInterval: (q) => (q.state.data?.status === "running" ? 1500 : false),
   });
-export const useMessages = (caseId: string) =>
-  useQuery({ queryKey: ["messages", caseId], queryFn: () => api.get<CaseMessage[]>(`/cases/${enc(caseId)}/messages`) });
-export const useHistory = (caseId: string, enabled = true) =>
-  useQuery({ queryKey: ["history", caseId], queryFn: () => api.get<HistoryEntry[]>(`/cases/${enc(caseId)}/history`), enabled });
-export const useAudit = (capabilityId?: string) =>
+export const useMessages = (taskId: string) =>
+  useQuery({ queryKey: ["messages", taskId], queryFn: () => api.get<TaskMessage[]>(`/tasks/${enc(taskId)}/messages`) });
+export const useHistory = (taskId: string, enabled = true) =>
+  useQuery({ queryKey: ["history", taskId], queryFn: () => api.get<HistoryEntry[]>(`/tasks/${enc(taskId)}/history`), enabled });
+export const useAudit = (agentId?: string) =>
   useQuery({
-    queryKey: ["audit", capabilityId ?? "all"],
-    queryFn: () => api.get<AuditEvent[]>(`/audit${capabilityId ? `?capability_id=${enc(capabilityId)}` : ""}`),
+    queryKey: ["audit", agentId ?? "all"],
+    queryFn: () => api.get<AuditEvent[]>(`/audit${agentId ? `?agent_id=${enc(agentId)}` : ""}`),
   });
 export const usePlatform = () =>
   useQuery({ queryKey: ["platform"], queryFn: () => api.get<Platform>("/platform") });
 
-/** After anything that moves a case, refresh every view that summarises cases. */
-function useRefreshCases() {
+/** After anything that moves a task, refresh every view that summarises tasks. */
+function useRefreshTasks() {
   const qc = useQueryClient();
-  return (detail?: CaseDetail) => {
-    if (detail) qc.setQueryData(["case", detail.case_id], detail);
-    for (const key of ["inbox", "overview", "audit", "cases", "summary"]) qc.invalidateQueries({ queryKey: [key] });
+  return (detail?: TaskDetail) => {
+    if (detail) qc.setQueryData(["task", detail.task_id], detail);
+    for (const key of ["inbox", "overview", "audit", "tasks"]) qc.invalidateQueries({ queryKey: [key] });
   };
 }
 
-export function useOpenCase(capabilityId: string) {
-  const refresh = useRefreshCases();
+export function useOpenTask(agentId: string) {
+  const refresh = useRefreshTasks();
   return useMutation({
-    mutationFn: (v: { caseKey: Record<string, string>; teamGroup?: string | null }) =>
-      api.post<CaseDetail>(`/capabilities/${enc(capabilityId)}/cases`, {
-        case_key: v.caseKey,
+    mutationFn: (v: { taskKey: Record<string, string>; teamGroup?: string | null }) =>
+      api.post<TaskDetail>(`/agents/${enc(agentId)}/tasks`, {
+        task_key: v.taskKey,
         team_group: v.teamGroup ?? null,
       }),
     onSuccess: (detail) => refresh(detail),
   });
 }
 
-export function useDecide(caseId: string) {
-  const refresh = useRefreshCases();
+export function useDecide(taskId: string) {
+  const refresh = useRefreshTasks();
   return useMutation({
     mutationFn: (v: {
       groupId: string;
@@ -644,7 +582,7 @@ export function useDecide(caseId: string) {
       reviewSeconds?: number;
       checklist?: ChecklistAnswer[];
     }) =>
-      api.post<{ case: CaseDetail }>(`/cases/${enc(caseId)}/decisions`, {
+      api.post<{ task: TaskDetail }>(`/tasks/${enc(taskId)}/decisions`, {
         group_id: v.groupId,
         action: v.action,
         comment: v.comment || null,
@@ -653,34 +591,34 @@ export function useDecide(caseId: string) {
         checklist: v.checklist ?? null,
         idempotency_key: newIdempotencyKey(),
       }),
-    onSuccess: (res) => refresh(res.case),
+    onSuccess: (res) => refresh(res.task),
   });
 }
 
-export function useRelease(caseId: string) {
-  const refresh = useRefreshCases();
+export function useRelease(taskId: string) {
+  const refresh = useRefreshTasks();
   return useMutation({
     mutationFn: () =>
-      api.post<{ case: CaseDetail }>(`/cases/${enc(caseId)}/publish`, { idempotency_key: newIdempotencyKey() }),
-    onSuccess: (res) => refresh(res.case),
+      api.post<{ task: TaskDetail }>(`/tasks/${enc(taskId)}/publish`, { idempotency_key: newIdempotencyKey() }),
+    onSuccess: (res) => refresh(res.task),
   });
 }
 
-/** Ask a desk, a trader or Operations for evidence about a group or the case. */
-export function useAskForEvidence(caseId: string) {
+/** Ask a desk, a trader or Operations for evidence about a group or the task. */
+export function useAskForEvidence(taskId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (v: { target: string; question: string; group_id: string | null }) =>
-      api.post<InfoRequest>(`/cases/${enc(caseId)}/requests`, v),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["case", caseId] }),
+      api.post<InfoRequest>(`/tasks/${enc(taskId)}/requests`, v),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["task", taskId] }),
   });
 }
 
-export function useCancelRequest(caseId: string) {
+export function useCancelRequest(taskId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (requestId: string) => api.post<InfoRequest>(`/requests/${enc(requestId)}/cancel`, {}),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["case", caseId] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["task", taskId] }),
   });
 }
 
@@ -702,37 +640,37 @@ export function useAnswerQuestion() {
 }
 
 /** A person at a tollgate: continue the run, or stop it with a reason. */
-export function usePassGate(caseId: string) {
-  const refresh = useRefreshCases();
+export function usePassGate(taskId: string) {
+  const refresh = useRefreshTasks();
   return useMutation({
     mutationFn: (v: { step: string; action: "continue" | "stop"; comment: string | null }) =>
-      api.post<CaseDetail>(`/cases/${enc(caseId)}/gates/${enc(v.step)}`, {
+      api.post<TaskDetail>(`/tasks/${enc(taskId)}/gates/${enc(v.step)}`, {
         action: v.action, comment: v.comment, idempotency_key: newIdempotencyKey(),
       }),
     onSuccess: (detail) => refresh(detail),
   });
 }
 
-/** Deliver the event a case waits for, by hand (a person the `await` step names). */
-export function useDeliverEvent(caseId: string) {
-  const refresh = useRefreshCases();
+/** Deliver the event a task waits for, by hand (a person the `await` step names). */
+export function useDeliverEvent(taskId: string) {
+  const refresh = useRefreshTasks();
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (v: { step: string; payload: Record<string, unknown> }) =>
-      api.post<{ status: string }>(`/cases/${enc(caseId)}/events/${enc(v.step)}`, { payload: v.payload }),
+      api.post<{ status: string }>(`/tasks/${enc(taskId)}/events/${enc(v.step)}`, { payload: v.payload }),
     onSuccess: () => {
       refresh();
-      qc.invalidateQueries({ queryKey: ["case", caseId] });
+      qc.invalidateQueries({ queryKey: ["task", taskId] });
     },
   });
 }
 
-export function useBulkDecide(caseId: string) {
-  const refresh = useRefreshCases();
+export function useBulkDecide(taskId: string) {
+  const refresh = useRefreshTasks();
   return useMutation({
     mutationFn: (v: { groupIds: string[]; action: "approve" | "reject"; comment: string; reviewSeconds?: number }) =>
-      api.post<{ case: CaseDetail; decided: { group_id: string }[]; refused: { group_id: string; reason: string }[] }>(
-        `/cases/${enc(caseId)}/decisions/bulk`,
+      api.post<{ task: TaskDetail; decided: { group_id: string }[]; refused: { group_id: string; reason: string }[] }>(
+        `/tasks/${enc(taskId)}/decisions/bulk`,
         {
           group_ids: v.groupIds,
           action: v.action,
@@ -741,76 +679,53 @@ export function useBulkDecide(caseId: string) {
           idempotency_key: newIdempotencyKey(),
         },
       ),
-    onSuccess: (res) => refresh(res.case),
+    onSuccess: (res) => refresh(res.task),
   });
 }
 
-/** One decision on a pattern of proposals across many tasks; each task checks it as its own would. */
-export function useDecideAcross(capabilityId: string) {
-  const refresh = useRefreshCases();
-  return useMutation({
-    mutationFn: (v: {
-      targets: { case_id: string; group_ids: string[] }[];
-      action: "approve" | "reject";
-      comment: string;
-      reviewSeconds?: number;
-      checklist?: ChecklistAnswer[];
-    }) =>
-      api.post<SummaryDecisionResult>(`/capabilities/${enc(capabilityId)}/summary/decisions`, {
-        targets: v.targets,
-        action: v.action,
-        comment: v.comment || null,
-        review_seconds: v.reviewSeconds ?? null,
-        checklist: v.checklist ?? null,
-        idempotency_key: newIdempotencyKey(),
-      }),
-    onSuccess: () => refresh(),
-  });
-}
-
-export function useReinvestigate(caseId: string) {
-  const refresh = useRefreshCases();
+export function useReinvestigate(taskId: string) {
+  const refresh = useRefreshTasks();
   return useMutation({
     mutationFn: (v: { groupId: string; note: string }) =>
-      api.post<{ case: CaseDetail }>(`/cases/${enc(caseId)}/groups/${enc(v.groupId)}/reinvestigate`, {
+      api.post<{ task: TaskDetail }>(`/tasks/${enc(taskId)}/groups/${enc(v.groupId)}/reinvestigate`, {
         note: v.note,
         idempotency_key: newIdempotencyKey(),
       }),
-    onSuccess: (res) => refresh(res.case),
+    onSuccess: (res) => refresh(res.task),
   });
 }
 
-export function useRerun(caseId: string) {
-  const refresh = useRefreshCases();
+export function useRerun(taskId: string) {
+  const refresh = useRefreshTasks();
   return useMutation({
-    mutationFn: () => api.post<CaseDetail>(`/cases/${enc(caseId)}/rerun`, {}),
+    mutationFn: () => api.post<TaskDetail>(`/tasks/${enc(taskId)}/rerun`, {}),
     onSuccess: (detail) => refresh(detail),
   });
 }
 
-export function useRetryPublish(caseId: string) {
-  const refresh = useRefreshCases();
+export function useRetryPublish(taskId: string) {
+  const refresh = useRefreshTasks();
   return useMutation({
-    mutationFn: () => api.post<{ case: CaseDetail }>(`/cases/${enc(caseId)}/publish/retry`, {}),
-    onSuccess: (res) => refresh(res.case),
+    mutationFn: () => api.post<{ task: TaskDetail }>(`/tasks/${enc(taskId)}/publish/retry`, {}),
+    onSuccess: (res) => refresh(res.task),
   });
 }
 
-export function useLegalHold(caseId: string) {
-  const refresh = useRefreshCases();
+export function useLegalHold(taskId: string) {
+  const refresh = useRefreshTasks();
   return useMutation({
     mutationFn: (v: { hold: boolean; reason?: string }) =>
-      api.post<CaseDetail>(`/cases/${enc(caseId)}/legal-hold`, { hold: v.hold, reason: v.reason ?? null }),
+      api.post<TaskDetail>(`/tasks/${enc(taskId)}/legal-hold`, { hold: v.hold, reason: v.reason ?? null }),
     onSuccess: (detail) => refresh(detail),
   });
 }
 
-export function useAsk(caseId: string) {
+export function useAsk(taskId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (question: string) =>
-      api.post<{ answer: CaseMessage; messages: CaseMessage[] }>(`/cases/${enc(caseId)}/ask`, { question }),
-    onSuccess: (res) => qc.setQueryData(["messages", caseId], res.messages),
+      api.post<{ answer: TaskMessage; messages: TaskMessage[] }>(`/tasks/${enc(taskId)}/ask`, { question }),
+    onSuccess: (res) => qc.setQueryData(["messages", taskId], res.messages),
   });
 }
 
@@ -825,7 +740,7 @@ export interface DraftResult {
 }
 
 export interface PendingDraft {
-  capability_id: string;
+  agent_id: string;
   version: number;
   name: string;
   note: string;
@@ -851,9 +766,9 @@ export function useSubmitDraft() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (v: { yaml: string; note: string }) =>
-      api.post<{ capability_id: string; version: number }>("/authoring/submit", v),
+      api.post<{ agent_id: string; version: number }>("/authoring/submit", v),
     onSuccess: () => {
-      for (const key of ["drafts", "capability"]) qc.invalidateQueries({ queryKey: [key] });
+      for (const key of ["drafts", "agent"]) qc.invalidateQueries({ queryKey: [key] });
     },
   });
 }
@@ -861,10 +776,10 @@ export function useSubmitDraft() {
 export function useApproveVersion() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (v: { capabilityId: string; version: number }) =>
-      api.post<{ version: number }>(`/capabilities/${enc(v.capabilityId)}/versions/${v.version}/approve`, {}),
+    mutationFn: (v: { agentId: string; version: number }) =>
+      api.post<{ version: number }>(`/agents/${enc(v.agentId)}/versions/${v.version}/approve`, {}),
     onSuccess: () => {
-      for (const key of ["drafts", "capabilities", "capability", "overview"]) qc.invalidateQueries({ queryKey: [key] });
+      for (const key of ["drafts", "agents", "agent", "overview"]) qc.invalidateQueries({ queryKey: [key] });
     },
   });
 }
@@ -875,11 +790,11 @@ export interface ConfigCheck {
   problems: string[];
 }
 
-export function useConfigCheck(capabilityId: string, body: { manifest?: unknown; config?: unknown } | null) {
+export function useConfigCheck(agentId: string, body: { manifest?: unknown; config?: unknown } | null) {
   const key = body ? JSON.stringify(body) : "";
   return useQuery({
-    queryKey: ["config-check", capabilityId, key],
-    queryFn: () => api.post<ConfigCheck>(`/capabilities/${enc(capabilityId)}/check`, body),
+    queryKey: ["config-check", agentId, key],
+    queryFn: () => api.post<ConfigCheck>(`/agents/${enc(agentId)}/check`, body),
     enabled: !!body,
     staleTime: 60_000,
     retry: false,
@@ -888,22 +803,22 @@ export function useConfigCheck(capabilityId: string, body: { manifest?: unknown;
 
 // ---------- team groups ----------
 
-export function useDraftGroup(capabilityId: string) {
+export function useDraftGroup(agentId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (v: { config: GroupConfig; note: string }) =>
-      api.post<{ group_id: string; version: number }>(`/capabilities/${enc(capabilityId)}/groups`, v),
+      api.post<{ group_id: string; version: number }>(`/agents/${enc(agentId)}/groups`, v),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["group"] }),
   });
 }
 
-export function useApproveGroup(capabilityId: string, group: string) {
+export function useApproveGroup(agentId: string, group: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (version: number) =>
-      api.post<{ version: number }>(`/capabilities/${enc(capabilityId)}/groups/${enc(group)}/versions/${version}/approve`, {}),
+      api.post<{ version: number }>(`/agents/${enc(agentId)}/groups/${enc(group)}/versions/${version}/approve`, {}),
     onSuccess: () => {
-      for (const key of ["group", "groups", "capabilities"]) qc.invalidateQueries({ queryKey: [key] });
+      for (const key of ["group", "groups", "agents"]) qc.invalidateQueries({ queryKey: [key] });
     },
   });
 }
@@ -915,8 +830,8 @@ export interface NotificationItem {
   kind: string;
   title: string;
   body: string;
-  case_id: string | null;
-  capability_id: string;
+  task_id: string | null;
+  agent_id: string;
   created_at: string;
   read: boolean;
 }
@@ -940,7 +855,7 @@ export function useMarkRead() {
 // ---------- run-the-bank: schedules, switches ----------
 
 export interface Schedule {
-  capability_id: string;
+  agent_id: string;
   team_group: string | null;
   schedule: string;
   next_run: string | null;
@@ -950,7 +865,7 @@ export interface Schedule {
 }
 
 export interface SwitchRow {
-  kind: "capability" | "group" | "connector";
+  kind: "agent" | "group" | "connector";
   target: string;
   off: boolean;
   reason: string;
@@ -983,23 +898,23 @@ export interface Evidence {
   url: string;
 }
 
-export function useUploadEvidence(caseId: string) {
-  const refresh = useRefreshCases();
+export function useUploadEvidence(taskId: string) {
+  const refresh = useRefreshTasks();
   return useMutation({
     mutationFn: async (v: { file: File; note: string }) => {
       const form = new FormData();
       form.append("file", v.file);
       if (v.note) form.append("note", v.note);
-      return upload<{ case: CaseDetail }>(`/cases/${enc(caseId)}/evidence`, form);
+      return upload<{ task: TaskDetail }>(`/tasks/${enc(taskId)}/evidence`, form);
     },
-    onSuccess: (res) => refresh(res.case),
+    onSuccess: (res) => refresh(res.task),
   });
 }
 
 // ---------- evals ----------
 
 export interface EvalSummary {
-  cases: number;
+  tasks: number;
   groups_compared: number;
   agree: number;
   disagree: number;
@@ -1014,7 +929,7 @@ export interface EvalSummary {
 
 export interface EvalRunRow {
   run_id: string;
-  capability_id: string;
+  agent_id: string;
   version: number;
   team_group: string | null;
   group_version: number | null;
@@ -1029,15 +944,15 @@ export interface EvalRunRow {
 export const useEvals = (id: string) =>
   useQuery({
     queryKey: ["evals", id],
-    queryFn: () => api.get<EvalRunRow[]>(`/capabilities/${enc(id)}/evals`),
+    queryFn: () => api.get<EvalRunRow[]>(`/agents/${enc(id)}/evals`),
     refetchInterval: (q) => (q.state.data?.some((r) => r.status === "running") ? 2000 : false),
   });
 
-/** How many past settled cases an eval would replay. */
+/** How many past settled tasks an eval would replay. */
 export const useEvalAvailable = (id: string, teamGroup: string | null) =>
   useQuery({
     queryKey: ["evals-available", id, teamGroup ?? ""],
-    queryFn: () => api.get<{ cases: number; limit: number }>(`/capabilities/${enc(id)}/evals/available${teamGroup ? `?team_group=${enc(teamGroup)}` : ""}`),
+    queryFn: () => api.get<{ tasks: number; limit: number }>(`/agents/${enc(id)}/evals/available${teamGroup ? `?team_group=${enc(teamGroup)}` : ""}`),
     retry: false,
   });
 
@@ -1050,11 +965,11 @@ export interface EvalGroupRow {
   now?: { status?: string; comment?: string; reason?: string; verdict?: string | null };
 }
 
-/** One eval run with what each replayed case produced. */
+/** One eval run with what each replayed task produced. */
 export const useEvalRun = (runId: string | null) =>
   useQuery({
     queryKey: ["eval", runId],
-    queryFn: () => api.get<EvalRunRow & { results: { case_id: string; groups: EvalGroupRow[] }[] | null }>(`/evals/${enc(runId!)}`),
+    queryFn: () => api.get<EvalRunRow & { results: { task_id: string; groups: EvalGroupRow[] }[] | null }>(`/evals/${enc(runId!)}`),
     enabled: !!runId,
   });
 
@@ -1062,7 +977,7 @@ export function useStartEval(id: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (v: { version?: number; team_group?: string | null; group_version?: number; limit?: number }) =>
-      api.post<EvalRunRow>(`/capabilities/${enc(id)}/evals`, v),
+      api.post<EvalRunRow>(`/agents/${enc(id)}/evals`, v),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["evals", id] }),
   });
 }
@@ -1081,7 +996,7 @@ export interface FlowNode {
 }
 
 export interface Flow {
-  capability_id: string;
+  agent_id: string;
   name: string;
   nodes: FlowNode[];
   edges: { from: string; to: string }[];
@@ -1098,7 +1013,7 @@ export interface Template {
 export const useFlow = (id: string, teamGroup?: string | null) =>
   useQuery({
     queryKey: ["flow", id, teamGroup ?? ""],
-    queryFn: () => api.get<Flow>(`/capabilities/${enc(id)}/flow${teamGroup ? `?team_group=${enc(teamGroup)}` : ""}`),
+    queryFn: () => api.get<Flow>(`/agents/${enc(id)}/flow${teamGroup ? `?team_group=${enc(teamGroup)}` : ""}`),
   });
 
 export const useDiff = (id: string, a: number | null, b: number | null, group?: string | null) =>
@@ -1107,8 +1022,8 @@ export const useDiff = (id: string, a: number | null, b: number | null, group?: 
     queryFn: () =>
       api.get<{ diff: string; changed: string[] }>(
         group
-          ? `/capabilities/${enc(id)}/groups/${enc(group)}/versions/${a}/diff/${b}`
-          : `/capabilities/${enc(id)}/versions/${a}/diff/${b}`,
+          ? `/agents/${enc(id)}/groups/${enc(group)}/versions/${a}/diff/${b}`
+          : `/agents/${enc(id)}/versions/${a}/diff/${b}`,
       ),
     enabled: a != null && b != null && a !== b,
   });
@@ -1118,7 +1033,7 @@ export const useTemplates = () => useQuery({ queryKey: ["templates"], queryFn: (
 export function useImportBundle() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (bundle: unknown) => api.post<{ capability_id: string; version: number; note: string }>("/promotion/import", { bundle }),
+    mutationFn: (bundle: unknown) => api.post<{ agent_id: string; version: number; note: string }>("/promotion/import", { bundle }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["drafts"] }),
   });
 }
@@ -1130,7 +1045,7 @@ export interface RecurringRow {
   team_group: string | null;
   same: Record<string, string>;
   runs: number;
-  latest_case_id: string;
+  latest_task_id: string;
   latest_subject: string;
 }
 
@@ -1138,7 +1053,7 @@ export const useRecurring = (id: string, teamGroup?: string, enabled = true) =>
   useQuery({
     queryKey: ["recurring", id, teamGroup ?? "all"],
     queryFn: () =>
-      api.get<RecurringRow[]>(`/capabilities/${enc(id)}/recurring${teamGroup ? `?team_group=${enc(teamGroup)}` : ""}`),
+      api.get<RecurringRow[]>(`/agents/${enc(id)}/recurring${teamGroup ? `?team_group=${enc(teamGroup)}` : ""}`),
     enabled,
   });
 
@@ -1154,22 +1069,22 @@ export interface DataContract {
 export const useDataContract = (id: string, teamGroup?: string) =>
   useQuery({
     queryKey: ["contract", id, teamGroup ?? "all"],
-    queryFn: () => api.get<DataContract>(`/capabilities/${enc(id)}/contract${teamGroup ? `?team_group=${enc(teamGroup)}` : ""}`),
+    queryFn: () => api.get<DataContract>(`/agents/${enc(id)}/contract${teamGroup ? `?team_group=${enc(teamGroup)}` : ""}`),
   });
 
 /** What nothing explained, and model-proposed groups reviewers keep approving unchanged. */
 export interface Learning {
-  unexplained: { case_id: string; subject: string; team_group: string | null; item_id: string; group: string; why: string; amount: number | null; opened_at: string }[];
+  unexplained: { task_id: string; subject: string; team_group: string | null; item_id: string; group: string; why: string; amount: number | null; opened_at: string }[];
   unexplained_by_reason: { why: string; items: number }[];
-  automation: { team_group: string | null; group_key: Record<string, string>; label: string; verdict: string | null; approved: number; rejected: number; needed: number; cases: string[] }[];
+  automation: { team_group: string | null; group_key: Record<string, string>; label: string; verdict: string | null; approved: number; rejected: number; needed: number; tasks: string[] }[];
   /** Conditions on the data that predict the verdict people approved: proposals for the playbook's owners. */
-  proposed_checks?: { team_group: string | null; category: string; verdict: string; when: string; covers: number; of: number; wrong: number; precision: number; cases: string[] }[];
+  proposed_checks?: { team_group: string | null; category: string; verdict: string; when: string; covers: number; of: number; wrong: number; precision: number; tasks: string[] }[];
 }
 
 export const useLearning = (id: string, teamGroup?: string) =>
   useQuery({
     queryKey: ["learning", id, teamGroup ?? "all"],
-    queryFn: () => api.get<Learning>(`/capabilities/${enc(id)}/learning${teamGroup ? `?team_group=${enc(teamGroup)}` : ""}`),
+    queryFn: () => api.get<Learning>(`/agents/${enc(id)}/learning${teamGroup ? `?team_group=${enc(teamGroup)}` : ""}`),
   });
 
 export interface DelegationRow {

@@ -1,10 +1,10 @@
 // Records the API responses behind every screen into a snapshot file, so a
 // read-only copy of the app (npm run build:snapshot) can be opened anywhere
-// without the API: every page, tab and case the console links to, and what
+// without the API: every page, tab and task the console links to, and what
 // opens when someone clicks (run history steps, eval runs, version diffs,
 // filters, downloads). Run against a live stack: node scripts/capture-snapshot.mjs
 //   AOF_WEB (http://localhost:5180), SNAPSHOT_USER (frank), PLAYWRIGHT (module path),
-//   SNAPSHOT_CASES (extra case ids to include), SNAPSHOT_AGENTS (agent ids to include;
+//   SNAPSHOT_TASKS (extra task ids to include), SNAPSHOT_AGENTS (agent ids to include;
 //   default all), SNAPSHOT_SCOPE (all, or config: the agents' configuration only, no tasks)
 import fs from "fs";
 import zlib from "zlib";
@@ -54,7 +54,7 @@ const settle = async () => {
   }
   await Promise.allSettled([...reading]);
 };
-// Opens a page, then every tab it has (and, in a case, every proposal), so what
+// Opens a page, then every tab it has (and, in a task, every proposal), so what
 // each one loads is recorded.
 const visit = async (path) => {
   await p.goto(WEB + path); await settle();
@@ -77,48 +77,24 @@ if (!CONFIG) {
   await visit("/");
   await visit("/inbox");
 }
-await visit("/capabilities");
-const caps = (await api("/api/capabilities")).filter((c) => !AGENTS.length || AGENTS.includes(c.id));
+await visit("/agents");
+const caps = (await api("/api/agents")).filter((c) => !AGENTS.length || AGENTS.includes(c.id));
 const groupsOf = {};
 for (const c of caps) {
-  await visit(`/capabilities/${c.id}`);
-  groupsOf[c.id] = await api(`/api/capabilities/${enc(c.id)}/groups`).catch(() => []);
-  for (const g of groupsOf[c.id]) await visit(`/capabilities/${c.id}/groups/${g.group}`);
+  await visit(`/agents/${c.id}`);
+  groupsOf[c.id] = await api(`/api/agents/${enc(c.id)}/groups`).catch(() => []);
+  for (const g of groupsOf[c.id]) await visit(`/agents/${c.id}/groups/${g.group}`);
 }
-// Each agent's Summary for every business date it has. A date's run of many tasks
-// (a task per master book: hundreds or thousands) is kept as the summary's rows: the
-// console opens those tasks only from the live service, and the snapshot shows them as
-// text. SNAPSHOT_CASES names any of them to keep in full.
-const RUN = 6;
-const bulk = new Set();
-if (!CONFIG) {
-  for (const c of caps) {
-    const latest = await api(`/api/capabilities/${enc(c.id)}/summary`).catch(() => null);
-    for (const d of latest?.dates ?? []) {
-      const day = await api(`/api/capabilities/${enc(c.id)}/summary?date=${enc(d)}`);
-      data[`/api/capabilities/${enc(c.id)}/summary?date=${enc(d)}`] = { status: 200, body: day };
-      if (d === latest.date) data[`/api/capabilities/${enc(c.id)}/summary`] = { status: 200, body: day };
-      const per = {};
-      for (const t of day.tasks) (per[t.team_group ?? ""] ??= []).push(t.case_id);
-      for (const ids of Object.values(per)) if (ids.length >= RUN) ids.forEach((id) => bulk.add(id));
-    }
-  }
-  // A task the inbox lists on a row of its own (fewer than RUN waiting for one agent,
-  // group and date, as src/pages/Inbox.tsx folds them) opens in full.
-  const runs = {};
-  for (const r of await api("/api/inbox")) (runs[[r.capability_id, r.team_group, r.summary_date, r.action].join("|")] ??= []).push(r.case_id);
-  for (const ids of Object.values(runs)) if (ids.length < RUN) ids.forEach((id) => bulk.delete(id));
-}
-// Every other case the console lists (each capability's cases, the inbox), plus
-// SNAPSHOT_CASES: anything the snapshot links to must open in it.
-const extra = (process.env.SNAPSHOT_CASES ?? "").split(",").filter(Boolean);
+// Every task the console lists (each agent's tasks, the inbox), plus
+// SNAPSHOT_TASKS: anything the snapshot links to must open in it.
+const extra = (process.env.SNAPSHOT_TASKS ?? "").split(",").filter(Boolean);
 const listed = [];
 if (!CONFIG) {
-  for (const c of caps) listed.push(...(await api(`/api/capabilities/${enc(c.id)}/cases`)).map((x) => x.case_id));
-  listed.push(...(await api("/api/inbox")).filter((i) => !AGENTS.length || AGENTS.includes(i.capability_id)).map((i) => i.case_id));
+  for (const c of caps) listed.push(...(await api(`/api/agents/${enc(c.id)}/tasks`)).map((x) => x.task_id));
+  listed.push(...(await api("/api/inbox")).filter((i) => !AGENTS.length || AGENTS.includes(i.agent_id)).map((i) => i.task_id));
 }
-const caseIds = CONFIG ? [] : [...new Set([...extra, ...listed.filter((id) => !bulk.has(id))])];
-for (const id of caseIds) await visit(`/cases/${id}`);
+const taskIds = CONFIG ? [] : [...new Set([...extra, ...listed])];
+for (const id of taskIds) await visit(`/tasks/${id}`);
 for (const path of SCOPE === "all" ? ["/operations", "/authoring", "/audit", "/connectors"] : ["/connectors"]) await visit(path);
 await b.close();
 
@@ -134,88 +110,88 @@ const get = async (path) => {
     : { status: r.status, body: null, file: { type, base64: Buffer.from(await r.arrayBuffer()).toString("base64") } };
   return data[path].body;
 };
-const recordCase = async (id) => {
-  const base = `/api/cases/${enc(id)}`;
+const recordTask = async (id) => {
+  const base = `/api/tasks/${enc(id)}`;
   await get(base);
   await get(`${base}/messages`);
   for (const step of (await get(`${base}/history`)) ?? []) await get(`${base}/history/${enc(step.checkpoint_id)}`);
   await get(`${base}/export.xlsx`);
   await get(`${base}/evidence-pack`);
 };
-for (const id of caseIds) await recordCase(id);
+for (const id of taskIds) await recordTask(id);
 for (const c of caps) {
   const id = enc(c.id);
   const groups = groupsOf[c.id].map((g) => enc(g.group));
   const pairs = (vs) => vs.flatMap((a) => vs.filter((v) => v !== a).map((v) => [a, v]));
-  const versions = ((await get(`/api/capabilities/${id}`))?.versions ?? []).map((v) => v.version);
-  for (const v of versions) await get(`/api/capabilities/${id}/versions/${v}/export`);
-  for (const [a, v] of pairs(versions)) await get(`/api/capabilities/${id}/versions/${a}/diff/${v}`);
+  const versions = ((await get(`/api/agents/${id}`))?.versions ?? []).map((v) => v.version);
+  for (const v of versions) await get(`/api/agents/${id}/versions/${v}/export`);
+  for (const [a, v] of pairs(versions)) await get(`/api/agents/${id}/versions/${a}/diff/${v}`);
   for (const g of groups) {
-    const gv = ((await get(`/api/capabilities/${id}/groups/${g}`))?.versions ?? []).map((v) => v.version);
-    for (const v of gv) await get(`/api/capabilities/${id}/versions/${v}/export?group=${g}`);
-    for (const [a, v] of pairs(gv)) await get(`/api/capabilities/${id}/groups/${g}/versions/${a}/diff/${v}`);
+    const gv = ((await get(`/api/agents/${id}/groups/${g}`))?.versions ?? []).map((v) => v.version);
+    for (const v of gv) await get(`/api/agents/${id}/versions/${v}/export?group=${g}`);
+    for (const [a, v] of pairs(gv)) await get(`/api/agents/${id}/groups/${g}/versions/${a}/diff/${v}`);
   }
-  if (!CONFIG) for (const run of (await get(`/api/capabilities/${id}/evals`)) ?? []) await get(`/api/evals/${enc(run.run_id)}`);
+  if (!CONFIG) for (const run of (await get(`/api/agents/${id}/evals`)) ?? []) await get(`/api/evals/${enc(run.run_id)}`);
   for (const q of ["", ...groups.map((g) => `?team_group=${g}`)]) {
-    for (const part of CONFIG ? ["flow", "contract"] : ["cases", "evals/available", "flow", "contract", "learning", "recurring"]) {
-      await get(`/api/capabilities/${id}/${part}${q}`);
+    for (const part of CONFIG ? ["flow", "contract"] : ["tasks", "evals/available", "flow", "contract", "learning", "recurring"]) {
+      await get(`/api/agents/${id}/${part}${q}`);
     }
   }
-  if (SCOPE === "all") await get(`/api/audit?capability_id=${id}`);
+  if (SCOPE === "all") await get(`/api/audit?agent_id=${id}`);
 }
 // The chosen agents only; a config-only snapshot keeps their configuration and the
 // connectors, and nothing about tasks (the inbox and notifications are empty).
 if (AGENTS.length || CONFIG) {
   const keep = new Set(caps.map((c) => c.id));
-  data["/api/capabilities"].body = data["/api/capabilities"].body.filter((c) => keep.has(c.id));
+  data["/api/agents"].body = data["/api/agents"].body.filter((c) => keep.has(c.id));
   for (const key of Object.keys(data)) {
-    const m = key.match(/^(?:POST )?\/api\/capabilities\/([^/?\s]+)/);
+    const m = key.match(/^(?:POST )?\/api\/agents\/([^/?\s]+)/);
     if (m && !keep.has(decodeURIComponent(m[1]))) delete data[key];
   }
 }
 if (SCOPE === "agents") {
   // Lists shared by every agent keep only the chosen agents' tasks.
-  const ours = (caseId) => caps.some((c) => new RegExp(`^${c.id.replace(/[.]/g, "\\.")}\\.[0-9a-f]{12}`).test(caseId ?? ""));
-  if (data["/api/inbox"]) data["/api/inbox"].body = data["/api/inbox"].body.filter((i) => ours(i.case_id));
-  if (data["/api/requests"]) data["/api/requests"].body = data["/api/requests"].body.filter((r) => ours(r.case_id));
+  const ours = (taskId) => caps.some((c) => new RegExp(`^${c.id.replace(/[.]/g, "\\.")}\\.[0-9a-f]{12}`).test(taskId ?? ""));
+  if (data["/api/inbox"]) data["/api/inbox"].body = data["/api/inbox"].body.filter((i) => ours(i.task_id));
+  if (data["/api/requests"]) data["/api/requests"].body = data["/api/requests"].body.filter((r) => ours(r.task_id));
   if (data["/api/notifications"]) {
-    const items = data["/api/notifications"].body.items.filter((n) => !n.case_id || ours(n.case_id));
+    const items = data["/api/notifications"].body.items.filter((n) => !n.task_id || ours(n.task_id));
     data["/api/notifications"].body = { ...data["/api/notifications"].body, items, unread: items.filter((n) => !n.read).length };
   }
   if (data["/api/overview"]) {
     const keep = new Set(caps.map((c) => c.id));
-    data["/api/overview"].body.capabilities = data["/api/overview"].body.capabilities.filter((c) => keep.has(c.id));
+    data["/api/overview"].body.agents = data["/api/overview"].body.agents.filter((c) => keep.has(c.id));
   }
   for (const key of Object.keys(data)) if (/^\/api\/(operations|audit|authoring|schedules|switches)\b/.test(key)) delete data[key];
 }
 if (CONFIG) {
-  const config = [/^\/api\/(me|me\/delegations|dev\/users|platform|capabilities)$/, /^(POST )?\/api\/capabilities\/[^/?\s]+(\/(groups(\/[^/?]+)?|flow|contract|versions\/.+|groups\/[^/]+\/versions\/.+|check))?(\?team_group=[^&]+)?( \S+)?$/,
+  const config = [/^\/api\/(me|me\/delegations|dev\/users|platform|agents)$/, /^(POST )?\/api\/agents\/[^/?\s]+(\/(groups(\/[^/?]+)?|flow|contract|versions\/.+|groups\/[^/]+\/versions\/.+|check))?(\?team_group=[^&]+)?( \S+)?$/,
     /^\/api\/operations$/];
   for (const key of Object.keys(data)) if (!config.some((re) => re.test(key))) delete data[key];
   data["/api/inbox"] = { status: 200, body: [] };
   data["/api/notifications"] = { status: 200, body: { unread: 0, items: [] } };
   data["/api/requests"] = { status: 200, body: [] };
 }
-// Cases named anywhere in what was recorded (a follow-up, a sampled child case,
+// Tasks named anywhere in what was recorded (a follow-up, a sampled child task,
 // a notification) open too.
-const caseRef = new RegExp(`"((?:${caps.map((c) => c.id.replace(/[.]/g, "\\.")).join("|")})\\.[0-9a-f]{12}(?:\\.f\\d+)?)"`, "g");
+const taskRef = new RegExp(`"((?:${caps.map((c) => c.id.replace(/[.]/g, "\\.")).join("|")})\\.[0-9a-f]{12}(?:\\.f\\d+)?)"`, "g");
 for (let more = !CONFIG; more;) {
-  const named = new Set([...JSON.stringify(Object.values(data).map((r) => r.body)).matchAll(caseRef)].map((m) => m[1]));
-  const missing = [...named].filter((id) => !data[`/api/cases/${enc(id)}`] && !bulk.has(id));
+  const named = new Set([...JSON.stringify(Object.values(data).map((r) => r.body)).matchAll(taskRef)].map((m) => m[1]));
+  const missing = [...named].filter((id) => !data[`/api/tasks/${enc(id)}`]);
   more = false;
-  for (const id of missing) { await recordCase(id); more = more || !!data[`/api/cases/${enc(id)}`]; }
+  for (const id of missing) { await recordTask(id); more = more || !!data[`/api/tasks/${enc(id)}`]; }
 }
 
-// Notifications and questions about a task kept only as a summary row are left out.
-const kept = (caseId) => !caseId || !!data[`/api/cases/${enc(caseId)}`];
+// Notifications and questions about a task the snapshot does not hold are left out.
+const kept = (taskId) => !taskId || !!data[`/api/tasks/${enc(taskId)}`];
 if (data["/api/notifications"]) {
-  const items = data["/api/notifications"].body.items.filter((n) => kept(n.case_id));
+  const items = data["/api/notifications"].body.items.filter((n) => kept(n.task_id));
   data["/api/notifications"].body = { ...data["/api/notifications"].body, items, unread: items.filter((n) => !n.read).length };
 }
-if (data["/api/requests"]) data["/api/requests"].body = data["/api/requests"].body.filter((r) => kept(r.case_id));
+if (data["/api/requests"]) data["/api/requests"].body = data["/api/requests"].body.filter((r) => kept(r.task_id));
 
 // Stored compressed (most of it is run state that repeats); the snapshot unpacks it.
 const json = JSON.stringify({ user: USER, captured_at: new Date().toISOString(), scope: SCOPE, responses: data });
 fs.writeFileSync(OUT, zlib.gzipSync(json, { level: 9 }).toString("base64"));
-const cases = Object.keys(data).filter((k) => /^\/api\/cases\/[^/]+$/.test(k)).length;
-console.log(`captured ${Object.keys(data).length} responses, ${cases} cases in full, ${bulk.size} as summary rows (${(json.length / 1e6).toFixed(1)} MB) → src/snapshot/data.b64 (${(fs.statSync(OUT).size / 1e6).toFixed(1)} MB)`);
+const tasks = Object.keys(data).filter((k) => /^\/api\/tasks\/[^/]+$/.test(k)).length;
+console.log(`captured ${Object.keys(data).length} responses, ${tasks} tasks (${(json.length / 1e6).toFixed(1)} MB) → src/snapshot/data.b64 (${(fs.statSync(OUT).size / 1e6).toFixed(1)} MB)`);

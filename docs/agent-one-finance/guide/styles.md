@@ -60,7 +60,7 @@ and never mix its styles into `apps/web`.
 cd apps/web
 npm run check:styles     # upstream style files, tokens only, one stylesheet, Tailwind 3, hx-* defined
 npx tsc --noEmit -p . && npx vitest run
-npm run dev              # then open Overview, a case, Configure and /pitch/ in light and dark
+npm run dev              # then open Overview, a task, Configure and /pitch/ in light and dark
 ```
 
 A passing check prints:

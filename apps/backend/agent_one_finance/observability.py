@@ -74,11 +74,11 @@ def _clean(value: Any):
 def span(name: str, *, kind: str = CHAIN, input: Any = None, root: bool = False,
          **attributes: Any):
     """A span with `aof.*` attributes (None values skipped) plus the OpenInference
-    conventions Phoenix reads: span kind, session.id (the case — Phoenix's Sessions
-    view groups a case's runs), user.id, and input.value when given.
+    conventions Phoenix reads: span kind, session.id (the task — Phoenix's Sessions
+    view groups a task's runs), user.id, and input.value when given.
 
     root=True starts a new trace (linked to the caller's span, e.g. the HTTP
-    request), so one case run is one trace in Phoenix, not a child of a request."""
+    request), so one task run is one trace in Phoenix, not a child of a request."""
     options = {}
     if root:
         parent = trace.get_current_span().get_span_context()
@@ -86,8 +86,8 @@ def span(name: str, *, kind: str = CHAIN, input: Any = None, root: bool = False,
                    "links": [trace.Link(parent)] if parent.is_valid else []}
     with tracer.start_as_current_span(name, **options) as s:
         s.set_attribute("openinference.span.kind", kind)
-        if attributes.get("case_id"):
-            s.set_attribute("session.id", attributes["case_id"])
+        if attributes.get("task_id"):
+            s.set_attribute("session.id", attributes["task_id"])
         if attributes.get("user"):
             s.set_attribute("user.id", attributes["user"])
         if input is not None:

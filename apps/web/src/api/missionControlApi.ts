@@ -21,7 +21,7 @@ export interface FleetAgent {
   /** 24 hourly success-rate points 0..1, oldest → newest */
   sparkline: number[];
   lastRunAt: string | null;
-  /** Agent One Finance: where a click on the row goes (the capability or team group). */
+  /** Agent One Finance: where a click on the row goes (the agent or team group). */
   href?: string;
 }
 

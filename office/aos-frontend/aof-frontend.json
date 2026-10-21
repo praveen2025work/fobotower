@@ -11,20 +11,20 @@
       "page": "pages/Inbox"
     },
     {
-      "path": "/finance/capabilities",
-      "page": "pages/Capabilities"
+      "path": "/finance/agents",
+      "page": "pages/Agents"
     },
     {
-      "path": "/finance/capabilities/:id",
-      "page": "pages/CapabilityDetail"
+      "path": "/finance/agents/:id",
+      "page": "pages/AgentDetail"
     },
     {
-      "path": "/finance/capabilities/:id/groups/:group",
+      "path": "/finance/agents/:id/groups/:group",
       "page": "pages/GroupDetail"
     },
     {
-      "path": "/finance/cases/:caseId",
-      "page": "pages/CaseWorkspace"
+      "path": "/finance/tasks/:taskId",
+      "page": "pages/TaskWorkspace"
     },
     {
       "path": "/finance/authoring",
@@ -59,7 +59,7 @@
   ],
   "env": {
     "NEXT_PUBLIC_AOF_API": "the AOF API base, default /api",
-    "NEXT_PUBLIC_AOF_TRACE_URL": "optional: link to a case's traces"
+    "NEXT_PUBLIC_AOF_TRACE_URL": "optional: link to a task's traces"
   },
   "icons": [
     "Activity",
@@ -156,7 +156,7 @@
   ],
   "files": {
     "src/app/finance/_aof/api/aof.js": {
-      "sha": "000d6af49aaf8688",
+      "sha": "cd678a8d4ac9d077",
       "from": "apps/web/src/api/aof.ts"
     },
     "src/app/finance/_aof/api/client.js": {
@@ -172,7 +172,7 @@
       "from": "apps/web/src/components/DataTable.tsx"
     },
     "src/app/finance/_aof/components/DelegationPanel.jsx": {
-      "sha": "dc0e6456c2888ac2",
+      "sha": "0063fe67a5661be7",
       "from": "apps/web/src/components/DelegationPanel.tsx"
     },
     "src/app/finance/_aof/components/ErrorBoundary.jsx": {
@@ -180,15 +180,15 @@
       "from": "apps/web/src/components/ErrorBoundary.tsx"
     },
     "src/app/finance/_aof/components/Layout.jsx": {
-      "sha": "d8c5231005a17564",
+      "sha": "63dbc4aa6a1f0d2b",
       "from": "apps/web/src/components/Layout.tsx"
     },
     "src/app/finance/_aof/components/NotificationBell.jsx": {
-      "sha": "771f0d2442df4534",
+      "sha": "b4a0d6ae6ac23ad4",
       "from": "apps/web/src/components/NotificationBell.tsx"
     },
     "src/app/finance/_aof/components/QuestionsForYou.jsx": {
-      "sha": "219445f698637514",
+      "sha": "0ee64dc729079ae6",
       "from": "apps/web/src/components/QuestionsForYou.tsx"
     },
     "src/app/finance/_aof/components/StatCard.jsx": {
@@ -196,91 +196,47 @@
       "from": "apps/web/src/components/StatCard.tsx"
     },
     "src/app/finance/_aof/components/StatusBadge.jsx": {
-      "sha": "5471e541a6cf2fdf",
+      "sha": "4b4a14e082c8900b",
       "from": "apps/web/src/components/StatusBadge.tsx"
     },
     "src/app/finance/_aof/components/TaskLink.jsx": {
-      "sha": "7035c498f9bea0b9",
+      "sha": "e77c1ecbb0f204c8",
       "from": "apps/web/src/components/TaskLink.tsx"
     },
     "src/app/finance/_aof/components/Urgency.jsx": {
-      "sha": "6da3d93296f5aa5f",
+      "sha": "800acf9839a061bd",
       "from": "apps/web/src/components/Urgency.tsx"
     },
+    "src/app/finance/_aof/components/agent/DataContractPanel.jsx": {
+      "sha": "36a959a35f4ae826",
+      "from": "apps/web/src/components/agent/DataContractPanel.tsx"
+    },
+    "src/app/finance/_aof/components/agent/EvalsPanel.jsx": {
+      "sha": "0e10d9ebab75a41b",
+      "from": "apps/web/src/components/agent/EvalsPanel.tsx"
+    },
+    "src/app/finance/_aof/components/agent/FlowDiagram.jsx": {
+      "sha": "3a919e6cb59075d6",
+      "from": "apps/web/src/components/agent/FlowDiagram.tsx"
+    },
+    "src/app/finance/_aof/components/agent/LearningPanel.jsx": {
+      "sha": "417608925fe4fa83",
+      "from": "apps/web/src/components/agent/LearningPanel.tsx"
+    },
+    "src/app/finance/_aof/components/agent/RecurringPanel.jsx": {
+      "sha": "972351d7c331e9ec",
+      "from": "apps/web/src/components/agent/RecurringPanel.tsx"
+    },
+    "src/app/finance/_aof/components/agent/VersionsPanel.jsx": {
+      "sha": "8cdcaa21bc1c9c91",
+      "from": "apps/web/src/components/agent/VersionsPanel.tsx"
+    },
     "src/app/finance/_aof/components/authoring/GuidedForm.jsx": {
-      "sha": "192a444fe5b3848b",
+      "sha": "3561edf88064939c",
       "from": "apps/web/src/components/authoring/GuidedForm.tsx"
     },
-    "src/app/finance/_aof/components/capability/DataContractPanel.jsx": {
-      "sha": "c6eae4f3975c43c1",
-      "from": "apps/web/src/components/capability/DataContractPanel.tsx"
-    },
-    "src/app/finance/_aof/components/capability/EvalsPanel.jsx": {
-      "sha": "9213232d790d612e",
-      "from": "apps/web/src/components/capability/EvalsPanel.tsx"
-    },
-    "src/app/finance/_aof/components/capability/FlowDiagram.jsx": {
-      "sha": "804949f88834318e",
-      "from": "apps/web/src/components/capability/FlowDiagram.tsx"
-    },
-    "src/app/finance/_aof/components/capability/LearningPanel.jsx": {
-      "sha": "60ae5b93ddc14906",
-      "from": "apps/web/src/components/capability/LearningPanel.tsx"
-    },
-    "src/app/finance/_aof/components/capability/RecurringPanel.jsx": {
-      "sha": "f4953083e0f02a11",
-      "from": "apps/web/src/components/capability/RecurringPanel.tsx"
-    },
-    "src/app/finance/_aof/components/capability/SummaryPanel.jsx": {
-      "sha": "d0a43761b9ca4b7f",
-      "from": "apps/web/src/components/capability/SummaryPanel.tsx"
-    },
-    "src/app/finance/_aof/components/capability/VersionsPanel.jsx": {
-      "sha": "769c78bed6cb8123",
-      "from": "apps/web/src/components/capability/VersionsPanel.tsx"
-    },
-    "src/app/finance/_aof/components/case/CaseActions.jsx": {
-      "sha": "99d7a37234877332",
-      "from": "apps/web/src/components/case/CaseActions.tsx"
-    },
-    "src/app/finance/_aof/components/case/CaseChat.jsx": {
-      "sha": "44c2fff47b8f0467",
-      "from": "apps/web/src/components/case/CaseChat.tsx"
-    },
-    "src/app/finance/_aof/components/case/CaseHistory.jsx": {
-      "sha": "de5638f6c2cac7a8",
-      "from": "apps/web/src/components/case/CaseHistory.tsx"
-    },
-    "src/app/finance/_aof/components/case/DataSetsPanel.jsx": {
-      "sha": "d7cfc1cc49f1d4e8",
-      "from": "apps/web/src/components/case/DataSetsPanel.tsx"
-    },
-    "src/app/finance/_aof/components/case/EvidencePanel.jsx": {
-      "sha": "9387d7316b271f90",
-      "from": "apps/web/src/components/case/EvidencePanel.tsx"
-    },
-    "src/app/finance/_aof/components/case/FollowThroughPanel.jsx": {
-      "sha": "0949246ead1cdeda",
-      "from": "apps/web/src/components/case/FollowThroughPanel.tsx"
-    },
-    "src/app/finance/_aof/components/case/RequestsPanel.jsx": {
-      "sha": "77198cdfbe05d1c3",
-      "from": "apps/web/src/components/case/RequestsPanel.tsx"
-    },
-    "src/app/finance/_aof/components/case/SessionTranscript.jsx": {
-      "sha": "6dc1240fc392ba7e",
-      "from": "apps/web/src/components/case/SessionTranscript.tsx"
-    },
-    "src/app/finance/_aof/components/case/SignOffChecklist.jsx": {
-      "sha": "4911c6609fabf653",
-      "from": "apps/web/src/components/case/SignOffChecklist.tsx"
-    },
-    "src/app/finance/_aof/components/case/StepsV2.jsx": {
-      "sha": "1a8b3e6ff76daac2",
-      "from": "apps/web/src/components/case/StepsV2.tsx"
-    },
     "src/app/finance/_aof/components/mission-control/FleetTable.jsx": {
-      "sha": "6faee89387fb4d6a",
+      "sha": "30d6ac7402528659",
       "from": "apps/web/src/components/mission-control/FleetTable.tsx"
     },
     "src/app/finance/_aof/components/mission-control/HealthBanner.jsx": {
@@ -316,39 +272,79 @@
       "from": "apps/web/src/components/mission-control/Sparkline.tsx"
     },
     "src/app/finance/_aof/components/ops/ControlsPanel.jsx": {
-      "sha": "258609b1466ebd89",
+      "sha": "f67f485eea4843f9",
       "from": "apps/web/src/components/ops/ControlsPanel.tsx"
     },
     "src/app/finance/_aof/components/ops/SupportGuide.jsx": {
-      "sha": "32d41f1544f02727",
+      "sha": "602163cb572d9336",
       "from": "apps/web/src/components/ops/SupportGuide.tsx"
     },
     "src/app/finance/_aof/components/orchestrator/OrchestratorEditor.jsx": {
-      "sha": "7667e47eaceaa66c",
+      "sha": "61ae0e34f44ffe51",
       "from": "apps/web/src/components/orchestrator/OrchestratorEditor.tsx"
     },
     "src/app/finance/_aof/components/orchestrator/PrepareSteps.jsx": {
-      "sha": "4466c73cc7138ab5",
+      "sha": "279698a4b1eea500",
       "from": "apps/web/src/components/orchestrator/PrepareSteps.tsx"
     },
     "src/app/finance/_aof/components/orchestrator/fields.jsx": {
-      "sha": "9be545d5526a3c0f",
+      "sha": "e94569ed2dd4f562",
       "from": "apps/web/src/components/orchestrator/fields.tsx"
     },
     "src/app/finance/_aof/components/orchestrator/paths.js": {
-      "sha": "70aea1dd030214c9",
+      "sha": "db439a777f1fd825",
       "from": "apps/web/src/components/orchestrator/paths.ts"
     },
     "src/app/finance/_aof/components/orchestrator/stages.js": {
-      "sha": "3d1581356b271806",
+      "sha": "3462d5dba86f81f0",
       "from": "apps/web/src/components/orchestrator/stages.ts"
     },
+    "src/app/finance/_aof/components/task/DataSetsPanel.jsx": {
+      "sha": "dc6fe9cf5b04922e",
+      "from": "apps/web/src/components/task/DataSetsPanel.tsx"
+    },
+    "src/app/finance/_aof/components/task/EvidencePanel.jsx": {
+      "sha": "1da188b351c59b8d",
+      "from": "apps/web/src/components/task/EvidencePanel.tsx"
+    },
+    "src/app/finance/_aof/components/task/FollowThroughPanel.jsx": {
+      "sha": "50ccedf1195d1419",
+      "from": "apps/web/src/components/task/FollowThroughPanel.tsx"
+    },
+    "src/app/finance/_aof/components/task/RequestsPanel.jsx": {
+      "sha": "61b7c0e002cea0d6",
+      "from": "apps/web/src/components/task/RequestsPanel.tsx"
+    },
+    "src/app/finance/_aof/components/task/SessionTranscript.jsx": {
+      "sha": "1394f40c79029312",
+      "from": "apps/web/src/components/task/SessionTranscript.tsx"
+    },
+    "src/app/finance/_aof/components/task/SignOffChecklist.jsx": {
+      "sha": "37baf5baffed33a1",
+      "from": "apps/web/src/components/task/SignOffChecklist.tsx"
+    },
+    "src/app/finance/_aof/components/task/StepsV2.jsx": {
+      "sha": "2df388baf8e1598d",
+      "from": "apps/web/src/components/task/StepsV2.tsx"
+    },
+    "src/app/finance/_aof/components/task/TaskActions.jsx": {
+      "sha": "0a3835def736c714",
+      "from": "apps/web/src/components/task/TaskActions.tsx"
+    },
+    "src/app/finance/_aof/components/task/TaskChat.jsx": {
+      "sha": "7c89d4fff727f9e4",
+      "from": "apps/web/src/components/task/TaskChat.tsx"
+    },
+    "src/app/finance/_aof/components/task/TaskHistory.jsx": {
+      "sha": "87ac3c76b67b21d2",
+      "from": "apps/web/src/components/task/TaskHistory.tsx"
+    },
     "src/app/finance/_aof/components/ui.jsx": {
-      "sha": "8bac5051d6ebe7e6",
+      "sha": "170394352495df9a",
       "from": "apps/web/src/components/ui.tsx"
     },
     "src/app/finance/_aof/finance.css": {
-      "sha": "dc2103c72dccc04b",
+      "sha": "1bdabb4536ac94ab",
       "from": "apps/web/src/index.css"
     },
     "src/app/finance/_aof/hooks/useIsPhone.js": {
@@ -368,60 +364,72 @@
       "from": "apps/web/office/templates/auth.js"
     },
     "src/app/finance/_aof/office/router.js": {
-      "sha": "aa6d89f1cc24e9a7",
+      "sha": "6f31255baf30b8f1",
       "from": "apps/web/office/templates/router.js"
     },
+    "src/app/finance/_aof/pages/AgentDetail.jsx": {
+      "sha": "5cf18e8de8c1b5c2",
+      "from": "apps/web/src/pages/AgentDetail.tsx"
+    },
+    "src/app/finance/_aof/pages/Agents.jsx": {
+      "sha": "0f4b473b0361bb66",
+      "from": "apps/web/src/pages/Agents.tsx"
+    },
     "src/app/finance/_aof/pages/Audit.jsx": {
-      "sha": "6d869e5230ae9a9e",
+      "sha": "7ea1c581165d8b88",
       "from": "apps/web/src/pages/Audit.tsx"
     },
     "src/app/finance/_aof/pages/Authoring.jsx": {
-      "sha": "a6ca331b48baece2",
+      "sha": "66c6100acf059c92",
       "from": "apps/web/src/pages/Authoring.tsx"
-    },
-    "src/app/finance/_aof/pages/Capabilities.jsx": {
-      "sha": "709e20934bf5f6f2",
-      "from": "apps/web/src/pages/Capabilities.tsx"
-    },
-    "src/app/finance/_aof/pages/CapabilityDetail.jsx": {
-      "sha": "1bcecf4241ed045f",
-      "from": "apps/web/src/pages/CapabilityDetail.tsx"
-    },
-    "src/app/finance/_aof/pages/CaseWorkspace.jsx": {
-      "sha": "7f29557eaf263fdf",
-      "from": "apps/web/src/pages/CaseWorkspace.tsx"
     },
     "src/app/finance/_aof/pages/Connectors.jsx": {
       "sha": "d03c5dcf8f935d3d",
       "from": "apps/web/src/pages/Connectors.tsx"
     },
     "src/app/finance/_aof/pages/GroupDetail.jsx": {
-      "sha": "7db2caa83f5e8a3e",
+      "sha": "8be0ce290c5ed822",
       "from": "apps/web/src/pages/GroupDetail.tsx"
     },
     "src/app/finance/_aof/pages/Inbox.jsx": {
-      "sha": "be9dc8f749c68ccb",
+      "sha": "842887b4d0858ad1",
       "from": "apps/web/src/pages/Inbox.tsx"
     },
     "src/app/finance/_aof/pages/Operations.jsx": {
-      "sha": "6c1067fee68457aa",
+      "sha": "5c374fcd80329722",
       "from": "apps/web/src/pages/Operations.tsx"
     },
     "src/app/finance/_aof/pages/Overview.jsx": {
-      "sha": "902d15e49327fa62",
+      "sha": "955b9974009eb3ad",
       "from": "apps/web/src/pages/Overview.tsx"
+    },
+    "src/app/finance/_aof/pages/TaskWorkspace.jsx": {
+      "sha": "24b1afb03200dc74",
+      "from": "apps/web/src/pages/TaskWorkspace.tsx"
     },
     "src/app/finance/_aof/queryClient.js": {
       "sha": "c1131a835490a331",
       "from": "apps/web/src/queryClient.ts"
     },
     "src/app/finance/_aof/scope.js": {
-      "sha": "03ec6e01619190c7",
+      "sha": "80257fac81bda1ce",
       "from": "apps/web/src/scope.ts"
     },
     "src/app/finance/_aof/theme.js": {
       "sha": "02aea8d89f8de514",
       "from": "apps/web/office/templates/theme.js"
+    },
+    "src/app/finance/agents/[id]/groups/[group]/page.jsx": {
+      "sha": "927129b973291086",
+      "from": "apps/web/src/App.tsx"
+    },
+    "src/app/finance/agents/[id]/page.jsx": {
+      "sha": "14e673d7528413d0",
+      "from": "apps/web/src/App.tsx"
+    },
+    "src/app/finance/agents/page.jsx": {
+      "sha": "fa454f6170dffa64",
+      "from": "apps/web/src/App.tsx"
     },
     "src/app/finance/audit/page.jsx": {
       "sha": "c77ae90421df6b5d",
@@ -429,22 +437,6 @@
     },
     "src/app/finance/authoring/page.jsx": {
       "sha": "005a3eba87294dd7",
-      "from": "apps/web/src/App.tsx"
-    },
-    "src/app/finance/capabilities/[id]/groups/[group]/page.jsx": {
-      "sha": "ac0fbbd38274a183",
-      "from": "apps/web/src/App.tsx"
-    },
-    "src/app/finance/capabilities/[id]/page.jsx": {
-      "sha": "be70e2fea3cf37c4",
-      "from": "apps/web/src/App.tsx"
-    },
-    "src/app/finance/capabilities/page.jsx": {
-      "sha": "1ab7e043f707176d",
-      "from": "apps/web/src/App.tsx"
-    },
-    "src/app/finance/cases/[caseId]/page.jsx": {
-      "sha": "df387708cc84de28",
       "from": "apps/web/src/App.tsx"
     },
     "src/app/finance/connectors/page.jsx": {
@@ -465,6 +457,10 @@
     },
     "src/app/finance/page.jsx": {
       "sha": "fe8c7caed2cbb223",
+      "from": "apps/web/src/App.tsx"
+    },
+    "src/app/finance/tasks/[taskId]/page.jsx": {
+      "sha": "5dea463000fb0149",
       "from": "apps/web/src/App.tsx"
     }
   }

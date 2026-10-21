@@ -643,9 +643,9 @@ cd apps/backend &amp;&amp; .venv/bin/alembic upgrade head
 cd ../web &amp;&amp; npm run dev      <span class="c"># http://localhost:5180</span>
 
 <span class="c"># open the September accruals run as alice</span>
-curl -X POST localhost:8300/api/capabilities/fin.accruals/cases \
+curl -X POST localhost:8300/api/agents/fin.accruals/tasks \
   -H 'X-AOF-User: alice' -H 'Content-Type: application/json' \
-  -d '{"case_key": {"entity": "UK01", "period": "2026-09"}}'</pre>
+  -d '{"task_key": {"entity": "UK01", "period": "2026-09"}}'</pre>
       </div>
     </div>
   </div>

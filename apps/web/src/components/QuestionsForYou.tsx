@@ -1,6 +1,6 @@
 // Questions controllers asked you for evidence (the desk, a trader,
 // Operations): the question, the breaks it is about — only those, not the
-// whole case — and a box to answer. The answer goes back to the case and to
+// whole task — and a box to answer. The answer goes back to the task and to
 // the model.
 
 import { useState } from "react";
@@ -16,7 +16,7 @@ function Question({ q }: { q: QuestionForMe }) {
   return (
     <li className="rounded-lg border border-surface-200 p-3 text-sm">
       <p className="text-xs text-surface-500">
-        {q.asked_by} asked {formatTime(q.asked_at)} · {q.case_label}: {q.subject}{q.group_label ? ` · ${q.group_label}` : ""}
+        {q.asked_by} asked {formatTime(q.asked_at)} · {q.task_label}: {q.subject}{q.group_label ? ` · ${q.group_label}` : ""}
       </p>
       <p className="mt-1 font-medium text-surface-900">“{q.question}”</p>
       {q.rows.length > 0 && (

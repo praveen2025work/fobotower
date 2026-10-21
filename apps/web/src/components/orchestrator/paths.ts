@@ -1,5 +1,5 @@
 // Dotted-path helpers over a manifest held as plain JSON, and the rules for
-// what a team group may set (its capability's `configurable` paths).
+// what a team group may set (its agent's `configurable` paths).
 
 export type Json = Record<string, unknown>;
 
@@ -15,7 +15,7 @@ export function setPath(obj: Json, path: string, value: unknown): Json {
   return out;
 }
 
-/** May an owner with these `configurable` paths set `path`? null = anything (the capability's own owners). */
+/** May an owner with these `configurable` paths set `path`? null = anything (the agent's own owners). */
 export function allowed(configurable: string[] | null, path: string): boolean {
   if (configurable === null) return true;
   return configurable.some(
@@ -40,7 +40,7 @@ export function changedPaths(before: unknown, after: unknown, prefix = ""): stri
 /**
  * A team group's `set` after an edit: for each configurable path whose value
  * changed, the new value is written at that path (a group replaces the
- * capability's value there, exactly as the server merges it).
+ * agent's value there, exactly as the server merges it).
  */
 export function groupSet(currentSet: Json, configurable: string[], before: Json, after: Json): Json {
   let out = currentSet;

@@ -56,16 +56,16 @@ async function request(method, path, body) {
 
 export const fetchDevUsers = () => request('GET', '/api/dev/users');
 export const fetchMe = () => request('GET', '/api/me');
-export const fetchCapabilities = () => request('GET', '/api/capabilities');
-export const fetchCases = (capabilityId) =>
-  request('GET', `/api/capabilities/${encodeURIComponent(capabilityId)}/cases`);
-export const openCase = (capabilityId, caseKey) =>
-  request('POST', `/api/capabilities/${encodeURIComponent(capabilityId)}/cases`, {
-    case_key: caseKey,
+export const fetchAgents = () => request('GET', '/api/agents');
+export const fetchTasks = (agentId) =>
+  request('GET', `/api/agents/${encodeURIComponent(agentId)}/tasks`);
+export const openTask = (agentId, taskKey) =>
+  request('POST', `/api/agents/${encodeURIComponent(agentId)}/tasks`, {
+    task_key: taskKey,
   });
-export const fetchCase = (caseId) => request('GET', `/api/cases/${encodeURIComponent(caseId)}`);
-export const decide = (caseId, { groupId, action, comment, idempotencyKey }) =>
-  request('POST', `/api/cases/${encodeURIComponent(caseId)}/decisions`, {
+export const fetchTask = (taskId) => request('GET', `/api/tasks/${encodeURIComponent(taskId)}`);
+export const decide = (taskId, { groupId, action, comment, idempotencyKey }) =>
+  request('POST', `/api/tasks/${encodeURIComponent(taskId)}/decisions`, {
     group_id: groupId,
     action,
     comment: comment || null,

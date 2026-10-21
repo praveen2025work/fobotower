@@ -191,14 +191,14 @@ def build_authority() -> MCPServer:
 SENT: list[dict] = []
 
 
-def send_message(to: str, subject: str, body: str, case_ref: str, step: str | None = None,
+def send_message(to: str, subject: str, body: str, task_ref: str, step: str | None = None,
                  idempotency_key: str | None = None) -> dict:
     """Send a message to a client or counterparty through the bank's channel. Same key, same message."""
     for m in SENT:
         if idempotency_key and m["idempotency_key"] == idempotency_key:
             return {"message_id": m["message_id"], "replayed": True}
-    mid = f"MSG-{zlib.crc32(f'{case_ref}|{to}|{subject}'.encode()) % 10**7:07d}"
-    SENT.append({"to": to, "subject": subject, "body": body, "case_ref": case_ref, "message_id": mid,
+    mid = f"MSG-{zlib.crc32(f'{task_ref}|{to}|{subject}'.encode()) % 10**7:07d}"
+    SENT.append({"to": to, "subject": subject, "body": body, "task_ref": task_ref, "message_id": mid,
                  "idempotency_key": idempotency_key})
     return {"message_id": mid}
 

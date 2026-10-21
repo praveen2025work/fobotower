@@ -1,4 +1,4 @@
-# Example — a capability: ledger (journal entry) controls. Every manual
+# Example — an agent: ledger (journal entry) controls. Every manual
 # journal of the period is checked by a playbook — segregation of duties,
 # posting outside hours, round amounts, posting to closed periods — and
 # what the playbook cannot settle goes to the model and a controller.
@@ -8,14 +8,14 @@ id: ctl.journal-entry-controls
 name: Journal entry controls
 description: Manual journals checked against ledger controls; exceptions explained and signed off by a financial controller.
 owners: { people: [], role: AOF_LEDGER_CONTROLS_OWNER, four_eyes: true }
-case:
+task:
   label: JE review
   item_label: Journal
   key: [entity, period]
   subject: "{entity} journals · {period}"
   scopes: { entity: entity }
 items:
-  load: { tool: gl.journal_entries, args: { entity: $case.entity, period: $case.period } }
+  load: { tool: gl.journal_entries, args: { entity: $task.entity, period: $task.period } }
   id_field: journal_id
   amount_field: amount
   display: [journal_id, account, amount, posted_by, approved_by, posted_at, source]

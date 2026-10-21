@@ -54,14 +54,14 @@ On screen, each in turn: hours saved; awaiting review and overdue; escalated; hi
 
 ### 4 · 0:39 — Inbox
 
-On screen: the most urgent case, the "at stake" amount, then the **Needs confirmation**
+On screen: the most urgent task, the "at stake" amount, then the **Needs confirmation**
 filter.
 
 > The work is done before he arrives. At six thirty, Agent One Finance opened yesterday's run for every
 > Prime book, matched CATS to MOTIF and classified every break. The inbox puts the most urgent
 > first, shows what is at stake, and filters to what needs his confirmation.
 
-### 5 · 0:58 — A case *(PRIME-MB-04, COB 24 Sept)*
+### 5 · 0:58 — A task *(PRIME-MB-04, COB 24 Sept)*
 
 On screen:
 1. the "Your review" card;
@@ -69,7 +69,7 @@ On screen:
    warning;
 3. "Approved before".
 
-> In a case, the card at the top says exactly what is needed: three groups to decide, one
+> In a task, the card at the top says exactly what is needed: three groups to decide, one
 > needs confirmation, one is a judgement call. This redemption break is back office, so FOBO's
 > playbook says post. But the materiality threshold is not confirmed yet, so Agent One Finance asks for
 > his confirmation instead of assuming. He can also see how this break was approved before.
@@ -90,12 +90,12 @@ decides" with "What you can do".
 > person decides. The card says why in plain words, who owns it, and what the reviewer can do:
 > approve with their own explanation, reject, or send it back to investigate again.
 
-### 8 · 1:54 — Ask about this case *(Rita, Rates controller)*
+### 8 · 1:54 — Ask about this task *(Rita, Rates controller)*
 
 On screen: a question is typed and answered; the answer's byline (which model answered, and
 its audited lookups) is highlighted.
 
-> Controllers can ask questions in plain English. Answers come only from this case's data, and
+> Controllers can ask questions in plain English. Answers come only from this task's data, and
 > every lookup is audited.
 
 ### 9 · 2:06 — Sign-off
@@ -103,7 +103,7 @@ its audited lookups) is highlighted.
 On screen:
 1. the proposals list;
 2. **Approve 2 straightforward**;
-3. the case turns to **Done** ("2 groups signed off by rita; 2 tickets raised for the owning
+3. the task turns to **Done** ("2 groups signed off by rita; 2 tickets raised for the owning
    teams");
 4. the ticket numbers;
 5. **Download Excel**.
@@ -184,7 +184,7 @@ node record-silent.mjs --out /tmp/raw-silent           # 15 clips; ~5 min
 python build-silent.py /tmp/raw-silent agent-one-finance-demo-silent.mp4
 ```
 
-Two scenes open a case of their own:
+Two scenes open a task of their own:
 - Scene 8 opens `RATES-LDN-01`, COB 2026-09-24.
 - Scene 9 opens `RATES-LDN-02`, COB 2026-09-26, and approves it.
 

@@ -1,4 +1,4 @@
-<!-- Read by capabilities/break-investigation-skill.yaml (reasoning.skill_file). Same text as docs/agent-one-finance/fobo-skill/fobo-investigation-skill-v1.0.md; change it here, and an owner approves the new version. -->
+<!-- Read by agents/break-investigation-skill.yaml (reasoning.skill_file). Same text as docs/agent-one-finance/fobo-skill/fobo-investigation-skill-v1.0.md; change it here, and an owner approves the new version. -->
 
 # FOBO Investigation Skill — CATS vs MOTIF
 
@@ -101,7 +101,7 @@ Run all applicable tests. Each maps failure → likely cause → action.
 - **B** — Pull factor applied too early. Event effective later, CATS updated early, artificial PnL generated → **FO issue**.
 - **C** — Redemption correctly reflected. Proceed to BO validation.
 
-### Worked reference case
+### Worked reference task
 
 ```
 Pull factor 1.00 → 0.67
@@ -308,7 +308,7 @@ plausible-sounding number.
 
 ## Appendix A — Worked example
 
-Reference case from the workshops, shown in the required output format.
+Reference task from the workshops, shown in the required output format.
 Reproduce this structure and this level of evidence discipline.
 
 ### 1. Break summary

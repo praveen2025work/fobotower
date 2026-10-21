@@ -6,7 +6,7 @@ import { decide } from './api';
 import { ErrorNote, StatusPill } from './ui';
 
 /** One proposal group: what the run proposes, its priors, and the sign-off. */
-export default function GroupCard({ caseId, group, canDecide, onDecided }) {
+export default function GroupCard({ taskId, group, canDecide, onDecided }) {
   const [comment, setComment] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -16,13 +16,13 @@ export default function GroupCard({ caseId, group, canDecide, onDecided }) {
     setBusy(true);
     setError(null);
     try {
-      const res = await decide(caseId, {
+      const res = await decide(taskId, {
         groupId: group.group_id,
         action,
         comment,
         idempotencyKey: randomId(),
       });
-      onDecided(res.case);
+      onDecided(res.task);
     } catch (err) {
       setError(err);
     } finally {

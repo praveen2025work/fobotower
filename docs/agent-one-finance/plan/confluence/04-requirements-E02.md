@@ -22,7 +22,7 @@
 
 ### E02-S07 Set up the AOF database on AWS (Postgres with pgvector)
 
-As a platform engineer, I want the AOF database on AWS with pgvector, so that AOF can keep its cases, audit trail and knowledge.
+As a platform engineer, I want the AOF database on AWS with pgvector, so that AOF can keep its tasks, audit trail and knowledge.
 
 The AOF database with the pgvector extension.
 
@@ -55,7 +55,7 @@ Its own ECS service from the AOF image (port 8300), health check, database setti
 
 As a FOBO controller, I want the console, orchestrator and database working together on AWS, so that we can see AOF run before the connections arrive.
 
-The console at /agentone/finance, the AOF service and the database working together; a sample case runs on test data.
+The console at /agentone/finance, the AOF service and the database working together; a sample task runs on test data.
 
 | Sprint | Release | Points | Priority | Team | Environment | Status |
 |---|---|---|---|---|---|---|
@@ -63,8 +63,8 @@ The console at /agentone/finance, the AOF service and the database working toget
 
 **Acceptance criteria**
 
-- Given a sample case on test data, when it is opened in the console at /agentone/finance, then it runs and can be reviewed.
-- Done when: A sample case opens, runs and is reviewed on AWS
+- Given a sample task on test data, when it is opened in the console at /agentone/finance, then it runs and can be reviewed.
+- Done when: A sample task opens, runs and is reviewed on AWS
 
 **Blocked by:** E02-S08
 
@@ -162,7 +162,7 @@ Single sign-on, secrets, web address and connections for the AOF service and con
 
 ### E02-S16 Deploy the reviewer console to UAT
 
-As a FOBO controller, I want the reviewer console in UAT, so that I can review cases on screen.
+As a FOBO controller, I want the reviewer console in UAT, so that I can review tasks on screen.
 
 The screens reviewers use, at /agentone/finance behind single sign-on.
 
@@ -223,6 +223,6 @@ Database backups and a tested restore.
 
 **Acceptance criteria**
 
-- Given a backup, when we restore it to UAT, then the cases and audit trail are complete.
+- Given a backup, when we restore it to UAT, then the tasks and audit trail are complete.
 - Done when: Restore tested
 

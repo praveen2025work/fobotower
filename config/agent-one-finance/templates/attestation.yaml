@@ -6,7 +6,7 @@ id: team.close-attestation
 name: Close sign-off and attestation (template)
 description: Check every close control's evidence, explain exceptions, owners attest, publish the attestation.
 owners: { people: [], role: YOUR_OWNER_ROLE, four_eyes: true }
-case:
+task:
   label: Close
   item_label: Control
   key: [entity, period]
@@ -17,7 +17,7 @@ case:
   schedule_keys: [{ entity: YOUR_ENTITY, period: "{prev_month}" }]
   opens_as: YOUR_SERVICE_ACCOUNT
 items:
-  load: { tool: controls.checklist, args: { entity: $case.entity, period: $case.period } }
+  load: { tool: controls.checklist, args: { entity: $task.entity, period: $task.period } }
   id_field: control_id
   display: [control_id, control, owner, status, evidence]
   in_scope: status != 'passed'
@@ -32,8 +32,8 @@ reasoning: { reasoner: none }
 review: { roles: [YOUR_CONTROL_OWNER_ROLE] }
 publish:
   tool: documents.render_pdf_report
-  per: case
-  args: { entity: $case.entity, name: $case_id, title: Close attestation, subtitle: $subject,
+  per: task
+  args: { entity: $task.entity, name: $task_id, title: Close attestation, subtitle: $subject,
           sections: $approved, sign_off: $sign_off }
   approver_roles: [YOUR_FINANCIAL_CONTROLLER_ROLE]
 retention: { days: 2555 }

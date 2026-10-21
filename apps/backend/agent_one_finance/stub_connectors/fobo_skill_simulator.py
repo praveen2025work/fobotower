@@ -8,10 +8,10 @@ answers can later be scored against these (an eval).
 
     AOF_LLM_ADAPTER=agent_one_finance.stub_connectors.fobo_skill_simulator:FoboSkillSimulator
 
-  investigate()  the single-step capability (one session): reads the book status,
+  investigate()  the single-step agent (one session): reads the book status,
                  the break universe, FO and BO components, corporate actions,
                  bond metadata, break history and trades, then decides each break.
-  reason()       the multi-step capability: the playbook already ran; for the
+  reason()       the multi-step agent: the playbook already ran; for the
                  judgement groups it reads the tests on each break and the trades.
 """
 
@@ -31,8 +31,8 @@ def _money(v) -> str:
 class _Session:
     """One session's transcript and tool calls."""
 
-    def __init__(self, tools, case_key: dict):
-        self.tools, self.case_key, self.transcript, self.turn = tools, case_key, [], 0
+    def __init__(self, tools, task_key: dict):
+        self.tools, self.task_key, self.transcript, self.turn = tools, task_key, [], 0
 
     def say(self, text: str) -> None:
         self.turn += 1
@@ -239,7 +239,7 @@ class FoboSkillSimulator(StubLlm):
     name = "fobo-skill-simulator"
 
     async def investigate(self, request, tools):
-        key = request.case_key
+        key = request.task_key
         book, cob = key["book"], key["cob"]
         allowed = set(request.allowed_tools)
         s = _Session(tools, key)
@@ -290,7 +290,7 @@ class FoboSkillSimulator(StubLlm):
     async def reason(self, request, tools):
         """A judgement group in the multi-step setup: the playbook's tests are on
         each break; read the trades for the trade-level step, then recommend."""
-        key = request.case_key
+        key = request.task_key
         items = request.group.get("items", [])
         found = []
         for it in items:

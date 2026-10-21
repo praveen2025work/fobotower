@@ -1,10 +1,10 @@
-# Example team group on the named P&L capability (capability.yaml in this folder).
+# Example team group on the named P&L agent (agent.yaml in this folder).
 # The same rules as ../group.yaml; only the data joined to each break changes:
 # the snapshots of every master book, joined on book and instrument.
 
 group: prime-financing
 name: Prime Financing
-description: The Prime Financing named P&Ls, all master books in one case, checked for price and position continuity and the common causes.
+description: The Prime Financing named P&Ls, all master books in one task, checked for price and position continuity and the common causes.
 owners:
   people: [frank]
   role: AOF_FOBO_RECON_OWNER
@@ -17,7 +17,7 @@ set:
   # can be in several master books, so the join is on book and instrument.
   enrich:
     - tool: motif.break_snapshots_named_pnl
-      args: { named_pnl: $case.named_pnl, cob: $case.cob }
+      args: { named_pnl: $task.named_pnl, cob: $task.cob }
       keys: [book, instrument]
 
   # Rule P1: a threshold Product Control has not confirmed stays empty, and a

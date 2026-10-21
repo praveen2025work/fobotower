@@ -1,6 +1,6 @@
 # Configure it: FOBO on MB Rec's breaks
 
-**Date:** 2026-10-05 · **For:** the capability owner and the FOBO Prime group owner.
+**Date:** 2026-10-05 · **For:** the agent owner and the FOBO Prime group owner.
 
 The rules come from the controllers' FOBO Investigation Skill. How each of its sections maps
 to this configuration: [`../fobo-skill/skill-to-agent-one-finance.md`](../fobo-skill/skill-to-agent-one-finance.md).
@@ -20,14 +20,14 @@ Agent One Finance should do that part, and **never re-match the positions**.
 
 | | |
 |---|---|
-| **Capability** | *Balance Recon Agent* (`break.investigation`). It reads the breaks another system found. |
+| **Agent** | *Balance Recon Agent* (`break.investigation`). It reads the breaks another system found. |
 | **Team group** | *FOBO Prime — MB Rec breaks* (`fobo-prime`). FOBO's playbook, timing rules, tools and reviewers. |
 | **Steps** | read MB Rec's breaks → join snapshots → desk and team as of the COB → playbook (timing first) → group → **tollgate: a controller approves and adds what the desk said** → rules, then the model → draft → validate → review → record |
 
 Use *Helix FOBO Agent* (with `match`) only where no system has reconciled the
 data yet, as for cash bank vs ledger.
 
-Everything below is done in the console, under **Capabilities**. Each change is checked as
+Everything below is done in the console, under **Agents**. Each change is checked as
 you make it, and becomes live when a second owner approves it.
 
 ---
@@ -58,15 +58,15 @@ Two tools:
 
 In dev, both are served by a stub (`agent_one_finance/stub_connectors/finance.py`).
 
-## Step 2 — The capability: read the breaks, stop for a controller
+## Step 2 — The agent: read the breaks, stop for a controller
 
-*Capabilities → Balance Recon Agent → **Configure***. This is done by erin, a capability
+*Agents → Balance Recon Agent → **Configure***. This is done by erin, an agent
 owner.
 
-**Get the items** — choose *One system* and **`mbrec.breaks`**, with `book = $case.book` and
-`cob = $case.cob`. There is no matching step.
+**Get the items** — choose *One system* and **`mbrec.breaks`**, with `book = $task.book` and
+`cob = $task.cob`. There is no matching step.
 
-![Get the items from MB Rec](img/70-breaks-capability-source.png)
+![Get the items from MB Rec](img/70-breaks-agent-source.png)
 
 **Rules, then the model** — tick **Tollgate**:
 
@@ -77,15 +77,15 @@ owner.
 
 The run now waits before the model is asked anything.
 
-![Tollgate before the model](img/71-breaks-capability-tollgate.png)
+![Tollgate before the model](img/71-breaks-agent-tollgate.png)
 
 The rest is set by each team group: the playbook, tools, instructions, reviewers and
-deadline. The capability's *Owners* step lists them under "Team groups may set".
+deadline. The agent's *Owners* step lists them under "Team groups may set".
 
 ## Step 3 — The FOBO Prime group: timing, sources, the desk
 
-*Capabilities → Balance Recon Agent → Groups → FOBO Prime — MB Rec breaks*. This is done by
-frank, a group owner. Settings the capability keeps are shown locked.
+*Agents → Balance Recon Agent → Groups → FOBO Prime — MB Rec breaks*. This is done by
+frank, a group owner. Settings the agent keeps are shown locked.
 
 **Playbook: checks and verdicts.** Timing comes first, because the first positive check is
 the cause:
@@ -114,7 +114,7 @@ still applies: a front-office cause never posts.
   only from the tools.
 - **Specialist:** *booking-events*, which reads the booking events for a break.
 
-**Start: what a case is.** A case **opens when MB Rec posts its end-of-day run** (*Opens: when
+**Start: what a task is.** A task **opens when MB Rec posts its end-of-day run** (*Opens: when
 an event arrives*), not on a fixed schedule, because the breaks exist only once MB Rec has
 reconciled. It is due by 11:00 the business day after the COB.
 
@@ -132,8 +132,8 @@ Then *Review and submit*. Another group owner approves.
    ```bash
    curl -X POST https://aof.internal.example/api/events \
      -H "X-AOF-Event-Secret: $AOF_EVENT_SECRET" -H 'Content-Type: application/json' \
-     -d '{"capability_id": "break.investigation", "team_group": "fobo-prime",
-          "case_key": {"book": "PRIME-MB-04", "cob": "2026-09-30"}}'
+     -d '{"agent_id": "break.investigation", "team_group": "fobo-prime",
+          "task_key": {"book": "PRIME-MB-04", "cob": "2026-09-30"}}'
    ```
 
 2. **Agent One Finance reads the breaks, joins the snapshots, resolves the desk and runs the playbook.**
@@ -141,21 +141,21 @@ Then *Review and submit*. Another group owner approves.
    - **JGB 10Y** was booked after the cut-off and is new: **timing difference**;
    - **EURUSD FWD** has been open 2 COBs: **aged**.
 
-3. **Tollgate.** The case is in the controller's inbox as *Tollgate*. They check the
+3. **Tollgate.** The task is in the controller's inbox as *Tollgate*. They check the
    classification and **add what the desk said**, for example "EURUSD forward was amended on
    26 Sept; MOTIF picked up the old rate". Then they *Approve and continue*, or stop the run
    with a reason.
 
-   ![The tollgate, with the desk's note](img/74-breaks-case-tollgate.png)
+   ![The tollgate, with the desk's note](img/74-breaks-task-tollgate.png)
 
 4. **Rules, then the model.**
    - The timing break is settled by the verdict table: **MONITOR**.
    - The aged break goes to the model. It reads MOTIF's booking events and MB Rec's history,
      **with the desk's note as context**, and proposes an explanation.
    - Validation checks every figure it cites.
-   - The case is escalated to a person, because an aged break is a judgement call.
+   - The task is escalated to a person, because an aged break is a judgement call.
 
-   ![Review: MONITOR settled, aged break with the desk's note](img/75-breaks-case-review.png)
+   ![Review: MONITOR settled, aged break with the desk's note](img/75-breaks-task-review.png)
 
 5. **The controller signs off.** Tickets go to the owning teams, the decisions are recorded,
    and tomorrow's run learns from them.
@@ -164,20 +164,20 @@ Then *Review and submit*. Another group owner approves.
 
 | Situation | How it is configured now | Not yet in Agent One Finance |
 |---|---|---|
-| **Timing difference** | `TIMING` check → category T → **MONITOR**; `AGED` check sends anything open 2+ COBs to a person; *Recurring items* shows a break that keeps coming back; the model reads `mbrec.break_history`. **Follow-through** re-tests every MONITOR on the next COB: cleared shows on the earlier case, and one still open becomes `MONITOR_NOT_CLEARED` → K, for a person | — |
-| **Other sources** | Each source is a connector tool; add it to *Enrich* (joined onto every break) or to the model's tools (read when needed). A controller can attach a file to the case | A source with no MCP server needs one, onboarded once |
-| **Trader provides the info** | The controller writes it in the **tollgate note**, or **asks the desk from the case** (*Questions → Ask for evidence*). The group waits; the trader answers in Agent One Finance (or a Teams/email bot answers for them); the answer goes to the model. See the [walkthrough](fobo-capability-walkthrough.md) | — |
+| **Timing difference** | `TIMING` check → category T → **MONITOR**; `AGED` check sends anything open 2+ COBs to a person; *Recurring items* shows a break that keeps coming back; the model reads `mbrec.break_history`. **Follow-through** re-tests every MONITOR on the next COB: cleared shows on the earlier task, and one still open becomes `MONITOR_NOT_CLEARED` → K, for a person | — |
+| **Other sources** | Each source is a connector tool; add it to *Enrich* (joined onto every break) or to the model's tools (read when needed). A controller can attach a file to the task | A source with no MCP server needs one, onboarded once |
+| **Trader provides the info** | The controller writes it in the **tollgate note**, or **asks the desk from the task** (*Questions → Ask for evidence*). The group waits; the trader answers in Agent One Finance (or a Teams/email bot answers for them); the answer goes to the model. See the [walkthrough](fobo-agent-walkthrough.md) | — |
 
 ## The same as files
 
 | What | File |
 |---|---|
-| The capability | `config/agent-one-finance/capabilities/break-investigation.yaml` |
+| The agent | `config/agent-one-finance/agents/break-investigation.yaml` |
 | The FOBO Prime group | `config/agent-one-finance/groups/break.investigation/fobo-prime.yaml` |
 | The connector | `config/agent-one-finance/connectors.yaml` (`mbrec`) |
 | Behaviour tests | `apps/backend/tests/agent_one_finance/test_break_investigation.py` |
 
 To bring changed files into a running deployment, run `python -m agent_one_finance.config_sync`, then
-approve the drafts. New capabilities and groups arrive as version 1 drafts.
+approve the drafts. New agents and groups arrive as version 1 drafts.
 
 Rates is the second group, configured the same way: `groups/break.investigation/fobo-rates.yaml`.

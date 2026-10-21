@@ -16,10 +16,10 @@ The plug points for the office environment are here, all optional:
                            set it and requests without it are refused
   AOF_ENTITLEMENT_WEBHOOK_SECRET  enables POST /api/entitlements/invalidate
   AOF_ENTITLEMENT_TTL_SECONDS     how long entitlements are cached (60)
-  AOF_RUN_MODE           background (default) | inline — where case runs happen
+  AOF_RUN_MODE           background (default) | inline — where task runs happen
   AOF_SCHEDULER          on | off — the schedule loop (on when runs are in the background)
   AOF_SCHEDULE_TZ        the time zone schedules are read in (UTC)
-  AOF_EVENT_SECRET       enables POST /api/events (other systems open cases)
+  AOF_EVENT_SECRET       enables POST /api/events (other systems open tasks)
   AOF_ADMIN_ROLE         platform support role: switches connectors off/on (AOF_PLATFORM_ADMIN)
   AOF_ENV_NAME           dev | uat | prod … — named on exported versions
   AOF_PROMOTION_KEY      signs exported versions; imports must carry a valid signature
@@ -115,14 +115,14 @@ def settings() -> AofSettings:
         proxy_secret_header=env("AOF_PROXY_SECRET_HEADER") or "X-AOF-Proxy-Secret",
         # The entitlements service calls /api/entitlements/invalidate with it.
         entitlement_webhook_secret=env("AOF_ENTITLEMENT_WEBHOOK_SECRET") or None,
-        # background: case runs leave the request path; inline: they finish first.
+        # background: task runs leave the request path; inline: they finish first.
         run_mode=env("AOF_RUN_MODE") or "background",
         # Background runs going at once; the rest wait their turn (a feed can open a task
         # for each of 1,000+ books in a minute). Each run holds a database connection.
         max_runs=int(env("AOF_MAX_RUNS") or 4),
         # The schedule loop runs in the API (on by default when runs are in the background).
         scheduler=(env("AOF_SCHEDULER") or ("on" if (env("AOF_RUN_MODE") or "background") == "background" else "off")) == "on",
-        # Other systems open cases with POST /api/events, sending this secret.
+        # Other systems open tasks with POST /api/events, sending this secret.
         event_secret=env("AOF_EVENT_SECRET") or None,
         # Platform support: may switch connectors (and anything else) off and on.
         admin_role=env("AOF_ADMIN_ROLE") or "AOF_PLATFORM_ADMIN",

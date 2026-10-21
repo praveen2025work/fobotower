@@ -43,7 +43,7 @@ class FakeModel:
 
 async def _cite_first_journal(mcp, prompt):
     account = prompt["group"]["group_key"]["account"]
-    res = await mcp.call_tool("gl_journal_lines", {**prompt["case"], "account": account})
+    res = await mcp.call_tool("gl_journal_lines", {**prompt["task"], "account": account})
     lines = json.loads(res.content[0].text)["rows"]
     top = max(lines, key=lambda r: r["amount"])
     return _result({"status": "proposed",
@@ -51,7 +51,7 @@ async def _cite_first_journal(mcp, prompt):
 
 
 async def _open(api):
-    res = await api.post(f"/api/capabilities/{VARIANCE}/cases", json={"case_key": KEY},
+    res = await api.post(f"/api/agents/{VARIANCE}/tasks", json={"task_key": KEY},
                          headers=api.as_user("alice"))
     assert res.status_code == 201, res.text
     return res.json()
@@ -63,7 +63,7 @@ async def test_the_agent_gets_only_the_capabilitys_tools_and_aof_rules():
     from agent_one_finance.llm import ReasonRequest
 
     request = ReasonRequest(
-        capability_id=VARIANCE, case_id="c1", case_key=KEY, skill="Explain variances.",
+        agent_id=VARIANCE, task_id="c1", task_key=KEY, skill="Explain variances.",
         group={"group_id": "6100", "label": "account 6100", "group_key": {"account": "6100"},
                "total": 1.0, "count": 1, "items": [], "priors": []},
         allowed_tools=["gl.journal_lines", "budget.plan_lines"], output="commentary")
@@ -82,26 +82,26 @@ async def test_the_agent_gets_only_the_capabilitys_tools_and_aof_rules():
 async def test_model_tool_calls_go_through_the_gateway_and_its_figures_are_validated(api):
     fake = FakeModel(_cite_first_journal)
     llm._adapter = ClaudeAgentSdkAdapter(query_fn=fake)
-    case = await _open(api)
+    task = await _open(api)
 
-    assert {g["finding"]["status"] for g in case["groups"]} == {"proposed"}
-    finding = case["groups"][0]["finding"]
+    assert {g["finding"]["status"] for g in task["groups"]} == {"proposed"}
+    finding = task["groups"][0]["finding"]
     assert finding["decided_by"] == "llm:agent-sdk"
     assert finding["usage"]["cost_usd"] == 0.0123 and finding["usage"]["turns"] == 3
-    model_calls = [c for c in case["tool_calls"] if c["requested_by"] == "llm"]
+    model_calls = [c for c in task["tool_calls"] if c["requested_by"] == "llm"]
     assert model_calls and all(c["tool"] == "gl.journal_lines" and c["allowed"] for c in model_calls)
-    # the prompt carried the group, its items and the case key — nothing else
+    # the prompt carried the group, its items and the task key — nothing else
     sent = fake.calls[0]["prompt"]
-    assert sent["case"] == KEY and sent["items"] and "group_key" in sent["group"]
+    assert sent["task"] == KEY and sent["items"] and "group_key" in sent["group"]
 
 
 async def test_an_invented_figure_from_the_model_is_escalated(api):
     async def invent(mcp, prompt):
         return _result({"status": "proposed", "comment": "Driven by a 4,444,444.44 accrual."})
     llm._adapter = ClaudeAgentSdkAdapter(query_fn=FakeModel(invent))
-    case = await _open(api)
+    task = await _open(api)
     assert all(g["finding"]["reason"].startswith("UNGROUNDED_FIGURE: 4,444,444.44")
-               for g in case["groups"])
+               for g in task["groups"])
 
 
 async def test_data_outside_the_callers_scope_is_refused_to_the_model(api):
@@ -114,20 +114,20 @@ async def test_data_outside_the_callers_scope_is_refused_to_the_model(api):
         return _result({"status": "escalated", "comment": "", "reason": "no evidence"})
 
     llm._adapter = ClaudeAgentSdkAdapter(query_fn=FakeModel(snoop))
-    case = await _open(api)
+    task = await _open(api)
     assert seen["error"] is True and "not entitled to entity=US01" in seen["text"]
-    refused = [c for c in case["tool_calls"] if not c["allowed"]]
+    refused = [c for c in task["tool_calls"] if not c["allowed"]]
     assert refused and refused[0]["requested_by"] == "llm"
-    assert {g["finding"]["status"] for g in case["groups"]} == {"escalated"}
+    assert {g["finding"]["status"] for g in task["groups"]} == {"escalated"}
 
 
 async def test_an_agent_error_escalates_the_group(api):
     async def fail(mcp, prompt):
         return _result(None, is_error=True, errors=["overloaded"])
     llm._adapter = ClaudeAgentSdkAdapter(query_fn=FakeModel(fail))
-    case = await _open(api)
+    task = await _open(api)
     assert all("REASONER_ERROR" in g["finding"]["reason"] and "overloaded" in g["finding"]["reason"]
-               for g in case["groups"])
+               for g in task["groups"])
 
 
 async def test_selected_by_configuration(monkeypatch):

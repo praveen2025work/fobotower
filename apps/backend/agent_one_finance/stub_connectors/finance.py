@@ -5,7 +5,7 @@ entry in config/agent-one-finance/connectors.yaml from `transport: inproc` to
 `transport: http` with the connector's URL. Nothing else changes.
 
 Data is generated deterministically from the arguments, so every run of the
-same case sees the same figures.
+same task sees the same figures.
 
 Serve one over HTTP, e.g. to try the http transport:
     python -m agent_one_finance.stub_connectors.finance gl --port 9101
@@ -623,10 +623,10 @@ def mbrec_breaks_all(cob: str) -> dict:
                      for book in PRIME_BOOKS + RATES_BOOKS for b in _open_breaks(book, cob)]}
 
 
-# ---------- Named P&L: several master books worked as one case ----------
+# ---------- Named P&L: several master books worked as one task ----------
 # A named P&L groups master books (the books MB Rec reconciles). These tools
 # return every master book's rows in one call, each row naming its book, so a
-# case keyed by named P&L and COB reads them the way a case per book does.
+# task keyed by named P&L and COB reads them the way a task per book does.
 
 NAMED_PNLS = {
     "PRIME-FINANCING-EMEA": ["PRIME-MB-01", "PRIME-MB-02", "PRIME-MB-03"],

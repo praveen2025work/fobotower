@@ -11,17 +11,17 @@ work**.
 
 | The office platform gives | Agent One Finance adds on top |
 |---|---|
-| MCP servers (bank systems, RAG, data explorer) | An allow-list per capability, data-scope checks per call, an audit row and a trace per call, masking and pseudonyms between bank data and the model |
-| Plugins (skills, subagents, hooks, MCP bundles) | Skills attached to a capability or a team group, versioned, with four-eyes approval |
-| The Agent SDK (model loop) | Cases, items, proposal groups, rules before the model, figure grounding, human review gates, write-back only after a second person releases it |
-| Phoenix (traces) | One trace per case run, plus `session.id` = case id, so a reviewer can jump from a case to its trace |
+| MCP servers (bank systems, RAG, data explorer) | An allow-list per agent, data-scope checks per call, an audit row and a trace per call, masking and pseudonyms between bank data and the model |
+| Plugins (skills, subagents, hooks, MCP bundles) | Skills attached to an agent or a team group, versioned, with four-eyes approval |
+| The Agent SDK (model loop) | Tasks, items, proposal groups, rules before the model, figure grounding, human review gates, write-back only after a second person releases it |
+| Phoenix (traces) | One trace per task run, plus `session.id` = task id, so a reviewer can jump from a task to its trace |
 
 **How to inherit, not copy:**
 
 - **An office MCP server** (including RAG and the data explorer) is onboarded as an Agent One Finance
   connector: one entry in `config/agent-one-finance/connectors.yaml` with `transport: http` and its URL. It is
-  then available to every capability, through the gateway. No code is needed.
-- **An office plugin's skills** become a capability's or group's `reasoning.skill`.
+  then available to every agent, through the gateway. No code is needed.
+- **An office plugin's skills** become an agent's or group's `reasoning.skill`.
 - **An office plugin's MCP servers** are onboarded as connectors, as above. They are not loaded
   straight into the Agent SDK: a tool the model reaches outside the gateway escapes the
   allow-list, the scope check and the audit. The adapter keeps `strict_mcp_config` for this reason.
@@ -30,12 +30,12 @@ work**.
 
 ## 2. Are we still using LangGraph and the knowledge graph? Yes
 
-**LangGraph runs every case:**
+**LangGraph runs every task:**
 
-- each capability's `steps` list becomes a `StateGraph`;
+- each agent's `steps` list becomes a `StateGraph`;
 - state is checkpointed in Postgres (`AsyncPostgresSaver`), so a run survives a restart and
   resumes where it stopped;
-- `interrupt_before` gives the review and publish gates, so a case waits days for people without
+- `interrupt_before` gives the review and publish gates, so a task waits days for people without
   holding a process.
 
 **The knowledge graph** (`aof_kg_node` / `aof_kg_edge`, bitemporal):
@@ -58,7 +58,7 @@ and is onboarded like any connector:
 | `read_workbook` | read | Rows of a sheet keyed by its header row (openpyxl) |
 | `render_pdf_report` | **write** | A PDF report with sections, tables and a sign-off block (reportlab). Publish step only, after release |
 
-**Report validation** (`config/agent-one-finance/capabilities/report-validation.yaml`) is the slide's
+**Report validation** (`config/agent-one-finance/agents/report-validation.yaml`) is the slide's
 "Report Validation" use case, built from configuration only:
 
 1. Match the management report (Excel) to `gl.balances` on account × cost centre.
@@ -67,16 +67,16 @@ and is onboarded like any connector:
 4. A preparer signs off.
 5. A reviewer who did not sign off releases it.
 6. One PDF validation report is written, with the evidence tables and the sign-off.
-7. The case workspace offers it as a download, only to people who can see the case.
+7. The task workspace offers it as a download, only to people who can see the task.
 
-`publish.per: case` (new) makes one write per case instead of one per group. It comes with the
-tokens `$approved`, `$sign_off`, `$case_id` and `$subject`.
+`publish.per: task` (new) makes one write per task instead of one per group. It comes with the
+tokens `$approved`, `$sign_off`, `$task_id` and `$subject`.
 
 **Next for documents:**
 
 - Word in and out (python-docx);
 - Excel out (an evidence workbook);
-- upload into a case from the workspace;
+- upload into a task from the workspace;
 - OCR for scanned PDFs;
 - tables from PDFs (pdfplumber);
 - swapping the folder for the office document store's API (same tools, same arguments).
@@ -90,40 +90,40 @@ reuse map), **web** = a current technique, **new** = neither.
 
 | Feature | Why | From |
 |---|---|---|
-| **Ask about a case** (chat scoped to one case, answered through the gateway, cites tool calls) | "Why is 6300 different?" without reading every row | aria chat/* |
+| **Ask about a task** (chat scoped to one task, answered through the gateway, cites tool calls) | "Why is 6300 different?" without reading every row | aria chat/* |
 | **Bulk decide** with a required comment for escalated groups | 200 rounding breaks are one click; escalations still need words | new |
-| **Scheduled and event-triggered cases** (COB, month-end, file arrived) | Cases open themselves; people only review | aria scheduling |
-| **Case run history / replay** step by step from the checkpoints | "What did the model see on Tuesday?" | aria history/* + LangGraph time travel |
-| **Attach evidence** (upload PDF/Excel into a case → documents service) | The business's support lives with the decision | new |
+| **Scheduled and event-triggered tasks** (COB, month-end, file arrived) | Tasks open themselves; people only review | aria scheduling |
+| **Task run history / replay** step by step from the checkpoints | "What did the model see on Tuesday?" | aria history/* + LangGraph time travel |
+| **Attach evidence** (upload PDF/Excel into a task → documents service) | The business's support lives with the decision | new |
 | **Notifications** (Teams / email: waiting on you, released, failed) | Nobody polls an inbox | new |
 | **Ageing and SLA** on open groups | Controllers chase what is late | aria watchtower |
 
-### Developers — capability owners, group owners, the Agent One Finance team
+### Developers — agent owners, group owners, the Agent One Finance team
 
 | Feature | Why | From |
 |---|---|---|
 | **Eval sets from approved decisions**, scored in Phoenix (LLM-as-judge plus the grounding check) | A skill or model change is measured before it goes live | aria evals + web |
-| **Shadow runs**: a draft capability or group version re-runs last month's cases and diffs the outcomes | Safe change, evidence for the approver | new |
+| **Shadow runs**: a draft agent or group version re-runs last month's tasks and diffs the outcomes | Safe change, evidence for the approver | new |
 | **Skill editor with revisions**, **manifest diff** between versions | Owners review what changes, not YAML | aria plugin/* |
-| **Workflow graph view** (steps, gates, tools, people) | One picture of a capability | aria workflow/* (React Flow) |
-| **Capability templates** (recon, commentary, validation, attestation) | New use cases start from a working shape | aria AgentTemplates |
+| **Workflow graph view** (steps, gates, tools, people) | One picture of an agent | aria workflow/* (React Flow) |
+| **Agent templates** (recon, commentary, validation, attestation) | New use cases start from a working shape | aria AgentTemplates |
 | **Promotion across environments** (dev → UAT → prod) with the same four-eyes | Change control the bank already expects | aria LifecycleManager |
 
 ### Run-the-bank — support, operations, control
 
 | Feature | Why | From |
 |---|---|---|
-| **Cost and token budgets** per capability / group, with a cut-off | No surprise model spend | aria CostAnalytics |
-| **Kill switch** per capability, group or connector | Stop one thing without a deploy | new |
+| **Cost and token budgets** per agent / group, with a cut-off | No surprise model spend | aria CostAnalytics |
+| **Kill switch** per agent, group or connector | Stop one thing without a deploy | new |
 | **Evidence pack export** (who approved what, refusals, masking in force) as a PDF via the documents service | Audit and SOX requests in minutes | aria SecurityCompliance + documents |
 | **Connector SLOs and alerts** from the live probes and audit latencies | Know before users do | aria SystemStatus |
-| **Retention and legal hold** on cases, tool results and documents | Records policy | new |
+| **Retention and legal hold** on tasks, tool results and documents | Records policy | new |
 
 ### Techniques to adopt (current, mid-2026)
 
 - **Parallel reasoning across groups.** LangGraph runs eligible nodes in parallel per super-step,
   and `Send` fans out one task per proposal group. LangGraph 1.2's deferred nodes make "aggregate
-  once all groups are done" a one-liner. This speeds up large cases.
+  once all groups are done" a one-liner. This speeds up large tasks.
 - **Durable human-in-the-loop.** Already in use (`interrupt_before` plus Postgres checkpoints).
   Next is time-travel replay of a run for support.
 - **The MCP 2026-07-28 specification.** The protocol is now stateless:
@@ -133,11 +133,11 @@ reuse map), **web** = a current technique, **new** = neither.
   - hardened authorization;
   - formal extensions;
   - MCP Apps, UI templates rendered in a sandbox, so a connector can bring its own view into the
-    case workspace.
+    task workspace.
 
   Agent One Finance's MCP SDK (2.3) already speaks this version.
 - **Agent SDK subagents and hooks.** A subagent per specialist (FX, accruals, booking events)
-  under one case. PreToolUse hooks enforce the gateway's policy inside the model loop too.
+  under one task. PreToolUse hooks enforce the gateway's policy inside the model loop too.
 - **Knowledge graph plus vectors (GraphRAG).** Widen the graph to entities (account,
   counterparty, instrument, book) and evidence edges, then retrieve priors by graph neighbourhood
   plus pgvector similarity rather than by exact subject.
@@ -148,18 +148,18 @@ reuse map), **web** = a current technique, **new** = neither.
 
 The platform gaps found in review, and FOBO's behaviour, are now in Agent One Finance:
 
-- **Case runs**: off the request path, with recovery after a restart. Failed or escalated cases
+- **Task runs**: off the request path, with recovery after a restart. Failed or escalated tasks
   can be re-run as new attempts.
 - **Review**: required comments, optional maker-checker, dual review over a threshold, bulk
   decide, and "investigate again" with a note.
 - **Write-backs**: idempotency keys and retry of a part-failed publish. Reports are kept in the
   shared database.
-- **Security**: a trusted-proxy secret, an entitlement revocation webhook, a 60s cache, and case
+- **Security**: a trusted-proxy secret, an entitlement revocation webhook, a 60s cache, and task
   visibility filtered in SQL with paging.
 - **Knowledge graph**: entities, priors by shared entities, bitemporal reference lineage and the
   `resolve` step.
 - **Retention** with legal hold, and **config-sync** for config changes through four-eyes.
-- **Ask about a case** (grounded, audited, protected) and **run history** from checkpoints.
+- **Ask about a task** (grounded, audited, protected) and **run history** from checkpoints.
 - **FOBO's playbook** as configuration: `enrich`, `classify` (C1–C6), categories, the verdict
   table, the R2 guard, P1 confirmation and escalation teams. See
   [`fobo-on-agent-one-finance.md`](fobo-on-agent-one-finance.md).
@@ -168,7 +168,7 @@ The platform gaps found in review, and FOBO's behaviour, are now in Agent One Fi
 
 Then, in a second round:
 - **For users:** notifications (bell plus Teams/Power Automate webhook), scheduled and
-  event-opened cases, and evidence upload into a case.
+  event-opened tasks, and evidence upload into a task.
 - **For trust:** an evidence-pack PDF; eval sets and shadow runs scored in Phoenix; cost limits
   and off switches.
 - **For scale:** parallel group reasoning and specialist subagents.
@@ -183,10 +183,10 @@ Earlier list, kept for the record — still open from it:
 ## 5. Suggested order
 
 1. **Users first:**
-   - ask about a case;
+   - ask about a task;
    - bulk decide with required comments for escalations;
-   - scheduled cases;
-   - evidence upload into a case.
+   - scheduled tasks;
+   - evidence upload into a task.
 2. **Trust:**
    - eval sets and shadow runs in Phoenix;
    - the evidence pack PDF;

@@ -16,9 +16,9 @@ An office deployment that was set up under the old names changes the items below
 | Entitlement lookup | `?app=helix` | `?app=aof` |
 | Scheduler user | `helix-scheduler` | `aof-scheduler` |
 | Database tables | `helix_*` (and their indexes, constraints, sequences) | `aof_*` |
-| Workflow checkpoints | thread ids `helix:<case id>` | `aof:<case id>` |
+| Workflow checkpoints | thread ids `helix:<task id>` | `aof:<task id>` |
 | Model tools | MCP server `helix` (`mcp__helix__…`) | `aof` (`mcp__aof__…`) |
-| Trace attributes | `helix.case_id`, `helix.allowed`, … | `aof.case_id`, `aof.allowed`, … |
+| Trace attributes | `helix.task_id`, `helix.allowed`, … | `aof.task_id`, `aof.allowed`, … |
 | Browser storage | `helix.user`, `helix.theme` | `aof.user`, `aof.theme` (users pick their user and theme once more) |
 
 ## Order of the release
@@ -28,7 +28,7 @@ An office deployment that was set up under the old names changes the items below
 2. Deploy the new build.
 3. Run `alembic upgrade head`. Migration `e7f9a1b3c5d7` renames the tables, indexes,
    constraints and sequences, moves stored role names and the scheduler user to the new names,
-   and re-keys the workflow checkpoints, so open cases carry on. `alembic downgrade -1` reverses it.
+   and re-keys the workflow checkpoints, so open tasks carry on. `alembic downgrade -1` reverses it.
 4. Run `python -m agent_one_finance.config_sync` if configuration files changed, and approve the
    drafts as a second owner.
 

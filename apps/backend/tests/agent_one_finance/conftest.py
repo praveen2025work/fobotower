@@ -5,7 +5,7 @@ They run against their own database, AOF_TEST_DATABASE_URL (default
 postgresql+asyncpg://fobo:fobo@localhost:5433/fobo_test), created if missing, with pgvector.
 Every table is emptied before each test, so the tests refuse to run against a database whose
 name does not end in "_test". These fixtures create the aof_* tables, empty them before each
-test, and seed the capabilities from config/agent-one-finance."""
+test, and seed the agents from config/agent-one-finance."""
 
 import os
 
@@ -13,7 +13,7 @@ TEST_DATABASE_URL = (os.getenv("AOF_TEST_DATABASE_URL") or os.getenv("FOBO_TEST_
                      or "postgresql+asyncpg://fobo:fobo@localhost:5433/fobo_test")
 # Set before AOF is imported: the database engine is built at import time.
 os.environ["AOF_DATABASE_URL"] = TEST_DATABASE_URL
-os.environ.setdefault("AOF_RUN_MODE", "inline")  # case runs finish before the call returns
+os.environ.setdefault("AOF_RUN_MODE", "inline")  # task runs finish before the call returns
 
 import asyncpg  # noqa: E402
 import pytest  # noqa: E402
@@ -24,7 +24,7 @@ from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from sqlalchemy import text
 
-from agent_one_finance import capabilities, knowledge, llm
+from agent_one_finance import agents, knowledge, llm
 from agent_one_finance import groups as team_groups
 from agent_one_finance.db import AofBase, engine, get_session
 from agent_one_finance.models import AOF_TABLES
@@ -34,7 +34,7 @@ if not (engine.url.database or "").endswith("_test"):
     pytest.exit(f"refusing to run the AOF tests against database {engine.url.database!r}: its tables are emptied. "
                 "Point AOF_TEST_DATABASE_URL at a database whose name ends in _test.", returncode=2)
 
-# LangGraph owns these and creates them lazily. A stale checkpoint makes a case think it
+# LangGraph owns these and creates them lazily. A stale checkpoint makes a task think it
 # already ran, so they are emptied before each test.
 CHECKPOINT_TABLES = ["checkpoints", "checkpoint_blobs", "checkpoint_writes"]
 
@@ -76,7 +76,7 @@ async def aof_clean(aof_schema):
                                  f"TRUNCATE {name} CASCADE; END IF; END $$;"))
         await s.execute(text(f"TRUNCATE {', '.join(AOF_TABLES)} CASCADE"))
         await s.commit()
-    await capabilities.seed()
+    await agents.seed()
     await team_groups.seed()
     await knowledge.seed_reference()
     llm._adapter = None  # each test picks its own LLM adapter

@@ -3,8 +3,8 @@
 **Date:** 2026-10-08
 
 The simplest way to put a team's skill on Agent One Finance. An event (or a schedule, or a person)
-opens a case; **one step**, `agent`, gives the model the skill, the case key and the tools the
-capability allows, in **one session**. The model reads the data it needs itself, through the MCP
+opens a task; **one step**, `agent`, gives the model the skill, the task key and the tools the
+agent allows, in **one session**. The model reads the data it needs itself, through the MCP
 gateway, and returns one result per item it investigated (for FOBO, per break).
 
 Use it on day one, before any rule is written, or for a team that wants its skill run unchanged.
@@ -13,11 +13,11 @@ time (see *Compared with rules and the model* below).
 
 ## The whole configuration
 
-`config/agent-one-finance/capabilities/break-investigation-skill.yaml` (FOBO):
+`config/agent-one-finance/agents/break-investigation-skill.yaml` (FOBO):
 
 ```yaml
 id: break.investigation.skill
-case:
+task:
   key: [book, cob]
   scopes: { book: book }
   opens_on: event
@@ -40,12 +40,12 @@ review:
   roles: [FOBO_CONTROLLER]
 ```
 
-MB Rec chooses the capability in its event:
+MB Rec chooses the agent in its event:
 
 ```http
 POST /api/events
 X-AOF-Event-Secret: …
-{"capability_id": "break.investigation.skill", "case_key": {"book": "PRIME-MB-04", "cob": "2026-09-24"}}
+{"agent_id": "break.investigation.skill", "task_key": {"book": "PRIME-MB-04", "cob": "2026-09-24"}}
 ```
 
 So one book can run as a skill session and another on the rules-and-model setup
@@ -53,7 +53,7 @@ So one book can run as a skill session and another on the rules-and-model setup
 
 ## What happens in a run
 
-1. **The event opens the case** for the book and COB, as the capability's service user.
+1. **The event opens the task** for the book and COB, as the agent's service user.
 2. **`agent`: one session.** The system prompt is the skill plus the platform's rules: use only these
    tools, cite only figures from them, give a verdict from the list, escalate when the evidence
    does not support a conclusion. The model calls the tools as the skill says (MB Rec's breaks,
@@ -70,17 +70,17 @@ So one book can run as a skill session and another on the rules-and-model setup
 
 ## Seeing the session
 
-The case's **Model session** tab shows the conversation turn by turn: the prompt Agent One Finance
+The task's **Model session** tab shows the conversation turn by turn: the prompt Agent One Finance
 sent, what the model wrote, every tool it called and with which arguments, how many rows came back
 (or a refusal), and its final answer, with the model, session id, turns and cost. Every tool call
-there is also an audit row under *Data used*. **Ask about this case** lets the controller keep
-questioning the case afterwards, with the same skill and tools.
+there is also an audit row under *Data used*. **Ask about this task** lets the controller keep
+questioning the task afterwards, with the same skill and tools.
 
 ## The skill file
 
 `reasoning.skill_file` is a path under the config folder (`config/agent-one-finance/`); paths outside it
-are refused. The file is read when the capability is loaded or synced, and its **text is stored in
-the version**: every case keeps the exact skill it ran with, and a change to the file becomes a new
+are refused. The file is read when the agent is loaded or synced, and its **text is stored in
+the version**: every task keeps the exact skill it ran with, and a change to the file becomes a new
 draft that a second owner approves (`python -m agent_one_finance.config_sync`). Editing the
 instructions in the console replaces the file's text and drops `skill_file`.
 
@@ -102,16 +102,16 @@ The skill should say which tools to call for what; the tool names and descriptio
 | `reasoning.sections` | The answer in parts; a required one missing sends the result to a person. |
 | `reasoning.specialists` | Subagents the session may hand work to. |
 | `reasoning.max_turns` | The session's turn limit (default `AOF_LLM_SESSION_MAX_TURNS`, 40). |
-| `limits` | Spend per case and per day; over the limit the case goes to a person without a model call. |
+| `limits` | Spend per task and per day; over the limit the task goes to a person without a model call. |
 
 ## Model adapters
 
 | Adapter | In a session |
 |---|---|
-| `agent_sdk` (Claude Agent SDK) | One `query()` for the case, with the gateway-backed MCP tools and a structured result (`summary`, `results[]`). |
-| `stub` | Reads every tool it can fill from the case key; one result per row of the first that returns items; the first verdict offered. For demos and tests. |
-| An office adapter with only `reason()` | Still works: the whole case is one group, decided as one. Add `investigate(request, tools)` for per-item results. |
-| `none` | The case goes to a person. |
+| `agent_sdk` (Claude Agent SDK) | One `query()` for the task, with the gateway-backed MCP tools and a structured result (`summary`, `results[]`). |
+| `stub` | Reads every tool it can fill from the task key; one result per row of the first that returns items; the first verdict offered. For demos and tests. |
+| An office adapter with only `reason()` | Still works: the whole task is one group, decided as one. Add `investigate(request, tools)` for per-item results. |
+| `none` | The task goes to a person. |
 
 ## Compared with rules and the model
 
@@ -120,7 +120,7 @@ The skill should say which tools to call for what; the tool names and descriptio
 | Set up | The skill file and a tool list | The skill turned into checks, tests, categories and a verdict table |
 | Same data, same answer | No: the model's answer can vary | Yes, for everything the rules settle |
 | Safety rules (an FO cause never posts, no invented thresholds) | In the skill's words only | In code, after the table and after the model |
-| Model calls | Every case, the whole book | Only judgement groups |
+| Model calls | Every task, the whole book | Only judgement groups |
 | Figures checked, a person decides, audit | Yes | Yes |
 | Large books | One session; very large books need a higher turn limit or `group_by` | No limit from the model |
 
@@ -134,7 +134,7 @@ Code: `steps.agent` (`agent_one_finance/steps.py`), `SessionRequest` and `run_se
 ## Simulation: your skill, both ways
 
 `docs/agent-one-finance/demo/fobo-skill-simulation.html` runs one data set built around the FOBO
-Investigation Skill v1.0 through this capability (one step) and through `break.investigation` with
+Investigation Skill v1.0 through this agent (one step) and through `break.investigation` with
 `fobo-prime` (many steps), and compares each break with the answer the skill gives when followed exactly.
 
 - **Data**: books `PRIME-SIM-01` (eight breaks, one per skill path: FO-6 finding A, FO-2, BO-6

@@ -1,7 +1,7 @@
-// "Prepare the data": the capability's configurable steps (steps v2) — add one
+// "Prepare the data": the agent's configurable steps (steps v2) — add one
 // of the generic types, set it up with a form, run it only `when` something
 // holds, put it in order, remove it. Each is checked by the server like any
-// other setting; team groups may change the settings their capability allows.
+// other setting; team groups may change the settings their agent allows.
 
 import { useState } from "react";
 import clsx from "clsx";
@@ -25,10 +25,10 @@ export const DATA_TYPES: StepTypeInfo[] = [
   { type: "transform", family: "Data", label: "Team logic (tool)", says: "Sends the items to the team's own tool and uses what it returns — for logic expressions cannot hold.", empty: { tool: "", args: {}, send: [], returns: "fields" } },
   // accounting actions
   { type: "recompute", family: "Accounting", label: "Recompute and compare", says: "Recalculates a figure (fees, interest, accruals) by formula or the team's tool and compares it with what was booked.", empty: { formula: "", compare_to: "", as: "recomputed", tolerance: 0.01 } },
-  { type: "schedule", family: "Accounting", label: "Schedule over periods", says: "Spreads each item's amount over periods (prepayments, accrual release) into a data set.", empty: { amount: "amount", periods: 12, start: "$case.period", into: "schedule" } },
+  { type: "schedule", family: "Accounting", label: "Schedule over periods", says: "Spreads each item's amount over periods (prepayments, accrual release) into a data set.", empty: { amount: "amount", periods: 12, start: "$task.period", into: "schedule" } },
   { type: "period_check", family: "Accounting", label: "Period open?", says: "Stops the run, to a person, if the accounting period is closed for the entity.", empty: { tool: "", args: {}, status_field: "status", open_values: ["open"] } },
   { type: "propose_entries", family: "Accounting", label: "Journal entries", says: "Drafts balanced journals for the groups that need them; an unbalanced entry or unknown account is caught first.", place: "groups",
-    empty: { when: "status == 'proposed'", period: "$case.period", chart: null, lines: [{ account: "{account}", side: "debit", amount: "abs(total)", narrative: "{label}" }, { account: "", side: "credit", amount: "abs(total)", narrative: "{label}" }] } },
+    empty: { when: "status == 'proposed'", period: "$task.period", chart: null, lines: [{ account: "{account}", side: "debit", amount: "abs(total)", narrative: "{label}" }, { account: "", side: "credit", amount: "abs(total)", narrative: "{label}" }] } },
   { type: "post", family: "Accounting", label: "Post journals", says: "Posts the approved journals to the ledger after a second person releases them — the ledger's own check first; each journal once.", place: "after_record", person: true,
     empty: { tool: "", dry_run_tool: null, args: {}, approver_roles: [] } },
   // assurance
@@ -49,10 +49,10 @@ export const DATA_TYPES: StepTypeInfo[] = [
   { type: "benford", family: "Algorithms", label: "Benford and round amounts", says: "First-digit test against Benford's law (Nigrini's bands) and round-amount flags, for journal and payment controls.", empty: { field: "amount", min_items: 100, round_to: 1000, as: "benford" } },
   // orchestration
   { type: "await", family: "Orchestration", label: "Wait for an event", says: "The run waits for an event (a reply, a confirmation) or for its child tasks, with a timeout.", empty: { event: "", timeout_hours: 24, on_timeout: "escalate", roles: [] } },
-  { type: "spawn", family: "Orchestration", label: "Child tasks", says: "Opens a child task per item in another agent; a later wait for `children` rolls them up.", empty: { capability: "", key: {}, max_children: 200 } },
+  { type: "spawn", family: "Orchestration", label: "Child tasks", says: "Opens a child task per item in another agent; a later wait for `children` rolls them up.", empty: { agent: "", key: {}, max_children: 200 } },
   { type: "compose", family: "Orchestration", label: "Draft a message", says: "Drafts each group's outbound message for the reviewer; sent only by an approved outreach step.", place: "groups",
     empty: { when: "status == 'proposed'", to: "", subject: "", body: "" } },
-  { type: "report", family: "Orchestration", label: "Report", says: "Writes the task's report (configuration, findings, decisions, data used) as a PDF kept with the task.", place: "after_record", empty: { name: "case-report" } },
+  { type: "report", family: "Orchestration", label: "Report", says: "Writes the task's report (configuration, findings, decisions, data used) as a PDF kept with the task.", place: "after_record", empty: { name: "task-report" } },
   // acquisition
   { type: "match_n", family: "Acquisition", label: "Match several systems", says: "Matches two or more systems by key (order, receipt, invoice) with many-to-one sums; keeps what does not agree.",
     empty: { keys: [], tolerance: 0.01, many_to_one: true, sources: [{ label: "", tool: "", args: {}, amount_field: "amount" }, { label: "", tool: "", args: {}, amount_field: "amount" }] } },
@@ -61,9 +61,9 @@ export const DATA_TYPES: StepTypeInfo[] = [
     empty: { tool: "", args: {}, fields: [{ name: "", hint: "", required: false, pattern: null }], accept_confidence: 0.9, regulated: false } },
   // time, context and parties
   { type: "clock", family: "Time and parties", label: "Clocks", says: "Service-level or regulatory clocks per item (hours or business days); people are warned before and told on breach.",
-    empty: { clocks: [{ id: "", label: "", starts: "case_opened", hours: 24, business_days: null, warn_before_hours: 4 }] } },
+    empty: { clocks: [{ id: "", label: "", starts: "task_opened", hours: 24, business_days: null, warn_before_hours: 4 }] } },
   { type: "timeline", family: "Time and parties", label: "Timeline", says: "One ordered timeline of events from several systems, for the reviewer and the model.", empty: { sources: [{ tool: "", args: {}, time_field: "", label: "" }], into: "timeline", for_model: true } },
-  { type: "link", family: "Time and parties", label: "Related tasks", says: "Earlier tasks about the same client, account or counterparty, and how they ended.", empty: { match_on: [], lookback_days: 365, capabilities: [], limit: 5 } },
+  { type: "link", family: "Time and parties", label: "Related tasks", says: "Earlier tasks about the same client, account or counterparty, and how they ended.", empty: { match_on: [], lookback_days: 365, agents: [], limit: 5 } },
   { type: "screen", family: "Time and parties", label: "Name screening (candidates)", says: "Fuzzy-matches names against a list and marks candidates for a person; never clears or confirms a match.", empty: { list: "", fields: [], list_field: "name", threshold: 0.85 } },
   { type: "outreach", family: "Time and parties", label: "Send to the other party", says: "Sends each drafted message through the bank's channel, after a person approves sending at the tollgate before it.", place: "groups", person: true,
     empty: { tool: "", roles: [], when: "status == 'proposed'" } },
@@ -84,7 +84,7 @@ const datasetNames = (m: Json) => dataSteps(m).flatMap((id) => {
 
 function fields(id: string, type: string): FieldSpec[] {
   const w = `step_settings.${id}.with`;
-  const args: FieldSpec = { kind: "kv", path: `${w}.args`, label: "Arguments", keyLabel: "Argument", valueLabel: "Value ($case.<field>)" };
+  const args: FieldSpec = { kind: "kv", path: `${w}.args`, label: "Arguments", keyLabel: "Argument", valueLabel: "Value ($task.<field>)" };
   const history: FieldSpec[] = [
     { kind: "select", path: `${w}.history`, label: "History (a data set)", options: datasetNames },
     { kind: "text", path: `${w}.key`, label: "Matched on the field", placeholder: "account" },
@@ -97,9 +97,9 @@ function fields(id: string, type: string): FieldSpec[] {
     case "dataset": return [
       { kind: "text", path: `${w}.name`, label: "Name it", placeholder: "fx", help: "Other steps refer to it by this name." },
       { kind: "tool", path: `${w}.tool`, label: "Read with", access: "read" },
-      { kind: "kv", path: `${w}.args`, label: "Arguments", keyLabel: "Argument", valueLabel: "Value ($case.<field>)" }];
+      { kind: "kv", path: `${w}.args`, label: "Arguments", keyLabel: "Argument", valueLabel: "Value ($task.<field>)" }];
     case "derive": return [
-      { kind: "kv", path: `${w}.fields`, label: "Fields", keyLabel: "New field", valueLabel: "Expression, e.g. hours_between(received_at, case.date)" }];
+      { kind: "kv", path: `${w}.fields`, label: "Fields", keyLabel: "New field", valueLabel: "Expression, e.g. hours_between(received_at, task.date)" }];
     case "filter": return [
       { kind: "expr", path: `${w}.keep_when`, label: "Keep items when", placeholder: "not is_test" },
       { kind: "text", path: `${w}.reason`, label: "Reason shown on the others" }];
@@ -122,7 +122,7 @@ function fields(id: string, type: string): FieldSpec[] {
       { kind: "text", path: `${w}.into`, label: "Into", help: "items, or a data set name" }];
     case "transform": return [
       { kind: "tool", path: `${w}.tool`, label: "The team's tool", access: "read" },
-      { kind: "kv", path: `${w}.args`, label: "Arguments", keyLabel: "Argument", valueLabel: "Value ($case.<field>)" },
+      { kind: "kv", path: `${w}.args`, label: "Arguments", keyLabel: "Argument", valueLabel: "Value ($task.<field>)" },
       { kind: "list", path: `${w}.send`, label: "Fields sent (empty = all)", help: "Send only what the tool needs." },
       { kind: "select", path: `${w}.returns`, label: "It returns", options: [{ value: "fields", label: "fields to add to the items" }, { value: "items", label: "the items themselves" }] }];
     case "recompute": return [
@@ -134,14 +134,14 @@ function fields(id: string, type: string): FieldSpec[] {
     case "schedule": return [
       { kind: "text", path: `${w}.amount`, label: "Amount field" },
       { kind: "number", path: `${w}.periods`, label: "Periods", min: 1, max: 600 },
-      { kind: "text", path: `${w}.start`, label: "First period", placeholder: "$case.period or an item field" },
+      { kind: "text", path: `${w}.start`, label: "First period", placeholder: "$task.period or an item field" },
       { kind: "text", path: `${w}.into`, label: "Into the data set" }];
     case "period_check": return [
       { kind: "tool", path: `${w}.tool`, label: "Period status from", access: "read" }, args,
       { kind: "list", path: `${w}.open_values`, label: "Open when the status is" }];
     case "propose_entries": return [
       { kind: "expr", path: `${w}.when`, label: "For groups where" },
-      { kind: "text", path: `${w}.period`, label: "Accounting period", placeholder: "$case.period" },
+      { kind: "text", path: `${w}.period`, label: "Accounting period", placeholder: "$task.period" },
       { kind: "select", path: `${w}.chart`, label: "Chart of accounts (a data set)", options: datasetNames, nullable: true },
       { kind: "rows", path: `${w}.lines`, label: "Journal lines (debits must equal credits)", addLabel: "Add a line",
         newRow: { account: "", side: "debit", amount: "abs(total)", narrative: "{label}" },
@@ -184,8 +184,8 @@ function fields(id: string, type: string): FieldSpec[] {
       { kind: "select", path: `${w}.on_timeout`, label: "On timeout", options: [{ value: "escalate", label: "escalate to a person" }, { value: "continue", label: "carry on" }] },
       { kind: "list", path: `${w}.roles`, label: "May deliver it by hand (roles)" }];
     case "spawn": return [
-      { kind: "text", path: `${w}.capability`, label: "Child agent" },
-      { kind: "kv", path: `${w}.key`, label: "Child task key", keyLabel: "Key field", valueLabel: "$item.<field>, $case.<field> or a value" },
+      { kind: "text", path: `${w}.agent`, label: "Child agent" },
+      { kind: "kv", path: `${w}.key`, label: "Child task key", keyLabel: "Key field", valueLabel: "$item.<field>, $task.<field> or a value" },
       { kind: "number", path: `${w}.max_children`, label: "At most", min: 1, max: 2000 }];
     case "compose": return [
       { kind: "expr", path: `${w}.when`, label: "For groups where" },
@@ -215,8 +215,8 @@ function fields(id: string, type: string): FieldSpec[] {
       { kind: "bool", path: `${w}.regulated`, label: "Regulated: a person checks every value" }];
     case "clock": return [
       { kind: "rows", path: `${w}.clocks`, label: "Clocks", addLabel: "Add a clock",
-        newRow: { id: "", label: "", starts: "case_opened", hours: 24, business_days: null, warn_before_hours: 4 },
-        columns: [{ key: "id", label: "Id" }, { key: "label", label: "Shown as", wide: true }, { key: "starts", label: "Starts (field or case_opened)" },
+        newRow: { id: "", label: "", starts: "task_opened", hours: 24, business_days: null, warn_before_hours: 4 },
+        columns: [{ key: "id", label: "Id" }, { key: "label", label: "Shown as", wide: true }, { key: "starts", label: "Starts (field or task_opened)" },
           { key: "hours", label: "Hours", kind: "number" }, { key: "business_days", label: "…or business days", kind: "number" },
           { key: "warn_before_hours", label: "Warn before (h)", kind: "number" }, { key: "pause_hours_field", label: "Paused hours field" }] }];
     case "timeline": return [
@@ -227,7 +227,7 @@ function fields(id: string, type: string): FieldSpec[] {
     case "link": return [
       { kind: "list", path: `${w}.match_on`, label: "Same when these fields match", placeholder: "client, account" },
       { kind: "number", path: `${w}.lookback_days`, label: "Look back (days)", min: 1, max: 3650 },
-      { kind: "list", path: `${w}.capabilities`, label: "In agents (empty = all)" },
+      { kind: "list", path: `${w}.agents`, label: "In agents (empty = all)" },
       { kind: "number", path: `${w}.limit`, label: "At most", min: 1, max: 50 }];
     case "screen": return [
       { kind: "select", path: `${w}.list`, label: "List (a data set)", options: datasetNames },
@@ -263,7 +263,7 @@ function fields(id: string, type: string): FieldSpec[] {
       { kind: "number", path: `${w}.within_pct`, label: "Amounts within %", min: 1, nullable: true },
       { kind: "number", path: `${w}.min_count`, label: "Systemic from (places)", min: 2 },
       { kind: "tool", path: `${w}.peers_tool`, label: "Read the other places with (empty = this task)", access: "read" },
-      { kind: "kv", path: `${w}.peers_args`, label: "Arguments", keyLabel: "Argument", valueLabel: "Value ($case.<field>)" },
+      { kind: "kv", path: `${w}.peers_args`, label: "Arguments", keyLabel: "Argument", valueLabel: "Value ($task.<field>)" },
       { kind: "bool", path: `${w}.show_where`, label: "Name the other places (they may be outside a user's scope)" }];
     case "fuzzy_match": return [
       { kind: "text", path: `${w}.field`, label: "The item's reference" }, pool,
@@ -363,7 +363,7 @@ export default function PrepareSteps({ ctx, setWorking, stepsLocked }: {
             <p className="mt-1 text-xs text-surface-500">{t.says}</p>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <Field ctx={ctx} spec={{ kind: "text", path: `step_settings.${id}.label`, label: "Called" }} />
-              <Field ctx={ctx} spec={{ kind: "expr", path: `step_settings.${id}.when`, label: "Run only when (optional)", placeholder: "case.entity == 'US01'" }} />
+              <Field ctx={ctx} spec={{ kind: "expr", path: `step_settings.${id}.when`, label: "Run only when (optional)", placeholder: "task.entity == 'US01'" }} />
               {fields(id, t.type).map((f) => (
                 <div key={f.path} className={["rows", "textarea", "kv"].includes(f.kind) ? "sm:col-span-2" : undefined}>
                   <Field ctx={ctx} spec={f} />

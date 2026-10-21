@@ -1,4 +1,4 @@
-// From aria-ai (platform-ui/src/components/mission-control/__tests__); two cases
+// From aria-ai (platform-ui/src/components/mission-control/__tests__); two tasks
 // updated for the Agent One Finance adaptation (empty-state wording, row link).
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
@@ -76,7 +76,7 @@ describe("FleetTable", () => {
 
   it("shows the empty-state message when no agents are returned", () => {
     renderTable([]);
-    // Agent One Finance wording: a fleet row is a capability × team group in the user's scope
+    // Agent One Finance wording: a fleet row is an agent × team group in the user's scope
     expect(screen.getByText(/no tasks in your scope/i)).toBeInTheDocument();
   });
 
@@ -86,11 +86,11 @@ describe("FleetTable", () => {
     expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
   });
 
-  it("navigates to the row's capability or group when clicked", () => {
+  it("navigates to the row's agent or group when clicked", () => {
     navigateMock.mockClear();
-    renderTable([{ ...AGENTS[0], href: "/capabilities/recon.investigation/groups/cats-motif" }, AGENTS[1]]);
+    renderTable([{ ...AGENTS[0], href: "/agents/recon.investigation/groups/cats-motif" }, AGENTS[1]]);
     fireEvent.click(screen.getAllByTestId("fleet-row")[0]);
-    expect(navigateMock).toHaveBeenCalledWith("/capabilities/recon.investigation/groups/cats-motif");
+    expect(navigateMock).toHaveBeenCalledWith("/agents/recon.investigation/groups/cats-motif");
   });
 
   it("renders an em dash when lastRunAt is null", () => {

@@ -1,4 +1,4 @@
-"""Steps v2, phases 2–6: generic step types for case-based work in Finance and beyond.
+"""Steps v2, phases 2–6: generic step types for task-based work in Finance and beyond.
 
 Registered with the step SDK (agent_one_finance/stepkit.py), configured under
 `step_settings`, checked with the manifest, run under the same gateway, audit
@@ -14,7 +14,7 @@ and controls as every other step:
 No type holds a team's logic: thresholds are policy, logic is expressions, and
 anything else is a team's own tool behind the gateway. Nothing a step removes
 is lost; nothing writes without a person's approval; the model never makes a
-decision a capability reserves for people (agent_one_finance/authority.py).
+decision an agent reserves for people (agent_one_finance/authority.py).
 """
 
 import difflib
@@ -45,18 +45,18 @@ def _group_env(state, g: dict, finding: dict | None = None) -> dict:
     f = finding or (state.get("findings") or {}).get(g["group_id"], {}) or {}
     return {**g.get("group_key", {}), "total": g.get("total"), "count": g.get("count"), "label": g.get("label"),
             "verdict": f.get("verdict"), "status": f.get("status"), "category": f.get("category"),
-            "comment": f.get("comment", ""), "policy": _m(state).policy_values(), "case": dict(state["case_key"]),
-            **{f"case_{k}": v for k, v in state["case_key"].items()}}
+            "comment": f.get("comment", ""), "policy": _m(state).policy_values(), "task": dict(state["task_key"]),
+            **{f"task_{k}": v for k, v in state["task_key"].items()}}
 
 
 def _render(template: str, env: dict) -> str:
     return rules.render(template, env)
 
 
-def _value(spec: Any, item: dict, case_key: dict) -> Any:
-    """A setting's value: literal, $case.<field> or $item.<field>."""
-    if isinstance(spec, str) and spec.startswith("$case."):
-        return case_key.get(spec[6:])
+def _value(spec: Any, item: dict, task_key: dict) -> Any:
+    """A setting's value: literal, $task.<field> or $item.<field>."""
+    if isinstance(spec, str) and spec.startswith("$task."):
+        return task_key.get(spec[6:])
     if isinstance(spec, str) and spec.startswith("$item."):
         return item.get(spec[6:])
     return spec
@@ -80,7 +80,7 @@ def _failed(reason: str, e: Exception) -> dict:
 # =====================================================================
 
 class RecomputeCfg(Cfg):
-    formula: str | None = None        # expression over the item, case and policy
+    formula: str | None = None        # expression over the item, task and policy
     tool: str | None = None           # …or a tool returning rows {item_id, value}
     args: dict[str, Any] = Field(default_factory=dict)
     compare_to: str                   # the booked figure
@@ -93,7 +93,7 @@ async def _recompute(state, cfg: RecomputeCfg, step_id):
     if cfg.tool:
         from agent_one_finance import gateway
         try:
-            res = await _call(state, step_id, cfg.tool, {**_args(cfg.args, state["case_key"]),
+            res = await _call(state, step_id, cfg.tool, {**_args(cfg.args, state["task_key"]),
                                                          "items": [{"item_id": i["item_id"], **i} for i in state["items"]]})
         except (gateway.ToolDenied, gateway.ToolFailed) as e:
             return _failed("RECOMPUTE_FAILED", e)
@@ -129,7 +129,7 @@ register(StepType(
 class ScheduleCfg(Cfg):
     amount: str                       # item field
     periods: int = Field(ge=1, le=600)
-    start: str                        # item field or $case.<field>: the first period (YYYY-MM or a date)
+    start: str                        # item field or $task.<field>: the first period (YYYY-MM or a date)
     into: str = "schedule"
 
 
@@ -146,7 +146,7 @@ async def _schedule(state, cfg: ScheduleCfg, step_id):
     rows = []
     for it in state["items"]:
         total = it.get(cfg.amount)
-        start = _value(cfg.start if cfg.start.startswith("$") else f"$item.{cfg.start}", it, state["case_key"])
+        start = _value(cfg.start if cfg.start.startswith("$") else f"$item.{cfg.start}", it, state["task_key"])
         if total is None or not start:
             continue
         each = round(float(total) / cfg.periods, 2)
@@ -174,7 +174,7 @@ class EntryLine(Cfg):
 class ProposeEntriesCfg(Cfg):
     when: str = "status == 'proposed'"   # which groups get entries (expression over the group)
     lines: list[EntryLine] = Field(min_length=2)
-    period: str = "$case.period"
+    period: str = "$task.period"
     chart: str | None = None             # data set of valid accounts (rows with `account`)
     into: str = "journals"
 
@@ -183,7 +183,7 @@ async def _propose_entries(state, cfg: ProposeEntriesCfg, step_id):
     s = _steps()
     findings = dict(state.get("findings") or {})
     chart = {str(r.get("account")) for r in (state.get("datasets") or {}).get(cfg.chart, [])} if cfg.chart else None
-    period = _value(cfg.period, {}, state["case_key"])
+    period = _value(cfg.period, {}, state["task_key"])
     journals = []
     for g in state.get("groups") or []:
         f = dict(findings.get(g["group_id"]) or {})
@@ -211,14 +211,14 @@ async def _propose_entries(state, cfg: ProposeEntriesCfg, step_id):
             problems.append(f"unbalanced: debits {dr:,.2f} ≠ credits {cr:,.2f}")
         if not period:
             problems.append("no accounting period")
-        jid = "JE-" + hashlib.sha1(f"{state['case_id']}|{g['group_id']}".encode()).hexdigest()[:10]
+        jid = "JE-" + hashlib.sha1(f"{state['task_id']}|{g['group_id']}".encode()).hexdigest()[:10]
         entry = {"journal_id": jid, "period": period, "lines": lines, "debits": dr, "credits": cr,
                  "balanced": dr == cr, "problems": problems}
         f["entries"] = entry
         if problems and f.get("status") == "proposed":
             f.update(status="escalated", reason="ENTRY_INVALID: " + "; ".join(problems))
         findings[g["group_id"]] = f
-        await s._save_group_finding(state["case_id"], g["group_id"], f)
+        await s._save_group_finding(state["task_id"], g["group_id"], f)
         journals.append({"group_id": g["group_id"], **{k: v for k, v in entry.items() if k != "lines"},
                          "lines": len(lines)})
     await _keep_dataset(state, step_id, cfg.into, step_id, journals)
@@ -244,7 +244,7 @@ class PeriodCheckCfg(Cfg):
 async def _period_check(state, cfg: PeriodCheckCfg, step_id):
     from agent_one_finance import gateway
     try:
-        res = await _call(state, step_id, cfg.tool, _args(cfg.args, state["case_key"]))
+        res = await _call(state, step_id, cfg.tool, _args(cfg.args, state["task_key"]))
     except (gateway.ToolDenied, gateway.ToolFailed) as e:
         return _failed("PERIOD_CHECK_FAILED", e)
     rows = res.get("rows", [])
@@ -276,7 +276,7 @@ async def _post(state, cfg: PostCfg, step_id):
         e = (f or {}).get("entries")
         if gid not in approved or not e or not e.get("balanced") or e.get("problems"):
             continue
-        payload = {**_args(cfg.args, state["case_key"]), "journal_id": e["journal_id"], "period": e["period"],
+        payload = {**_args(cfg.args, state["task_key"]), "journal_id": e["journal_id"], "period": e["period"],
                    "lines": e["lines"]}
         row = {"group_id": gid, "journal_id": e["journal_id"]}
         try:
@@ -286,7 +286,7 @@ async def _post(state, cfg: PostCfg, step_id):
                     row.update(status="rejected by the ledger", errors=check.get("errors", []))
                     rows.append(row)
                     continue
-            res = await _call(state, step_id, cfg.tool, {**payload, "idempotency_key": f"{state['case_id']}:{e['journal_id']}"},
+            res = await _call(state, step_id, cfg.tool, {**payload, "idempotency_key": f"{state['task_id']}:{e['journal_id']}"},
                               write_by=approval.get("approved_by") or "release")
             row.update(status="posted", reference=res.get("reference"))
         except (gateway.ToolDenied, gateway.ToolFailed) as ex:
@@ -295,11 +295,11 @@ async def _post(state, cfg: PostCfg, step_id):
     await _keep_dataset(state, step_id, "posted", cfg.tool, rows)
     failed = [r for r in rows if r["status"] != "posted"]
     from agent_one_finance.db import get_session
-    from agent_one_finance.models import Case
+    from agent_one_finance.models import Task
     async with get_session() as s:
-        case = await s.get(Case, state["case_id"])
-        case.status, case.outcome = ("failed", "post_failed") if failed else ("completed", "posted")
-        case.error = "; ".join(f"{r['journal_id']}: {r.get('error') or r['status']}" for r in failed) or None
+        task = await s.get(Task, state["task_id"])
+        task.status, task.outcome = ("failed", "post_failed") if failed else ("completed", "posted")
+        task.error = "; ".join(f"{r['journal_id']}: {r.get('error') or r['status']}" for r in failed) or None
         await s.commit()
     return {"outcome": "post_failed" if failed else "posted",
             "datasets": {**(state.get("datasets") or {}), "posted": rows}}
@@ -427,7 +427,7 @@ def _total(state, side: Side) -> float:
     for r in rows:
         if side.where:
             try:
-                if not rules.evaluate(side.where, {**r, "case": dict(state["case_key"])}):
+                if not rules.evaluate(side.where, {**r, "task": dict(state["task_key"])}):
                     continue
             except rules.ExpressionError:
                 continue
@@ -471,7 +471,7 @@ class SampleCfg(Cfg):
 
 async def _sample(state, cfg: SampleCfg, step_id):
     items = state["items"]
-    seed = int(hashlib.sha256(f"{state['case_id']}|{step_id}".encode()).hexdigest()[:12], 16)
+    seed = int(hashlib.sha256(f"{state['task_id']}|{step_id}".encode()).hexdigest()[:12], 16)
     rng = random.Random(seed)
     forced = []
     if cfg.always_include_when:
@@ -623,9 +623,9 @@ async def _attest(state, cfg: AttestCfg, step_id):
     note = next((n for n in reversed(state.get("gate_notes") or []) if n.get("step") == step_id), {})
     async with get_session() as s:
         evidence = (await s.execute(select(func.count()).select_from(Document).where(
-            Document.case_id == state["case_id"], Document.kind == "evidence"))).scalar_one()
+            Document.task_id == state["task_id"], Document.kind == "evidence"))).scalar_one()
     if cfg.evidence_required and not evidence:
-        return _steps()._escalate("NO_EVIDENCE", f"`{step_id}` needs evidence on the case before it is attested")
+        return _steps()._escalate("NO_EVIDENCE", f"`{step_id}` needs evidence on the task before it is attested")
     now = datetime.now(timezone.utc).replace(tzinfo=None)
     row = {"statement": cfg.statement, "by": note.get("by"), "comment": note.get("comment"),
            "at": now.isoformat(timespec="seconds") + "Z", "evidence_files": evidence,
@@ -645,7 +645,7 @@ register(StepType(
 # =====================================================================
 
 class AwaitCfg(Cfg):
-    # The event's name; `children` = the child cases a `spawn` opened, all finished.
+    # The event's name; `children` = the child tasks a `spawn` opened, all finished.
     event: str = Field(pattern=r"^[a-z][a-z0-9_]{0,40}$")
     timeout_hours: float | None = Field(default=None, gt=0)
     on_timeout: Literal["continue", "escalate"] = "escalate"
@@ -661,9 +661,9 @@ async def _await(state, cfg: AwaitCfg, step_id):
         return _steps()._escalate("TIMED_OUT", f"no `{cfg.event}` within {cfg.timeout_hours:g} hours")
     if cfg.event == "children":
         kids = payload.get("children") or {}
-        spawned = {r["child_case_id"]: r for r in (state.get("datasets") or {}).get("children", [])}
-        by_item = {r["item_id"]: r["child_case_id"] for r in spawned.values()}
-        items = [{**it, "child_case_id": by_item.get(it["item_id"]),
+        spawned = {r["child_task_id"]: r for r in (state.get("datasets") or {}).get("children", [])}
+        by_item = {r["item_id"]: r["child_task_id"] for r in spawned.values()}
+        items = [{**it, "child_task_id": by_item.get(it["item_id"]),
                   "child_status": (kids.get(by_item.get(it["item_id"]), {}) or {}).get("status"),
                   "child_outcome": (kids.get(by_item.get(it["item_id"]), {}) or {}).get("outcome")} for it in state["items"]]
         await _save(state, items)
@@ -678,25 +678,25 @@ register(StepType(
 
 
 class SpawnCfg(Cfg):
-    capability: str
+    agent: str
     team_group: str | None = None
-    key: dict[str, str]                # child case key: $item.<field>, $case.<field> or a literal
+    key: dict[str, str]                # child task key: $item.<field>, $task.<field> or a literal
     max_children: int = Field(default=200, ge=1, le=2000)
 
 
 async def _spawn(state, cfg: SpawnCfg, step_id):
-    from agent_one_finance import cases
+    from agent_one_finance import tasks
     caller = _steps()._caller(state)
     rows = []
     for it in state["items"][: cfg.max_children]:
-        key = {k: _value(v, it, state["case_key"]) for k, v in cfg.key.items()}
+        key = {k: _value(v, it, state["task_key"]) for k, v in cfg.key.items()}
         try:
-            cid = await cases.open_case(cfg.capability, key, caller, cfg.team_group, parent=state["case_id"])
+            cid = await tasks.open_task(cfg.agent, key, caller, cfg.team_group, parent=state["task_id"])
         except Exception as e:          # one child that cannot open is visible, not fatal
-            rows.append({"item_id": it["item_id"], "child_case_id": None, "error": str(e)})
+            rows.append({"item_id": it["item_id"], "child_task_id": None, "error": str(e)})
             continue
-        rows.append({"item_id": it["item_id"], "child_case_id": cid, "key": key})
-    await _keep_dataset(state, step_id, "children", cfg.capability, rows)
+        rows.append({"item_id": it["item_id"], "child_task_id": cid, "key": key})
+    await _keep_dataset(state, step_id, "children", cfg.agent, rows)
     return {"datasets": {**(state.get("datasets") or {}), "children": rows}, "spawned": True}
 
 
@@ -706,11 +706,11 @@ register(StepType(
 
 
 class ReportCfg(Cfg):
-    name: str = "case-report"
+    name: str = "task-report"
 
 
 async def _report(state, cfg: ReportCfg, step_id):
-    """The case's evidence pack (configuration, findings, decisions, data used),
+    """The task's evidence pack (configuration, findings, decisions, data used),
     kept as one of its documents."""
     import hashlib as h
 
@@ -718,12 +718,12 @@ async def _report(state, cfg: ReportCfg, step_id):
     from agent_one_finance.db import get_session
     from agent_one_finance.models import Document
     caller = _steps()._caller(state)
-    content, _ = await evidence.pack(state["case_id"], caller)
-    name = f"{state['case_id']}--{cfg.name}.pdf"
+    content, _ = await evidence.pack(state["task_id"], caller)
+    name = f"{state['task_id']}--{cfg.name}.pdf"
     async with get_session() as s:
-        await s.merge(Document(scope=str(next(iter(state["case_key"].values()))), name=name, content=content,
+        await s.merge(Document(scope=str(next(iter(state["task_key"].values()))), name=name, content=content,
                                content_type="application/pdf", sha256=h.sha256(content).hexdigest(),
-                               kind="report", case_id=state["case_id"], uploaded_by="aof"))
+                               kind="report", task_id=state["task_id"], uploaded_by="aof"))
         await s.commit()
     return {}
 
@@ -754,7 +754,7 @@ async def _compose(state, cfg: ComposeCfg, step_id):
         f["draft_message"] = {"to": _render(cfg.to, env), "subject": _render(cfg.subject, env),
                               "body": _render(cfg.body, env), "step": step_id}
         findings[g["group_id"]] = f
-        await s._save_group_finding(state["case_id"], g["group_id"], f)
+        await s._save_group_finding(state["task_id"], g["group_id"], f)
     return {"findings": findings}
 
 
@@ -787,7 +787,7 @@ async def _match_n(state, cfg: MatchNCfg, step_id):
     sides: dict[str, dict[tuple, dict]] = {}
     for src in cfg.sources:
         try:
-            rows = (await _call(state, step_id, src.tool, _args(src.args, state["case_key"]))).get("rows", [])
+            rows = (await _call(state, step_id, src.tool, _args(src.args, state["task_key"]))).get("rows", [])
         except (gateway.ToolDenied, gateway.ToolFailed) as e:
             return _failed("LOAD_FAILED", e)
         agg: dict[tuple, dict] = {}
@@ -833,7 +833,7 @@ class IntakeCfg(Cfg):
 async def _intake(state, cfg: IntakeCfg, step_id):
     from agent_one_finance import gateway
     try:
-        rows = (await _call(state, step_id, cfg.tool, _args(cfg.args, state["case_key"]))).get("rows", [])
+        rows = (await _call(state, step_id, cfg.tool, _args(cfg.args, state["task_key"]))).get("rows", [])
     except (gateway.ToolDenied, gateway.ToolFailed) as e:
         return _failed("INTAKE_FAILED", e)
     good, bad = [], []
@@ -880,7 +880,7 @@ async def _extract(state, cfg: ExtractCfg, step_id):
     from agent_one_finance import gateway
     from agent_one_finance.llm import ExtractRequest, llm
     try:
-        res = await _call(state, step_id, cfg.tool, _args(cfg.args, state["case_key"]))
+        res = await _call(state, step_id, cfg.tool, _args(cfg.args, state["task_key"]))
     except (gateway.ToolDenied, gateway.ToolFailed) as e:
         return _failed("EXTRACT_FAILED", e)
     text = "\n".join(str(r.get("text", "")) for r in res.get("rows", []))
@@ -892,11 +892,11 @@ async def _extract(state, cfg: ExtractCfg, step_id):
     if rest:
         adapter = llm()
         if hasattr(adapter, "extract"):
-            got = await adapter.extract(ExtractRequest(case_id=state["case_id"], text=text[:60_000],
+            got = await adapter.extract(ExtractRequest(task_id=state["task_id"], text=text[:60_000],
                                                        fields=[f.model_dump() for f in rest]))
             for name, v in (got or {}).items():
                 values[name] = {**v, "by": adapter.name}
-    item = {"item_id": str(_value(cfg.args.get("name", cfg.id), {}, state["case_key"]) or cfg.id)}
+    item = {"item_id": str(_value(cfg.args.get("name", cfg.id), {}, state["task_key"]) or cfg.id)}
     review = []
     for f in cfg.fields:
         v = values.get(f.name)
@@ -926,7 +926,7 @@ register(StepType(
 class Clock(Cfg):
     id: str = Field(pattern=r"^[a-z][a-z0-9_]{0,30}$")
     label: str
-    starts: str = "case_opened"        # an item field (ISO time) or case_opened
+    starts: str = "task_opened"        # an item field (ISO time) or task_opened
     hours: float | None = Field(default=None, gt=0)
     business_days: int | None = Field(default=None, ge=1)
     warn_before_hours: float = 4
@@ -948,17 +948,17 @@ def _add_business_days(at: datetime, n: int) -> datetime:
 
 async def _clock(state, cfg: ClockCfg, step_id):
     from agent_one_finance.db import get_session
-    from agent_one_finance.models import Case
+    from agent_one_finance.models import Task
     async with get_session() as s:
-        case = await s.get(Case, state["case_id"])
-        opened = case.opened_at.replace(tzinfo=None)
+        task = await s.get(Task, state["task_id"])
+        opened = task.opened_at.replace(tzinfo=None)
     items, earliest = [], {}
     now = datetime.now(timezone.utc).replace(tzinfo=None)
     for it in state["items"]:
         new = dict(it)
         for c in cfg.clocks:
             try:
-                start = opened if c.starts == "case_opened" else rules._dt(it.get(c.starts))
+                start = opened if c.starts == "task_opened" else rules._dt(it.get(c.starts))
             except Exception:
                 new[f"clock_{c.id}_state"] = "unknown"
                 continue
@@ -972,9 +972,9 @@ async def _clock(state, cfg: ClockCfg, step_id):
                 earliest[c.id] = (due, c)
         items.append(new)
     async with get_session() as s:
-        case = await s.get(Case, state["case_id"])
-        prev = dict(case.clock_state or {})
-        case.clock_state = {cid: {"label": c.label, "due_at": due.isoformat() + "Z", "warn_before_hours": c.warn_before_hours,
+        task = await s.get(Task, state["task_id"])
+        prev = dict(task.clock_state or {})
+        task.clock_state = {cid: {"label": c.label, "due_at": due.isoformat() + "Z", "warn_before_hours": c.warn_before_hours,
                                   "warned": (prev.get(cid) or {}).get("warned", False),
                                   "breached": (prev.get(cid) or {}).get("breached", False)}
                             for cid, (due, c) in earliest.items()}
@@ -1006,7 +1006,7 @@ async def _timeline(state, cfg: TimelineCfg, step_id):
     rows = []
     for src in cfg.sources:
         try:
-            got = (await _call(state, step_id, src.tool, _args(src.args, state["case_key"]))).get("rows", [])
+            got = (await _call(state, step_id, src.tool, _args(src.args, state["task_key"]))).get("rows", [])
         except (gateway.ToolDenied, gateway.ToolFailed) as e:
             got = [{src.time_field: None, "error": str(e)}]
         rows += [{"at": r.get(src.time_field), "source": src.label, **r} for r in got]
@@ -1027,7 +1027,7 @@ register(StepType(
 class LinkCfg(Cfg):
     match_on: list[str] = Field(min_length=1)            # item fields: client, account, counterparty…
     lookback_days: int = Field(default=365, ge=1, le=3650)
-    capabilities: list[str] = Field(default_factory=list)   # empty = every capability
+    agents: list[str] = Field(default_factory=list)   # empty = every agent
     limit: int = Field(default=5, ge=1, le=50)
 
 
@@ -1035,7 +1035,7 @@ async def _link(state, cfg: LinkCfg, step_id):
     from sqlalchemy import select
 
     from agent_one_finance.db import get_session
-    from agent_one_finance.models import Case, CaseItem
+    from agent_one_finance.models import Task, TaskItem
     since = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=cfg.lookback_days)
     items = []
     async with get_session() as s:
@@ -1045,15 +1045,15 @@ async def _link(state, cfg: LinkCfg, step_id):
                 v = it.get(f)
                 if v in (None, ""):
                     continue
-                q = (select(Case.case_id, Case.subject, Case.status, Case.outcome, Case.capability_id)
-                     .join(CaseItem, CaseItem.case_id == Case.case_id)
-                     .where(CaseItem.payload[f].astext == str(v), Case.case_id != state["case_id"],
-                            Case.opened_at >= since, Case.shadow_of.is_(None)))
-                if cfg.capabilities:
-                    q = q.where(Case.capability_id.in_(cfg.capabilities))
+                q = (select(Task.task_id, Task.subject, Task.status, Task.outcome, Task.agent_id)
+                     .join(TaskItem, TaskItem.task_id == Task.task_id)
+                     .where(TaskItem.payload[f].astext == str(v), Task.task_id != state["task_id"],
+                            Task.opened_at >= since, Task.shadow_of.is_(None)))
+                if cfg.agents:
+                    q = q.where(Task.agent_id.in_(cfg.agents))
                 for cid, subj, st, out, cap in (await s.execute(q.limit(cfg.limit))).all():
-                    related.setdefault(cid, {"case_id": cid, "subject": subj, "status": st, "outcome": out,
-                                             "capability_id": cap, "on": f})
+                    related.setdefault(cid, {"task_id": cid, "subject": subj, "status": st, "outcome": out,
+                                             "agent_id": cap, "on": f})
             items.append({**it, "related": list(related.values())[: cfg.limit], "related_count": len(related)})
     await _save(state, items)
     return {"items": items}
@@ -1125,8 +1125,8 @@ async def _outreach(state, cfg: OutreachCfg, step_id):
         if not go:
             continue
         try:
-            res = await _call(state, step_id, cfg.tool, {**msg, "case_ref": state["case_id"],
-                                                         "idempotency_key": f"{state['case_id']}:{g['group_id']}:{step_id}"},
+            res = await _call(state, step_id, cfg.tool, {**msg, "task_ref": state["task_id"],
+                                                         "idempotency_key": f"{state['task_id']}:{g['group_id']}:{step_id}"},
                               write_by=by or "tollgate")
             f["sent_message"] = {**msg, "message_id": res.get("message_id"), "approved_by": by}
             rows.append({"group_id": g["group_id"], "to": msg["to"], "message_id": res.get("message_id"), "approved_by": by})
@@ -1134,7 +1134,7 @@ async def _outreach(state, cfg: OutreachCfg, step_id):
             f["sent_message"] = {**msg, "error": str(e)}
             rows.append({"group_id": g["group_id"], "to": msg["to"], "error": str(e)})
         findings[g["group_id"]] = f
-        await s._save_group_finding(state["case_id"], g["group_id"], f)
+        await s._save_group_finding(state["task_id"], g["group_id"], f)
     await _keep_dataset(state, step_id, "outreach", cfg.tool, rows)
     return {"findings": findings, "datasets": {**(state.get("datasets") or {}), "outreach": rows}}
 

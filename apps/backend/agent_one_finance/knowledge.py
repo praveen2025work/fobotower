@@ -1,4 +1,4 @@
-"""The knowledge graph: what a capability has learned, and the reference
+"""The knowledge graph: what an agent has learned, and the reference
 data it reasons over.
 
 Namespaced, bitemporal (valid_from / valid_to, part of the key): a node or
@@ -55,11 +55,11 @@ async def _has_node(s, namespace: str, node_id: str) -> bool:
 
 # ---------- learned ----------
 
-async def record_decision(namespace: str, group_key: dict, *, case_id: str, group_id: str,
+async def record_decision(namespace: str, group_key: dict, *, task_id: str, group_id: str,
                           action: str, comment: str, decided_by: str,
                           entities: dict[str, set] | None = None) -> None:
     subject = subject_id(group_key)
-    decision = f"decision:{case_id}:{group_id}"
+    decision = f"decision:{task_id}:{group_id}"
     now = _now()
     async with get_session() as s:
         if await _has_node(s, namespace, decision):
@@ -68,7 +68,7 @@ async def record_decision(namespace: str, group_key: dict, *, case_id: str, grou
             s.add(KgNode(namespace=namespace, node_id=subject, kind="subject", attrs=group_key,
                          valid_from=EPOCH))
         s.add(KgNode(namespace=namespace, node_id=decision, kind="decision", valid_from=now, attrs={
-            "case_id": case_id, "group_id": group_id, "action": action,
+            "task_id": task_id, "group_id": group_id, "action": action,
             "comment": comment, "decided_by": decided_by, "at": now.isoformat(),
         }))
         s.add(KgEdge(namespace=namespace, from_id=decision, relation="explains", to_id=subject,
@@ -86,7 +86,7 @@ async def record_decision(namespace: str, group_key: dict, *, case_id: str, grou
 
 
 async def similar_decisions(namespace: str, group_key: dict, *, limit: int = 3,
-                            as_of: datetime | None = None, exclude_case: str | None = None,
+                            as_of: datetime | None = None, exclude_task: str | None = None,
                             entities: dict[str, set] | None = None,
                             lookback_days: int | None = None) -> list[dict]:
     """Approved decisions to learn from: about the same subject first (newest
@@ -120,7 +120,7 @@ async def similar_decisions(namespace: str, group_key: dict, *, limit: int = 3,
     since = at - timedelta(days=lookback_days) if lookback_days else None
 
     def usable(n: KgNode) -> bool:
-        return (n.attrs.get("action") == "approve" and n.attrs.get("case_id") != exclude_case
+        return (n.attrs.get("action") == "approve" and n.attrs.get("task_id") != exclude_task
                 and (since is None or n.valid_from >= since))
 
     out = [{**n.attrs, "match": "same subject"} for n in same if usable(n)]
@@ -212,9 +212,9 @@ async def walk(namespace: str, start_ids: set[str], path: list[str], *, as_of=No
     return {sid: nodes[end] for sid, end in current.items() if end in nodes}
 
 
-async def forget_case(namespace: str, case_id: str) -> int:
-    """Remove what a case taught (retention). Subjects and entities stay."""
-    prefix = f"decision:{case_id}:"
+async def forget_task(namespace: str, task_id: str) -> int:
+    """Remove what a task taught (retention). Subjects and entities stay."""
+    prefix = f"decision:{task_id}:"
     async with get_session() as s:
         await s.execute(delete(KgEdge).where(KgEdge.namespace == namespace,
                                              KgEdge.from_id.startswith(prefix)))

@@ -17,7 +17,7 @@ it("drafts from a BRD, shows what to fix, and submits the edited manifest", asyn
       assumptions: ["no materiality threshold given"],
       author: "agent-sdk",
     },
-    "POST /authoring/submit": { capability_id: "draft.x", version: 1 },
+    "POST /authoring/submit": { agent_id: "draft.x", version: 1 },
   });
   renderAt("/authoring", "/authoring", <Authoring />);
   await userEvent.click(screen.getByRole("tab", { name: /Describe it/ }));
@@ -38,9 +38,9 @@ it("drafts from a BRD, shows what to fix, and submits the edited manifest", asyn
 it("lets a second owner approve a pending draft", async () => {
   const calls = mockApi({
     "GET /authoring/drafts": [
-      { capability_id: "draft.x", version: 1, name: "Variance review", note: "", drafted_by: "carol", drafted_at: "2026-10-03T10:00:00Z", new: true, can_approve: true },
+      { agent_id: "draft.x", version: 1, name: "Variance review", note: "", drafted_by: "carol", drafted_at: "2026-10-03T10:00:00Z", new: true, can_approve: true },
     ],
-    "POST /capabilities/draft.x/versions/1/approve": { version: 1 },
+    "POST /agents/draft.x/versions/1/approve": { version: 1 },
   });
   renderAt("/authoring", "/authoring", <Authoring />);
   await userEvent.click(await screen.findByRole("button", { name: "Approve" }));
@@ -48,7 +48,7 @@ it("lets a second owner approve a pending draft", async () => {
   expect(await screen.findByText(/now live/)).toBeInTheDocument();
 });
 
-it("builds a capability from answers with no model, and says when no model is connected", async () => {
+it("builds an agent from answers with no model, and says when no model is connected", async () => {
   const calls = mockApi({
     "GET /authoring/drafts": [],
     "GET /authoring/modes": { guided: true, templates: true, brd_model: false, brd_author: "template",
@@ -72,7 +72,7 @@ it("builds a capability from answers with no model, and says when no model is co
   await waitFor(() => expect(calls.some((c) => c.path === "/authoring/guided")).toBe(true));
   expect(calls.find((c) => c.path === "/authoring/guided")!.body).toMatchObject({
     name: "Equities breaks", kind: "investigate", source_tool: "mbrec.breaks", decided_by: "person",
-    case_key: ["book", "cob"], checklist: ["Is the root cause evidenced?"] });
+    task_key: ["book", "cob"], checklist: ["Is the root cause evidenced?"] });
   expect(await screen.findByText(/drafted by guided/)).toBeInTheDocument();
 
   await userEvent.click(screen.getByRole("tab", { name: /Describe it/ }));

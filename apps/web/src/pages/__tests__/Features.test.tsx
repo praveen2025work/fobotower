@@ -7,10 +7,10 @@ import { mockApi, renderAt } from "../../test/render";
 import InboxPage from "../Inbox";
 
 const row = (id: string, extra: Partial<InboxRow> = {}): InboxRow => ({
-  case_id: id,
-  capability_id: "recon.investigation",
-  capability_name: "Reconciliation investigation",
-  case_label: "Rec run",
+  task_id: id,
+  agent_id: "recon.investigation",
+  agent_name: "Reconciliation investigation",
+  task_label: "Rec run",
   subject: id,
   status: "awaiting_review",
   team_group: "cats-motif",
@@ -62,7 +62,7 @@ describe("Inbox", () => {
 });
 
 describe("Inbox on a phone", () => {
-  it("shows each case as a card with what it needs and how urgent it is", async () => {
+  it("shows each task as a card with what it needs and how urgent it is", async () => {
     const original = window.matchMedia;
     window.matchMedia = ((q: string) => ({ matches: q.includes("max-width"), media: q, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia;
     try {
@@ -88,10 +88,10 @@ describe("Questions for you", () => {
       "GET /inbox": [],
       "GET /me/delegations": { away: [], covering: [] },
       "GET /dev/users": [],
-      "GET /requests": [{ request_id: "r1", case_id: "c1", group_id: "K", target: "desk", target_name: "Prime desk (trader)",
+      "GET /requests": [{ request_id: "r1", task_id: "c1", group_id: "K", target: "desk", target_name: "Prime desk (trader)",
         question: "Was the IRS swap rebooked?", asked_by: "frank", asked_at: "2026-10-05T09:00:00Z", status: "open",
         answer: null, answered_by: null, answered_at: null, can_answer: true, subject: "PRIME-MB-04 · COB 2026-09-24",
-        case_label: "Break run", group_label: "Aged break", columns: ["instrument", "difference"],
+        task_label: "Break run", group_label: "Aged break", columns: ["instrument", "difference"],
         rows: [{ instrument: "IRS 5Y USD", difference: -85.5 }] }],
       "POST /requests/r1/answer": { request_id: "r1", status: "answered" },
     });

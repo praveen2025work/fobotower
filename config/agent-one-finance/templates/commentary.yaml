@@ -4,14 +4,14 @@ id: team.variance-commentary
 name: Variance commentary (template)
 description: Commentary on material variances to plan, written back after a four-eyes release.
 owners: { people: [], role: YOUR_OWNER_ROLE, four_eyes: true }
-case:
+task:
   label: Lane
   item_label: Variance line
   key: [entity, period]
   subject: "{entity} · {period}"
   scopes: { entity: entity }
 items:
-  load: { tool: gl.balances, args: { entity: $case.entity, period: $case.period } }
+  load: { tool: gl.balances, args: { entity: $task.entity, period: $task.period } }
   id_field: line_id
   amount_field: variance
   display: [account, account_name, cost_centre, actual, budget, variance]
@@ -32,7 +32,7 @@ reasoning:
 review: { roles: [YOUR_PREPARER_ROLE, YOUR_REVIEWER_ROLE] }
 publish:
   tool: reporting.publish_commentary
-  args: { entity: $case.entity, period: $case.period, account: $group.account, commentary: $comment }
+  args: { entity: $task.entity, period: $task.period, account: $group.account, commentary: $comment }
   approver_roles: [YOUR_REVIEWER_ROLE]
-limits: { max_cost_usd_per_case: 5 }
+limits: { max_cost_usd_per_task: 5 }
 retention: { days: 2555 }

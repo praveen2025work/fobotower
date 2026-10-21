@@ -99,7 +99,7 @@ Every difference explained; the FOBO controllers accept it or it is fixed.
 
 ### E08-S79 Performance test at end-of-day volumes
 
-As a QA lead, I want a performance test at end-of-day volumes, so that cases are ready on time.
+As a QA lead, I want a performance test at end-of-day volumes, so that tasks are ready on time.
 
 All books at once, model response times.
 
@@ -109,14 +109,14 @@ All books at once, model response times.
 
 **Acceptance criteria**
 
-- Given all books at end of day, when they run together, then every case is ready by the agreed time.
-- Done when: Cases ready by the agreed time
+- Given all books at end of day, when they run together, then every task is ready by the agreed time.
+- Done when: Tasks ready by the agreed time
 
 ### E08-S80 Evaluation set and agreement threshold
 
 As a FOBO controller, I want an evaluation set and an agreed threshold, so that each change is checked against our decisions.
 
-Cases the FOBO controllers decided in UAT, replayed after each change.
+Tasks the FOBO controllers decided in UAT, replayed after each change.
 
 | Sprint | Release | Points | Priority | Team | Environment | Status |
 |---|---|---|---|---|---|---|
@@ -128,9 +128,9 @@ Cases the FOBO controllers decided in UAT, replayed after each change.
 
 ### E08-S81 UAT cycle 1 with the FOBO controllers
 
-As a FOBO controller, I want a first UAT cycle on real cases, so that defects are found early.
+As a FOBO controller, I want a first UAT cycle on real tasks, so that defects are found early.
 
-The FOBO controllers review real cases for their books; defects triaged.
+The FOBO controllers review real tasks for their books; defects triaged.
 
 | Sprint | Release | Points | Priority | Team | Environment | Status |
 |---|---|---|---|---|---|---|

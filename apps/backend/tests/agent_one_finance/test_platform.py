@@ -57,24 +57,24 @@ async def test_entitlement_service_down_fails_closed():
 
 
 
-async def test_one_case_is_one_trace_with_aof_attributes(api, spans):
+async def test_one_task_is_one_trace_with_aof_attributes(api, spans):
     spans.clear()
-    case = (await api.post(f"/api/capabilities/{VARIANCE}/cases", headers=api.as_user("alice"),
-                           json={"case_key": {"entity": "UK01", "period": "2026-09"}})).json()
+    task = (await api.post(f"/api/agents/{VARIANCE}/tasks", headers=api.as_user("alice"),
+                           json={"task_key": {"entity": "UK01", "period": "2026-09"}})).json()
     finished = spans.get_finished_spans()
     names = {s.name for s in finished}
-    assert {"case.run", "step.load", "step.validate", "mcp.call", "reason.group"} <= names
-    root = next(s for s in finished if s.name == "case.run")
-    assert root.attributes["aof.case_id"] == case["case_id"]
-    assert root.attributes["aof.capability_id"] == VARIANCE
-    # the case run is its own trace — a root span, not a child of the HTTP request —
+    assert {"task.run", "step.load", "step.validate", "mcp.call", "reason.group"} <= names
+    root = next(s for s in finished if s.name == "task.run")
+    assert root.attributes["aof.task_id"] == task["task_id"]
+    assert root.attributes["aof.agent_id"] == VARIANCE
+    # the task run is its own trace — a root span, not a child of the HTTP request —
     # and every step, tool call and reasoning span of the run is inside it
     assert root.parent is None
     run_spans = [s for s in finished if s.name.startswith(("step.", "mcp.call", "reason."))]
     assert run_spans and {s.context.trace_id for s in run_spans} == {root.context.trace_id}
-    assert root.attributes["session.id"] == case["case_id"]
+    assert root.attributes["session.id"] == task["task_id"]
     assert root.attributes["openinference.span.kind"] == "CHAIN"
-    assert case["trace_id"] == format(root.context.trace_id, "032x")
+    assert task["trace_id"] == format(root.context.trace_id, "032x")
     call = next(s for s in finished if s.name == "mcp.call")
     assert call.attributes["aof.connector_id"] == "gl"
     assert call.attributes["aof.allowed"] is True

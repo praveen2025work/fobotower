@@ -27,7 +27,7 @@ Sprints are two weeks, Tuesday to Monday. Sprint 1 (Diagnostics) is done, Sprint
 
 ## Scope
 
-**In:** FOBO Prime and Rates on AOF; MB Rec and MOTIF data; approved adjustments posted to MOTIF through FAS; Agent One sessions per capability per case; Agent One Finance Diagnostics; UAT and Prod.
+**In:** FOBO Prime and Rates on AOF; MB Rec and MOTIF data; approved adjustments posted to MOTIF through FAS; Agent One sessions per agent per task; Agent One Finance Diagnostics; UAT and Prod.
 
 **Out:** other use cases; CATS.
 
@@ -37,7 +37,7 @@ Sprints are two weeks, Tuesday to Monday. Sprint 1 (Diagnostics) is done, Sprint
 |---|---|---|---|
 | E01 | Programme and governance | PM / Architect | In Progress |
 | E02 | AOF platform on AWS: skeleton, UAT and Prod | DevOps / Backend | In Progress |
-| E03 | Agent One integration: sessions per capability per case | Backend | To Do |
+| E03 | Agent One integration: sessions per agent per task | Backend | To Do |
 | E04 | Data connections: MB Rec, MOTIF and FAS | Backend / DevOps | To Do |
 | E05 | FOBO (Helix) set-up with the FOBO controllers | BA / FOBO controllers | To Do |
 | E06 | Agent One Finance Diagnostics | Backend / DevOps | In Progress |

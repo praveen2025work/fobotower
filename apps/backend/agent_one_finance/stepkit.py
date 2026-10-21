@@ -1,12 +1,12 @@
 """Configurable step types: the step SDK, and the generic data steps.
 
-A capability lists its steps by id (`steps: [load, fx, age, convert, group, …]`)
+An agent lists its steps by id (`steps: [load, fx, age, convert, group, …]`)
 and configures each one that is not a core step under `step_settings`:
 
     step_settings:
-      fx:      {type: dataset, with: {name: fx, tool: refdata.fx_rates, args: {date: $case.date}}}
-      age:     {type: derive, with: {fields: {age_hours: "hours_between(received_at, case.date)"}}}
-      convert: {type: convert, when: "case.entity != 'GB01'", with: {amounts: [amount], currency_field: currency, to: GBP, rates: fx}}
+      fx:      {type: dataset, with: {name: fx, tool: refdata.fx_rates, args: {date: $task.date}}}
+      age:     {type: derive, with: {fields: {age_hours: "hours_between(received_at, task.date)"}}}
+      convert: {type: convert, when: "task.entity != 'GB01'", with: {amounts: [amount], currency_field: currency, to: GBP, rates: fx}}
 
 A step type declares a config schema (validated with the manifest), what it
 needs and produces (so the platform checks the order), the tools it calls (so
@@ -16,7 +16,7 @@ team's own logic lives behind a tool (`transform`), which the gateway governs
 like any other.
 
 Nothing is silently lost: an item a `filter` or `dedupe` removes stays on the
-case with `excluded_by` and `excluded_reason`.
+task with `excluded_by` and `excluded_reason`.
 """
 
 from collections.abc import Awaitable, Callable
@@ -69,17 +69,17 @@ def _ctx(state: dict, purpose: str, tools: set[str] | None = None):
 def _env(state: dict, item: dict | None = None) -> dict:
     from agent_one_finance import steps
     m = steps._manifest(state)
-    return {**(item or {}), "policy": m.policy_values(), "case": dict(state["case_key"]),
+    return {**(item or {}), "policy": m.policy_values(), "task": dict(state["task_key"]),
             "count": len(state.get("items") or [])}
 
 
 async def _save(state: dict, items: list[dict]) -> None:
     from agent_one_finance import steps
-    await steps._save_items(state["case_id"], items)
+    await steps._save_items(state["task_id"], items)
 
 
 async def _exclude(state: dict, step_id: str, items: list[dict], reason: str) -> None:
-    """Items a step removes stay on the case, marked — never silently lost."""
+    """Items a step removes stay on the task, marked — never silently lost."""
     await _save(state, [{**it, "excluded_by": step_id, "excluded_reason": reason} for it in items])
 
 
@@ -87,17 +87,17 @@ async def _keep_dataset(state: dict, step_id: str, name: str, source: str, rows:
     from sqlalchemy import delete
 
     from agent_one_finance.db import get_session
-    from agent_one_finance.models import CaseDataset
+    from agent_one_finance.models import TaskDataset
     async with get_session() as s:
-        await s.execute(delete(CaseDataset).where(CaseDataset.case_id == state["case_id"],
-                                                  CaseDataset.name == name))
-        s.add(CaseDataset(case_id=state["case_id"], name=name, step_id=step_id, source=source,
+        await s.execute(delete(TaskDataset).where(TaskDataset.task_id == state["task_id"],
+                                                  TaskDataset.name == name))
+        s.add(TaskDataset(task_id=state["task_id"], name=name, step_id=step_id, source=source,
                           rows=rows, row_count=len(rows)))
         await s.commit()
 
 
-def _args(args: dict, case_key: dict) -> dict:
-    return {k: case_key.get(v[6:]) if isinstance(v, str) and v.startswith("$case.") else v
+def _args(args: dict, task_key: dict) -> dict:
+    return {k: task_key.get(v[6:]) if isinstance(v, str) and v.startswith("$task.") else v
             for k, v in args.items()}
 
 
@@ -112,7 +112,7 @@ class DatasetCfg(Cfg):
 async def _dataset(state, cfg: DatasetCfg, step_id):
     from agent_one_finance import gateway, steps
     try:
-        result = await gateway.call(_ctx(state, step_id, {cfg.tool}), cfg.tool, _args(cfg.args, state["case_key"]))
+        result = await gateway.call(_ctx(state, step_id, {cfg.tool}), cfg.tool, _args(cfg.args, state["task_key"]))
     except (gateway.ToolDenied, gateway.ToolFailed) as e:
         return steps._escalate("DATASET_FAILED", f"{cfg.name}: {e}")
     rows = list(result.get("rows", []))
@@ -129,7 +129,7 @@ register(StepType(
 
 class DeriveCfg(Cfg):
     # In order: a later field may use an earlier one. Expression over the
-    # item's fields, `case.<field>` and `policy.<name>`.
+    # item's fields, `task.<field>` and `policy.<name>`.
     fields: dict[str, str]
 
 
@@ -180,7 +180,7 @@ register(StepType(
     FilterCfg, _filter, expressions=lambda c: [("keep_when", c.keep_when)]))
 
 
-# ---------- convert: currency as of the case's rates ----------
+# ---------- convert: currency as of the task's rates ----------
 
 class ConvertCfg(Cfg):
     amounts: list[str]
@@ -253,7 +253,7 @@ register(StepType(
 
 class DedupeCfg(Cfg):
     keys: list[str] = Field(min_length=1)
-    drop: bool = True                # set duplicates aside (kept on the case), or only mark them
+    drop: bool = True                # set duplicates aside (kept on the task), or only mark them
 
 
 async def _dedupe(state, cfg: DedupeCfg, step_id):
@@ -333,7 +333,7 @@ async def _transform(state, cfg: TransformCfg, step_id):
             for it in state["items"]]
     try:
         result = await gateway.call(_ctx(state, step_id, {cfg.tool}), cfg.tool,
-                                    {**_args(cfg.args, state["case_key"]), "items": send})
+                                    {**_args(cfg.args, state["task_key"]), "items": send})
     except (gateway.ToolDenied, gateway.ToolFailed) as e:
         return steps._escalate("TRANSFORM_FAILED", str(e))
     rows = list(result.get("rows", []))

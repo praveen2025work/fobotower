@@ -78,7 +78,7 @@ async function icon(Comp, color, size = 256) {
   s = pres.addSlide({ masterName: "Content", sectionTitle: "Introduction" });
   s.addText("One platform, each team configured its own way", { placeholder: "title" });
   const stats = [
-    ["6", "capabilities and team groups running today on development data"],
+    ["6", "agents and team groups running today on development data"],
     ["4", "ready examples for further teams, waiting only on their data feeds"],
     ["0", "code per new use case: a team is a configuration file, approved four-eyes"],
   ];
@@ -94,7 +94,7 @@ async function icon(Comp, color, size = 256) {
 
   // ---------- 3. How it works ----------
   s = pres.addSlide({ masterName: "Content", sectionTitle: "Introduction" });
-  s.addText("Every case runs the same way", { placeholder: "title" });
+  s.addText("Every task runs the same way", { placeholder: "title" });
   const steps = [
     [fa.FaDatabase, "Data lands", "On a schedule or when the source system says it is ready"],
     [fa.FaProjectDiagram, "Matched", "Classified by the team's own rules and playbook"],
@@ -205,7 +205,7 @@ async function icon(Comp, color, size = 256) {
   const tech = [
     [fa.FaKey, "Entitlements on every data access", "Each call checked against the person's roles and data scope, and logged"],
     [fa.FaUserSecret, "Sensitive data masked", "Account numbers masked and counterparties pseudonymised before the model sees anything"],
-    [fa.FaPowerOff, "Cost caps and off switches", "Spend capped per case and per day; any capability, team or connector off in one click"],
+    [fa.FaPowerOff, "Cost caps and off switches", "Spend capped per task and per day; any agent, team or connector off in one click"],
     [fa.FaFlask, "Tested before it goes live", "New versions replayed on past decisions; promoted between environments and approved again"],
   ];
   for (let i = 0; i < tech.length; i++) {
@@ -221,7 +221,7 @@ async function icon(Comp, color, size = 256) {
   s = pres.addSlide({ masterName: "Content", sectionTitle: "Getting started" });
   s.addText("Bringing on a new team", { placeholder: "title" });
   const paths = [
-    ["Same kind of work", "Another reconciliation, say", "One configuration file on an existing capability, approved by the team's second owner"],
+    ["Same kind of work", "Another reconciliation, say", "One configuration file on an existing agent, approved by the team's second owner"],
     ["New kind of work", "A new review or control", "Drafted from a written requirement or template, checked by the platform, live after a second owner approves"],
     ["New data source", "A system not yet connected", "Connected once by the platform team; after that every team uses it through configuration"],
   ];

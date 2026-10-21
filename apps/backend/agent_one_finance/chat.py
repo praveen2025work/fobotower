@@ -1,14 +1,14 @@
-"""Ask about a case, and see how its run went.
+"""Ask about a task, and see how its run went.
 
-Ask: anyone who can see a case may ask about it in plain words ("why is
-6300 different?"). The model answers from the case — its groups, findings
-and items — and may call the capability's read tools through the gateway,
+Ask: anyone who can see a task may ask about it in plain words ("why is
+6300 different?"). The model answers from the task — its groups, findings
+and items — and may call the agent's read tools through the gateway,
 so every lookup is allowed-listed, scoped and audited like any other. The
 answer's figures are checked against what the run (and the answer's own
 tool calls) read; untraceable figures are listed with the answer, never
 hidden. Masked and pseudonymized fields stay protected from the model.
 
-History: the case's LangGraph checkpoints, step by step — when each step
+History: the task's LangGraph checkpoints, step by step — when each step
 ran, how long it took, what it left behind, and where people stepped in.
 Any point can be opened to see the state exactly as it was.
 """
@@ -18,12 +18,12 @@ import uuid
 from sqlalchemy import select
 
 from agent_one_finance import controls, gateway, runner, steps
-from agent_one_finance.cases import CaseError, case_detail, may_see_case
+from agent_one_finance.tasks import TaskError, task_detail, may_see_task
 from agent_one_finance.db import get_session
 from agent_one_finance.entitlement import Caller
 from agent_one_finance.governance import Protector
 from agent_one_finance.llm import AskRequest, llm
-from agent_one_finance.models import Case, CaseMessage
+from agent_one_finance.models import Task, TaskMessage
 from agent_one_finance.observability import span
 from agent_one_finance.workflow import build_graph, checkpointer
 
@@ -31,62 +31,62 @@ MAX_QUESTION = 4000
 
 
 class _RecordOnly:
-    """Over the spend limit: answer from the case's record, no model."""
+    """Over the spend limit: answer from the task's record, no model."""
     name = "none"
 
     def __init__(self, why: str):
         self.why = why
 
     async def ask(self, request, tools):
-        from agent_one_finance.llm import AskResult, _from_case
-        return AskResult(answer=f"{_from_case(request)} (No model: {self.why}.)")
+        from agent_one_finance.llm import AskResult, _from_task
+        return AskResult(answer=f"{_from_task(request)} (No model: {self.why}.)")
 
 
-async def _case(case_id: str, caller: Caller) -> tuple[Case, object]:
+async def _task(task_id: str, caller: Caller) -> tuple[Task, object]:
     async with get_session() as s:
-        case = await s.get(Case, case_id)
-    if case is None:
-        raise LookupError(case_id)
-    m = await runner.pinned(case)
-    if not may_see_case(caller, m, case.case_key):
-        raise LookupError(case_id)
-    return case, m
+        task = await s.get(Task, task_id)
+    if task is None:
+        raise LookupError(task_id)
+    m = await runner.pinned(task)
+    if not may_see_task(caller, m, task.task_key):
+        raise LookupError(task_id)
+    return task, m
 
 
-def _message(r: CaseMessage) -> dict:
+def _message(r: TaskMessage) -> dict:
     return {"message_id": r.message_id, "role": r.role, "author": r.author, "text": r.text,
             "meta": r.meta, "created_at": r.created_at}
 
 
-async def messages(case_id: str, caller: Caller) -> list[dict]:
-    await _case(case_id, caller)
+async def messages(task_id: str, caller: Caller) -> list[dict]:
+    await _task(task_id, caller)
     async with get_session() as s:
-        rows = (await s.execute(select(CaseMessage).where(CaseMessage.case_id == case_id)
-                                .order_by(CaseMessage.created_at, CaseMessage.message_id))).scalars().all()
+        rows = (await s.execute(select(TaskMessage).where(TaskMessage.task_id == task_id)
+                                .order_by(TaskMessage.created_at, TaskMessage.message_id))).scalars().all()
     return [_message(r) for r in rows]
 
 
-async def ask(case_id: str, question: str, caller: Caller) -> dict:
+async def ask(task_id: str, question: str, caller: Caller) -> dict:
     question = (question or "").strip()
     if not question:
-        raise CaseError("ask a question")
+        raise TaskError("ask a question")
     if len(question) > MAX_QUESTION:
-        raise CaseError(f"a question is at most {MAX_QUESTION} characters")
-    case, m = await _case(case_id, caller)
-    detail = await case_detail(case_id, caller)
+        raise TaskError(f"a question is at most {MAX_QUESTION} characters")
+    task, m = await _task(task_id, caller)
+    detail = await task_detail(task_id, caller)
     async with get_session() as s:
-        s.add(CaseMessage(message_id=uuid.uuid4().hex, case_id=case_id, role="user",
+        s.add(TaskMessage(message_id=uuid.uuid4().hex, task_id=task_id, role="user",
                           author=caller.user_id, text=question, meta={}))
         await s.commit()
-        history = (await s.execute(select(CaseMessage).where(CaseMessage.case_id == case_id)
-                                   .order_by(CaseMessage.created_at).limit(20))).scalars().all()
+        history = (await s.execute(select(TaskMessage).where(TaskMessage.task_id == task_id)
+                                   .order_by(TaskMessage.created_at).limit(20))).scalars().all()
 
-    guard = Protector.for_tools(m.tools_used(), case_id)
-    ctx = gateway.CallContext(capability_id=case.capability_id, caller=caller,
-                              allowed_tools=frozenset(m.reasoning.tools), case_id=case_id,
+    guard = Protector.for_tools(m.tools_used(), task_id)
+    ctx = gateway.CallContext(agent_id=task.agent_id, caller=caller,
+                              allowed_tools=frozenset(m.reasoning.tools), task_id=task_id,
                               requested_by="chat", protector=guard)
     context = {
-        "subject": case.subject, "status": case.status, "headline": (case.draft or {}).get("headline"),
+        "subject": task.subject, "status": task.status, "headline": (task.draft or {}).get("headline"),
         "groups": [{"group_id": g["group_id"], "label": g["label"], "group_key": g["group_key"],
                     "finding": {k: (g["finding"] or {}).get(k) for k in
                                 ("status", "comment", "reason", "verdict", "category_name",
@@ -94,20 +94,20 @@ async def ask(case_id: str, question: str, caller: Caller) -> dict:
                     "decision": g["decision"], "items": g["item_ids"]} for g in detail["groups"]],
         "items": detail["items"][:200],
     }
-    # Field-level protection, then every protected value the case knows about
+    # Field-level protection, then every protected value the task knows about
     # scrubbed out of free text (labels, comments, the question itself).
-    known = [case.case_key, *[g["group_key"] for g in detail["groups"]], *detail["items"]]
+    known = [task.task_key, *[g["group_key"] for g in detail["groups"]], *detail["items"]]
     request = AskRequest(
-        capability_id=case.capability_id, case_id=case_id,
-        case_key=guard.scrub(guard.protect(case.case_key), known), skill=m.reasoning.skill,
+        agent_id=task.agent_id, task_id=task_id,
+        task_key=guard.scrub(guard.protect(task.task_key), known), skill=m.reasoning.skill,
         question=guard.scrub(question, known),
         context=guard.scrub(guard.protect(context), known),
         history=[{"role": h.role, "text": guard.scrub(h.text, known)} for h in history[:-1]],
         allowed_tools=list(m.reasoning.tools))
     adapter = llm()
-    if over := await controls.over_budget(m, case_id):
+    if over := await controls.over_budget(m, task_id):
         adapter = _RecordOnly(over)
-    with span("case.ask", root=True, case_id=case_id, capability_id=case.capability_id,
+    with span("task.ask", root=True, task_id=task_id, agent_id=task.agent_id,
               user=caller.user_id) as sp:
         before = len(ctx.calls)
         try:
@@ -116,27 +116,27 @@ async def ask(case_id: str, question: str, caller: Caller) -> dict:
         except Exception as e:  # an unanswerable question is an answer, not a 500
             text, model, usage = f"I could not answer that: {type(e).__name__}: {e}", None, {}
         sp.set_attribute("aof.tool_calls", len(ctx.calls) - before)
-    state = {"case_key": case.case_key, "items": detail["items"],
-             "groups": [{**g, "finding": g["finding"]} for g in detail["groups"]], "case_id": case_id}
+    state = {"task_key": task.task_key, "items": detail["items"],
+             "groups": [{**g, "finding": g["finding"]} for g in detail["groups"]], "task_id": task_id}
     unverified = steps.ungrounded(text, await steps.grounded_figures(state))
     meta = {"model": model, "usage": usage, "tool_calls": ctx.calls[before:],
             "unverified_figures": unverified}
     async with get_session() as s:
-        answer = CaseMessage(message_id=uuid.uuid4().hex, case_id=case_id, role="assistant",
+        answer = TaskMessage(message_id=uuid.uuid4().hex, task_id=task_id, role="assistant",
                              author=f"llm:{adapter.name}", text=text, meta=meta)
         s.add(answer)
         await s.commit()
     return {"answer": {"role": "assistant", "author": answer.author, "text": text, "meta": meta},
-            "messages": await messages(case_id, caller)}
+            "messages": await messages(task_id, caller)}
 
 
 # ---------- history ----------
 
-async def history(case_id: str, caller: Caller) -> list[dict]:
+async def history(task_id: str, caller: Caller) -> list[dict]:
     """The run, oldest first: each step with its start, end and what it left;
     each human input (decisions, release) where it came in."""
-    case, m = await _case(case_id, caller)
-    config = {"configurable": {"thread_id": f"aof:{case_id}"}}
+    task, m = await _task(task_id, caller)
+    config = {"configurable": {"thread_id": f"aof:{task_id}"}}
     async with checkpointer() as cp:
         app = build_graph(m.steps, m.pause_before, cp, m.step_types())
         snaps = [s async for s in app.aget_state_history(config)]
@@ -173,14 +173,14 @@ async def history(case_id: str, caller: Caller) -> list[dict]:
     return out
 
 
-async def state_at(case_id: str, checkpoint_id: str, caller: Caller) -> dict:
+async def state_at(task_id: str, checkpoint_id: str, caller: Caller) -> dict:
     """The run's state exactly as it was at one checkpoint."""
-    case, m = await _case(case_id, caller)
-    config = {"configurable": {"thread_id": f"aof:{case_id}", "checkpoint_id": checkpoint_id}}
+    task, m = await _task(task_id, caller)
+    config = {"configurable": {"thread_id": f"aof:{task_id}", "checkpoint_id": checkpoint_id}}
     async with checkpointer() as cp:
         snap = await build_graph(m.steps, m.pause_before, cp, m.step_types()).aget_state(config)
     if snap.created_at is None:
-        raise LookupError(f"{case_id}@{checkpoint_id}")
+        raise LookupError(f"{task_id}@{checkpoint_id}")
     v = snap.values or {}
     return {"checkpoint_id": checkpoint_id, "at": snap.created_at, "next": list(snap.next),
             "items": v.get("items", []), "groups": v.get("groups", []),

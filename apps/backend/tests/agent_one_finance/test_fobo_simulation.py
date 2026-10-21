@@ -27,16 +27,16 @@ def simulator(monkeypatch):
     monkeypatch.setattr(llm, "_adapter", FoboSkillSimulator())
 
 
-async def _event(api, monkeypatch, capability, book, group=None):
+async def _event(api, monkeypatch, agent, book, group=None):
     from agent_one_finance.config import settings
     from agent_one_finance.web import main
     monkeypatch.setattr(main, "settings", lambda: dataclasses.replace(settings(), event_secret="evt"))
-    body = {"capability_id": capability, "case_key": {"book": book, "cob": COB}}
+    body = {"agent_id": agent, "task_key": {"book": book, "cob": COB}}
     if group:
         body["team_group"] = group
     res = await api.post("/api/events", headers={"X-AOF-Event-Secret": "evt"}, json=body)
     assert res.status_code == 201, res.text
-    return (await api.get(f"/api/cases/{res.json()['case_id']}", headers=api.as_user("frank"))).json()
+    return (await api.get(f"/api/tasks/{res.json()['task_id']}", headers=api.as_user("frank"))).json()
 
 
 def _expected(book):
@@ -44,34 +44,34 @@ def _expected(book):
 
 
 async def test_single_step_decides_every_break_as_the_skill_does(api, monkeypatch):
-    case = await _event(api, monkeypatch, "break.investigation.skill", "PRIME-SIM-01")
-    assert case["status"] == "awaiting_review", case.get("error")
-    got = {g["group_key"]["instrument"]: g["finding"] for g in case["groups"]}
-    items = {i["instrument"]: i for i in case["items"]}
+    task = await _event(api, monkeypatch, "break.investigation.skill", "PRIME-SIM-01")
+    assert task["status"] == "awaiting_review", task.get("error")
+    got = {g["group_key"]["instrument"]: g["finding"] for g in task["groups"]}
+    items = {i["instrument"]: i for i in task["items"]}
     for ins, exp in _expected("PRIME-SIM-01").items():
         assert got[ins]["verdict"] == exp["verdict"], ins
         assert items[ins]["category"] == exp["category"], ins
         assert not (got[ins].get("reason") or "").startswith("UNGROUNDED"), (ins, got[ins]["reason"])
-    session = case["draft"]["session"]
+    session = task["draft"]["session"]
     tools = [t["tool"] for t in session["transcript"] if t["kind"] == "tool_call"]
     assert tools[:4] == ["mbrec.book_status", "mbrec.breaks", "cats.pnl_components", "motif.pnl_components"]
     assert {"secref.corporate_actions", "secref.bond_metadata", "mbrec.break_history", "cats.trades"} <= set(tools)
-    emb = next(g for g in case["groups"] if g["group_key"]["instrument"] == "EMB AMORT 2031")["finding"]
+    emb = next(g for g in task["groups"] if g["group_key"]["instrument"] == "EMB AMORT 2031")["finding"]
     assert [s["id"] for s in emb["sections"]][:3] == ["break_summary", "checks", "root_cause"]
     assert "FO-6" in next(s["text"] for s in emb["sections"] if s["id"] == "checks")
 
 
 async def test_single_step_holds_an_incomplete_book(api, monkeypatch):
-    case = await _event(api, monkeypatch, "break.investigation.skill", "PRIME-SIM-02")
-    assert {g["finding"]["verdict"] for g in case["groups"]} == {"ESCALATE"}
-    tools = [t["tool"] for t in case["draft"]["session"]["transcript"] if t["kind"] == "tool_call"]
+    task = await _event(api, monkeypatch, "break.investigation.skill", "PRIME-SIM-02")
+    assert {g["finding"]["verdict"] for g in task["groups"]} == {"ESCALATE"}
+    tools = [t["tool"] for t in task["draft"]["session"]["transcript"] if t["kind"] == "tool_call"]
     assert tools == ["mbrec.book_status", "mbrec.breaks"]          # R5: nothing else is read
 
 
 async def test_multi_step_settles_the_deterministic_breaks_and_asks_for_the_rest(api, monkeypatch):
-    case = await _event(api, monkeypatch, "break.investigation", "PRIME-SIM-01", "fobo-prime")
-    assert case["status"] == "paused_before_reason", case.get("error")
-    after = (await api.post(f"/api/cases/{case['case_id']}/gates/reason", headers=api.as_user("frank"),
+    task = await _event(api, monkeypatch, "break.investigation", "PRIME-SIM-01", "fobo-prime")
+    assert task["status"] == "paused_before_reason", task.get("error")
+    after = (await api.post(f"/api/tasks/{task['task_id']}/gates/reason", headers=api.as_user("frank"),
                             json={"action": "continue", "idempotency_key": uuid.uuid4().hex})).json()
     assert after["status"] == "awaiting_review", after.get("error")
     items = {i["instrument"]: i for i in after["items"]}
@@ -88,8 +88,8 @@ async def test_multi_step_settles_the_deterministic_breaks_and_asks_for_the_rest
 
 
 async def test_multi_step_holds_an_incomplete_book(api, monkeypatch):
-    case = await _event(api, monkeypatch, "break.investigation", "PRIME-SIM-02", "fobo-prime")
-    after = (await api.post(f"/api/cases/{case['case_id']}/gates/reason", headers=api.as_user("frank"),
+    task = await _event(api, monkeypatch, "break.investigation", "PRIME-SIM-02", "fobo-prime")
+    after = (await api.post(f"/api/tasks/{task['task_id']}/gates/reason", headers=api.as_user("frank"),
                             json={"action": "continue", "idempotency_key": uuid.uuid4().hex})).json()
     assert {i["category"] for i in after["items"]} == {"W"}
     assert {g["finding"]["verdict"] for g in after["groups"]} == {"ESCALATE"}

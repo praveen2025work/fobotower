@@ -34,7 +34,7 @@ Book status, history by book, and breaks across books.
 
 ### E04-S31 MB Rec: read breaks and break history
 
-As a FOBO controller, I want breaks and their history read from MB Rec, so that each case starts from the real breaks.
+As a FOBO controller, I want breaks and their history read from MB Rec, so that each task starts from the real breaks.
 
 Read-only connection.
 
@@ -44,8 +44,8 @@ Read-only connection.
 
 **Acceptance criteria**
 
-- Given a book and date in MB Rec, when a case opens, then its breaks load read-only.
-- Done when: Real breaks load into a case in UAT
+- Given a book and date in MB Rec, when a task opens, then its breaks load read-only.
+- Done when: Real breaks load into a task in UAT
 
 **Blocked by:** E02-S11
 
@@ -75,14 +75,14 @@ The FOBO controllers are already provisioned; set who reviews, who releases and 
 
 **Acceptance criteria**
 
-- Given a reviewer for book A, when they open the inbox, then they see only book A's cases.
+- Given a reviewer for book A, when they open the inbox, then they see only book A's tasks.
 - Done when: Users see only their books
 
-### E04-S34 MB Rec: end-of-day notification opens a case
+### E04-S34 MB Rec: end-of-day notification opens a task
 
-As a FOBO controller, I want a case opened automatically when MB Rec finishes a book, so that work is ready when I start.
+As a FOBO controller, I want a task opened automatically when MB Rec finishes a book, so that work is ready when I start.
 
-When MB Rec finishes a book, AOF opens the case; late breaks open a follow-up.
+When MB Rec finishes a book, AOF opens the task; late breaks open a follow-up.
 
 | Sprint | Release | Points | Priority | Team | Environment | Status |
 |---|---|---|---|---|---|---|
@@ -90,9 +90,9 @@ When MB Rec finishes a book, AOF opens the case; late breaks open a follow-up.
 
 **Acceptance criteria**
 
-- Given MB Rec finishes a book, when it sends its notification, then a case opens.
-- Given a late break for an open book, when MB Rec notifies, then a follow-up case opens.
-- Done when: Case opens automatically in UAT
+- Given MB Rec finishes a book, when it sends its notification, then a task opens.
+- Given a late break for an open book, when MB Rec notifies, then a follow-up task opens.
+- Done when: Task opens automatically in UAT
 
 **Blocked by:** E04-S31
 
@@ -108,7 +108,7 @@ Read-only connection.
 
 **Acceptance criteria**
 
-- Given a break, when it is investigated, then the MOTIF data used is shown on the case.
+- Given a break, when it is investigated, then the MOTIF data used is shown on the task.
 - Done when: MOTIF data available in UAT
 
 **Blocked by:** E02-S11
@@ -144,7 +144,7 @@ Read back from MOTIF that the adjustment landed; flag any that did not.
 
 **Acceptance criteria**
 
-- Given a posted adjustment, when MOTIF is read back, then the case shows it confirmed, or flags it.
+- Given a posted adjustment, when MOTIF is read back, then the task shows it confirmed, or flags it.
 - Done when: Every UAT posting confirmed
 
 **Blocked by:** E04-S36

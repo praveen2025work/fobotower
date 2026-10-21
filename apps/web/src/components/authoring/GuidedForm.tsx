@@ -1,5 +1,5 @@
 // Authoring without a model: four short steps of plain questions build a
-// capability's configuration. The platform's validator judges it exactly as it judges a
+// agent's configuration. The platform's validator judges it exactly as it judges a
 // model's draft, and another owner approves it before it goes live.
 
 import { ToolSet } from "../orchestrator/fields";
@@ -27,7 +27,7 @@ export default function GuidedForm({ onBuild, pending }: { onBuild: (answers: Re
   const [step, setStep] = useState(0);
   const readTools = (platform.data?.connectors ?? []).flatMap((c) => c.tools).filter((t) => t.access === "read");
   const [a, setA] = useState({
-    name: "", description: "", kind: "investigate", case_key: "book, cob", scope_field: "", case_label: "Run", item_label: "Item",
+    name: "", description: "", kind: "investigate", task_key: "book, cob", scope_field: "", task_label: "Run", item_label: "Item",
     source_tool: "", left_tool: "", right_tool: "", left_label: "left", right_label: "right", match_keys: "", id_field: "",
     amount_field: "", measure: "actual", baseline: "budget", display: "", materiality: "", unit: "GBP", materiality_unconfirmed: false,
     group_by: "", decided_by: "model_then_person", model_tools: [] as string[], instructions: "", tollgate: false, tollgate_check: "",
@@ -36,7 +36,7 @@ export default function GuidedForm({ onBuild, pending }: { onBuild: (answers: Re
     reserved_roles: "", reserved_when: "", reserved_reason: "",
   });
   const set = (k: keyof typeof a, v: unknown) => setA((x) => ({ ...x, [k]: v }));
-  const key = list(a.case_key);
+  const key = list(a.task_key);
   const tool = (k: "source_tool" | "left_tool" | "right_tool", text: string) => (
     <label className={label}>{text}
       <select aria-label={text} value={a[k]} onChange={(e) => set(k, e.target.value)} className={input}>
@@ -46,7 +46,7 @@ export default function GuidedForm({ onBuild, pending }: { onBuild: (answers: Re
     </label>
   );
   const build = () => onBuild({
-    ...a, case_key: key, display: list(a.display), group_by: list(a.group_by), match_keys: list(a.match_keys),
+    ...a, task_key: key, display: list(a.display), group_by: list(a.group_by), match_keys: list(a.match_keys),
     reviewer_roles: list(a.reviewer_roles), checklist: a.checklist.split("\n").map((q) => q.trim()).filter(Boolean),
     materiality: a.materiality === "" ? null : Number(a.materiality),
     sample_size: a.sample_size === "" ? null : Number(a.sample_size),
@@ -89,13 +89,13 @@ export default function GuidedForm({ onBuild, pending }: { onBuild: (answers: Re
       </>}
       {step === 1 && <>
       <div className="grid gap-3 sm:grid-cols-2">
-        <label className={label}>One task is one… (key fields)<input value={a.case_key} onChange={(e) => set("case_key", e.target.value)} placeholder="book, cob" className={input} /></label>
+        <label className={label}>One task is one… (key fields)<input value={a.task_key} onChange={(e) => set("task_key", e.target.value)} placeholder="book, cob" className={input} /></label>
         <label className={label}>Who sees a task is limited by
           <select aria-label="Data scope field" value={a.scope_field} onChange={(e) => set("scope_field", e.target.value)} className={input}>
             <option value="">no data scope</option>{key.map((k) => <option key={k}>{k}</option>)}
           </select>
         </label>
-        <label className={label}>A task is called<input value={a.case_label} onChange={(e) => set("case_label", e.target.value)} className={input} /></label>
+        <label className={label}>A task is called<input value={a.task_label} onChange={(e) => set("task_label", e.target.value)} className={input} /></label>
         <label className={label}>An item is called<input value={a.item_label} onChange={(e) => set("item_label", e.target.value)} className={input} /></label>
       </div>
 

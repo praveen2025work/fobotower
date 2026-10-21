@@ -6,7 +6,7 @@ import { Link } from "react-router-dom";
 import { recorded } from "../scope";
 
 export default function TaskLink({ id, className, title, children }: { id: string; className?: string; title?: string; children: ReactNode }) {
-  const to = `/cases/${encodeURIComponent(id)}`;
+  const to = `/tasks/${encodeURIComponent(id)}`;
   if (recorded(to)) return <Link to={to} className={className} title={title}>{children}</Link>;
   return <span className={className} title="Open it in the live console: this snapshot holds a few tasks in full">{children}</span>;
 }

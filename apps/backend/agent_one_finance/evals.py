@@ -1,10 +1,10 @@
 """Eval sets and shadow runs: try a version on what people already decided.
 
-Test set: past cases of a capability (or one team's group) whose groups
+Test set: past tasks of an agent (or one team's group) whose groups
 people settled — what they approved or rejected, in their words, and the
 verdict when there was a playbook.
 
-Shadow run: each of those cases is opened again, hidden (`shadow_of`), on
+Shadow run: each of those tasks is opened again, hidden (`shadow_of`), on
 the version under test — a draft not yet approved, or the live one after a
 model change — and run to its review pause, through the same gateway (real
 reads, audited; nothing is ever written: a shadow never reaches publish).
@@ -18,9 +18,9 @@ Score, per group matched by its key:
               approved one (the model when there is one; word overlap otherwise)
 plus groups that went missing (or were grouped with no proposal) or are new. A hidden copy
 runs through tollgates (no one is there to pass them) and stops at review. Each run is a span in Phoenix
-(`eval.run`, one `eval.case` per case) with the scores as attributes.
+(`eval.run`, one `eval.task` per task) with the scores as attributes.
 
-    POST /api/capabilities/{id}/evals   {version?, team_group?, group_version?, limit?}
+    POST /api/agents/{id}/evals   {version?, team_group?, group_version?, limit?}
 """
 
 import asyncio
@@ -32,13 +32,13 @@ from datetime import datetime, timezone
 
 from sqlalchemy import select
 
-from agent_one_finance import capabilities, runner
+from agent_one_finance import agents, runner
 from agent_one_finance import groups as team_groups
 from agent_one_finance.config import settings
 from agent_one_finance.db import get_session
 from agent_one_finance.entitlement import Caller
 from agent_one_finance.manifest import Manifest
-from agent_one_finance.models import Case, CapabilityVersion, Decision, EvalRun, GroupVersion, ProposalGroup
+from agent_one_finance.models import Task, AgentVersion, Decision, EvalRun, GroupVersion, ProposalGroup
 from agent_one_finance.observability import span
 
 log = logging.getLogger("agent_one_finance.evals")
@@ -53,46 +53,46 @@ def _key(group_key: dict) -> str:
     return json.dumps(group_key, sort_keys=True)
 
 
-async def _target(capability_id: str, version: int | None, team_group: str | None,
+async def _target(agent_id: str, version: int | None, team_group: str | None,
                   group_version: int | None) -> tuple[int, int | None, Manifest]:
-    """The manifest under test: a capability version (live by default),
+    """The manifest under test: an agent version (live by default),
     merged with a group version (live by default) when testing a group."""
     async with get_session() as s:
         if version is None:
-            version, _ = await capabilities.active(capability_id)
-        row = await s.get(CapabilityVersion, (capability_id, version))
+            version, _ = await agents.active(agent_id)
+        row = await s.get(AgentVersion, (agent_id, version))
         if row is None:
-            raise EvalError(f"{capability_id} has no version {version}")
+            raise EvalError(f"{agent_id} has no version {version}")
         base = Manifest.model_validate(row.manifest)
         if not team_group:
             return version, None, base
         if group_version is None:
-            group_version = (await team_groups.active_group(capability_id, team_group))[0]
-        grow = await s.get(GroupVersion, (capability_id, team_group, group_version))
+            group_version = (await team_groups.active_group(agent_id, team_group))[0]
+        grow = await s.get(GroupVersion, (agent_id, team_group, group_version))
         if grow is None:
             raise EvalError(f"group {team_group} has no version {group_version}")
     m, found = team_groups.effective(base, team_groups.GroupConfig.model_validate(grow.config))
     if found:
-        raise EvalError("that group version does not fit that capability version: " + "; ".join(found))
+        raise EvalError("that group version does not fit that agent version: " + "; ".join(found))
     return version, group_version, m
 
 
-async def test_set(capability_id: str, team_group: str | None, limit: int) -> list[dict]:
-    """Past cases whose every group people settled, newest first."""
-    from agent_one_finance.cases import _case_items, _settle
+async def test_set(agent_id: str, team_group: str | None, limit: int) -> list[dict]:
+    """Past tasks whose every group people settled, newest first."""
+    from agent_one_finance.tasks import _task_items, _settle
 
     async with get_session() as s:
-        q = select(Case).where(Case.capability_id == capability_id, Case.shadow_of.is_(None),
-                               Case.status.in_(("completed", "awaiting_publish", "failed")))
+        q = select(Task).where(Task.agent_id == agent_id, Task.shadow_of.is_(None),
+                               Task.status.in_(("completed", "awaiting_publish", "failed")))
         if team_group:
-            q = q.where(Case.team_group == team_group)
-        cases = (await s.execute(q.order_by(Case.opened_at.desc()).limit(limit * 3))).scalars().all()
+            q = q.where(Task.team_group == team_group)
+        tasks = (await s.execute(q.order_by(Task.opened_at.desc()).limit(limit * 3))).scalars().all()
         out = []
-        for c in cases:
+        for c in tasks:
             m = await runner.pinned(c)
-            groups = (await s.execute(select(ProposalGroup).where(ProposalGroup.case_id == c.case_id))).scalars().all()
-            decisions = (await s.execute(select(Decision).where(Decision.case_id == c.case_id))).scalars().all()
-            items = await _case_items(s, c.case_id)
+            groups = (await s.execute(select(ProposalGroup).where(ProposalGroup.task_id == c.task_id))).scalars().all()
+            decisions = (await s.execute(select(Decision).where(Decision.task_id == c.task_id))).scalars().all()
+            items = await _task_items(s, c.task_id)
             expected = {}
             for g in groups:
                 settled = _settle(m, g, decisions, items)
@@ -105,7 +105,7 @@ async def test_set(capability_id: str, team_group: str | None, limit: int) -> li
                     "verdict": f.get("verdict"), "decided_by": settled["decided_by"]}
             else:
                 if expected:
-                    out.append({"case_id": c.case_id, "case_key": c.case_key, "team_group": c.team_group,
+                    out.append({"task_id": c.task_id, "task_key": c.task_key, "team_group": c.team_group,
                                 "expected": expected})
             if len(out) >= limit:
                 break
@@ -139,27 +139,27 @@ def _outcome(expected_action: str, status: str, same_verdict: bool = False) -> s
 
 async def _shadow(run_id: str, src: dict, version: int, group_version: int | None, m: Manifest,
                   starter: Caller) -> dict:
-    """Replay one past case on the version under test; compare at the review pause."""
-    shadow_id = f"{src['case_id']}.shadow.{run_id[:8]}"
+    """Replay one past task on the version under test; compare at the review pause."""
+    shadow_id = f"{src['task_id']}.shadow.{run_id[:8]}"
     # A hidden copy has no one to pass its tollgates: it runs through them to the review pause,
-    # so there is a proposal to compare (people still approved the real case's tollgates).
+    # so there is a proposal to compare (people still approved the real task's tollgates).
     # Steps that need a person's own act (an attestation, a send, a write-back) keep their pause.
     keep = {"review", "attest", "outreach", "post", "publish"}
     m = m.model_copy(update={"pause_before": [p for p in m.pause_before if p in keep or m.step_type(p) in keep]})
     async with get_session() as s:
-        s.add(Case(case_id=shadow_id, root_case_id=shadow_id, shadow_of=src["case_id"], eval_run_id=run_id,
-                   capability_id=m.id, manifest_version=version, team_group=src["team_group"],
+        s.add(Task(task_id=shadow_id, root_task_id=shadow_id, shadow_of=src["task_id"], eval_run_id=run_id,
+                   agent_id=m.id, manifest_version=version, team_group=src["team_group"],
                    team_group_version=group_version, manifest=m.model_dump(by_alias=True),
-                   case_key=src["case_key"], subject=f"shadow of {src['case_id']}",
-                   scope={sc: src["case_key"].get(f) for f, sc in m.case.scopes.items()},
+                   task_key=src["task_key"], subject=f"shadow of {src['task_id']}",
+                   scope={sc: src["task_key"].get(f) for f, sc in m.task.scopes.items()},
                    status="running", opened_by=starter.user_id, run_as=starter.as_dict()))
         await s.commit()
-    await runner.run_case(shadow_id, "open")
+    await runner.run_task(shadow_id, "open")
     async with get_session() as s:
-        case = await s.get(Case, shadow_id)
-        groups = (await s.execute(select(ProposalGroup).where(ProposalGroup.case_id == shadow_id))).scalars().all()
-        reached = case.status
-        case.status = "shadow"                 # never on anyone's desk, never published
+        task = await s.get(Task, shadow_id)
+        groups = (await s.execute(select(ProposalGroup).where(ProposalGroup.task_id == shadow_id))).scalars().all()
+        reached = task.status
+        task.status = "shadow"                 # never on anyone's desk, never published
         await s.commit()
     now = {_key(g.group_key): g for g in groups}
     rows, cost = [], 0.0
@@ -180,7 +180,7 @@ async def _shadow(run_id: str, src: dict, version: int, group_version: int | Non
                      "expected": e, "now": {k: f.get(k) for k in ("status", "comment", "reason", "verdict", "decided_by")}})
     rows += [{"group": g.label, "outcome": "new", "now": {"status": (g.finding or {}).get("status")}}
              for k, g in now.items() if k not in src["expected"]]
-    return {"case_id": src["case_id"], "shadow_case_id": shadow_id, "reached": reached, "groups": rows,
+    return {"task_id": src["task_id"], "shadow_task_id": shadow_id, "reached": reached, "groups": rows,
             "cost_usd": round(cost, 4)}
 
 
@@ -193,7 +193,7 @@ def summarise(results: list[dict]) -> dict:
 
     def count(o):
         return sum(1 for g in rows if g["outcome"] == o)
-    return {"cases": len(results), "groups_compared": n,
+    return {"tasks": len(results), "groups_compared": n,
             "agree": count("agree"), "disagree": count("disagree"), "escalated": count("escalated"),
             "missing": count("missing"), "new": count("new"),
             "agreement_rate": round(count("agree") / n, 3) if n else None,
@@ -206,10 +206,10 @@ async def _run(run_id: str, version: int, group_version: int | None, m: Manifest
                limit: int, starter: Caller) -> None:
     results = []
     try:
-        with span("eval.run", root=True, capability_id=m.id, version=version, team_group=team_group or "",
+        with span("eval.run", root=True, agent_id=m.id, version=version, team_group=team_group or "",
                   run_id=run_id) as sp:
             for src in await test_set(m.id, team_group, limit):
-                with span("eval.case", case_id=src["case_id"]) as cs:
+                with span("eval.task", task_id=src["task_id"]) as cs:
                     r = await _shadow(run_id, src, version, group_version, m, starter)
                     part = summarise([r])
                     for k in ("agreement_rate", "verdict_match_rate", "wording_mean"):
@@ -231,22 +231,22 @@ async def _run(run_id: str, version: int, group_version: int | None, m: Manifest
         await s.commit()
 
 
-async def start(capability_id: str, caller: Caller, *, version: int | None = None,
+async def start(agent_id: str, caller: Caller, *, version: int | None = None,
                 team_group: str | None = None, group_version: int | None = None, limit: int = 20) -> str:
-    """Owners of the capability (or of the group under test) start an eval run."""
-    _, live = await capabilities.active(capability_id)
-    allowed = capabilities.is_owner(caller, live)
+    """Owners of the agent (or of the group under test) start an eval run."""
+    _, live = await agents.active(agent_id)
+    allowed = agents.is_owner(caller, live)
     if team_group and not allowed:
-        _, cfg, _ = await team_groups.active_group(capability_id, team_group)
+        _, cfg, _ = await team_groups.active_group(agent_id, team_group)
         allowed = team_groups.is_group_owner(caller, cfg)
     if not allowed:
-        raise PermissionError(f"{caller.user_id} does not own {capability_id}" + (f"/{team_group}" if team_group else ""))
-    if not team_group and await team_groups.active_groups(capability_id):
-        raise EvalError(f"{capability_id} runs per group: choose a team_group to evaluate")
-    version, group_version, m = await _target(capability_id, version, team_group, group_version)
+        raise PermissionError(f"{caller.user_id} does not own {agent_id}" + (f"/{team_group}" if team_group else ""))
+    if not team_group and await team_groups.active_groups(agent_id):
+        raise EvalError(f"{agent_id} runs per group: choose a team_group to evaluate")
+    version, group_version, m = await _target(agent_id, version, team_group, group_version)
     run_id = uuid.uuid4().hex
     async with get_session() as s:
-        s.add(EvalRun(run_id=run_id, capability_id=capability_id, version=version, team_group=team_group,
+        s.add(EvalRun(run_id=run_id, agent_id=agent_id, version=version, team_group=team_group,
                       group_version=group_version, status="running", started_by=caller.user_id))
         await s.commit()
     work = _run(run_id, version, group_version, m, team_group, max(1, min(limit, 200)), caller)
@@ -260,7 +260,7 @@ async def start(capability_id: str, caller: Caller, *, version: int | None = Non
 
 
 def _row(r: EvalRun, with_results: bool = False) -> dict:
-    out = {"run_id": r.run_id, "capability_id": r.capability_id, "version": r.version,
+    out = {"run_id": r.run_id, "agent_id": r.agent_id, "version": r.version,
            "team_group": r.team_group, "group_version": r.group_version, "status": r.status,
            "started_by": r.started_by, "started_at": r.started_at, "finished_at": r.finished_at,
            "summary": r.summary, "error": r.error}
@@ -269,9 +269,9 @@ def _row(r: EvalRun, with_results: bool = False) -> dict:
     return out
 
 
-async def runs(capability_id: str) -> list[dict]:
+async def runs(agent_id: str) -> list[dict]:
     async with get_session() as s:
-        rows = (await s.execute(select(EvalRun).where(EvalRun.capability_id == capability_id)
+        rows = (await s.execute(select(EvalRun).where(EvalRun.agent_id == agent_id)
                                 .order_by(EvalRun.started_at.desc()).limit(50))).scalars().all()
     return [_row(r) for r in rows]
 

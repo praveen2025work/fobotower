@@ -11,7 +11,7 @@ export const FINANCE_BASE = "/finance";
 
 const toHref = (to) => (to === "/" ? FINANCE_BASE : `${FINANCE_BASE}${to}`);
 
-/** The path inside the console ("/cases/C1"), without FINANCE_BASE. */
+/** The path inside the console ("/tasks/C1"), without FINANCE_BASE. */
 function useConsolePath() {
   const path = usePathname() ?? "/";
   const rest = path.startsWith(FINANCE_BASE) ? path.slice(FINANCE_BASE.length) : path;

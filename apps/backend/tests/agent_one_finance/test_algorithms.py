@@ -7,7 +7,7 @@ import random
 import pytest
 
 from agent_one_finance import algorithms, stepkit, steps_v2
-from agent_one_finance.capabilities import seed_files
+from agent_one_finance.agents import seed_files
 
 BASE = next(m for m in seed_files() if m.id == "payments.exceptions")
 
@@ -37,7 +37,7 @@ def lab(monkeypatch):
 
     class Lab:
         def state(self, items, **extra):
-            return {"case_id": "lab-1", "case_key": {"book": "PRIME-MB-11", "cob": "2026-10-06"},
+            return {"task_id": "lab-1", "task_key": {"book": "PRIME-MB-11", "cob": "2026-10-06"},
                     "manifest": BASE.model_dump(by_alias=True), "items": items, **extra}
 
         async def run(self, type_name, cfg, state, step_id="step"):
@@ -156,7 +156,7 @@ async def test_cluster_counts_other_books_breaking_the_same_way(lab):
     st = lab.state([{"item_id": "GILT 5Y", "book": "B1", "instrument": "GILT 5Y", "difference": -42000.0},
                     {"item_id": "UST 2Y", "book": "B1", "instrument": "UST 2Y", "difference": -42000.0}])
     i = by_id(await lab.run("cluster", {"same": ["instrument"], "across": "book", "amount": "difference",
-                                        "peers_tool": "mbrec.breaks_all", "peers_args": {"cob": "$case.cob"}}, st))
+                                        "peers_tool": "mbrec.breaks_all", "peers_args": {"cob": "$task.cob"}}, st))
     assert lab.calls == [("mbrec.breaks_all", {"cob": "2026-10-06"})]
     assert i["GILT 5Y"]["systemic"] and i["GILT 5Y"]["systemic_count"] == 3
     assert "systemic_where" not in i["GILT 5Y"]                                        # other books stay unnamed
@@ -229,7 +229,7 @@ async def test_mus_takes_every_interval_and_always_the_big_items(lab):
     even = await lab.run("sample", {"method": "mus", "field": "amount", "size": 5}, lab.state(items[:20]))
     assert len(even["items"]) == 5                       # equal items: one per interval
     again = await lab.run("sample", {"method": "mus", "field": "amount", "size": 5}, st)
-    assert {i["item_id"] for i in again["items"]} == picked                            # same case, same sample
+    assert {i["item_id"] for i in again["items"]} == picked                            # same task, same sample
 
 
 async def test_score_formula_makes_a_priority_with_its_reasons(lab):
@@ -245,7 +245,7 @@ async def test_score_formula_makes_a_priority_with_its_reasons(lab):
 # ---------- proposed checks from approved decisions
 
 def _ex(n, row, label, scope=("fobo-prime", "K")):
-    return [{"scope": scope, "row": dict(row), "label": label, "case": f"{label}-{i}"} for i in range(n)]
+    return [{"scope": scope, "row": dict(row), "label": label, "task": f"{label}-{i}"} for i in range(n)]
 
 
 def test_proposed_checks_find_the_condition_that_predicts_the_verdict():
@@ -260,11 +260,11 @@ def test_proposed_checks_find_the_condition_that_predicts_the_verdict():
         rules.compile_expr(p["when"])
 
 
-def test_proposed_checks_need_enough_cases_and_more_than_one_verdict():
+def test_proposed_checks_need_enough_tasks_and_more_than_one_verdict():
     from agent_one_finance.insights import propose_checks
     assert propose_checks(_ex(9, {"age_days": 3}, "ESCALATE"), needed=5) == []      # one verdict: nothing to learn
     few = _ex(3, {"flag": True}, "POST") + _ex(6, {"flag": False}, "ESCALATE")
-    assert [p["verdict"] for p in propose_checks(few, needed=5)] == ["ESCALATE"]    # POST has only 3 cases
+    assert [p["verdict"] for p in propose_checks(few, needed=5)] == ["ESCALATE"]    # POST has only 3 tasks
 
 
 def test_proposed_checks_join_two_conditions_when_one_is_not_enough():

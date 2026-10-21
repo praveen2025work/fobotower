@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import clsx from "clsx";
-import { Layers, UserCheck } from "lucide-react";
+import { UserCheck } from "lucide-react";
 
 import { currentUser } from "../api/client";
 import { useInbox, type InboxRow } from "../api/aof";
@@ -13,86 +13,17 @@ import StatusBadge from "../components/StatusBadge";
 import { DueBadge, ageText, urgency } from "../components/Urgency";
 import { Card, Empty, ErrorState, Loading, PageHeader, formatTime, formatValue } from "../components/ui";
 
-/** Many tasks of one agent, group and business date waiting on the same person (a task per
- *  master book is hundreds a COB): one row that opens the agent's Summary, where they are
- *  worked by region, desk or pattern. */
-export interface InboxRun {
-  key: string;
-  capability_id: string;
-  capability_name: string;
-  case_label: string;
-  date: string;
-  action: InboxRow["action"];
-  rows: InboxRow[];
-}
-
-const RUN = 6;
-
-export function collapseRuns(rows: InboxRow[]): (InboxRow | InboxRun)[] {
-  const runs = new Map<string, InboxRow[]>();
-  for (const r of rows) {
-    if (!r.summary_date || r.acting_for) continue;
-    const key = [r.capability_id, r.team_group ?? "", r.summary_date, r.action].join("|");
-    runs.set(key, [...(runs.get(key) ?? []), r]);
-  }
-  const out: (InboxRow | InboxRun)[] = [];
-  const placed = new Set<string>();
-  for (const r of rows) {
-    const key = [r.capability_id, r.team_group ?? "", r.summary_date, r.action].join("|");
-    const run = r.summary_date && !r.acting_for ? runs.get(key) : undefined;
-    if (!run || run.length < RUN) out.push(r);
-    else if (!placed.has(key)) {
-      placed.add(key);
-      out.push({ key, capability_id: r.capability_id, capability_name: r.capability_name, case_label: r.case_label,
-                 date: r.summary_date!, action: r.action, rows: run });
-    }
-  }
-  return out;
-}
-
-const isRun = (e: InboxRow | InboxRun): e is InboxRun => "rows" in e;
-const summaryLink = (run: InboxRun) =>
-  `/capabilities/${encodeURIComponent(run.capability_id)}?tab=summary&date=${encodeURIComponent(run.date)}`;
-
-function runTotals(run: InboxRun) {
-  const open = run.rows.reduce((a, r) => a + r.groups - r.decided, 0);
-  const groups = run.rows.reduce((a, r) => a + r.groups, 0);
-  const escalated = run.rows.reduce((a, r) => a + r.escalated, 0);
-  const exposure = run.rows.reduce((a, r) => a + (r.exposure ?? 0), 0);
-  const first = [...run.rows].sort((a, b) => urgency(a) - urgency(b))[0];
-  return { open, groups, escalated, exposure, unit: run.rows.find((r) => r.unit)?.unit, first };
-}
-
-function RunText({ run }: { run: InboxRun }) {
-  return (
-    <>
-      <span className="inline-flex items-center gap-1"><Layers size={13} className="shrink-0" /> {run.case_label} · {run.date}: {run.rows.length.toLocaleString("en-GB")} tasks</span>
-      <span className="block text-xs font-normal text-surface-500">Work them by region, desk or pattern in the summary</span>
-    </>
-  );
-}
-
-/** Phones: one card per case — what it is, what it needs, how urgent. */
+/** Phones: one card per task — what it is, what it needs, how urgent. */
 function InboxCards({ rows }: { rows: InboxRow[] }) {
   return (
     <ul className="divide-y divide-surface-100">
-      {collapseRuns(rows).map((r) => isRun(r) ? (
-        <li key={r.key}>
-          <Link to={summaryLink(r)} className="block py-3 active:bg-surface-50">
-            <div className="flex items-start justify-between gap-2">
-              <span className="min-w-0 font-medium leading-snug text-primary-700"><RunText run={r} /></span>
-              <StatusBadge status={r.action} />
-            </div>
-            <div className="mt-1.5 text-xs text-surface-600">{runTotals(r).open.toLocaleString("en-GB")} of {runTotals(r).groups.toLocaleString("en-GB")} to decide · {r.capability_name}</div>
-          </Link>
-        </li>
-      ) : (
-        <li key={r.case_id}>
-          <TaskLink id={r.case_id} className="block py-3 active:bg-surface-50">
+      {rows.map((r) => (
+        <li key={r.task_id}>
+          <TaskLink id={r.task_id} className="block py-3 active:bg-surface-50">
             <div className="flex items-start justify-between gap-2">
               <span className="min-w-0 font-medium leading-snug text-primary-700">
                 {r.subject}
-                <span className="block text-xs font-normal text-surface-500">{r.case_label} · {r.capability_name}</span>
+                <span className="block text-xs font-normal text-surface-500">{r.task_label} · {r.agent_name}</span>
               </span>
               <StatusBadge status={r.action} />
             </div>
@@ -117,7 +48,7 @@ function InboxCards({ rows }: { rows: InboxRow[] }) {
   );
 }
 
-/** What is left to do on a case, in one line, with the one flag that matters most. */
+/** What is left to do on a task, in one line, with the one flag that matters most. */
 export function WhatsLeft({ r }: { r: InboxRow }) {
   if (r.gate) return <span>Approve the work so far</span>;
   const open = r.groups - r.decided;
@@ -139,8 +70,8 @@ export function WhatsLeft({ r }: { r: InboxRow }) {
 export function InboxTable({ rows, limit }: { rows: InboxRow[]; limit?: number }) {
   const money = rows.some((r) => r.exposure != null);
   const phone = useIsPhone();
-  const entries = collapseRuns(rows).slice(0, limit);
-  if (phone) return <InboxCards rows={entries.flatMap((e) => (isRun(e) ? e.rows : [e]))} />;
+  const shown = rows.slice(0, limit);
+  if (phone) return <InboxCards rows={shown} />;
   return (
     <>
     <div className="overflow-x-auto">
@@ -156,17 +87,15 @@ export function InboxTable({ rows, limit }: { rows: InboxRow[]; limit?: number }
           </tr>
         </thead>
         <tbody className="divide-y divide-surface-100">
-          {entries.map((r) => isRun(r) ? (
-            <RunRow key={r.key} run={r} money={money} />
-          ) : (
-            <tr key={r.case_id} className="hover:bg-surface-50">
+          {shown.map((r) => (
+            <tr key={r.task_id} className="hover:bg-surface-50">
               <td className="px-2 py-2"><StatusBadge status={r.action} /></td>
               <td className="min-w-[14rem] px-2 py-2">
-                <TaskLink id={r.case_id} className="font-medium text-primary-700 hover:underline">
-                  {r.case_label}: {r.subject}
+                <TaskLink id={r.task_id} className="font-medium text-primary-700 hover:underline">
+                  {r.task_label}: {r.subject}
                 </TaskLink>
                 {r.follow_up_of && !/late items/i.test(r.subject) && (
-                  <Link to={`/cases/${encodeURIComponent(r.follow_up_of)}`} title="Late items for a book and date already worked — see the day's task"
+                  <Link to={`/tasks/${encodeURIComponent(r.follow_up_of)}`} title="Late items for a book and date already worked — see the day's task"
                     className="ml-2 rounded bg-surface-100 px-1.5 py-0.5 text-[10px] font-semibold text-surface-800 hover:underline">late items</Link>
                 )}
                 {r.acting_for && (
@@ -175,7 +104,7 @@ export function InboxTable({ rows, limit }: { rows: InboxRow[]; limit?: number }
                   </span>
                 )}
               </td>
-              <td className="px-2 py-2 text-surface-600">{r.capability_name}</td>
+              <td className="px-2 py-2 text-surface-600">{r.agent_name}</td>
               <td className="px-2 py-2 text-xs text-surface-600"><WhatsLeft r={r} /></td>
               {money && (
                 <td className="whitespace-nowrap px-2 py-2 text-right text-xs tabular-nums text-surface-700">
@@ -191,31 +120,6 @@ export function InboxTable({ rows, limit }: { rows: InboxRow[]; limit?: number }
       </table>
     </div>
     </>
-  );
-}
-
-function RunRow({ run, money }: { run: InboxRun; money: boolean }) {
-  const t = runTotals(run);
-  return (
-    <tr className="hover:bg-surface-50">
-      <td className="px-2 py-2"><StatusBadge status={run.action} /></td>
-      <td className="min-w-[14rem] px-2 py-2">
-        <Link to={summaryLink(run)} className="font-medium text-primary-700 hover:underline"><RunText run={run} /></Link>
-      </td>
-      <td className="px-2 py-2 text-surface-600">{run.capability_name}</td>
-      <td className="px-2 py-2 text-xs text-surface-600">
-        <span className="inline-flex flex-wrap items-center gap-1.5">
-          <span>{t.open.toLocaleString("en-GB")} of {t.groups.toLocaleString("en-GB")} to decide</span>
-          {t.escalated > 0 && <span className="rounded bg-orange-100 px-1.5 py-0.5 text-[10px] font-semibold text-orange-800">{t.escalated} escalated</span>}
-        </span>
-      </td>
-      {money && (
-        <td className="whitespace-nowrap px-2 py-2 text-right text-xs tabular-nums text-surface-700">
-          {t.exposure ? `${formatValue(Math.round(t.exposure))}${t.unit ? ` ${t.unit}` : ""}` : "—"}
-        </td>
-      )}
-      <td className="px-2 py-2 text-xs text-surface-500"><DueBadge dueAt={t.first.due_at} state={t.first.due_state} compact /></td>
-    </tr>
   );
 }
 
@@ -235,18 +139,18 @@ const SORTS = {
   newest: { label: "Newest first", cmp: (a: InboxRow, b: InboxRow) => b.opened_at.localeCompare(a.opened_at) },
 } as const;
 
-/** One queue across every capability: what waits on the signed-in user. */
+/** One queue across every agent: what waits on the signed-in user. */
 export default function InboxPage(): JSX.Element {
   const inbox = useInbox();
   const [filter, setFilter] = useState<(typeof FILTERS)[number]["id"]>("all");
   const [sort, setSort] = useState<keyof typeof SORTS>("urgent");
-  const [capability, setCapability] = useState("");
+  const [agent, setAgent] = useState("");
   const rows = inbox.data ?? [];
-  const capabilities = useMemo(() => [...new Map(rows.map((r) => [r.capability_id, r.capability_name])).entries()], [rows]);
+  const agents = useMemo(() => [...new Map(rows.map((r) => [r.agent_id, r.agent_name])).entries()], [rows]);
   const shown = useMemo(() => {
     const test = FILTERS.find((f) => f.id === filter)!.test;
-    return rows.filter((r) => test(r) && (!capability || r.capability_id === capability)).sort(SORTS[sort].cmp);
-  }, [rows, filter, sort, capability]);
+    return rows.filter((r) => test(r) && (!agent || r.agent_id === agent)).sort(SORTS[sort].cmp);
+  }, [rows, filter, sort, agent]);
 
   return (
     <div>
@@ -279,10 +183,10 @@ export default function InboxPage(): JSX.Element {
                 })}
               </div>
               <div className="flex w-full flex-wrap gap-2 sm:ml-auto sm:w-auto">
-                {capabilities.length > 1 && (
-                  <select aria-label="Agent" value={capability} onChange={(e) => setCapability(e.target.value)} className="rounded-lg border border-surface-300 bg-card px-2 py-1 text-xs">
+                {agents.length > 1 && (
+                  <select aria-label="Agent" value={agent} onChange={(e) => setAgent(e.target.value)} className="rounded-lg border border-surface-300 bg-card px-2 py-1 text-xs">
                     <option value="">All agents</option>
-                    {capabilities.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+                    {agents.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
                   </select>
                 )}
                 <select aria-label="Sort" value={sort} onChange={(e) => setSort(e.target.value as keyof typeof SORTS)} className="rounded-lg border border-surface-300 bg-card px-2 py-1 text-xs">

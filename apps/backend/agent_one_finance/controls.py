@@ -1,17 +1,17 @@
 """Run-the-bank controls: off switches and spend limits.
 
-Off switches — a capability, one team's group, or a connector:
-  * a capability or group that is off opens no case (people, schedules, events);
-  * the gateway refuses every call for a capability that is off, and every
+Off switches — an agent, one team's group, or a connector:
+  * an agent or group that is off opens no task (people, schedules, events);
+  * the gateway refuses every call for an agent that is off, and every
     call to a connector that is off — so nothing loads, reasons or writes;
   * decisions already in flight can still be recorded; nothing is lost.
-Capability owners switch their capability, group owners their group; the
+Agent owners switch their agent, group owners their group; the
 platform support role (AOF_ADMIN_ROLE) any of them, and connectors.
 
-Spend limits — manifest `limits` (per case, per day): model cost recorded on
+Spend limits — manifest `limits` (per task, per day): model cost recorded on
 findings and chat answers is added up; over a limit, groups that would go to
 the model are escalated to a person with the reason, and chat answers from
-the case's record only.
+the task's record only.
 """
 
 import time
@@ -22,9 +22,9 @@ from sqlalchemy import Float, cast, func, select
 from agent_one_finance.config import settings
 from agent_one_finance.db import get_session
 from agent_one_finance.entitlement import Caller
-from agent_one_finance.models import Case, CaseMessage, ProposalGroup, Switch
+from agent_one_finance.models import Task, TaskMessage, ProposalGroup, Switch
 
-KINDS = ("capability", "group", "connector")
+KINDS = ("agent", "group", "connector")
 _cache: dict[tuple[str, str], tuple[float, Switch | None]] = {}
 TTL = 5.0
 
@@ -48,9 +48,9 @@ async def off_reason(kind: str, target: str) -> str | None:
     return f"{kind} {target} is switched off: {row.reason}" if row and row.off else None
 
 
-async def check_open(capability_id: str, team_group: str | None) -> None:
-    for kind, target in (("capability", capability_id),
-                         *((("group", f"{capability_id}/{team_group}"),) if team_group else ())):
+async def check_open(agent_id: str, team_group: str | None) -> None:
+    for kind, target in (("agent", agent_id),
+                         *((("group", f"{agent_id}/{team_group}"),) if team_group else ())):
         if why := await off_reason(kind, target):
             raise SwitchedOff(why)
 
@@ -60,21 +60,21 @@ async def can_switch(caller: Caller, kind: str, target: str) -> bool:
         return True
     if kind == "connector":
         return False
-    from agent_one_finance import capabilities
+    from agent_one_finance import agents
     from agent_one_finance import groups as team_groups
 
-    capability_id = target.split("/", 1)[0]
+    agent_id = target.split("/", 1)[0]
     try:
-        _, m = await capabilities.active(capability_id)
+        _, m = await agents.active(agent_id)
     except Exception:
         return False
-    if kind == "capability":
-        return capabilities.is_owner(caller, m)
+    if kind == "agent":
+        return agents.is_owner(caller, m)
     try:
-        _, cfg, _ = await team_groups.active_group(capability_id, target.split("/", 1)[1])
+        _, cfg, _ = await team_groups.active_group(agent_id, target.split("/", 1)[1])
     except Exception:
         return False
-    return capabilities.is_owner(caller, m) or team_groups.is_group_owner(caller, cfg)
+    return agents.is_owner(caller, m) or team_groups.is_group_owner(caller, cfg)
 
 
 async def set_switch(caller: Caller, kind: str, target: str, off: bool, reason: str) -> dict:
@@ -113,27 +113,27 @@ def _cost(col):
     return func.coalesce(func.sum(cast(col["usage"]["cost_usd"].astext, Float)), 0.0)
 
 
-async def spent(capability_id: str, *, case_id: str | None = None, since: datetime | None = None) -> float:
-    """Model cost recorded for a capability (or one case), from findings and chat answers."""
+async def spent(agent_id: str, *, task_id: str | None = None, since: datetime | None = None) -> float:
+    """Model cost recorded for an agent (or one task), from findings and chat answers."""
     async with get_session() as s:
-        q1 = select(_cost(ProposalGroup.finding)).join(Case, Case.case_id == ProposalGroup.case_id).where(
-            Case.capability_id == capability_id)
-        q2 = select(_cost(CaseMessage.meta)).join(Case, Case.case_id == CaseMessage.case_id).where(
-            Case.capability_id == capability_id)
-        if case_id:
-            q1, q2 = q1.where(Case.case_id == case_id), q2.where(Case.case_id == case_id)
+        q1 = select(_cost(ProposalGroup.finding)).join(Task, Task.task_id == ProposalGroup.task_id).where(
+            Task.agent_id == agent_id)
+        q2 = select(_cost(TaskMessage.meta)).join(Task, Task.task_id == TaskMessage.task_id).where(
+            Task.agent_id == agent_id)
+        if task_id:
+            q1, q2 = q1.where(Task.task_id == task_id), q2.where(Task.task_id == task_id)
         if since:
-            q1, q2 = q1.where(Case.opened_at >= since), q2.where(CaseMessage.created_at >= since)
+            q1, q2 = q1.where(Task.opened_at >= since), q2.where(TaskMessage.created_at >= since)
         return float((await s.execute(q1)).scalar_one()) + float((await s.execute(q2)).scalar_one())
 
 
-async def over_budget(m, case_id: str) -> str | None:
+async def over_budget(m, task_id: str) -> str | None:
     """Why the model may not be called now, or None."""
     lim = m.limits
-    if lim.max_cost_usd_per_case is not None:
-        used = await spent(m.id, case_id=case_id)
-        if used >= lim.max_cost_usd_per_case:
-            return f"BUDGET_EXCEEDED: this case has used ${used:.2f} of its ${lim.max_cost_usd_per_case:.2f}"
+    if lim.max_cost_usd_per_task is not None:
+        used = await spent(m.id, task_id=task_id)
+        if used >= lim.max_cost_usd_per_task:
+            return f"BUDGET_EXCEEDED: this task has used ${used:.2f} of its ${lim.max_cost_usd_per_task:.2f}"
     if lim.max_cost_usd_per_day is not None:
         start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
         used = await spent(m.id, since=start)

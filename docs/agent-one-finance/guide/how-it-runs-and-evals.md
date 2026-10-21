@@ -1,15 +1,15 @@
 # How it runs, and evals
 
-Two tabs on every capability page answer two questions:
+Two tabs on every agent page answer two questions:
 
-- **How it runs**: what happens to a case, in order, and who acts at each point.
+- **How it runs**: what happens to a task, in order, and who acts at each point.
 - **Evals**: before a change goes live, would it have decided the past the way people did?
 
 ## How it runs
 
 The tab is drawn from the configuration, so it is never out of date. It reads top to bottom.
 
-1. **A case opens**: when someone opens it, on a schedule, or when another system sends an event
+1. **A task opens**: when someone opens it, on a schedule, or when another system sends an event
    (MB Rec at end of day, for example).
 2. **Phases, in the order the steps run.** Each phase says who acts:
 
@@ -35,8 +35,8 @@ The strip at the top is the same story at a glance: the phases in order and how 
 ### What an eval does
 
 1. **Choose a version**: a draft before you approve it, or the live one after a model or
-   instruction change. For a capability run by team groups (FOBO Prime, FOBO Rates), choose the group.
-2. **Replay past cases.** Up to 20 of the most recent cases people already decided are run again
+   instruction change. For an agent run by team groups (FOBO Prime, FOBO Rates), choose the group.
+2. **Replay past tasks.** Up to 20 of the most recent tasks people already decided are run again
    in hidden copies. They use the same connectors (reads are audited as usual), write nothing, notify
    nobody, and appear in no one's inbox. A hidden copy runs through tollgates, since no one is there to
    pass them, and stops at review. Steps that need a person's own act (an attestation, a send, a
@@ -46,18 +46,18 @@ The strip at the top is the same story at a glance: the phases in order and how 
 
 ### How to run one
 
-1. Open the capability, then **Evals**.
+1. Open the agent, then **Evals**.
 2. Pick **Version to try** (the live version by default) and, if asked, the **Team group**.
-   The line under the controls says how many decided cases are ready to replay. If it says none,
-   decide some cases first.
+   The line under the controls says how many decided tasks are ready to replay. If it says none,
+   decide some tasks first.
 3. Press **Run eval**. The result appears under **Results** and updates by itself while it runs.
    It takes seconds with the stub model and a few minutes with a real one.
 
-Owners of the capability, or of the team group, can run an eval. Anyone who can see the capability
+Owners of the agent, or of the team group, can run an eval. Anyone who can see the agent
 can read the results. From the API:
 
 ```bash
-curl -X POST localhost:8300/api/capabilities/break.investigation/evals \
+curl -X POST localhost:8300/api/agents/break.investigation/evals \
   -H 'X-AOF-User: frank' -H 'Content-Type: application/json' \
   -d '{"team_group": "fobo-prime", "version": 5}'      # version omitted = the live one
 ```
@@ -75,9 +75,9 @@ curl -X POST localhost:8300/api/capabilities/break.investigation/evals \
 
 **When to approve a draft:** agreement holds or rises against the live version's run, no
 disagreement is left unexplained, and any rise in escalations is one you accept. The same scores are
-in Phoenix (`eval.run`, with one `eval.case` per case).
+in Phoenix (`eval.run`, with one `eval.task` per task).
 
-**Example (dev stack, FOBO Prime, live version, 3 past cases):** 13 decisions compared, 85% agree,
+**Example (dev stack, FOBO Prime, live version, 3 past tasks):** 13 decisions compared, 85% agree,
 2 escalated (the model's explanation was approved before; this version sends them to a person),
 2 new groups, same verdict 100%.
 

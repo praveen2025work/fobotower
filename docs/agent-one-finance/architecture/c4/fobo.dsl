@@ -1,6 +1,6 @@
 /*
  * FOBO on Agent One Finance — C4 model for ARB and CDO review (version 2, 2026-10-13).
- * Scope: FOBO break investigation per named P&L (NPL), and the Balance rec capability beside it.
+ * Scope: FOBO break investigation per named P&L (NPL), and the Balance rec agent beside it.
  * Render with Structurizr Lite:  docker run -it --rm -p 8080:8080 -v $PWD:/usr/local/structurizr structurizr/lite
  * The same views, drawn for reading, are in fobo-c4-architecture.html in this folder.
  */
@@ -8,13 +8,13 @@ workspace "FOBO on Agent One Finance" "Balance Recon Agent per named P&L, as con
 
     model {
         controller = person "FOBO controller" "PC user. Checks the work at the tollgate, decides each group and signs off; a second controller releases postings." "Person"
-        owner = person "Capability owner" "Changes an NPL config; a second owner approves." "Person"
+        owner = person "Agent owner" "Changes an NPL config; a second owner approves." "Person"
 
-        aof = softwareSystem "Agent One Finance (AOF)" "Runs FOBO and Balance rec as Helix capabilities: rules as configuration, the model only for judgement, people decide." {
-            api = container "AOF API and Helix engine" "Takes MB Rec's notifications and runs every case: load, checks, tollgate, model, review, record, post. Enforces roles, NPL scope and approvals. Holds the Helix capabilities: FOBO break investigation (a config per NPL) and Balance rec." "Python, FastAPI, LangGraph; its own ECS service"
+        aof = softwareSystem "Agent One Finance (AOF)" "Runs FOBO and Balance rec as Helix agents: rules as configuration, the model only for judgement, people decide." {
+            api = container "AOF API and Helix engine" "Takes MB Rec's notifications and runs every task: load, checks, tollgate, model, review, record, post. Enforces roles, NPL scope and approvals. Holds the Helix agents: FOBO break investigation (a config per NPL) and Balance rec." "Python, FastAPI, LangGraph; its own ECS service"
             gateway = container "MCP gateway" "The only way out to bank systems: allow-list, NPL scope, masking, an audit row per call." "Python, MCP client" "Gateway"
-            database = container "AOF database" "Cases, decisions, audit, capability and config versions, run checkpoints." "PostgreSQL with pgvector, on AWS" "Database"
-            phoenix = container "Phoenix" "One trace per case run, payloads masked." "OpenTelemetry"
+            database = container "AOF database" "Tasks, decisions, audit, agent and config versions, run checkpoints." "PostgreSQL with pgvector, on AWS" "Database"
+            phoenix = container "Phoenix" "One trace per task run, payloads masked." "OpenTelemetry"
         }
 
         agentOne = softwareSystem "Agent One" "Hosts the AOF console at /agentone/finance, signs users in (BAM), forwards their requests to AOF with the user and a shared secret, and gives AOF its model access." "Existing"
@@ -52,7 +52,7 @@ workspace "FOBO on Agent One Finance" "Balance Recon Agent per named P&L, as con
     }
 
     views {
-        systemContext aof "Context" "C4 level 1: MB Rec starts each NPL case; AOF writes to MOTIF only through FAS." {
+        systemContext aof "Context" "C4 level 1: MB Rec starts each NPL task; AOF writes to MOTIF only through FAS." {
             include *
             autolayout lr
         }
@@ -62,7 +62,7 @@ workspace "FOBO on Agent One Finance" "Balance Recon Agent per named P&L, as con
         }
         dynamic aof "NPLRun" "One NPL run: from MB Rec's notification to the adjustment in MOTIF." {
             mbrec -> api "1. Notification for an NPL and COB"
-            api -> gateway "2-3. Opens the case on the NPL's config; reads through the gateway"
+            api -> gateway "2-3. Opens the task on the NPL's config; reads through the gateway"
             gateway -> mbrec "3. Breaks, master book status, FO/BO data"
             api -> entitlements "5. Who may see the NPL"
             controller -> agentOne "6. Tollgate: checks the breaks and the sorting"

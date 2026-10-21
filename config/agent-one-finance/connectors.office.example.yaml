@@ -1,6 +1,6 @@
 # Office connectors — an example of config/agent-one-finance/connectors.yaml with every
 # stub replaced by a real MCP server. Same ids, same tool allow-list, same
-# data-scope rules; only transport, url and auth change. Capabilities do not
+# data-scope rules; only transport, url and auth change. Agents do not
 # change at all.
 #
 # Copy the entries you need into connectors.yaml (or point AOF_CONFIG_DIR at
@@ -46,7 +46,7 @@ connectors:
       breaks:        { description: "Open breaks MB Rec reconciled for a book and COB", scope: { arg: book, key: book } }
       break_history: { description: "The last five COBs of one instrument's break", scope: { arg: book, key: book } }
       break_history_book: { description: "The last five COBs of every open break in a book", scope: { arg: book, key: book } }
-      # No book argument: the cluster step keeps only a count of other books on the case.
+      # No book argument: the cluster step keeps only a count of other books on the task.
       breaks_all:    { description: "Open breaks in every book for one COB (book, instrument, difference)" }
       book_status:   { description: "Whether MB Rec has processed the book for the COB (skill R5)", scope: { arg: book, key: book } }
 
@@ -121,7 +121,7 @@ connectors:
     tools:
       create_ticket: { description: "Raise a ticket in a team's queue", access: write, idempotency_arg: idempotency_key }
 
-  # Beyond finance: payments operations and reference data (payments.exceptions capability).
+  # Beyond finance: payments operations and reference data (payments.exceptions agent).
   refdata:
     name: Reference data
     transport: http

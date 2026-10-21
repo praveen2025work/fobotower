@@ -31,23 +31,23 @@ async def test_every_connector_is_probed(api):
 
 
 async def test_the_fleet_and_kpis_only_count_what_the_caller_may_see(api):
-    await api.post(f"/api/capabilities/{RECON}/cases", headers=api.as_user("frank"),
-                   json={"case_key": {"book": "PRIME-MB-01", "cob": "2026-08-03"}, "team_group": FOBO})
-    await api.post(f"/api/capabilities/{RECON}/cases", headers=api.as_user("dan"),
-                   json={"case_key": {"entity": "UK01", "date": "2026-10-02"}, "team_group": CASH})
+    await api.post(f"/api/agents/{RECON}/tasks", headers=api.as_user("frank"),
+                   json={"task_key": {"book": "PRIME-MB-01", "cob": "2026-08-03"}, "team_group": FOBO})
+    await api.post(f"/api/agents/{RECON}/tasks", headers=api.as_user("dan"),
+                   json={"task_key": {"entity": "UK01", "date": "2026-10-02"}, "team_group": CASH})
     frank, dan = await _ops(api, "frank"), await _ops(api, "dan")
     assert [f["name"] for f in frank["fleet"]] == ["CATS vs MOTIF — Prime (FOBO)"]
     assert [f["name"] for f in dan["fleet"]] == ["Cash — bank vs ledger"]
     assert frank["kpi"]["runs24"] == 1 and frank["kpi"]["pendingApprovals"] == 1
-    assert frank["fleet"][0]["href"] == f"/capabilities/{RECON}/groups/{FOBO}"
+    assert frank["fleet"][0]["href"] == f"/agents/{RECON}/groups/{FOBO}"
     assert len(frank["fleet"][0]["sparkline"]) == 24
     assert not any("cats." in line["message"] for line in dan["tail"])
 
 
 async def test_refused_calls_become_an_incident(api):
     llm._adapter = Snooping()
-    await api.post(f"/api/capabilities/{VARIANCE}/cases", headers=api.as_user("alice"),
-                   json={"case_key": {"entity": "UK01", "period": "2026-09"}})
+    await api.post(f"/api/agents/{VARIANCE}/tasks", headers=api.as_user("alice"),
+                   json={"task_key": {"entity": "UK01", "period": "2026-09"}})
     ops = await _ops(api, "alice")
     refused = [i for i in ops["incidents"] if i["title"] == "Refused calls to ledger.postings"]
     assert refused and refused[0]["count"] >= 1 and refused[0]["status"] == "degraded"

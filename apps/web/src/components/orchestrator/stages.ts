@@ -10,7 +10,7 @@ export interface Stage {
   title: string;
   /** What it does, in a sentence a business owner reads. */
   says: string;
-  /** The workflow step(s) this stage configures; none = case-wide settings. */
+  /** The workflow step(s) this stage configures; none = task-wide settings. */
   step?: string;
   /** May the step be switched off? (gates and the item source may not.) */
   optional?: boolean;
@@ -22,13 +22,13 @@ export interface Stage {
   fields: FieldSpec[];
   /** Server problems that belong here. */
   owns: RegExp;
-  /** Shown only to a capability's own owners (never a group's to set). */
-  capabilityOnly?: boolean;
+  /** Shown only to an agent's own owners (never a group's to set). */
+  agentOnly?: boolean;
   /** Rendered by its own component instead of fields (e.g. the data steps). */
   custom?: "prepare";
 }
 
-const keyFields = (m: Json): Opt[] => ((get(m, "case.key") as string[]) ?? []).map((k) => ({ value: k }));
+const keyFields = (m: Json): Opt[] => ((get(m, "task.key") as string[]) ?? []).map((k) => ({ value: k }));
 const categories = (m: Json): Opt[] =>
   Object.entries((get(m, "playbook.categories") as Record<string, { name?: string }>) ?? {}).map(([k, c]) => ({ value: k, label: `${k} · ${c.name ?? ""}` }));
 const sides = (m: Json): Opt[] => [...((get(m, "playbook.sides") as string[]) ?? []), "UNKNOWN"].map((s) => ({ value: s }));
@@ -50,33 +50,33 @@ const hasPlaybook = (m: Json) => !!get(m, "playbook");
 
 export const STAGES: Stage[] = [
   {
-    id: "case",
+    id: "task",
     title: "What a task is",
     says: "What one unit of work is, who can see it, when it opens on its own, and when it is due.",
-    owns: /^case\.|case\.(key|scopes|schedule|opens_as|due)|scheduled/,
+    owns: /^task\.|task\.(key|scopes|schedule|opens_as|due)|scheduled/,
     fields: [
-      { kind: "text", path: "case.label", label: "A task is called", placeholder: "Rec run" },
-      { kind: "text", path: "case.item_label", label: "An item is called", placeholder: "Break" },
-      { kind: "list", path: "case.key", label: "A task is identified by", help: "The fields that make one task, e.g. book, cob." },
-      { kind: "template", path: "case.subject", label: "Task title", help: "A template over the key, e.g. {book} · COB {cob}; {book_label} uses the book's label from the reference data." },
-      { kind: "list", path: "case.summarize_by", label: "The Summary groups a day's tasks by",
+      { kind: "text", path: "task.label", label: "A task is called", placeholder: "Rec run" },
+      { kind: "text", path: "task.item_label", label: "An item is called", placeholder: "Break" },
+      { kind: "list", path: "task.key", label: "A task is identified by", help: "The fields that make one task, e.g. book, cob." },
+      { kind: "template", path: "task.subject", label: "Task title", help: "A template over the key, e.g. {book} · COB {cob}; {book_label} uses the book's label from the reference data." },
+      { kind: "list", path: "task.summarize_by", label: "The Summary groups a day's tasks by",
         help: "Outermost first: key fields, or facts the reference data holds about one, e.g. book_business, book_region, book_desk — for thousands of tasks a day." },
-      { kind: "kv", path: "case.scopes", label: "Data scope checks", keyLabel: "Key field", valueLabel: "Entitlement scope", help: "Who may see a task: each key field is checked against the person's data scope." },
-      { kind: "select", path: "case.opens_on", label: "Opens", options: [
+      { kind: "kv", path: "task.scopes", label: "Data scope checks", keyLabel: "Key field", valueLabel: "Entitlement scope", help: "Who may see a task: each key field is checked against the person's data scope." },
+      { kind: "select", path: "task.opens_on", label: "Opens", options: [
         { value: "manual", label: "When someone opens it" }, { value: "api", label: "When a system calls the API" },
         { value: "schedule", label: "On a schedule" }, { value: "event", label: "When an event arrives" }] },
-      { kind: "cron", path: "case.schedule", label: "Schedule (cron: minute hour day month weekday)", placeholder: "30 6 * * 1-5", help: "30 6 * * 1-5 = 06:30 every business day.", when: (m) => get(m, "case.opens_on") === "schedule" },
-      { kind: "rows", path: "case.schedule_keys", label: "Tasks each run opens", addLabel: "Add a task", newRow: {},
+      { kind: "cron", path: "task.schedule", label: "Schedule (cron: minute hour day month weekday)", placeholder: "30 6 * * 1-5", help: "30 6 * * 1-5 = 06:30 every business day.", when: (m) => get(m, "task.opens_on") === "schedule" },
+      { kind: "rows", path: "task.schedule_keys", label: "Tasks each run opens", addLabel: "Add a task", newRow: {},
         help: "One row per task. Dates may use {prev_business_day}, {yesterday}, {today}, {prev_month}, {this_month}.",
-        when: (m) => get(m, "case.opens_on") === "schedule",
+        when: (m) => get(m, "task.opens_on") === "schedule",
         columns: (m) => keyFields(m).map((k) => ({ key: k.value, label: k.value, wide: true })) },
-      { kind: "bool", path: "case.events", label: "Other systems may open tasks (POST /api/events)" },
-      { kind: "select", path: "case.late_items", label: "When another notification arrives for a key already open", options: [
+      { kind: "bool", path: "task.events", label: "Other systems may open tasks (POST /api/events)" },
+      { kind: "select", path: "task.late_items", label: "When another notification arrives for a key already open", options: [
         { value: "ignore", label: "Nothing new: the existing task is the answer" },
         { value: "follow_up", label: "Open a follow-up task with only the new items" }],
         help: "e.g. MB Rec notifies late exceptions for a book and COB already being worked. A signed-off task is never changed." },
-      { kind: "text", path: "case.opens_as", label: "Scheduled and event tasks run as", placeholder: "aof-scheduler", help: "A service user with the roles and data scopes those tasks need." },
-      { kind: "object", path: "case.due", label: "Deadline", toggle: "Tasks have a deadline", empty: { from: "opened", business_days: 1, hours: 0, at: null, warn_hours: 2 },
+      { kind: "text", path: "task.opens_as", label: "Scheduled and event tasks run as", placeholder: "aof-scheduler", help: "A service user with the roles and data scopes those tasks need." },
+      { kind: "object", path: "task.due", label: "Deadline", toggle: "Tasks have a deadline", empty: { from: "opened", business_days: 1, hours: 0, at: null, warn_hours: 2 },
         fields: [
           { kind: "select", path: "from", label: "Counted from", options: (m) => [{ value: "opened", label: "when it opened" }, ...keyFields(m)] },
           { kind: "number", path: "business_days", label: "Business days after", min: 0, max: 60 },
@@ -99,16 +99,16 @@ export const STAGES: Stage[] = [
     owns: /^items\.|^match|step `(load|match)`|`load` or `match`/,
     fields: [
       { kind: "tool", path: "match.left.tool", label: "Left side", access: "read", when: (m) => !!get(m, "match") },
-      { kind: "kv", path: "match.left.args", label: "Left side arguments", keyLabel: "Argument", valueLabel: "Value ($case.<field> from the key)", when: (m) => !!get(m, "match") },
+      { kind: "kv", path: "match.left.args", label: "Left side arguments", keyLabel: "Argument", valueLabel: "Value ($task.<field> from the key)", when: (m) => !!get(m, "match") },
       { kind: "tool", path: "match.right.tool", label: "Right side", access: "read", when: (m) => !!get(m, "match") },
-      { kind: "kv", path: "match.right.args", label: "Right side arguments", keyLabel: "Argument", valueLabel: "Value ($case.<field> from the key)", when: (m) => !!get(m, "match") },
+      { kind: "kv", path: "match.right.args", label: "Right side arguments", keyLabel: "Argument", valueLabel: "Value ($task.<field> from the key)", when: (m) => !!get(m, "match") },
       { kind: "list", path: "match.keys", label: "Match on", when: (m) => !!get(m, "match") },
       { kind: "text", path: "match.amount_field", label: "Amount compared", when: (m) => !!get(m, "match") },
       { kind: "number", path: "match.tolerance", label: "Tolerance (differences up to this are not breaks)", min: 0, when: (m) => !!get(m, "match") },
       { kind: "text", path: "match.left_label", label: "Left side is called", when: (m) => !!get(m, "match") },
       { kind: "text", path: "match.right_label", label: "Right side is called", when: (m) => !!get(m, "match") },
       { kind: "tool", path: "items.load.tool", label: "Load from", access: "read", when: (m) => !get(m, "match") },
-      { kind: "kv", path: "items.load.args", label: "Arguments", keyLabel: "Argument", valueLabel: "Value ($case.<field> from the key)", when: (m) => !get(m, "match") },
+      { kind: "kv", path: "items.load.args", label: "Arguments", keyLabel: "Argument", valueLabel: "Value ($task.<field> from the key)", when: (m) => !get(m, "match") },
       { kind: "text", path: "items.id_field", label: "Item id field" },
       { kind: "text", path: "items.amount_field", label: "Amount field" },
       { kind: "text", path: "items.amount_unit", label: "Amount unit", placeholder: "GBP" },
@@ -245,7 +245,7 @@ export const STAGES: Stage[] = [
       { kind: "textarea", path: "reasoning.skill", label: "Instructions to the model", when: (m) => get(m, "reasoning.reasoner") === "llm" },
       SECTIONS_FIELD,
       SPECIALISTS_FIELD,
-      { kind: "number", path: "limits.max_cost_usd_per_case", label: "Model spend cap per task (USD)", min: 0, nullable: true, when: (m) => get(m, "reasoning.reasoner") === "llm" },
+      { kind: "number", path: "limits.max_cost_usd_per_task", label: "Model spend cap per task (USD)", min: 0, nullable: true, when: (m) => get(m, "reasoning.reasoner") === "llm" },
       { kind: "number", path: "limits.max_cost_usd_per_day", label: "Model spend cap per day (USD)", min: 0, nullable: true, when: (m) => get(m, "reasoning.reasoner") === "llm" },
     ],
   },
@@ -326,10 +326,10 @@ export const STAGES: Stage[] = [
           { kind: "kv", path: "args", label: "Ticket fields", keyLabel: "Field", valueLabel: "Value ({escalate_to}, {subject}, {label}, {comment}…)" },
         ] },
       { kind: "object", path: "insights.recurring", label: "Recurring items", toggle: "Show items that keep coming back",
-        empty: { same: [], lookback_cases: 10, min_runs: 2 },
+        empty: { same: [], lookback_tasks: 10, min_runs: 2 },
         fields: [
           { kind: "list", path: "same", label: "In earlier tasks with the same" },
-          { kind: "number", path: "lookback_cases", label: "Look back over (tasks)", min: 1, max: 100 },
+          { kind: "number", path: "lookback_tasks", label: "Look back over (tasks)", min: 1, max: 100 },
           { kind: "number", path: "min_runs", label: "Seen in at least (runs)", min: 2, max: 100 },
         ] },
       { kind: "object", path: "follow_through", label: "Follow-through", toggle: "Re-check each decision in the next run",
@@ -366,13 +366,13 @@ export const STAGES: Stage[] = [
     },
     fields: [
       { kind: "tool", path: "publish.tool", label: "Write with", access: "write" },
-      { kind: "select", path: "publish.per", label: "One write per", options: [{ value: "group", label: "approved group" }, { value: "case", label: "task (one report)" }] },
+      { kind: "select", path: "publish.per", label: "One write per", options: [{ value: "group", label: "approved group" }, { value: "task", label: "task (one report)" }] },
       { kind: "kv", path: "publish.args", label: "Arguments", keyLabel: "Argument", valueLabel: "Value ($comment, $group.<field>, $approved…)" },
       { kind: "list", path: "publish.approver_roles", label: "Released by (roles)" },
     ],
   },
   {
-    id: "owners", capabilityOnly: true,
+    id: "owners", agentOnly: true,
     title: "Owners and team settings",
     says: "Who may change this agent (four-eyes: the drafter cannot approve), and what each team group may set for itself.",
     owns: /^owners|^configurable|cannot be set by a group/,
@@ -385,9 +385,9 @@ export const STAGES: Stage[] = [
   },
 ];
 
-/** The editor's navigation, in the order a person sets a capability up. */
+/** The editor's navigation, in the order a person sets an agent up. */
 export const SECTIONS: { title: string; ids: string[] }[] = [
-  { title: "The task", ids: ["case", "thresholds"] },
+  { title: "The task", ids: ["task", "thresholds"] },
   { title: "Data", ids: ["source", "prepare", "compare", "enrich", "resolve"] },
   { title: "Decide", ids: ["classify", "group", "agent", "reason", "draft"] },
   { title: "People and gates", ids: ["validate", "review", "record", "publish"] },

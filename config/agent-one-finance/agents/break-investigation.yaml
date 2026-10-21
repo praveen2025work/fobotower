@@ -1,0 +1,146 @@
+# Investigate breaks another system has already reconciled.
+#
+# Use this when the matching is done upstream — FOBO's breaks come from MB Rec,
+# which has already reconciled CATS to MOTIF — and what is left is the manual
+# part: why each break exists, whether it is a timing difference that will
+# clear, what other sources say, and who must fix it. The first step is `load`
+# (read the open breaks), never `match`. Compare recon-investigation.yaml, for
+# teams whose two systems Agent One Finance must match itself.
+#
+# The agent owns the shape of the work and its gates; each team group
+# (config/agent-one-finance/groups/break.investigation/) sets its source, playbook, tools,
+# instructions, tollgates' checks and reviewers.
+
+id: break.investigation
+name: Balance Recon Agent
+description: Investigates the breaks MB Rec's balance reconciliation has already found — explain each, settle what the playbook can, check timing and other sources, a controller signs off.
+
+owners:
+  people: [erin]
+  role: AOF_RECON_OWNER
+  four_eyes: true
+
+task:
+  label: MB Rec breaks
+  item_label: Break
+  key: [book, cob]
+  subject: "{book_label} · COB {cob}"        # the book's reference label, e.g. USD swaps (RATES-LDN-01)
+  scopes: { book: book }
+
+items:
+  load: { tool: mbrec.breaks, args: { book: $task.book, cob: $task.cob } }
+  id_field: instrument
+  amount_field: difference
+  display: [instrument, desk, break_type, age_days, cats_amount, motif_amount, difference]
+
+# Read the reconciled breaks → join more data → evidence from the algorithm
+# steps → reference lookups → playbook → group → rules, then the model → draft →
+# gates. A controller approves the breaks and the playbook's classification
+# before the model is asked anything. The algorithm steps only add evidence
+# (fields on each break); a team's playbook decides what it means.
+steps: [load, enrich, history, events, bo_positions, offsets, split_bookings, systemic, near_refs, trend, unusual, resolve, classify, group, reason, draft, validate, review, record]
+
+step_settings:
+  history:
+    type: dataset
+    label: Each break's last five COBs in MB Rec
+    with: { name: history, tool: mbrec.break_history_book, args: { book: $task.book, cob: $task.cob } }
+  events:
+    type: dataset
+    label: The book's booking events in MOTIF
+    with: { name: events, tool: motif.booking_events, args: { book: $task.book, cob: $task.cob } }
+  bo_positions:
+    type: dataset
+    label: The book's positions in MOTIF
+    with: { name: bo_positions, tool: motif.positions, args: { book: $task.book, cob: $task.cob } }
+  offsets:
+    type: offsets
+    label: Equal and opposite breaks (booked to the wrong instrument)
+    with: { amount: difference, within: [book], tolerance: 0.01 }
+  split_bookings:
+    type: subset_match
+    label: Booking events that add up to the break (a split booking)
+    with: { target: difference, pool: events, pool_value: amount, pool_label: event_id, within: [instrument],
+            when: "break_type == 'amount_break'", max_size: 3, tolerance: 0.01, as: split }
+  systemic:
+    type: cluster
+    label: The same instrument breaking in other books
+    with: { same: [instrument], across: book, amount: difference, within_pct: 25, min_count: 3,
+            peers_tool: mbrec.breaks_all, peers_args: { cob: $task.cob } }
+  near_refs:
+    type: fuzzy_match
+    label: The instrument in MOTIF under a slightly different name
+    with: { field: instrument, pool: bo_positions, pool_field: instrument, when: "break_type == 'missing_motif'",
+            amount: cats_amount, pool_amount: mtm, amount_within_pct: 1, threshold: 0.9 }
+  trend:
+    type: trend
+    label: How each break moved over its last five COBs
+    with: { history: history, key: instrument, value: difference, history_value: difference, order: cobs_ago, min_points: 3 }
+  unusual:
+    type: anomaly
+    label: A break unusually large for this instrument
+    with: { history: history, key: instrument, value: difference, history_value: difference, method: robust, threshold: 3.5 }
+pause_before: [reason, review]
+tollgates:
+  reason:
+    check: Are these today's open breaks from MB Rec, and is the playbook's classification right? Anything the desk has told you goes in the note.
+
+group_by: [break_type]
+
+reasoning:
+  reasoner: llm
+  output: verdict
+  tools: [mbrec.break_history]
+  skill: |
+    You investigate breaks a reconciliation system has already found. Use the
+    tools to find why each group of breaks exists and what should happen next.
+    Cite only figures from the tools or the breaks.
+
+knowledge:
+  entities: [instrument, book]
+
+review:
+  roles: [FOBO_CONTROLLER]
+  require_comment: [reject, escalated]
+
+retention:
+  days: 2555
+
+# What a team group may set. The workflow, its tollgates and gates stay here.
+configurable:
+  - task.label
+  - task.item_label
+  - task.subject
+  - task.summarize_by
+  - task.opens_on
+  - task.schedule
+  - task.schedule_keys
+  - task.events
+  - task.opens_as
+  - task.due
+  - task.late_items
+  - follow_through
+  - items
+  - policy.*
+  - rules
+  - group_by
+  - group_label
+  - reasoning.skill
+  - reasoning.tools
+  - reasoning.specialists
+  - reasoning.sections
+  - review.roles
+  - review.require_comment
+  - review.dual_review_when
+  - review.bulk_exclude
+  - review.confirm
+  - review.allow_delegation
+  - review.checklist
+  - requests
+  - insights
+  - export
+  - escalation
+  - knowledge
+  - resolve
+  - enrich
+  - playbook

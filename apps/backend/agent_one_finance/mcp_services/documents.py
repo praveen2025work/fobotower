@@ -5,8 +5,8 @@ Unlike the stubs, this is a real service: it reads and writes files. It is
 onboarded like any other connector (config/agent-one-finance/connectors.yaml), so every
 call goes through the gateway: the allow-list, the caller's data scope, the
 audit row and the trace. `render_pdf_report` is a write tool, so only a
-capability's `publish` step can call it, after a second person releases the
-case; the model never can.
+agent's `publish` step can call it, after a second person releases the
+task; the model never can.
 
 Documents to read live under one folder per data-scope value (an entity, a
 book): <AOF_DOCUMENTS_DIR>/<scope>/<name>. Reports Agent One Finance writes are kept in
@@ -75,7 +75,7 @@ READABLE = (".pdf", ".xlsx", ".xlsm")
 
 
 async def _uploaded(scope: str) -> list:
-    """Evidence people uploaded into cases of this scope (aof_document)."""
+    """Evidence people uploaded into tasks of this scope (aof_document)."""
     from sqlalchemy import select
 
     from agent_one_finance.db import get_session
@@ -101,7 +101,7 @@ async def _bytes(scope: str, name: str) -> bytes:
 
 async def list_documents(entity: str) -> dict:
     """Documents available to read for one data scope (PDF and Excel): the
-    team's folder, and evidence people uploaded into its cases."""
+    team's folder, and evidence people uploaded into its tasks."""
     folder = _inbox(entity)
     rows = []
     if folder.is_dir():
@@ -113,7 +113,7 @@ async def list_documents(entity: str) -> dict:
                              "modified": dt.datetime.fromtimestamp(st.st_mtime, dt.timezone.utc).isoformat()})
     for d in await _uploaded(entity):
         rows.append({"name": d.name, "kind": d.name.rsplit(".", 1)[-1].lower(), "bytes": len(d.content),
-                     "source": "uploaded", "case_id": d.case_id, "uploaded_by": d.uploaded_by,
+                     "source": "uploaded", "task_id": d.task_id, "uploaded_by": d.uploaded_by,
                      "note": d.note, "modified": d.created_at.isoformat()})
     return {"rows": rows}
 

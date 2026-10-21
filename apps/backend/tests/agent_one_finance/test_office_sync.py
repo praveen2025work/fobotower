@@ -1,4 +1,4 @@
-"""office/aof_sync.py: every case of the three-way sync into the office repos."""
+"""office/aof_sync.py: every task of the three-way sync into the office repos."""
 
 import importlib.util
 import json

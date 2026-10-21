@@ -4,7 +4,7 @@ id: team.reconciliation
 name: Reconciliation (template)
 description: Match two systems on a key, explain every break with rules then the model, sign off.
 owners: { people: [], role: YOUR_OWNER_ROLE, four_eyes: true }
-case:
+task:
   label: Rec run
   item_label: Break
   key: [entity, date]
@@ -15,8 +15,8 @@ items:
   amount_field: difference
   display: [ref, break_type, left_amount, right_amount, difference]
 match:
-  left: { tool: bank.statement, args: { entity: $case.entity, date: $case.date } }
-  right: { tool: ledger.postings, args: { entity: $case.entity, date: $case.date } }
+  left: { tool: bank.statement, args: { entity: $task.entity, date: $task.date } }
+  right: { tool: ledger.postings, args: { entity: $task.entity, date: $task.date } }
   keys: [ref]
   amount_field: amount
   tolerance: 0.01

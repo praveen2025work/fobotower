@@ -1,7 +1,7 @@
 # Development stand-in for the central entitlements system.
 # Used only when AOF_ENTITLEMENT_URL is unset. Same shape the real
 # service is asked for: roles, and data scopes per dimension ("*" = all).
-# `named_pnl` scopes cases worked per named P&L (several master books).
+# `named_pnl` scopes tasks worked per named P&L (several master books).
 
 users:
   alice:
@@ -13,7 +13,7 @@ users:
     roles: [FIN_REVIEWER, AOF_FIN_VARCOMM_OWNER]
     data_scopes: { entity: ["*"] }
   carol:
-    name: Carol (Finance capability owner)
+    name: Carol (Finance agent owner)
     roles: [AOF_FIN_VARCOMM_OWNER]
     data_scopes: { entity: ["*"] }
   dan:
@@ -21,7 +21,7 @@ users:
     roles: [CASH_OPS, AOF_CASH_RECON_OWNER]
     data_scopes: { entity: [UK01, US01] }
   erin:
-    name: Erin (Cash operations; owner of the recon capability)
+    name: Erin (Cash operations; owner of the recon agent)
     roles: [CASH_OPS, AOF_CASH_RECON_OWNER, AOF_RECON_OWNER]
     data_scopes: { entity: ["*"] }
   frank:
@@ -104,11 +104,11 @@ users:
             AOF_CONTROLS_OWNER]
     data_scopes: { entity: ["*"], book: ["*"], named_pnl: ["*"] }
   pat:
-    name: Pat (Agent One Finance platform support — switches, connectors; sees no case data)
+    name: Pat (Agent One Finance platform support — switches, connectors; sees no task data)
     roles: [AOF_PLATFORM_ADMIN]
     data_scopes: {}
   aof-scheduler:
-    name: Agent One Finance scheduler (service account — opens scheduled and event cases, never decides)
+    name: Agent One Finance scheduler (service account — opens scheduled and event tasks, never decides)
     roles: [FIN_PREPARER, CASH_OPS, FOBO_CONTROLLER, FOBO_RATES_CONTROLLER, FOBO_FIC_CONTROLLER, PAYMENTS_OPS, COMPLAINTS_HANDLER,
             CONTROL_TESTER]
     data_scopes: { entity: ["*"], book: ["*"], named_pnl: ["*"] }

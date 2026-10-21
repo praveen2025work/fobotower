@@ -1,16 +1,16 @@
 # Agent One Finance — governed AI for Finance
 
-Agent One Finance is the platform Finance teams run their AI-assisted case work on: breaks,
+Agent One Finance is the platform Finance teams run their AI-assisted task work on: breaks,
 reconciliations, variance commentary, accruals, report validation, control
-testing. Each use case is a **capability**: configuration over the team's own
+testing. Each use case is a **agent**: configuration over the team's own
 systems (MCP connectors), run by LangGraph, governed end to end and worked in
 one console. Rules come first, then the model, then a person; named people
 decide within their authority; only approved outcomes are written back.
 
 **FOBO is one use case.** Front-office vs back-office break investigation for
-the Prime and Rates desks was the first capability, and the original FOBO
+the Prime and Rates desks was the first agent, and the original FOBO
 investigation console still runs beside Agent One Finance (below). On Agent One Finance it is the
-`break.investigation` capability with its playbook as configuration.
+`break.investigation` agent with its playbook as configuration.
 
 | Finance area | Running on Agent One Finance today |
 |---|---|

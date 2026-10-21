@@ -5,7 +5,7 @@ Two treatments, by field name (case-insensitive, at any depth):
   mask          irreversible: the value becomes ***MASKED*** wherever data
                 leaves Agent One Finance's trust boundary — to the model, into traces,
                 into the audit copy of a tool result.
-  pseudonymize  reversible, per case: the value becomes a stable token like
+  pseudonymize  reversible, per task: the value becomes a stable token like
                 «COUNTERPARTY:QXKD». The model reasons and calls tools with
                 tokens; the gateway turns tokens back into real values before
                 a connector sees them, and re-tokenizes results on the way
@@ -81,11 +81,11 @@ def _letters(digest: bytes, n: int = 6) -> str:
 
 @dataclass
 class Protector:
-    """One case's protection: the fields, and the token ↔ value map it has issued."""
+    """One task's protection: the fields, and the token ↔ value map it has issued."""
 
     mask_fields: set[str] = field(default_factory=set)
     pseudo_fields: set[str] = field(default_factory=set)
-    scope: str = ""                         # the case id: tokens differ between cases
+    scope: str = ""                         # the task id: tokens differ between tasks
     tokens: dict[str, str] = field(default_factory=dict)   # token -> real value
 
     @classmethod

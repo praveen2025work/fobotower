@@ -46,7 +46,7 @@
 |---|---|---|---|---|---|---|
 | E01 | Programme and governance | 6 Oct 2026 | 14 Dec 2026 | 6 | 8 | Steerco agrees scope, plan and go-live criteria |
 | E02 | AOF platform on AWS: skeleton, UAT and Prod | 6 Oct 2026 | 14 Dec 2026 | 13 | 40 | The same build runs in UAT and Prod; Prod ready by 10 Dec |
-| E03 | Agent One integration: sessions per capability per case | 6 Oct 2026 | 30 Nov 2026 | 10 | 29 | Each FOBO case has its own Agent One session, shared by everyone working the case; no session per login |
+| E03 | Agent One integration: sessions per agent per task | 6 Oct 2026 | 30 Nov 2026 | 10 | 29 | Each FOBO task has its own Agent One session, shared by everyone working the task; no session per login |
 | E04 | Data connections: MB Rec, MOTIF and FAS | 6 Oct 2026 | 14 Dec 2026 | 9 | 33 | Breaks load from MB Rec; an approved adjustment posts to MOTIF through FAS in UAT |
 | E05 | FOBO (Helix) set-up with the FOBO controllers | 20 Oct 2026 | 30 Nov 2026 | 9 | 28 | The FOBO controllers confirm the set-up |
 | E06 | Agent One Finance Diagnostics | 22 Sep 2026 | 11 Jan 2027 | 10 | 34 | Running in Prod; results match Phoenix |

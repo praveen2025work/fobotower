@@ -305,7 +305,7 @@
   .hx-ring-wrap { position: relative; display: inline-grid; place-items: center; }
   .hx-ring-label { position: absolute; font-size: 0.68rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 
-  /* A light sweep across capability cards on hover. */
+  /* A light sweep across agent cards on hover. */
   .hx-sheen { position: relative; overflow: hidden; }
   .hx-sheen::after {
     content: "";

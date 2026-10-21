@@ -1,24 +1,24 @@
 # Agent One Finance by example
 
-**Date:** 2026-10-04. Worked examples for the accounting teams. The FOBO cases are real
-runs on the dev data, COB 2026-09-30. The other capabilities are configuration files you
+**Date:** 2026-10-04. Worked examples for the accounting teams. The FOBO tasks are real
+runs on the dev data, COB 2026-09-30. The other agents are configuration files you
 can install today. Each one says whether it runs now or which connector it waits for.
 
-- [1. One capability, many teams](#1-one-capability-many-teams)
+- [1. One agent, many teams](#1-one-agent-many-teams)
 - [2. FOBO: CATS vs MOTIF Prime vs Rates](#2-fobo-cats-vs-motif-prime-vs-rates)
 - [3. FOBO walk-throughs (real runs)](#3-fobo-walk-throughs-real-runs)
-- [4. Other accounting capabilities](#4-other-accounting-capabilities)
+- [4. Other accounting agents](#4-other-accounting-agents)
 - [5. Installing an example](#5-installing-an-example)
 
-## 1. One capability, many teams
+## 1. One agent, many teams
 
-A **capability** is a kind of work, such as "reconciliation investigation". It fixes the
+A **agent** is a kind of work, such as "reconciliation investigation". It fixes the
 workflow and its gates (validate → review → record). A **team group** sets that team's
 part: sources, keys, thresholds, playbook, instructions, reviewers and schedule. Each team
-sees only its own books and cases, and only its own owners approve changes to its group.
+sees only its own books and tasks, and only its own owners approve changes to its group.
 
 ```
-Helix FOBO Agent (capability: workflow, gates, retention)
+Helix FOBO Agent (agent: workflow, gates, retention)
 ├── CATS vs MOTIF — Prime (FOBO)   frank, gina   · PRIME-MB-01…06
 ├── CATS vs MOTIF — Rates (FOBO)   rita, raj     · RATES-LDN-01…04, RATES-NY-01/02
 ├── Cash — bank vs ledger          dan           · cash accounts
@@ -111,23 +111,23 @@ explained it, but FO-6's redemption analysis did.
 
 ### Who sees what
 
-- frank (Prime) sees only PRIME books, Prime cases and the Prime schedule.
+- frank (Prime) sees only PRIME books, Prime tasks and the Prime schedule.
 - rita sees RATES-LDN-01…04. raj sees all six Rates books.
 - Neither team can approve the other's changes. Tests:
   `apps/backend/tests/agent_one_finance/test_fobo_playbook.py`.
 
-## 4. Other accounting capabilities
+## 4. Other accounting agents
 
 | Example | Kind | What it does | People | Runs now? |
 |---|---|---|---|---|
-| **Variance commentary** (`fin-variance-commentary`, live) | capability | Material actual-vs-budget variances explained from journal lines; a reviewer signs off | carol | **Yes** (gl, budget) |
+| **Variance commentary** (`fin-variance-commentary`, live) | agent | Material actual-vs-budget variances explained from journal lines; a reviewer signs off | carol | **Yes** (gl, budget) |
 | **Cash — bank vs ledger** (live group) | rec group | Bank statement lines matched to ledger cash; timing and fees by rule, the rest by the model | dan | **Yes** |
-| **Report validation** (live) | capability | A management report (Excel) checked against the ledger; every difference explained; a PDF validation report published after sign-off | carol | **Yes** (documents, gl) |
-| [Accruals review](examples/accruals-review.yaml) | capability | On the 3rd of each month, accruals that moved materially against plan are explained from journals. A second reviewer when ≥ 250k; a spend limit per case and per day | carol | **Yes**: gl, budget |
-| [Balance sheet substantiation](examples/balance-sheet-substantiation.yaml) | capability | Every balance ≥ 100k matched to its filed support (PDF/workbook); unsupported balances are escalated. After a second person releases it, a signed **PDF pack** is published | carol | **Yes**: gl, documents |
+| **Report validation** (live) | agent | A management report (Excel) checked against the ledger; every difference explained; a PDF validation report published after sign-off | carol | **Yes** (documents, gl) |
+| [Accruals review](examples/accruals-review.yaml) | agent | On the 3rd of each month, accruals that moved materially against plan are explained from journals. A second reviewer when ≥ 250k; a spend limit per task and per day | carol | **Yes**: gl, budget |
+| [Balance sheet substantiation](examples/balance-sheet-substantiation.yaml) | agent | Every balance ≥ 100k matched to its filed support (PDF/workbook); unsupported balances are escalated. After a second person releases it, a signed **PDF pack** is published | carol | **Yes**: gl, documents |
 | [Intercompany recon](examples/intercompany-recon.group.yaml) | rec group (3rd team on the recon engine) | A's receivable from B matched to B's payable to A. FX rounding ≤ 50 GBP proposed by rule; a missing payable is escalated to the counterpart | `IC_ACCOUNTANT` | Needs `ic.receivables`, `ic.payables` |
-| [Journal entry controls](examples/journal-entry-controls.yaml) | capability with playbook | Manual journals checked: **SOD** (posted = approved → ESCALATE), **CLOSED** period → ESCALATE, **HOURS** / **ROUND** go to the model and a controller; clean journals ACCEPT | `FINANCIAL_CONTROLLER` | Needs `gl.journal_entries` |
-| [Suspense clearing](examples/suspense-clearing.yaml) | capability with write-back | Items ≥ 3 days in suspense aged and matched to a home account. A clearing journal is **posted** only after review and a four-eyes release (idempotent) | carol | Needs `gl.suspense_items`, `gl.post_journal` (write) |
+| [Journal entry controls](examples/journal-entry-controls.yaml) | agent with playbook | Manual journals checked: **SOD** (posted = approved → ESCALATE), **CLOSED** period → ESCALATE, **HOURS** / **ROUND** go to the model and a controller; clean journals ACCEPT | `FINANCIAL_CONTROLLER` | Needs `gl.journal_entries` |
+| [Suspense clearing](examples/suspense-clearing.yaml) | agent with write-back | Items ≥ 3 days in suspense aged and matched to a home account. A clearing journal is **posted** only after review and a four-eyes release (idempotent) | carol | Needs `gl.suspense_items`, `gl.post_journal` (write) |
 
 What the examples show:
 
@@ -136,7 +136,7 @@ What the examples show:
   verdict table, and judgement calls that go to the model. This is the same mechanism as
   FOBO.
 - **Documents in and out:** balance sheet substantiation. It reads filed PDFs and Excel and
-  publishes a PDF. Reviewers can also upload evidence to any case, and every case can
+  publishes a PDF. Reviewers can also upload evidence to any task, and every task can
   produce an **evidence pack** PDF for audit.
 - **Writing back to a system:** suspense clearing. Nothing is written until a second person
   releases it. Every call goes through the gateway and is audited.
@@ -151,13 +151,13 @@ missing-connector problems listed above.
 1. If a connector is missing, the Agent One Finance team onboards it. That is one entry in
    `config/agent-one-finance/connectors.yaml` (see `connectors.office.example.yaml`).
 2. Copy the file in:
-   - a capability goes to `config/agent-one-finance/capabilities/<id>.yaml`;
+   - an agent goes to `config/agent-one-finance/agents/<id>.yaml`;
    - a rec group goes to `config/agent-one-finance/groups/recon.investigation/<group>.yaml`.
 3. `python -m agent_one_finance.config_sync` turns the file into a draft. A second owner approves it,
-   and the next case runs on it. (On a fresh database the files seed directly.)
+   and the next task runs on it. (On a fresh database the files seed directly.)
 4. Or skip the files: open *Authoring*, paste the YAML (or start from a template), submit,
    and have another owner approve it.
 
-Before turning it on, run an **eval** (*Capability → Evals*). It replays past decided
-cases on the draft in shadow, without writing anything, and reports how often the draft
+Before turning it on, run an **eval** (*Agent → Evals*). It replays past decided
+tasks on the draft in shadow, without writing anything, and reports how often the draft
 agrees with what people decided.

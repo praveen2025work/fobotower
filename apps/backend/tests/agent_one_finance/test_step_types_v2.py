@@ -4,7 +4,7 @@ storage and tool calls replaced, so what a type does is plain to read."""
 import pytest
 
 from agent_one_finance import stepkit, steps_v2
-from agent_one_finance.capabilities import seed_files
+from agent_one_finance.agents import seed_files
 from agent_one_finance.manifest import Manifest, problems
 from agent_one_finance.workflow import order_problems
 
@@ -33,7 +33,7 @@ def lab(monkeypatch):
 
     class Lab:
         def state(self, items, **extra):
-            return {"case_id": "lab-1", "case_key": {"entity": "UK01", "date": "2026-10-05", "period": "2026-09"},
+            return {"task_id": "lab-1", "task_key": {"entity": "UK01", "date": "2026-10-05", "period": "2026-09"},
                     "manifest": BASE.model_dump(by_alias=True), "items": items, **extra}
 
         async def run(self, type_name, cfg, state, step_id="step"):
@@ -208,7 +208,7 @@ def test_ordering_rules_for_write_back_waiting_and_people():
     found = problems(_with([*base[:-2], "att", *base[-2:]], att))
     assert "pause_before: `att` needs a person first — add it to pause_before (its tollgate)" in found
     # a spawn needs a later await for its children
-    spawn = {"kids": {"type": "spawn", "with": {"capability": "payments.exceptions", "key": {"entity": "$case.entity"}}}}
+    spawn = {"kids": {"type": "spawn", "with": {"agent": "payments.exceptions", "key": {"entity": "$task.entity"}}}}
     found = problems(_with([*base[:-3], "kids", *base[-3:]], spawn))
     assert any("kids" in p and "children" in p for p in found)
 

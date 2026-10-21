@@ -1,9 +1,9 @@
-"""Business requirements (BRD) → a draft capability manifest.
+"""Business requirements (BRD) → a draft agent manifest.
 
 After aria-ai's `brd_to_pack`: one model turn, no tools, turns prose into a
 manifest; the SAME validator the platform uses judges it; problems come back
 to the author as a list, never as an exception; nothing goes live until an
-owner other than the drafter approves it (capabilities.draft_new → approve).
+owner other than the drafter approves it (agents.draft_new → approve).
 
 The model is given what it needs to stay inside the platform: the manifest's
 JSON schema, the core steps, the onboarded connector tools with their real
@@ -27,7 +27,7 @@ from agent_one_finance.manifest import Manifest, problems
 from agent_one_finance.workflow import catalogue
 
 INSTRUCTIONS = """
-You turn a business requirements document (BRD) into an Agent One Finance capability
+You turn a business requirements document (BRD) into an Agent One Finance agent
 manifest. Agent One Finance runs it as: load items from connector tools → compare or match
 → group → rules first, then the model with read-only tools → draft → validate
 (every figure must trace to data) → human review → record → optional publish
@@ -73,7 +73,7 @@ async def build_context() -> dict:
             tools.append({"name": q, "description": t.description, "access": t.access,
                           "data_scope_arg": t.scope.arg if t.scope else None,
                           "input_schema": await gateway.tool_schema(q)})
-    example_path = settings().config_dir / "capabilities" / "fin-variance-commentary.yaml"
+    example_path = settings().config_dir / "agents" / "fin-variance-commentary.yaml"
     return {
         "manifest_schema": Manifest.model_json_schema(by_alias=True),
         "core_steps": catalogue(),
@@ -83,7 +83,7 @@ async def build_context() -> dict:
 
 
 def _slug(text: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")[:40] or "capability"
+    return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")[:40] or "agent"
 
 
 class TemplateAuthor:
@@ -94,8 +94,8 @@ class TemplateAuthor:
 
     async def draft_manifest(self, request: AuthoringRequest) -> tuple[str, list[str]]:
         text = request.brd.lower()
-        title = next((ln.strip("# ").strip() for ln in request.brd.splitlines() if ln.strip()), "New capability")
-        folder = settings().config_dir / "capabilities"
+        title = next((ln.strip("# ").strip() for ln in request.brd.splitlines() if ln.strip()), "New agent")
+        folder = settings().config_dir / "agents"
         recon = "bank" in text and ("ledger" in text or "reconcil" in text)
         base = yaml.safe_load((folder / ("recon-investigation.yaml" if recon else "fin-variance-commentary.yaml")).read_text())
         base["id"] = f"draft.{_slug(title)}"
@@ -202,24 +202,24 @@ def available_modes() -> dict:
 
 
 async def _args_for(tool: str, key: list[str]) -> dict:
-    """$case.<field> for every case-key field the tool takes."""
+    """$task.<field> for every task-key field the tool takes."""
     try:
         props = (await gateway.tool_schema(tool)).get("properties", {})
     except Exception:
         props = {}
-    return {k: f"$case.{k}" for k in key if not props or k in props}
+    return {k: f"$task.{k}" for k in key if not props or k in props}
 
 
 async def guided(a: dict, caller: Caller) -> dict[str, Any]:
     """Build a manifest from a guided form's answers, then judge it with the
     platform's validator — exactly as a model's draft is judged."""
     problems_: list[str] = []
-    name = (a.get("name") or "").strip() or "New capability"
+    name = (a.get("name") or "").strip() or "New agent"
     kind = a.get("kind") or "review"
     if kind not in GUIDED_KINDS:
         return {"yaml": "", "manifest": None, "assumptions": [], "author": "guided",
                 "problems": [f"kind must be one of: {', '.join(GUIDED_KINDS)}"]}
-    key = [k.strip() for k in (a.get("case_key") or []) if k and k.strip()] or ["entity", "date"]
+    key = [k.strip() for k in (a.get("task_key") or []) if k and k.strip()] or ["entity", "date"]
     id_field = (a.get("id_field") or "").strip() or "id"
     amount = (a.get("amount_field") or "").strip() or None
     reviewers = [r for r in (a.get("reviewer_roles") or []) if r] or ["YOUR_REVIEWER_ROLE"]
@@ -231,14 +231,14 @@ async def guided(a: dict, caller: Caller) -> dict[str, Any]:
         "name": name[:80],
         "description": (a.get("description") or "").strip()[:300],
         "owners": {"people": [caller.user_id], "role": (a.get("owner_role") or None), "four_eyes": True},
-        "case": {"label": a.get("case_label") or "Run", "item_label": a.get("item_label") or "Item",
+        "task": {"label": a.get("task_label") or "Run", "item_label": a.get("item_label") or "Item",
                  "key": key, "subject": " · ".join(f"{{{k}}}" for k in key)},
         "items": {"id_field": id_field, "display": [f for f in (a.get("display") or []) if f]},
         "review": {"roles": reviewers},
     }
     scope = (a.get("scope_field") or "").strip()
     if scope:
-        m["case"]["scopes"] = {scope: scope}
+        m["task"]["scopes"] = {scope: scope}
     if amount:
         m["items"]["amount_field"] = "difference" if kind == "reconcile" else (
             (a.get("compare_as") or "variance") if kind == "commentary" else amount)
@@ -283,11 +283,11 @@ async def guided(a: dict, caller: Caller) -> dict[str, Any]:
         steps.append("pick")
         m["step_settings"]["pick"] = {"type": "sample", "label": "Sample",
                                       "with": {"method": "random", "size": int(a["sample_size"])}}
-        assumptions.append(f"A random sample of {int(a['sample_size'])} is reviewed; the rest stay on the case, marked.")
+        assumptions.append(f"A random sample of {int(a['sample_size'])} is reviewed; the rest stay on the task, marked.")
     if a.get("clock_hours"):
         steps.append("sla")
         m["step_settings"]["sla"] = {"type": "clock", "label": "Service level", "with": {"clocks": [{
-            "id": "sla", "label": f"Service level ({a['clock_hours']} h)", "starts": (a.get("clock_starts") or "case_opened"),
+            "id": "sla", "label": f"Service level ({a['clock_hours']} h)", "starts": (a.get("clock_starts") or "task_opened"),
             "hours": float(a["clock_hours"]), "warn_before_hours": max(1.0, float(a["clock_hours"]) / 4)}]}}
     if a.get("authority_tool"):
         steps.append("authority")
@@ -323,7 +323,7 @@ async def guided(a: dict, caller: Caller) -> dict[str, Any]:
                       "tools": [t for t in (a.get("model_tools") or []) if t]}
     if by_model:
         m["reasoning"]["skill"] = (a.get("instructions") or "").strip() or (
-            f"You investigate {m['case']['item_label'].lower()}s for {name}. Use the tools to find why each "
+            f"You investigate {m['task']['item_label'].lower()}s for {name}. Use the tools to find why each "
             "group exists and what should happen next. Cite only figures from the tools or the items; "
             "escalate when the evidence does not explain it.")
         if not (a.get("instructions") or "").strip():
@@ -333,14 +333,14 @@ async def guided(a: dict, caller: Caller) -> dict[str, Any]:
 
     opens = a.get("opens") or "manual"
     if opens == "event":
-        m["case"].update(opens_on="event", events=True, opens_as="aof-scheduler")
+        m["task"].update(opens_on="event", events=True, opens_as="aof-scheduler")
         if a.get("late_items"):
-            m["case"]["late_items"] = "follow_up"
+            m["task"]["late_items"] = "follow_up"
     elif opens == "schedule":
-        m["case"].update(opens_on="schedule", schedule=a.get("schedule") or "30 6 * * 1-5",
+        m["task"].update(opens_on="schedule", schedule=a.get("schedule") or "30 6 * * 1-5",
                          schedule_keys=[dict(k) for k in (a.get("schedule_keys") or [])], opens_as="aof-scheduler")
         if not a.get("schedule_keys"):
-            assumptions.append("Add the cases each scheduled run opens (Configure → Start: what a case is).")
+            assumptions.append("Add the tasks each scheduled run opens (Configure → Start: what a task is).")
 
     targets = [t for t in (a.get("ask_targets") or []) if t.get("name") and t.get("roles")]
     if targets:

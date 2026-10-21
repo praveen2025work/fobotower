@@ -1,7 +1,7 @@
 """Sample documents for the documents service (dev and tests).
 
 Writes, per entity, a management report workbook for 2026-09 built from the
-stub general ledger with a few deliberate differences — the cases a report
+stub general ledger with a few deliberate differences — the tasks a report
 validation has to explain — and a short PDF of the business's commentary.
 
     python scripts/make_aof_documents.py   # -> seed_data/aof_documents/<entity>/

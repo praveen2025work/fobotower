@@ -73,13 +73,13 @@ function ListInput({ value, onChange, disabled, placeholder, id }: { value: stri
   );
 }
 
-/** Tool arguments as one line, "book=$case.book, cob=$case.cob", kept as typed until the box is left. */
+/** Tool arguments as one line, "book=$task.book, cob=$task.cob", kept as typed until the box is left. */
 function ArgsInput({ value, onChange, disabled }: { value: Json; onChange: (v: Json) => void; disabled: boolean }) {
   const show = (v: Json) => Object.entries(v ?? {}).map(([k, x]) => `${k}=${typeof x === "object" ? JSON.stringify(x) : String(x)}`).join(", ");
   const [text, setText] = useState(show(value));
   useEffect(() => setText(show(value)), [JSON.stringify(value)]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <input aria-label="Arguments" value={text} disabled={disabled} placeholder="book=$case.book, cob=$case.cob"
+    <input aria-label="Arguments" value={text} disabled={disabled} placeholder="book=$task.book, cob=$task.cob"
       onChange={(e) => setText(e.target.value)}
       onBlur={() => onChange(Object.fromEntries(text.split(",").map((p) => p.split("=")).filter(([k]) => k?.trim())
         .map(([k, ...v]) => [k.trim(), literal(v.join("=").trim())])))}

@@ -17,14 +17,14 @@ async def test_modes_say_what_is_offered_without_a_model(api):
 
 async def test_a_reconciliation_from_answers_passes_every_check(api):
     out = await _guided(api, {
-        "name": "Cash — bank vs ledger (EU)", "kind": "reconcile", "case_key": ["entity", "date"], "scope_field": "entity",
+        "name": "Cash — bank vs ledger (EU)", "kind": "reconcile", "task_key": ["entity", "date"], "scope_field": "entity",
         "left_tool": "bank.statement", "right_tool": "ledger.postings", "match_keys": ["ref"], "amount_field": "amount",
         "left_label": "bank", "right_label": "ledger", "group_by": ["counterparty"], "reviewer_roles": ["CASH_OPS"],
         "decided_by": "model_then_person", "model_tools": ["ledger.counterparty_history"],
         "checklist": ["Is each write-off within policy?"], "follow_through": True})
     assert out["problems"] == [], out["problems"]
     m = out["manifest"]
-    assert m["steps"][:2] == ["match", "group"] and m["match"]["left"]["args"] == {"entity": "$case.entity", "date": "$case.date"}
+    assert m["steps"][:2] == ["match", "group"] and m["match"]["left"]["args"] == {"entity": "$task.entity", "date": "$task.date"}
     assert m["follow_through"] == {"series": ["entity"], "order_by": "date", "verdicts": []}
     assert m["review"]["checklist"][0]["label"] == "Is each write-off within policy?"
     assert out["author"] == "guided"
@@ -34,7 +34,7 @@ async def test_a_reconciliation_from_answers_passes_every_check(api):
 
 async def test_investigating_breaks_with_a_tollgate_and_no_model(api):
     out = await _guided(api, {
-        "name": "Equities breaks", "kind": "investigate", "case_key": ["book", "cob"], "scope_field": "book",
+        "name": "Equities breaks", "kind": "investigate", "task_key": ["book", "cob"], "scope_field": "book",
         "source_tool": "mbrec.breaks", "id_field": "instrument", "amount_field": "difference",
         "group_by": ["break_type"], "reviewer_roles": ["FOBO_CONTROLLER"], "decided_by": "person",
         "tollgate": True, "opens": "event", "late_items": True,
@@ -42,12 +42,12 @@ async def test_investigating_breaks_with_a_tollgate_and_no_model(api):
     assert out["problems"] == [], out["problems"]
     m = out["manifest"]
     assert m["reasoning"]["reasoner"] == "none" and m["pause_before"] == ["reason", "review"]
-    assert m["case"]["late_items"] == "follow_up" and m["requests"]["targets"][0]["id"] == "equities-desk"
+    assert m["task"]["late_items"] == "follow_up" and m["requests"]["targets"][0]["id"] == "equities-desk"
     assert any("No model" in a for a in out["assumptions"])
 
 
 async def test_commentary_with_unconfirmed_materiality(api):
-    out = await _guided(api, {"name": "Cost centre commentary", "kind": "commentary", "case_key": ["entity", "period"],
+    out = await _guided(api, {"name": "Cost centre commentary", "kind": "commentary", "task_key": ["entity", "period"],
                               "source_tool": "gl.balances", "id_field": "line_id", "amount_field": "variance",
                               "materiality": 25000, "unit": "GBP", "group_by": ["account"], "reviewer_roles": ["FIN_REVIEWER"]})
     assert out["problems"] == [], out["problems"]
@@ -62,7 +62,7 @@ async def test_what_is_missing_comes_back_as_problems_not_errors(api):
 
 async def test_answers_add_sampling_clocks_authority_and_reserved_decisions(api):
     out = await _guided(api, {
-        "name": "Payment repairs", "kind": "review", "case_key": ["entity", "date"], "scope_field": "entity",
+        "name": "Payment repairs", "kind": "review", "task_key": ["entity", "date"], "scope_field": "entity",
         "source_tool": "payments.exceptions", "id_field": "exception_id", "amount_field": "amount",
         "group_by": ["reason_code"], "reviewer_roles": ["PAYMENTS_OPS"], "decided_by": "person",
         "sample_size": 10, "clock_hours": 24, "clock_starts": "received_at", "two_approvers_over": 1000000,
@@ -76,10 +76,10 @@ async def test_answers_add_sampling_clocks_authority_and_reserved_decisions(api)
     assert m["boundaries"][0]["roles"] == ["PAYMENTS_LEAD"] and m["boundaries"][0]["reason"] == "returning funds"
 
     from_bank = await _guided(api, {
-        "name": "Accruals", "kind": "review", "case_key": ["entity", "period"], "source_tool": "journals.grni",
+        "name": "Accruals", "kind": "review", "task_key": ["entity", "period"], "source_tool": "journals.grni",
         "id_field": "po_line", "amount_field": "accrual", "reviewer_roles": ["FIN_REVIEWER"], "decided_by": "person",
         "authority_tool": "authority.delegated_authority"})
     assert from_bank["problems"] == [], from_bank["problems"]
     fm = from_bank["manifest"]
     assert fm["review"]["authority_dataset"] == "authority"
-    assert fm["step_settings"]["authority"]["with"]["args"] == {"entity": "$case.entity"}
+    assert fm["step_settings"]["authority"]["with"]["args"] == {"entity": "$task.entity"}

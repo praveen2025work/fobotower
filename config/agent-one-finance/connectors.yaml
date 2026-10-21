@@ -1,7 +1,7 @@
 # Onboarded MCP connectors — owned by the Agent One Finance team.
 #
 # Each entry is one bank system exposed as an MCP server. Only tools listed
-# here can be used by any capability (an allow-list); `scope` names the
+# here can be used by any agent (an allow-list); `scope` names the
 # argument that carries the data scope, which the gateway checks against the
 # caller's entitlements on every call.
 #
@@ -171,7 +171,7 @@ connectors:
       create_ticket:
         description: Raise a ticket in a team's queue (ServiceNow / Jira)
         access: write          # raised by the record step after review, never by the model
-        idempotency_arg: idempotency_key   # one ticket per case and group, however often retried
+        idempotency_arg: idempotency_key   # one ticket per task and group, however often retried
 
   cats:
     name: CATS — front-office positions (stub)
@@ -206,12 +206,12 @@ connectors:
         scope: { arg: book, key: book }
       breaks_all:
         # Every book for one COB (book, instrument, difference). No book argument, so no
-        # book scope: the cluster step reads it and keeps only a count on the case.
+        # book scope: the cluster step reads it and keeps only a count on the task.
         description: Open breaks in every Prime and Rates book for one COB
       book_status:
         description: Whether MB Rec has processed the book for the COB (Complete, In Progress, Waiting, Failed)
         scope: { arg: book, key: book }
-      # A named P&L groups master books; a case per named P&L reads all of them at once.
+      # A named P&L groups master books; a task per named P&L reads all of them at once.
       named_pnl_books:
         description: The master books in a named P&L, with MB Rec's status and open breaks for each on the COB
         scope: { arg: named_pnl, key: named_pnl }
@@ -276,6 +276,6 @@ connectors:
         scope: { arg: entity, key: entity }
       render_pdf_report:
         description: Write a PDF report (sections, tables, sign-off) to the entity's reports
-        access: write          # publish step only, after a second person releases the case
+        access: write          # publish step only, after a second person releases the task
         idempotency_arg: idempotency_key
         scope: { arg: entity, key: entity }

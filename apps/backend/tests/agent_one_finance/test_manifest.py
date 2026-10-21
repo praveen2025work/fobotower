@@ -1,12 +1,12 @@
 import pytest
 
-from agent_one_finance import capabilities, rules
+from agent_one_finance import agents, rules
 from agent_one_finance.manifest import Manifest, problems
 from agent_one_finance.workflow import order_problems
 
 
 def _variance() -> dict:
-    m = next(m for m in capabilities.seed_files() if m.id == "fin.variance-commentary")
+    m = next(m for m in agents.seed_files() if m.id == "fin.variance-commentary")
     return m.model_dump(by_alias=True)
 
 
@@ -14,8 +14,8 @@ def _problems(**changes) -> list[str]:
     return problems(Manifest.model_validate({**_variance(), **changes}))
 
 
-def test_every_seeded_capability_is_valid():
-    files = capabilities.seed_files()
+def test_every_seeded_agent_is_valid():
+    files = agents.seed_files()
     assert {m.id for m in files} == {"break.investigation", "break.investigation.skill", "client.complaints", "controls.operating-test", "controls.sample-test", "fin.accruals", "fin.variance-commentary", "payments.exceptions", "recon.investigation", "report.validation"}
     for m in files:
         assert problems(m) == [], m.id

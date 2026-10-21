@@ -10,7 +10,7 @@ To make a new snapshot from a running stack (API on :8300, web on :5180):
 
 ```bash
 cd apps/web
-node scripts/capture-snapshot.mjs     # records every page, tab and case, writes src/snapshot/data.b64
+node scripts/capture-snapshot.mjs     # records every page, tab and task, writes src/snapshot/data.b64
 npm run build:snapshot                # → dist-snapshot/agent-one-finance-snapshot.html (one self-contained file)
 ```
 
@@ -19,12 +19,12 @@ to your team by email or Teams, and it opens in any browser: no server, no insta
 It also works on a phone. The current copy (three agents with their tasks, recorded 2026-10-19) is in
 [`../demo/agent-one-finance-snapshot.html`](../demo/agent-one-finance-snapshot.html).
 
-The capture records everything the console offers to open: every case it lists or names
-(follow-ups and child cases too), each run history step, eval runs, any two versions to
-compare, the filters on the Cases tab and the audit log, each configuration's check result
+The capture records everything the console offers to open: every task it lists or names
+(follow-ups and child tasks too), each run history step, eval runs, any two versions to
+compare, the filters on the Tasks tab and the audit log, each configuration's check result
 (shown on the Configure tab until you edit it), and the files behind the download buttons. So
 nothing a viewer can click says it was not recorded. What stays live-only is anything that
-changes data or asks the model (approving, sending, asking about a case): the snapshot says it
+changes data or asks the model (approving, sending, asking about a task): the snapshot says it
 is read-only. Opening it needs a current browser (Chrome, Edge, Firefox, or Safari 16.4 or
 later).
 
@@ -39,7 +39,7 @@ Options for the capture script (environment variables):
 |---|---|---|
 | `AOF_WEB` | `http://localhost:5180` | the running web app |
 | `SNAPSHOT_USER` | `frank` | who the screens are recorded as |
-| `SNAPSHOT_CASES` | — | extra case ids to include in full, comma-separated. Every listed case is already in, except a business date's run of six or more tasks of one group (a task per book), which is kept as rows of the agent's Summary |
+| `SNAPSHOT_TASKS` | — | extra task ids to include in full, comma-separated. Every listed task is already in, except a business date's run of six or more tasks of one group (a task per book), which is kept as rows of the agent's Summary |
 | `SNAPSHOT_AGENTS` | all | the agents to include, comma-separated ids, e.g. `recon.investigation,fin.accruals`; their tasks only, without the platform pages, with the walkthrough of the demo's example tasks (`src/snapshot/walkthrough.ts`) beside them |
 | `SNAPSHOT_SCOPE` | `all` | `config`: the agents' configuration only, no tasks, inbox or operations |
 | `PLAYWRIGHT` | `playwright` | module path, if Playwright is installed globally |

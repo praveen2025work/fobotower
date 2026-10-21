@@ -235,8 +235,7 @@ export default function Authoring() {
               {submit.error && <ErrorState error={submit.error} />}
               {submit.data && (
                 <p className="text-sm text-green-700">
-                  Submitted {submit.data.capability_id} v{submit.data.version}. It goes live when another owner approves
-                  it.
+                  Submitted {submit.data.agent_id} v{submit.data.version}. It goes live when another owner approves it.
                 </p>
               )}
             </div>
@@ -291,7 +290,7 @@ function PromoteIn() {
       )}
       {imp.data && (
         <p className="mt-2 text-sm text-green-700">
-          Drafted {imp.data.capability_id} v{imp.data.version} — {imp.data.note}
+          Drafted {imp.data.agent_id} v{imp.data.version} — {imp.data.note}
         </p>
       )}
     </Fold>
@@ -309,10 +308,10 @@ function PendingDrafts() {
       {drafts.data?.length === 0 && <Empty>No drafts waiting.</Empty>}
       <ul className="divide-y divide-surface-100">
         {drafts.data?.map((d) => (
-          <li key={`${d.capability_id}-${d.version}`} className="flex flex-wrap items-center gap-3 py-2.5 text-sm">
+          <li key={`${d.agent_id}-${d.version}`} className="flex flex-wrap items-center gap-3 py-2.5 text-sm">
             <span className="font-medium">{d.name}</span>
             <span className="font-mono text-xs text-surface-400">
-              {d.capability_id} v{d.version}
+              {d.agent_id} v{d.version}
             </span>
             {d.new && (
               <span className="rounded bg-accent-50 px-1.5 py-0.5 text-[10px] font-medium text-accent-700">
@@ -326,7 +325,7 @@ function PendingDrafts() {
             <span className="ml-auto">
               {d.can_approve ? (
                 <button
-                  onClick={() => approve.mutate({ capabilityId: d.capability_id, version: d.version })}
+                  onClick={() => approve.mutate({ agentId: d.agent_id, version: d.version })}
                   disabled={approve.isPending}
                   className="rounded-lg bg-brand-accent px-3 py-1 text-xs font-medium text-brand-accent-fg hover:bg-brand-accent-strong disabled:opacity-50"
                 >
@@ -343,7 +342,7 @@ function PendingDrafts() {
       {approve.data && (
         <p className="mt-2 text-sm text-green-700">
           Approved — now live in{" "}
-          <Link className="underline" to="/capabilities">
+          <Link className="underline" to="/agents">
             Agents
           </Link>
           .

@@ -1,5 +1,5 @@
 // The app shell — aria-ai's Layout (Barclays navy collapsible sidebar, top bar, error
-// boundary per page), wired to Agent One Finance: navigation for the unified case view,
+// boundary per page), wired to Agent One Finance: navigation for the unified task view,
 // the signed-in user from the Agent One Finance API, and the dev user switcher only when
 // Agent One Finance runs on fixture entitlements. The sun / moon button switches between
 // the Barclays light and dark themes (src/theme.ts).
@@ -117,7 +117,7 @@ function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
       items: [
         { to: "/", icon: LayoutDashboard, label: "Overview" },
         { to: "/inbox", icon: Inbox, label: "Inbox", badge: inbox.data?.length || undefined },
-        { to: "/capabilities", icon: Layers, label: "Agents" },
+        { to: "/agents", icon: Layers, label: "Agents" },
       ],
     },
     {
@@ -133,7 +133,7 @@ function Layout({ onUserChange }: { onUserChange: (user: string) => void }) {
   // A config-only snapshot has agents and connectors, nothing about work in progress; a
   // snapshot of chosen agents leaves out the platform pages.
   const shown = (to: string) =>
-    configOnly() ? to === "/capabilities" || to === "/connectors" : platformPages() || !["/operations", "/audit", "/authoring"].includes(to);
+    configOnly() ? to === "/agents" || to === "/connectors" : platformPages() || !["/operations", "/audit", "/authoring"].includes(to);
   const sections = allSections.map((s) => ({ ...s, items: s.items.filter((i) => shown(i.to)) }));
   // Collapsing is for the desktop sidebar; the phone menu always shows labels.
   const compact = collapsed && !mobileOpen;

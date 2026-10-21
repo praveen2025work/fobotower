@@ -1,4 +1,4 @@
-"""Review policy shared by every capability: what a group needs from its
+"""Review policy shared by every agent: what a group needs from its
 reviewer, and who may decide (including a colleague covering for someone away).
 
 Flags on a group's finding (`flags`):
@@ -89,16 +89,16 @@ async def covering_for(caller: Caller) -> list[Caller]:
     return [_caller(d.from_user, d.from_entitlement) for d in await active_from(to_user=caller.user_id)]
 
 
-async def acting_as(caller: Caller, m: Manifest, case_key: dict, may_see_case) -> tuple[bool, str | None]:
+async def acting_as(caller: Caller, m: Manifest, task_key: dict, may_see_task) -> tuple[bool, str | None]:
     """(may decide, on behalf of whom). A reviewer decides as themselves; with
     review.allow_delegation, a colleague may decide for an absent reviewer
-    whose roles and data scope cover the case."""
-    if may_see_case(caller, m, case_key) and caller.has_any_role(m.review.roles):
+    whose roles and data scope cover the task."""
+    if may_see_task(caller, m, task_key) and caller.has_any_role(m.review.roles):
         return True, None
     if not m.review.allow_delegation:
         return False, None
     for absent in await covering_for(caller):
-        if may_see_case(absent, m, case_key) and absent.has_any_role(m.review.roles):
+        if may_see_task(absent, m, task_key) and absent.has_any_role(m.review.roles):
             return True, absent.user_id
     return False, None
 

@@ -6,7 +6,7 @@ confirmation, escalation teams and book lineage as of the COB."""
 import yaml
 
 from agent_one_finance import steps
-from agent_one_finance.capabilities import seed_files
+from agent_one_finance.agents import seed_files
 from agent_one_finance.config import settings
 from agent_one_finance.groups import GroupConfig, effective
 from tests.agent_one_finance.conftest import FOBO, RECON
@@ -15,8 +15,8 @@ GROUP = settings().config_dir / "groups" / "recon.investigation" / "cats-motif.y
 
 
 async def _run(api, book, cob, user="frank"):
-    res = await api.post(f"/api/capabilities/{RECON}/cases", headers=api.as_user(user),
-                         json={"case_key": {"book": book, "cob": cob}, "team_group": FOBO})
+    res = await api.post(f"/api/agents/{RECON}/tasks", headers=api.as_user(user),
+                         json={"task_key": {"book": book, "cob": cob}, "team_group": FOBO})
     assert res.status_code == 201, res.text
     return res.json()
 
@@ -31,9 +31,9 @@ def _fobo_manifest(**playbook_changes):
 
 
 async def test_every_break_gets_all_six_checks_a_category_a_side_and_its_owners(api):
-    case = await _run(api, "PRIME-MB-01", "2026-08-03")
-    assert case["status"] == "awaiting_review" and case["items"]
-    for it in case["items"]:
+    task = await _run(api, "PRIME-MB-01", "2026-08-03")
+    assert task["status"] == "awaiting_review" and task["items"]
+    for it in task["items"]:
         assert [c["id"] for c in it["checks"]] == ["C1", "C2", "C3", "C4", "C5", "C6"]
         positives = [c["id"] for c in it["checks"] if c["positive"]]
         assert it["cause"] == (positives[0] if positives else None)
@@ -41,7 +41,7 @@ async def test_every_break_gets_all_six_checks_a_category_a_side_and_its_owners(
             explained = it["test_finding"] and it["test_finding"]["id"] in ("A", "B")
             assert it["category"] == ("H" if not explained else it["category"])
         assert (it["owner_desk"], it["owner_team"]) == ("APAC-CASH", "Operations")
-    assert all(g["group_key"].keys() == {"category", "side"} for g in case["groups"])
+    assert all(g["group_key"].keys() == {"category", "side"} for g in task["groups"])
 
 
 async def test_the_verdict_table_settles_proven_sides_and_judgement_goes_to_an_sme(api):
@@ -93,8 +93,8 @@ async def test_book_lineage_is_read_as_of_the_cob(api):
 
 
 async def test_the_cash_group_on_the_same_engine_is_unaffected(api):
-    cash = (await api.post(f"/api/capabilities/{RECON}/cases", headers=api.as_user("dan"),
-                           json={"case_key": {"entity": "UK01", "date": "2026-09-30"},
+    cash = (await api.post(f"/api/agents/{RECON}/tasks", headers=api.as_user("dan"),
+                           json={"task_key": {"entity": "UK01", "date": "2026-09-30"},
                                  "team_group": "cash-bank-ledger"})).json()
     assert cash["status"] == "awaiting_review"
     assert all("category" not in it and "checks" not in it for it in cash["items"])
@@ -107,8 +107,8 @@ async def _book(api, i: int):
 
 
 async def test_every_break_runs_all_fourteen_validation_tests_and_unset_thresholds_are_not_run(api):
-    case = await _book(api, 1)
-    for it in case["items"]:
+    task = await _book(api, 1)
+    for it in task["items"]:
         assert [t["id"] for t in it["tests"]] == [f"FO-{n}" for n in range(1, 9)] + [f"BO-{n}" for n in range(1, 7)]
         fo4 = next(t for t in it["tests"] if t["id"] == "FO-4")
         assert fo4["status"] == "not_run" and "mtm_market_movement_tolerance" in fo4["why"]   # P1
@@ -126,16 +126,16 @@ async def test_missing_evidence_means_not_run_never_a_pass(api):
 
 
 async def test_fo6_findings_explain_breaks_no_cause_check_did(api):
-    case = await _book(api, 6)
-    ins = next(it for it in case["items"] if it["test_finding"])
+    task = await _book(api, 6)
+    ins = next(it for it in task["items"] if it["test_finding"])
     assert ins["cause"] is None and ins["test_finding"]["id"] == "B"
     assert (ins["category"], ins["side"]) == ("B", "FO")                   # Pull factor break, FO side
     assert ins["cause_reason"].startswith("FO-6 finding B")
 
 
 async def test_a_blocking_test_failure_holds_a_post(api):
-    case = await _book(api, 4)
-    g = next(g for g in case["groups"] if g["group_key"] == {"category": "D", "side": "BO"})
+    task = await _book(api, 4)
+    g = next(g for g in task["groups"] if g["group_key"] == {"category": "D", "side": "BO"})
     f = g["finding"]
     assert (f["verdict"], f["status"]) == ("ESCALATE", "escalated")       # the table said POST
     assert f["guard"].startswith("Held: FO-1 failed") and f["blocked_by"]
@@ -148,15 +148,15 @@ async def test_hours_saved_states_its_basis(api):
     assert h["value"] >= 0 and "avoided" in h["basis"] and "settled by rule or playbook" in h["basis"]
 
 
-# ---------- two FOBO rec groups on one capability: Prime and Rates ----------
+# ---------- two FOBO rec groups on one agent: Prime and Rates ----------
 
 RATES = "cats-motif-rates"
 
 
 async def test_rates_and_prime_run_the_same_playbook_with_their_own_settings(api):
     prime = await _run(api, "PRIME-MB-04", "2026-08-03")
-    rates = (await api.post(f"/api/capabilities/{RECON}/cases", headers=api.as_user("rita"),
-                            json={"case_key": {"book": "RATES-LDN-01", "cob": "2026-08-03"}, "team_group": RATES})).json()
+    rates = (await api.post(f"/api/agents/{RECON}/tasks", headers=api.as_user("rita"),
+                            json={"task_key": {"book": "RATES-LDN-01", "cob": "2026-08-03"}, "team_group": RATES})).json()
     assert rates["status"] == "awaiting_review" and rates["team_group"] == RATES
     # the same playbook: every break gets the six checks and fourteen tests
     for it in rates["items"]:
@@ -170,27 +170,27 @@ async def test_rates_and_prime_run_the_same_playbook_with_their_own_settings(api
 
 
 async def test_each_team_sees_and_signs_off_only_its_own_books(api):
-    rates = (await api.post(f"/api/capabilities/{RECON}/cases", headers=api.as_user("rita"),
-                            json={"case_key": {"book": "RATES-LDN-02", "cob": "2026-08-03"}, "team_group": RATES})).json()
-    # rita may not open a Prime book or a New York book; frank cannot see the Rates case
-    no_prime = await api.post(f"/api/capabilities/{RECON}/cases", headers=api.as_user("rita"),
-                              json={"case_key": {"book": "PRIME-MB-01", "cob": "2026-08-03"}, "team_group": FOBO})
+    rates = (await api.post(f"/api/agents/{RECON}/tasks", headers=api.as_user("rita"),
+                            json={"task_key": {"book": "RATES-LDN-02", "cob": "2026-08-03"}, "team_group": RATES})).json()
+    # rita may not open a Prime book or a New York book; frank cannot see the Rates task
+    no_prime = await api.post(f"/api/agents/{RECON}/tasks", headers=api.as_user("rita"),
+                              json={"task_key": {"book": "PRIME-MB-01", "cob": "2026-08-03"}, "team_group": FOBO})
     assert no_prime.status_code == 403
-    no_ny = await api.post(f"/api/capabilities/{RECON}/cases", headers=api.as_user("rita"),
-                           json={"case_key": {"book": "RATES-NY-01", "cob": "2026-08-03"}, "team_group": RATES})
+    no_ny = await api.post(f"/api/agents/{RECON}/tasks", headers=api.as_user("rita"),
+                           json={"task_key": {"book": "RATES-NY-01", "cob": "2026-08-03"}, "team_group": RATES})
     assert no_ny.status_code == 403
-    assert (await api.get(f"/api/cases/{rates['case_id']}", headers=api.as_user("frank"))).status_code == 404
+    assert (await api.get(f"/api/tasks/{rates['task_id']}", headers=api.as_user("frank"))).status_code == 404
     assert rates["can_decide"] is True
-    raj = (await api.get(f"/api/cases/{rates['case_id']}", headers=api.as_user("raj"))).json()
+    raj = (await api.get(f"/api/tasks/{rates['task_id']}", headers=api.as_user("raj"))).json()
     assert raj["can_decide"] is True                        # the other Rates controller
 
 
 async def test_a_rates_change_is_approved_by_the_rates_owners_only(api):
-    detail = (await api.get(f"/api/capabilities/{RECON}/groups/{RATES}", headers=api.as_user("rita"))).json()
+    detail = (await api.get(f"/api/agents/{RECON}/groups/{RATES}", headers=api.as_user("rita"))).json()
     changed = {**detail["config"], "set": {**detail["config"]["set"], "match": {**detail["config"]["set"]["match"], "tolerance": 2.0}}}
-    v = (await api.post(f"/api/capabilities/{RECON}/groups", headers=api.as_user("rita"),
+    v = (await api.post(f"/api/agents/{RECON}/groups", headers=api.as_user("rita"),
                         json={"config": changed, "note": "Rates tolerance 2.00"})).json()["version"]
-    url = f"/api/capabilities/{RECON}/groups/{RATES}/versions/{v}/approve"
+    url = f"/api/agents/{RECON}/groups/{RATES}/versions/{v}/approve"
     assert (await api.post(url, headers=api.as_user("frank"))).status_code == 403   # Prime owner
     assert (await api.post(url, headers=api.as_user("rita"))).status_code == 403    # the drafter
     assert (await api.post(url, headers=api.as_user("raj"))).status_code == 200

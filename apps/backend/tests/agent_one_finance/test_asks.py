@@ -4,7 +4,7 @@ asks the desk or Operations, the group waits, the answer reaches the model."""
 import dataclasses
 import uuid
 
-from agent_one_finance.capabilities import seed_files
+from agent_one_finance.agents import seed_files
 from agent_one_finance.config import settings
 from agent_one_finance.manifest import Manifest, problems
 from agent_one_finance.web import main
@@ -13,53 +13,53 @@ CAP, GROUP = "break.investigation", "fobo-prime"
 KEY = {"book": "PRIME-MB-04", "cob": "2026-09-24"}
 
 
-async def _case_at_review(api):
-    case = (await api.post(f"/api/capabilities/{CAP}/cases", headers=api.as_user("frank"),
-                           json={"case_key": KEY, "team_group": GROUP})).json()
-    res = await api.post(f"/api/cases/{case['case_id']}/gates/reason", headers=api.as_user("frank"),
+async def _task_at_review(api):
+    task = (await api.post(f"/api/agents/{CAP}/tasks", headers=api.as_user("frank"),
+                           json={"task_key": KEY, "team_group": GROUP})).json()
+    res = await api.post(f"/api/tasks/{task['task_id']}/gates/reason", headers=api.as_user("frank"),
                          json={"action": "continue", "idempotency_key": uuid.uuid4().hex})
     return res.json()
 
 
-def _group(case, category):
-    return next(g for g in case["groups"] if g["group_key"]["category"] == category)
+def _group(task, category):
+    return next(g for g in task["groups"] if g["group_key"]["category"] == category)
 
 
 async def test_a_question_holds_its_group_until_the_desk_answers_and_the_answer_goes_to_the_model(api):
-    case = await _case_at_review(api)
-    assert case["can_ask"] and [t["id"] for t in case["request_targets"]] == ["desk", "operations", "cats-support"]
-    aged = _group(case, "K")
-    asked = await api.post(f"/api/cases/{case['case_id']}/requests", headers=api.as_user("frank"),
+    task = await _task_at_review(api)
+    assert task["can_ask"] and [t["id"] for t in task["request_targets"]] == ["desk", "operations", "cats-support"]
+    aged = _group(task, "K")
+    asked = await api.post(f"/api/tasks/{task['task_id']}/requests", headers=api.as_user("frank"),
                            json={"target": "desk", "group_id": aged["group_id"],
                                  "question": "Was the IRS swap rebooked on Friday?"})
     assert asked.status_code == 201, asked.text
     rid = asked.json()["request_id"]
 
     # the group waits for the answer
-    held = await api.post(f"/api/cases/{case['case_id']}/decisions", headers=api.as_user("frank"),
+    held = await api.post(f"/api/tasks/{task['task_id']}/decisions", headers=api.as_user("frank"),
                           json={"group_id": aged["group_id"], "action": "approve", "comment": "ok",
                                 "idempotency_key": uuid.uuid4().hex})
     assert held.status_code == 409 and "still open" in held.json()["detail"]
 
-    # the trader sees the question and that group's breaks — not the whole case
+    # the trader sees the question and that group's breaks — not the whole task
     mine = (await api.get("/api/requests", headers=api.as_user("tom"))).json()
     assert [(q["request_id"], q["group_label"]) for q in mine] == [(rid, aged["label"])]
     assert len(mine[0]["rows"]) == len(aged["item_ids"])
-    assert (await api.get(f"/api/cases/{case['case_id']}", headers=api.as_user("tom"))).status_code == 404
+    assert (await api.get(f"/api/tasks/{task['task_id']}", headers=api.as_user("tom"))).status_code == 404
     assert (await api.post(f"/api/requests/{rid}/answer", headers=api.as_user("olga"),
                            json={"answer": "no idea"})).status_code == 403       # not her question
 
     ans = await api.post(f"/api/requests/{rid}/answer", headers=api.as_user("tom"),
                          json={"answer": "Yes, cancelled and rebooked at the new rate"})
     assert ans.status_code == 200 and ans.json()["reinvestigated"] is True
-    after = (await api.get(f"/api/cases/{case['case_id']}", headers=api.as_user("frank"))).json()
+    after = (await api.get(f"/api/tasks/{task['task_id']}", headers=api.as_user("frank"))).json()
     finding = _group(after, "K")["finding"]
     assert "Prime desk (trader) (tom) answered" in finding["reviewer_note"]          # back to the model with it
     assert after["requests"][0]["status"] == "answered"
     # §14: the answer is what Agent One Finance shows against "What evidence did I find?"
     evidence_q = next(q for q in _group(after, "K")["checklist"] if q["id"] == "evidence")
     assert "Yes, cancelled and rebooked" in evidence_q["known"]
-    ok = await api.post(f"/api/cases/{after['case_id']}/decisions", headers=api.as_user("frank"),
+    ok = await api.post(f"/api/tasks/{after['task_id']}/decisions", headers=api.as_user("frank"),
                         json={"group_id": aged["group_id"], "action": "approve", "comment": "Desk confirmed the rebook",
                               "checklist": [{"id": q["id"], "answer": "yes"} for q in after["review"]["checklist"]],
                               "idempotency_key": uuid.uuid4().hex})
@@ -68,23 +68,23 @@ async def test_a_question_holds_its_group_until_the_desk_answers_and_the_answer_
 
 async def test_at_the_tollgate_a_bot_can_answer_and_the_answer_reaches_the_model(api, monkeypatch):
     monkeypatch.setattr(main, "settings", lambda: dataclasses.replace(settings(), event_secret="evt"))
-    case = (await api.post(f"/api/capabilities/{CAP}/cases", headers=api.as_user("frank"),
-                           json={"case_key": KEY, "team_group": GROUP})).json()
-    assert case["status"] == "paused_before_reason" and case["can_ask"]
-    rid = (await api.post(f"/api/cases/{case['case_id']}/requests", headers=api.as_user("frank"),
+    task = (await api.post(f"/api/agents/{CAP}/tasks", headers=api.as_user("frank"),
+                           json={"task_key": KEY, "team_group": GROUP})).json()
+    assert task["status"] == "paused_before_reason" and task["can_ask"]
+    rid = (await api.post(f"/api/tasks/{task['task_id']}/requests", headers=api.as_user("frank"),
                           json={"target": "operations", "question": "Any MOTIF outage on the 24th?"})).json()["request_id"]
     bot = await api.post(f"/api/requests/{rid}/answer", headers={"X-AOF-Event-Secret": "evt"},
                          json={"answer": "No outage; the overnight batch ran late", "answered_by": "olga"})
     assert bot.status_code == 200 and bot.json()["answered_by"] == "olga"
-    after = (await api.post(f"/api/cases/{case['case_id']}/gates/reason", headers=api.as_user("frank"),
+    after = (await api.post(f"/api/tasks/{task['task_id']}/gates/reason", headers=api.as_user("frank"),
                             json={"action": "continue", "idempotency_key": uuid.uuid4().hex})).json()
     assert "Took into account 1 note(s)" in _group(after, "K")["finding"]["comment"]
 
 
 async def test_whoever_asked_can_cancel_and_the_group_is_free_again(api):
-    case = await _case_at_review(api)
-    aged = _group(case, "K")
-    rid = (await api.post(f"/api/cases/{case['case_id']}/requests", headers=api.as_user("frank"),
+    task = await _task_at_review(api)
+    aged = _group(task, "K")
+    rid = (await api.post(f"/api/tasks/{task['task_id']}/requests", headers=api.as_user("frank"),
                           json={"target": "desk", "group_id": aged["group_id"], "question": "?"})).json()["request_id"]
     assert (await api.post(f"/api/requests/{rid}/cancel", headers=api.as_user("tom"))).status_code == 403
     assert (await api.post(f"/api/requests/{rid}/cancel", headers=api.as_user("frank"))).json()["status"] == "cancelled"
@@ -104,9 +104,9 @@ async def test_an_answer_can_carry_a_file_and_a_bot_gets_what_it_needs_to_reply(
     async def capture(n, link, extra=None):
         sent.append((n.kind, extra or {}))
     monkeypatch.setattr(notify, "_send_webhook", capture)
-    case = await _case_at_review(api)
-    aged = _group(case, "K")
-    rid = (await api.post(f"/api/cases/{case['case_id']}/requests", headers=api.as_user("frank"),
+    task = await _task_at_review(api)
+    aged = _group(task, "K")
+    rid = (await api.post(f"/api/tasks/{task['task_id']}/requests", headers=api.as_user("frank"),
                           json={"target": "desk", "group_id": aged["group_id"],
                                 "question": "Send the amended trade ticket"})).json()["request_id"]
     question = next(extra for kind, extra in sent if kind == "question")
@@ -117,7 +117,7 @@ async def test_an_answer_can_carry_a_file_and_a_bot_gets_what_it_needs_to_reply(
                          data={"answer": "Ticket attached"},
                          files={"file": ("ticket.pdf", b"%PDF-1.4 amended ticket", "application/pdf")})
     assert res.status_code == 200, res.text
-    after = (await api.get(f"/api/cases/{case['case_id']}", headers=api.as_user("frank"))).json()
+    after = (await api.get(f"/api/tasks/{task['task_id']}", headers=api.as_user("frank"))).json()
     r = after["requests"][0]
     assert r["attachment"]["name"].endswith("ticket.pdf")
     kept = next(e for e in after["evidence"] if e["name"] == r["attachment"]["name"])
@@ -131,8 +131,8 @@ async def test_unanswered_questions_are_chased_then_escalated_once(api):
     from datetime import datetime, timedelta, timezone
 
     from agent_one_finance import asks
-    case = await _case_at_review(api)
-    rid = (await api.post(f"/api/cases/{case['case_id']}/requests", headers=api.as_user("frank"),
+    task = await _task_at_review(api)
+    rid = (await api.post(f"/api/tasks/{task['task_id']}/requests", headers=api.as_user("frank"),
                           json={"target": "operations", "question": "Why was the journal rejected?"})).json()["request_id"]
     now = datetime.now(timezone.utc)
     assert await asks.chase(now + timedelta(hours=1)) == []

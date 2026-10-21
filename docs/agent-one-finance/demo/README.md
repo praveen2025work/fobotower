@@ -44,7 +44,7 @@ but open only in the live console.
 Each task is named after its reconciliation and the master book's product, e.g. "CATS vs MOTIF:
 USD swaps (RATES-LDN-01) · COB 2026-10-20" or "MB Rec breaks: Rates futures (RATES-LDN-04) ·
 COB 2026-10-20"; the cash ledger's are "Bank vs ledger: UK01 · 2026-10-20". The label is the
-team group's `case.label`; the product comes from the reference data
+team group's `task.label`; the product comes from the reference data
 (`knowledge/fobo-reference.yaml`, each book's `label`), which the subject template reads as
 `{book_label}`. The demo's books hold only their product's instruments from 13 October.
 
@@ -52,8 +52,8 @@ The overview, inbox and notifications count only these agents. The platform page
 (operations, audit, authoring) are left out; Connectors is in. It is seen as Dana, who can
 see every team, and nothing in it can be saved or approved.
 
-The console calls capabilities **agents** and cases **tasks**. Configuration keys keep their
-names (`case.key`, `$case.cob`), so the YAML is unchanged.
+The console calls agents **agents** and tasks **tasks**. Configuration keys keep their
+names (`task.key`, `$task.cob`), so the YAML is unchanged.
 
 The console's motion is in the snapshot too:
 
@@ -66,16 +66,16 @@ The console's motion is in the snapshot too:
 
 To rebuild the snapshot:
 
-1. Copy the dev database and clear its cases, keeping capabilities, groups and their
+1. Copy the dev database and clear its tasks, keeping agents, groups and their
    versions (the copy leaves your own dev data alone):
 
    ```bash
    psql postgresql://fobo:fobo@localhost:5433/postgres -c "create database fobo_demo template fobo"
    psql postgresql://fobo:fobo@localhost:5433/fobo_demo <<'SQL'
    begin;
-   delete from aof_tool_call; delete from aof_document where case_id is not null;
+   delete from aof_tool_call; delete from aof_document where task_id is not null;
    delete from aof_notification; delete from aof_retention_event; delete from aof_eval_run;
-   delete from aof_case;   -- cascades to items, groups, decisions, gates, messages, requests
+   delete from aof_task;   -- cascades to items, groups, decisions, gates, messages, requests
    delete from checkpoint_writes; delete from checkpoint_blobs; delete from checkpoints;
    delete from aof_scheduler_tick;
    -- past sign-offs the knowledge graph keeps as "seen before"; places, books and desks stay
@@ -87,7 +87,7 @@ To rebuild the snapshot:
 
 2. Run the API on the copy (`AOF_DATABASE_URL=postgresql+asyncpg://fobo:fobo@localhost:5433/fobo_demo`)
    and `npm run dev`.
-3. Build the tasks: `python build-demo-cases.py --today 2026-10-20 --examples --fi-credit` (this
+3. Build the tasks: `python build-demo-tasks.py --today 2026-10-20 --examples --fi-credit` (this
    folder) builds the walkthrough's two tasks and the day before's, then the FI Credit day
    (about 40 minutes: the API runs four tasks at a time, `AOF_MAX_RUNS`). It opens, runs and decides each
    task through the API as the right person. Without `--examples` it builds a full day's work
@@ -97,7 +97,7 @@ To rebuild the snapshot:
 
    ```bash
    SNAPSHOT_USER=dana SNAPSHOT_AGENTS=recon.investigation,break.investigation,fin.accruals \
-   SNAPSHOT_CASES=<one FI Credit task per region> node scripts/capture-snapshot.mjs
+   SNAPSHOT_TASKS=<one FI Credit task per region> node scripts/capture-snapshot.mjs
    ```
 
    Add `SNAPSHOT_SCOPE=config` for the agents' configuration only (no tasks; steps 1 to 3 are
@@ -118,9 +118,9 @@ dev data, and the deterministic stub model (no live model calls).
 | 0:00 | Title | One governed platform: AI does the legwork, people make every decision |
 | 0:12 | The problem | Breaks are investigated by hand: about 12 min each (FOBO's own basis), and every team builds its own tooling |
 | 0:30 | Inbox | The work is done before the controller arrives (scheduled at 06:30, matched and classified) |
-| 0:45 | FOBO Prime case | The business's own playbook decides: checks, tests, verdict table, owner. Unconfirmed thresholds are flagged, not assumed. |
+| 0:45 | FOBO Prime task | The business's own playbook decides: checks, tests, verdict table, owner. Unconfirmed thresholds are flagged, not assumed. |
 | 1:11 | Guard and evidence | A front-office cause never posts (enforced in code). Every figure traces to a system call; anything untraceable goes to a person. |
-| 1:27 | Ask about this case | Plain-English questions, answered from this case's data only, and audited |
+| 1:27 | Ask about this task | Plain-English questions, answered from this task's data only, and audited |
 | 1:37 | Sign-off | One decision per pattern; sign-off in seconds; evidence pack ready for audit |
 | 1:49 | Rates group | Same engine and playbook, with the team's own books, thresholds and reviewers. A new team is configuration. |
 | 2:02 | Authoring | New work (accruals, substantiation, intercompany) is drafted, checked, and goes live on a second owner's approval |
@@ -146,11 +146,11 @@ dev data, and the deterministic stub model (no live model calls).
 | *Can the AI post something wrong?* | No. It only proposes. A reviewer approves every group, and a write-back needs a second person's release. Guards in code (e.g. R2) override the model, and the validate gate escalates any figure that does not trace to source data. |
 | *Is our data safe with the model?* | Every data access goes through the gateway, which applies the caller's entitlements and data scope, and audits each call. Account numbers are masked and counterparties pseudonymized before the model sees anything. |
 | *Which model and where does it run?* | In the office: the Claude Agent SDK, through the office agent platform. Traces go to Phoenix. The demo used a deterministic stand-in. |
-| *What does it cost to run?* | Model spend is recorded per case, with caps per case and per day. Over a cap, the work goes to people. |
+| *What does it cost to run?* | Model spend is recorded per task, with caps per task and per day. Over a cap, the work goes to people. |
 | *How is this different from the office agent platform?* | It builds on it. It uses the platform's MCP connectors, plugins and RAG, and adds the workflow, playbooks, four-eyes control, evidence and audit that accounting needs. |
 | *How long to onboard a new process?* | If its systems are already connected: a configuration file, checked by the platform, approved by a second owner. A new system needs an MCP connector, onboarded once by the Agent One Finance team. |
 | *What happens to FOBO?* | FOBO keeps running unchanged. Its rules run on Agent One Finance as configuration (Prime and Rates), so it can move across when the team chooses. |
-| *How do we know it agrees with our people?* | Evals replay past decided cases on any new version, without writing anything, and report agreement before it goes live. |
+| *How do we know it agrees with our people?* | Evals replay past decided tasks on any new version, without writing anything, and report agreement before it goes live. |
 
 ## Re-making the video
 

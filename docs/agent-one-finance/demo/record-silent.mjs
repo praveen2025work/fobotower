@@ -83,21 +83,21 @@ async function revealLines(p, dur, startFrac = 0.06) {
   for (let i = 0; i < n; i++) { await p.locator("li").nth(i).evaluate((e) => e.classList.add("on")); await sleep((dur * (1 - startFrac) * 1000) / (n + 0.8)); }
 }
 
-async function openCase(user, group, key) {
-  const r = await fetch(`${API}/capabilities/recon.investigation/cases`, { method: "POST",
+async function openTask(user, group, key) {
+  const r = await fetch(`${API}/agents/recon.investigation/tasks`, { method: "POST",
     headers: { "X-AOF-User": user, "Content-Type": "application/json" },
-    body: JSON.stringify({ case_key: key, team_group: group }) });
-  const cid = (await r.json()).case_id;
+    body: JSON.stringify({ task_key: key, team_group: group }) });
+  const cid = (await r.json()).task_id;
   for (let i = 0; i < 60; i++) {
-    const c = await (await fetch(`${API}/cases/${cid}`, { headers: { "X-AOF-User": user } })).json();
+    const c = await (await fetch(`${API}/tasks/${cid}`, { headers: { "X-AOF-User": user } })).json();
     if (c.status === "awaiting_review") return c;
     await sleep(500);
   }
-  throw new Error(`case ${cid} did not reach review`);
+  throw new Error(`task ${cid} did not reach review`);
 }
 
-const PRIME_CONFIRM = process.env.CASE_CONFIRM || "recon.investigation.ddfbb3d6a1f8";   // PRIME-MB-04 · 09-24
-const PRIME_ESCALATED = process.env.CASE_ESCALATED || "recon.investigation.8d1e3f40526d"; // PRIME-MB-04 · 09-22
+const PRIME_CONFIRM = process.env.TASK_CONFIRM || "recon.investigation.ddfbb3d6a1f8";   // PRIME-MB-04 · 09-24
+const PRIME_ESCALATED = process.env.TASK_ESCALATED || "recon.investigation.8d1e3f40526d"; // PRIME-MB-04 · 09-22
 
 const scenes = {
   async s01(p, d) {
@@ -131,7 +131,7 @@ const scenes = {
     };
   },
   async s05(p, d, s) {
-    await p.goto(`${W}/cases/${PRIME_CONFIRM}`); await sleep(2200);
+    await p.goto(`${W}/tasks/${PRIME_CONFIRM}`); await sleep(2200);
     return async () => {
       await caption(p, s.caption);
       await sleep(d * 60); await highlight(p, p.getByRole("status", { name: "Your review" }));
@@ -143,7 +143,7 @@ const scenes = {
     };
   },
   async s06(p, d, s) {
-    await p.goto(`${W}/cases/${PRIME_CONFIRM}`); await sleep(2200);
+    await p.goto(`${W}/tasks/${PRIME_CONFIRM}`); await sleep(2200);
     await p.getByRole("button", { name: /Redemption break · front office/ }).click(); await sleep(600);
     return async () => {
       await caption(p, s.caption);
@@ -152,7 +152,7 @@ const scenes = {
     };
   },
   async s07(p, d, s) {
-    await p.goto(`${W}/cases/${PRIME_ESCALATED}`); await sleep(2200);
+    await p.goto(`${W}/tasks/${PRIME_ESCALATED}`); await sleep(2200);
     await p.getByRole("button", { name: /Novel break/ }).click(); await sleep(500);
     return async () => {
       await caption(p, s.caption);
@@ -166,11 +166,11 @@ const scenes = {
     };
   },
   async s08(p, d, s) {
-    // A case nobody has asked about yet, so the new answer is the one on screen.
-    const c = await openCase("rita", "cats-motif-rates", { book: process.env.ASK_BOOK || "RATES-LDN-01", cob: process.env.ASK_COB || "2026-09-24" });
-    console.log("s08 case", c.case_id);
-    await p.goto(`${W}/cases/${c.case_id}`); await sleep(2000);
-    await p.getByRole("tab", { name: "Ask about this case" }).or(p.getByRole("button", { name: "Ask about this case" })).first().click();
+    // A task nobody has asked about yet, so the new answer is the one on screen.
+    const c = await openTask("rita", "cats-motif-rates", { book: process.env.ASK_BOOK || "RATES-LDN-01", cob: process.env.ASK_COB || "2026-09-24" });
+    console.log("s08 task", c.task_id);
+    await p.goto(`${W}/tasks/${c.task_id}`); await sleep(2000);
+    await p.getByRole("tab", { name: "Ask about this task" }).or(p.getByRole("button", { name: "Ask about this task" })).first().click();
     await sleep(500);
     return async () => {
       await caption(p, s.caption);
@@ -185,9 +185,9 @@ const scenes = {
     };
   },
   async s09(p, d, s) {
-    const c = await openCase("rita", "cats-motif-rates", { book: process.env.SIGNOFF_BOOK || "RATES-LDN-02", cob: process.env.SIGNOFF_COB || "2026-09-26" });
-    console.log("s09 case", c.case_id, c.groups.map((g) => g.label));
-    await p.goto(`${W}/cases/${c.case_id}`); await sleep(2200);
+    const c = await openTask("rita", "cats-motif-rates", { book: process.env.SIGNOFF_BOOK || "RATES-LDN-02", cob: process.env.SIGNOFF_COB || "2026-09-26" });
+    console.log("s09 task", c.task_id, c.groups.map((g) => g.label));
+    await p.goto(`${W}/tasks/${c.task_id}`); await sleep(2200);
     return async () => {
       await caption(p, s.caption);
       await sleep(d * 60); await highlight(p, p.getByText("Proposals", { exact: true }).locator("xpath=ancestor::div[2]"));
@@ -206,7 +206,7 @@ const scenes = {
     };
   },
   async s10(p, d, s) {
-    await p.goto(`${W}/capabilities/recon.investigation/groups/cats-motif-rates`); await sleep(2000);
+    await p.goto(`${W}/agents/recon.investigation/groups/cats-motif-rates`); await sleep(2000);
     return async () => {
       await caption(p, s.caption);
       await sleep(d * 80); await highlight(p, cardOf(p.getByText("People", { exact: true }).locator("xpath=..")));
@@ -238,17 +238,17 @@ const scenes = {
     };
   },
   async s16(p, d, s) {
-    const r = await fetch(`${API}/capabilities/break.investigation/cases`, { method: "POST",
+    const r = await fetch(`${API}/agents/break.investigation/tasks`, { method: "POST",
       headers: { "X-AOF-User": "frank", "Content-Type": "application/json" },
-      body: JSON.stringify({ case_key: { book: process.env.GATE_BOOK || "PRIME-MB-04", cob: process.env.GATE_COB || "2026-10-01" }, team_group: "fobo-prime" }) });
-    const cid = (await r.json()).case_id;
+      body: JSON.stringify({ task_key: { book: process.env.GATE_BOOK || "PRIME-MB-04", cob: process.env.GATE_COB || "2026-10-01" }, team_group: "fobo-prime" }) });
+    const cid = (await r.json()).task_id;
     for (let i = 0; i < 60; i++) {
-      const c = await (await fetch(`${API}/cases/${cid}`, { headers: { "X-AOF-User": "frank" } })).json();
+      const c = await (await fetch(`${API}/tasks/${cid}`, { headers: { "X-AOF-User": "frank" } })).json();
       if (c.status === "paused_before_reason") break;
       await sleep(500);
     }
-    console.log("s16 case", cid);
-    await p.goto(`${W}/cases/${cid}`); await sleep(2200);
+    console.log("s16 task", cid);
+    await p.goto(`${W}/tasks/${cid}`); await sleep(2200);
     return async () => {
       await caption(p, s.caption);
       await sleep(d * 60); await highlight(p, cardOf(p.getByText("Your tollgate")));
@@ -260,7 +260,7 @@ const scenes = {
     };
   },
   async s17(p, d, s) {
-    await p.goto(`${W}/cases/${process.env.CASE_SECTIONS || "break.investigation.8baaeb378852"}`); await sleep(2200);
+    await p.goto(`${W}/tasks/${process.env.TASK_SECTIONS || "break.investigation.8baaeb378852"}`); await sleep(2200);
     await p.getByRole("button", { name: /Aged break · side not proven/ }).first().click(); await sleep(700);
     return async () => {
       await caption(p, s.caption);
@@ -276,7 +276,7 @@ const scenes = {
     };
   },
   async s18(p, d, s) {
-    await p.goto(`${W}/cases/${process.env.CASE_DAY2 || "break.investigation.0a1f2f67ef18"}`); await sleep(2200);
+    await p.goto(`${W}/tasks/${process.env.TASK_DAY2 || "break.investigation.0a1f2f67ef18"}`); await sleep(2200);
     return async () => {
       await caption(p, s.caption);
       const ft = p.getByText("Follow-through", { exact: true }).first().locator("xpath=..");

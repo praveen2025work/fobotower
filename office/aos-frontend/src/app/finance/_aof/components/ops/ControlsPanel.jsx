@@ -1,21 +1,21 @@
 // Generated from apps/web/src/components/ops/ControlsPanel.tsx by apps/web/office/convert.mjs. Office changes to this file are
 // kept by aof_sync.py on the next update; see office/README.md.
-// Run-the-bank controls: off switches (capability, team group, connector) and
+// Run-the-bank controls: off switches (agent, team group, connector) and
 // the schedules in force. The server decides who may switch what.
 
 import { useMemo, useState } from "react";
 import clsx from "clsx";
 import { CalendarClock, Power } from "lucide-react";
 
-import { useCapabilities, usePlatform, useSchedules, useSetSwitch, useSwitches } from "../../api/aof";
+import { useAgents, usePlatform, useSchedules, useSetSwitch, useSwitches } from "../../api/aof";
 import { ErrorState, formatTime } from "../ui";
 
 export function SwitchesPanel() {
   const switches = useSwitches();
-  const caps = useCapabilities();
+  const caps = useAgents();
   const platform = usePlatform();
   const set = useSetSwitch();
-  const [kind, setKind] = useState("capability");
+  const [kind, setKind] = useState("agent");
   const [target, setTarget] = useState("");
   const [reason, setReason] = useState("");
 
@@ -79,7 +79,7 @@ export function SwitchesPanel() {
             }}
             className="mt-1 block rounded-md border border-surface-300 px-2 py-1"
           >
-            <option value="capability">agent</option>
+            <option value="agent">agent</option>
             <option value="group">team group</option>
             <option value="connector">connector</option>
           </select>
@@ -139,10 +139,10 @@ export function SchedulesPanel({ emptyMessage = "No schedules you can see." } = 
       </header>
       <ul className="divide-y divide-surface-100">
         {(schedules.data ?? []).map((s) => (
-          <li key={`${s.capability_id}/${s.team_group ?? ""}`} className="px-4 py-2 text-xs">
+          <li key={`${s.agent_id}/${s.team_group ?? ""}`} className="px-4 py-2 text-xs">
             <div className="flex flex-wrap items-center gap-2">
               <code className="font-medium text-surface-800">
-                {s.capability_id}
+                {s.agent_id}
                 {s.team_group ? ` / ${s.team_group}` : ""}
               </code>
               <span className="font-mono text-surface-600">{s.schedule}</span>

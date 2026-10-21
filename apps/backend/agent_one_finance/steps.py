@@ -1,7 +1,7 @@
-"""The core step library. Every capability's workflow is a list of these.
+"""The core step library. Every agent's workflow is a list of these.
 
 Each step reads the pinned manifest from the run's state and is driven only
-by it — no capability-specific code. Steps that touch data do so through the
+by it — no agent-specific code. Steps that touch data do so through the
 MCP gateway; steps that persist write aof_* rows so the console and the
 audit read real records, not the checkpoint.
 """
@@ -21,19 +21,19 @@ from agent_one_finance.entitlement import Caller
 from agent_one_finance.governance import Protector, fields_for
 from agent_one_finance.llm import ReasonRequest, SessionRequest, llm, run_session
 from agent_one_finance.manifest import Manifest, ToolCallSpec
-from agent_one_finance.models import Case, CaseItem, ProposalGroup, ToolCall
+from agent_one_finance.models import Task, TaskItem, ProposalGroup, ToolCall
 from agent_one_finance.observability import span
 
 ESCALATED = "escalated"
 
 
-class CaseState(TypedDict, total=False):
-    # identity — supplied when the case opens
-    case_id: str
-    capability_id: str
+class TaskState(TypedDict, total=False):
+    # identity — supplied when the task opens
+    task_id: str
+    agent_id: str
     manifest_version: int
     manifest: dict
-    case_key: dict
+    task_key: dict
     caller: dict
     # produced by steps
     items: list[dict]
@@ -44,16 +44,16 @@ class CaseState(TypedDict, total=False):
     review_cycles: int
     decisions: list[dict]          # written on resume, from aof_decision
     publish_approval: dict         # written on resume, from aof_publish_approval
-    follow_up_of: str | None       # a follow-up case: the case of the same key it follows
+    follow_up_of: str | None       # a follow-up task: the task of the same key it follows
     gates_passed: list[str]        # tollgates a person passed, in order (aof_gate_decision)
     gate_notes: list[dict]         # what they wrote there: [{step, by, comment}] — context for the model
     published: list[dict]
     datasets: dict[str, list[dict]]   # named data sets beside the items (dataset, aggregate steps)
     skipped: list[str]                # steps whose `when` did not hold this run
     events: dict[str, dict]           # what each `await` step received (an event, child outcomes, a timeout)
-    spawned: bool                     # a `spawn` step opened child cases
+    spawned: bool                     # a `spawn` step opened child tasks
     model_context: list[dict]         # data sets the model sees when it investigates (e.g. a timeline)
-    session_summary: str              # what the `agent` step's session said about the whole case
+    session_summary: str              # what the `agent` step's session said about the whole task
     session: dict                     # the skill session: model, id, turns, cost, transcript
     outcome: str | None
     escalation_reason: str | None
@@ -61,27 +61,27 @@ class CaseState(TypedDict, total=False):
 
 # ---------- helpers ----------
 
-def _manifest(state: CaseState) -> Manifest:
+def _manifest(state: TaskState) -> Manifest:
     return Manifest.model_validate(state["manifest"])
 
 
-def _caller(state: CaseState) -> Caller:
+def _caller(state: TaskState) -> Caller:
     c = state["caller"]
     return Caller(c["user_id"], frozenset(c["roles"]),
                   {k: frozenset(v) for k, v in c["data_scopes"].items()})
 
 
-def _ctx(state: CaseState, step: str, tools: set[str] | None = None) -> gateway.CallContext:
+def _ctx(state: TaskState, step: str, tools: set[str] | None = None) -> gateway.CallContext:
     m = _manifest(state)
     return gateway.CallContext(
-        capability_id=state["capability_id"], caller=_caller(state),
+        agent_id=state["agent_id"], caller=_caller(state),
         allowed_tools=frozenset(tools if tools is not None else m.read_tools()),
-        case_id=state["case_id"], requested_by=step,
+        task_id=state["task_id"], requested_by=step,
     )
 
 
-def _args(spec: ToolCallSpec, case_key: dict) -> dict:
-    return {k: case_key[v[6:]] if isinstance(v, str) and v.startswith("$case.") else v
+def _args(spec: ToolCallSpec, task_key: dict) -> dict:
+    return {k: task_key[v[6:]] if isinstance(v, str) and v.startswith("$task.") else v
             for k, v in spec.args.items()}
 
 
@@ -96,56 +96,56 @@ def _escalate(reason: str, detail: str = "") -> dict:
     return {"outcome": ESCALATED, "escalation_reason": f"{reason}: {detail}" if detail else reason}
 
 
-async def _save_items(case_id: str, items: list[dict]) -> None:
+async def _save_items(task_id: str, items: list[dict]) -> None:
     async with get_session() as s:
         for it in items:
-            await s.merge(CaseItem(case_id=case_id, item_id=it["item_id"], payload=it))
+            await s.merge(TaskItem(task_id=task_id, item_id=it["item_id"], payload=it))
         await s.commit()
 
 
-async def _save_group_finding(case_id: str, group_id: str, finding: dict) -> None:
+async def _save_group_finding(task_id: str, group_id: str, finding: dict) -> None:
     async with get_session() as s:
-        row = await s.get(ProposalGroup, (case_id, group_id))
+        row = await s.get(ProposalGroup, (task_id, group_id))
         row.finding = finding
         await s.commit()
 
 
 # ---------- steps ----------
 
-async def load(state: CaseState) -> dict:
+async def load(state: TaskState) -> dict:
     m = _manifest(state)
     try:
         result = await gateway.call(_ctx(state, "load"), m.items.load.tool,
-                                    _args(m.items.load, state["case_key"]))
+                                    _args(m.items.load, state["task_key"]))
     except (gateway.ToolDenied, gateway.ToolFailed) as e:
         return _escalate("LOAD_FAILED", str(e))
     items = [{**row, "item_id": str(row[m.items.id_field])} for row in result.get("rows", [])]
     if state.get("follow_up_of"):
-        # Late items only: what no case for this key (the first, or an earlier
+        # Late items only: what no task for this key (the first, or an earlier
         # follow-up) has taken already.
-        seen = await _items_already_taken(state["follow_up_of"], state["case_id"])
+        seen = await _items_already_taken(state["follow_up_of"], state["task_id"])
         items = [it for it in items if it["item_id"] not in seen]
     items = await follow_through.carry(state, m, items)
-    await _save_items(state["case_id"], items)
+    await _save_items(state["task_id"], items)
     return {"items": items}
 
 
-async def _items_already_taken(root: str, case_id: str) -> set[str]:
-    from agent_one_finance.models import Case, CaseItem
+async def _items_already_taken(root: str, task_id: str) -> set[str]:
+    from agent_one_finance.models import Task, TaskItem
     async with get_session() as s:
-        cases = select(Case.case_id).where(
-            ((Case.case_id == root) | (Case.root_case_id == root) | (Case.follow_up_of == root))
-            & (Case.case_id != case_id))
-        return set((await s.execute(select(CaseItem.item_id).where(CaseItem.case_id.in_(cases)))).scalars())
+        tasks = select(Task.task_id).where(
+            ((Task.task_id == root) | (Task.root_task_id == root) | (Task.follow_up_of == root))
+            & (Task.task_id != task_id))
+        return set((await s.execute(select(TaskItem.item_id).where(TaskItem.task_id.in_(tasks)))).scalars())
 
 
-async def match(state: CaseState) -> dict:
+async def match(state: TaskState) -> dict:
     m = _manifest(state)
     spec = m.match
     ctx = _ctx(state, "match")
     try:
-        left = (await gateway.call(ctx, spec.left.tool, _args(spec.left, state["case_key"]))).get("rows", [])
-        right = (await gateway.call(ctx, spec.right.tool, _args(spec.right, state["case_key"]))).get("rows", [])
+        left = (await gateway.call(ctx, spec.left.tool, _args(spec.left, state["task_key"]))).get("rows", [])
+        right = (await gateway.call(ctx, spec.right.tool, _args(spec.right, state["task_key"]))).get("rows", [])
     except (gateway.ToolDenied, gateway.ToolFailed) as e:
         return _escalate("LOAD_FAILED", str(e))
     key = lambda r: tuple(str(r.get(k)) for k in spec.keys)  # noqa: E731
@@ -167,12 +167,12 @@ async def match(state: CaseState) -> dict:
             **{f: v for f, v in base.items() if f not in spec.keys and f != spec.amount_field},
         })
     items = await follow_through.carry(state, m, items)
-    await _save_items(state["case_id"], items)
+    await _save_items(state["task_id"], items)
     return {"items": items}
 
 
-async def enrich(state: CaseState) -> dict:
-    """Join more facts onto the items, one read per case per source (e.g. the
+async def enrich(state: TaskState) -> dict:
+    """Join more facts onto the items, one read per task per source (e.g. the
     break snapshots cause checks need). An item with no row is marked."""
     m = _manifest(state)
     if not m.enrich:
@@ -181,7 +181,7 @@ async def enrich(state: CaseState) -> dict:
     ctx = _ctx(state, "enrich")
     for spec in m.enrich:
         try:
-            rows = (await gateway.call(ctx, spec.tool, _args(spec, state["case_key"]))).get("rows", [])
+            rows = (await gateway.call(ctx, spec.tool, _args(spec, state["task_key"]))).get("rows", [])
         except (gateway.ToolDenied, gateway.ToolFailed) as e:
             return _escalate("ENRICH_FAILED", str(e))
         index = {tuple(str(r.get(k)) for k in spec.keys): r for r in rows}
@@ -193,11 +193,11 @@ async def enrich(state: CaseState) -> dict:
             for k, v in row.items():
                 if k not in spec.keys:
                     it[f"{spec.prefix}{k}"] = v
-    await _save_items(state["case_id"], items)
+    await _save_items(state["task_id"], items)
     return {"items": items}
 
 
-async def classify(state: CaseState) -> dict:
+async def classify(state: TaskState) -> dict:
     """Run the playbook's cause checks on every item. All checks run and all
     results are kept; the first positive (in playbook order) is the cause, and
     sets the item's category, side and escalation team."""
@@ -235,7 +235,7 @@ async def classify(state: CaseState) -> dict:
                       "test_finding": ({"id": finding.id, "test": finding.test,
                                         "description": finding.description} if finding else None),
                       "blocked_by": _blocks(pb, tests)})
-    await _save_items(state["case_id"], items)
+    await _save_items(state["task_id"], items)
     return {"items": items}
 
 
@@ -293,13 +293,13 @@ def _blocks(pb, tests: list[dict]) -> list[str]:
     return out
 
 
-async def resolve(state: CaseState) -> dict:
-    """Reference lookups per item from the knowledge graph, as of the case's
+async def resolve(state: TaskState) -> dict:
+    """Reference lookups per item from the knowledge graph, as of the task's
     business date: e.g. a book's desk, or the team a desk escalates to."""
     m = _manifest(state)
     if not m.resolve:
         return {}                     # not configured: nothing to do
-    as_of = state["case_key"].get(m.knowledge.as_of) if m.knowledge.as_of else None
+    as_of = state["task_key"].get(m.knowledge.as_of) if m.knowledge.as_of else None
     items = [dict(it) for it in state["items"]]
     for spec in m.resolve:
         starts = {i: rules.render(spec.node, it) for i, it in enumerate(items)}
@@ -309,15 +309,15 @@ async def resolve(state: CaseState) -> dict:
             items[i][spec.as_] = (None if node is None
                                   else node.node_id.split(":", 1)[-1] if spec.take == "id"
                                   else node.attrs.get(spec.take))
-    await _save_items(state["case_id"], items)
+    await _save_items(state["task_id"], items)
     return {"items": items}
 
 
-async def compare(state: CaseState) -> dict:
+async def compare(state: TaskState) -> dict:
     spec = _manifest(state).compare
     items = [{**it, spec.as_: round(_num(it.get(spec.measure)) - _num(it.get(spec.baseline)), 2)}
              for it in state["items"]]
-    await _save_items(state["case_id"], items)
+    await _save_items(state["task_id"], items)
     return {"items": items}
 
 
@@ -346,7 +346,7 @@ def group_label(m: Manifest, group_key: dict) -> str:
         return ", ".join(f"{k} {v}" for k, v in group_key.items()) or "All items"
 
 
-async def group(state: CaseState) -> dict:
+async def group(state: TaskState) -> dict:
     m = _manifest(state)
     policy = m.policy_values()
     in_scope = [it for it in state["items"]
@@ -365,21 +365,21 @@ async def group(state: CaseState) -> dict:
             total = round(sum(_num(it.get(m.items.amount_field)) for it in members), 2) \
                 if m.items.amount_field else None
             priors = await knowledge.similar_decisions(
-                state["capability_id"], group_key, exclude_case=state["case_id"],
+                state["agent_id"], group_key, exclude_task=state["task_id"],
                 lookback_days=m.knowledge.priors_lookback_days,
                 entities=knowledge.entity_values(m.knowledge.entities, group_key, members))
             g = {"group_id": group_id, "label": label, "group_key": group_key,
                  "item_ids": [it["item_id"] for it in members], "count": len(members),
                  "total": total, "priors": priors}
             groups.append(g)
-            await s.merge(ProposalGroup(case_id=state["case_id"], group_id=group_id, label=label,
+            await s.merge(ProposalGroup(task_id=state["task_id"], group_id=group_id, label=label,
                                         group_key=group_key, item_ids=g["item_ids"],
                                         priors=priors, finding=None))
         await s.commit()
     return {"groups": groups}
 
 
-async def reason_group(state: CaseState, g: dict, note: str | None = None,
+async def reason_group(state: TaskState, g: dict, note: str | None = None,
                        previous: dict | None = None) -> dict:
     """One group's finding: the first matching rule, else the model (or an
     escalation when there is none). A reviewer's note forces the model."""
@@ -393,7 +393,7 @@ async def reason_group(state: CaseState, g: dict, note: str | None = None,
            "label": g["label"], "policy": policy,
            "carried": sum(1 for it in members if it.get("carried_verdict"))}
     play = _playbook_view(m, members, policy) if m.playbook else None
-    with span("reason.group", case_id=state["case_id"], group_id=g["group_id"],
+    with span("reason.group", task_id=state["task_id"], group_id=g["group_id"],
               reinvestigation=bool(note)) as sp:
         finding = None
         if play and play["deterministic"] and not note:
@@ -409,23 +409,23 @@ async def reason_group(state: CaseState, g: dict, note: str | None = None,
                        "reason": "NO_REASONER"}
             if play:
                 finding.update(_play_fields(play))
-        if finding is None and (over := await controls.over_budget(m, state["case_id"])):
+        if finding is None and (over := await controls.over_budget(m, state["task_id"])):
             finding = {"status": ESCALATED, "decided_by": "none", "comment": "", "reason": over}
             if play:
                 finding.update(_play_fields(play))
         if finding is None:
             # The model sees protected data only (governance.yaml): masked fields
-            # never, pseudonymized ones as per-case tokens it can still pass to
+            # never, pseudonymized ones as per-task tokens it can still pass to
             # tools. Its answer is re-identified before validation and review.
-            guard = Protector.for_tools(m.tools_used(), state["case_id"])
+            guard = Protector.for_tools(m.tools_used(), state["task_id"])
             ctx = _ctx(state, "reason", set(m.reasoning.tools))
             ctx.protector = guard
             group_view = {**g, "items": [
                 {**items[i], "amount": items[i].get(m.items.amount_field)}
                 for i in g["item_ids"]]}
             request = ReasonRequest(
-                capability_id=state["capability_id"], case_id=state["case_id"],
-                case_key=guard.protect(state["case_key"]), skill=m.reasoning.skill,
+                agent_id=state["agent_id"], task_id=state["task_id"],
+                task_key=guard.protect(state["task_key"]), skill=m.reasoning.skill,
                 group={**guard.protect(group_view),
                        "label": guard.protect_text(g["label"], g["group_key"]),
                        "priors": [{**p, "comment": guard.protect_text(
@@ -438,7 +438,7 @@ async def reason_group(state: CaseState, g: dict, note: str | None = None,
                     *(f"context · {c['name']}: " + "; ".join(
                         ", ".join(f"{k}={v}" for k, v in r.items() if v not in (None, "")) for r in c["rows"][:40])
                       for c in state.get("model_context", [])),
-                    *await asks.answers_for(state["case_id"], g["group_id"])]],
+                    *await asks.answers_for(state["task_id"], g["group_id"])]],
                 previous_finding=guard.scrub(guard.protect(previous), [g["group_key"], *members])
                 if previous else None,
                 verdicts=m.playbook.verdict_names() if m.playbook else None,
@@ -561,14 +561,14 @@ def _judged(m: Manifest, play: dict, finding: dict, model_verdict: str | None, e
 
 
 def _concurrency(m: Manifest) -> int:
-    """Groups reasoned at once. A capability with spend limits goes one at a
+    """Groups reasoned at once. An agent with spend limits goes one at a
     time, so each group's budget check sees what the last one cost."""
-    if m.limits.max_cost_usd_per_case is not None or m.limits.max_cost_usd_per_day is not None:
+    if m.limits.max_cost_usd_per_task is not None or m.limits.max_cost_usd_per_day is not None:
         return 1
     return max(1, int(os.getenv("AOF_REASON_CONCURRENCY") or 4))
 
 
-async def reason(state: CaseState) -> dict:
+async def reason(state: TaskState) -> dict:
     """Every group's finding — several groups at a time (each its own model
     session and gateway calls), saved as each one finishes."""
     gate = asyncio.Semaphore(_concurrency(_manifest(state)))
@@ -576,7 +576,7 @@ async def reason(state: CaseState) -> dict:
     async def one(g: dict) -> tuple[str, dict]:
         async with gate:
             finding = await reason_group(state, g)
-            await _save_group_finding(state["case_id"], g["group_id"], finding)
+            await _save_group_finding(state["task_id"], g["group_id"], finding)
             return g["group_id"], finding
 
     results = await asyncio.gather(*(one(g) for g in state["groups"]))
@@ -585,7 +585,7 @@ async def reason(state: CaseState) -> dict:
 
 def _session_finding(m: Manifest, r: dict, adapter_name: str, model: str | None, guard) -> dict:
     """One result of a skill session as a finding: its verdict must be one the
-    capability offers, an escalating verdict sends it to a person, and a
+    agent offers, an escalating verdict sends it to a person, and a
     required section that is missing does too."""
     rs = m.reasoning
     status = r.get("status") if r.get("status") in ("proposed", ESCALATED) else ESCALATED
@@ -620,27 +620,27 @@ def _merged(findings: list[dict], labels: list[str]) -> dict:
     return out
 
 
-async def agent(state: CaseState) -> dict:
-    """A skill session: the capability's skill, the case key and its allowed
+async def agent(state: TaskState) -> dict:
+    """A skill session: the agent's skill, the task key and its allowed
     tools go to the model in ONE session. The model reads what it needs through
     the gateway (allow-list, book scope, masking, an audit row per call) and
     returns a result per item it investigated. Each result becomes an item and
     a finding; the gates that follow (validate, review, record) are the same as
-    for any capability."""
+    for any agent."""
     m = _manifest(state)
     rs = m.reasoning
-    guard = Protector.for_tools(m.tools_used(), state["case_id"])
+    guard = Protector.for_tools(m.tools_used(), state["task_id"])
     ctx = _ctx(state, "agent", set(rs.tools))
     ctx.protector = guard
     adapter = llm()
     summary, results, model, usage, transcript = "", [], None, {}, []
-    with span("agent.session", case_id=state["case_id"], tools=",".join(rs.tools)) as sp:
-        failure = await controls.over_budget(m, state["case_id"])
+    with span("agent.session", task_id=state["task_id"], tools=",".join(rs.tools)) as sp:
+        failure = await controls.over_budget(m, state["task_id"])
         if failure is None:
             request = SessionRequest(
-                capability_id=state["capability_id"], case_id=state["case_id"],
-                case_key=guard.protect(state["case_key"]), skill=rs.skill, allowed_tools=list(rs.tools),
-                id_field=m.items.id_field, item_label=m.case.item_label,
+                agent_id=state["agent_id"], task_id=state["task_id"],
+                task_key=guard.protect(state["task_key"]), skill=rs.skill, allowed_tools=list(rs.tools),
+                id_field=m.items.id_field, item_label=m.task.item_label,
                 amount_field=m.items.amount_field, result_fields=list(rs.result_fields),
                 verdicts=list(rs.verdicts), sections=[x.model_dump() for x in rs.sections],
                 specialists=[x.model_dump() for x in rs.specialists],
@@ -665,12 +665,12 @@ async def agent(state: CaseState) -> dict:
         items.append({**fields, id_field: rid, "item_id": rid})
         found.append(_session_finding(m, r, adapter.name, model, guard))
     if failure or not results:
-        # Nothing per item: the whole case is one group — escalated on a failure,
+        # Nothing per item: the whole task is one group — escalated on a failure,
         # else the session's summary for a person to accept or send back.
         whole = {"status": ESCALATED if failure or not summary else "proposed",
                  "decided_by": f"llm:{adapter.name}", "comment": summary, "model": model,
                  "reason": failure or (None if summary else "NO_RESULTS")}
-        buckets = {("all",): ([], [whole], ["Whole case"])}
+        buckets = {("all",): ([], [whole], ["Whole task"])}
     else:
         buckets = {}
         for it, f in zip(items, found):
@@ -681,7 +681,7 @@ async def agent(state: CaseState) -> dict:
             b[2].append(it["item_id"])
     if usage:
         next(iter(buckets.values()))[1][0]["usage"] = usage     # the session's cost, once
-    await _save_items(state["case_id"], items)
+    await _save_items(state["task_id"], items)
     mask_f, pseudo_f = fields_for(m.tools_used())
     groups, findings = [], {}
     async with get_session() as s:
@@ -690,7 +690,7 @@ async def agent(state: CaseState) -> dict:
             group_key = dict(zip(fields_, values)) if values != ("all",) else {}
             group_id = _group_id(values, fields_, mask_f | pseudo_f) if group_key else "all"
             label = group_label(m, group_key) if m.group_by else (
-                f"{m.case.item_label} {values[0]}" if group_key else "Whole case")
+                f"{m.task.item_label} {values[0]}" if group_key else "Whole task")
             total = round(sum(_num(it.get(m.items.amount_field)) for it in members), 2) \
                 if m.items.amount_field and members else None
             finding = _merged(fs, labels)
@@ -699,7 +699,7 @@ async def agent(state: CaseState) -> dict:
                                           "total": total, "count": len(members), "label": label},
                                       finding, state.get("datasets") or {})
             priors = await knowledge.similar_decisions(
-                state["capability_id"], group_key, exclude_case=state["case_id"],
+                state["agent_id"], group_key, exclude_task=state["task_id"],
                 lookback_days=m.knowledge.priors_lookback_days,
                 entities=knowledge.entity_values(m.knowledge.entities, group_key, members)) if group_key else []
             g = {"group_id": group_id, "label": label, "group_key": group_key,
@@ -707,7 +707,7 @@ async def agent(state: CaseState) -> dict:
                  "total": total, "priors": priors}
             groups.append(g)
             findings[group_id] = finding
-            await s.merge(ProposalGroup(case_id=state["case_id"], group_id=group_id, label=label,
+            await s.merge(ProposalGroup(task_id=state["task_id"], group_id=group_id, label=label,
                                         group_key=group_key, item_ids=g["item_ids"], priors=priors,
                                         finding=finding))
         await s.commit()
@@ -718,7 +718,7 @@ async def agent(state: CaseState) -> dict:
     return {"items": items, "groups": groups, "findings": findings, "session_summary": summary, "session": session}
 
 
-async def draft(state: CaseState) -> dict:
+async def draft(state: TaskState) -> dict:
     m = _manifest(state)
     findings = state.get("findings", {})
     proposed = sum(1 for f in findings.values() if f["status"] == "proposed")
@@ -726,7 +726,7 @@ async def draft(state: CaseState) -> dict:
     in_scope = sum(g["count"] for g in state["groups"])
     verdicts = Counter(f.get("verdict") for f in findings.values() if f.get("verdict"))
     d = {
-        "headline": f"{in_scope} of {len(state['items'])} {m.case.item_label.lower()}(s) in scope, "
+        "headline": f"{in_scope} of {len(state['items'])} {m.task.item_label.lower()}(s) in scope, "
                     f"in {len(state['groups'])} group(s): {proposed} proposed, {escalated} escalated."
                     + (" Verdicts: " + ", ".join(f"{n} {v}" for v, n in sorted(verdicts.items())) + "."
                        if verdicts else ""),
@@ -741,13 +741,13 @@ async def draft(state: CaseState) -> dict:
                                   for it in state["items"] if it["item_id"] in in_ids), 2)
         d["unit"] = m.items.amount_unit
     if state.get("session_summary"):
-        d["summary"] = state["session_summary"]     # the skill session's own words on the case
+        d["summary"] = state["session_summary"]     # the skill session's own words on the task
     if state.get("session"):
-        d["session"] = state["session"]             # shown on the case: the conversation, turn by turn
+        d["session"] = state["session"]             # shown on the task: the conversation, turn by turn
     if state.get("skipped"):
         d["skipped_steps"] = list(state["skipped"])    # steps whose `when` did not hold this run
     async with get_session() as s:
-        (await s.get(Case, state["case_id"])).draft = d
+        (await s.get(Task, state["task_id"])).draft = d
         await s.commit()
     return {"draft": d}
 
@@ -772,20 +772,20 @@ def _numbers_in(value: Any, out: set[float]) -> None:
             _numbers_in(v, out)
 
 
-def _session_run(state: CaseState) -> bool:
+def _session_run(state: TaskState) -> bool:
     return "agent" in (state.get("manifest") or {}).get("steps", [])
 
 
-async def grounded_figures(state: CaseState) -> set[float]:
-    """Every figure the run has read: the case key, its items and groups, and
-    every allowed tool result recorded for the case. In a skill session the
+async def grounded_figures(state: TaskState) -> set[float]:
+    """Every figure the run has read: the task key, its items and groups, and
+    every allowed tool result recorded for the task. In a skill session the
     items are the model's own answer, so only the tools' results count."""
     grounded: set[float] = set()
     own = [] if _session_run(state) else [state["items"], state["groups"]]
-    _numbers_in([state["case_key"], *own, state.get("datasets") or {}], grounded)
+    _numbers_in([state["task_key"], *own, state.get("datasets") or {}], grounded)
     async with get_session() as s:
         results = (await s.execute(select(ToolCall.result).where(
-            ToolCall.case_id == state["case_id"], ToolCall.allowed.is_(True),
+            ToolCall.task_id == state["task_id"], ToolCall.allowed.is_(True),
             ToolCall.result.is_not(None)))).scalars().all()
     _numbers_in(list(results), grounded)
     return grounded
@@ -809,7 +809,7 @@ def ungrounded(text: str, grounded: set[float]) -> list[float]:
     return sorted(n for n in cited if n not in grounded and -n not in grounded)
 
 
-async def validate(state: CaseState) -> dict:
+async def validate(state: TaskState) -> dict:
     """Gate: every figure in a proposed finding must trace to data the run read."""
     grounded = await grounded_figures(state)
 
@@ -832,16 +832,16 @@ async def validate(state: CaseState) -> dict:
                  "reason": f"UNGROUNDED_FIGURE: {', '.join(f'{n:,.2f}' for n in missing)}"}
             findings[group_id] = f
             errors.append(f"{group_id}: {f['reason']}")
-            await _save_group_finding(state["case_id"], group_id, f)
+            await _save_group_finding(state["task_id"], group_id, f)
     return {"findings": findings, "validation_errors": errors}
 
 
-async def review(state: CaseState) -> dict:
+async def review(state: TaskState) -> dict:
     """Gate: the run pauses before this step until people decide."""
     return {"review_cycles": state.get("review_cycles", 0) + 1}
 
 
-async def record(state: CaseState) -> dict:
+async def record(state: TaskState) -> dict:
     """Gate: approved decisions become priors the next run reads."""
     m = _manifest(state)
     findings = state.get("findings", {})
@@ -852,7 +852,7 @@ async def record(state: CaseState) -> dict:
         if g is None:
             continue
         await knowledge.record_decision(
-            state["capability_id"], g["group_key"], case_id=state["case_id"],
+            state["agent_id"], g["group_key"], task_id=state["task_id"],
             group_id=d["group_id"], action=d["action"],
             comment=d.get("comment") or findings.get(d["group_id"], {}).get("comment", ""),
             decided_by=d["decided_by"],
@@ -867,20 +867,20 @@ async def record(state: CaseState) -> dict:
     if "publish" in _manifest(state).steps:
         return {"outcome": "recorded"}       # the run pauses before publish
     async with get_session() as s:
-        case = await s.get(Case, state["case_id"])
-        case.status, case.outcome = "completed", "completed"
+        task = await s.get(Task, state["task_id"])
+        task.status, task.outcome = "completed", "completed"
         await s.commit()
     return {"outcome": "completed"}
 
 
-def _publish_args(spec_args: dict, state: CaseState, tokens: dict[str, Any]) -> dict:
-    """Resolve a publish spec's arguments: literals, "$case.<field>",
+def _publish_args(spec_args: dict, state: TaskState, tokens: dict[str, Any]) -> dict:
+    """Resolve a publish spec's arguments: literals, "$task.<field>",
     "$group.<field>" and the named tokens (see PublishSpec)."""
-    case_key = state["case_key"]
+    task_key = state["task_key"]
     out = {}
     for k, v in spec_args.items():
-        if isinstance(v, str) and v.startswith("$case."):
-            v = case_key[v[6:]]
+        if isinstance(v, str) and v.startswith("$task."):
+            v = task_key[v[6:]]
         elif isinstance(v, str) and v.startswith("$group."):
             v = tokens["$group"][v[7:]]
         elif isinstance(v, str) and v in tokens:
@@ -889,14 +889,14 @@ def _publish_args(spec_args: dict, state: CaseState, tokens: dict[str, Any]) -> 
     return out
 
 
-def _subject(m: Manifest, case_key: dict) -> str:
+def _subject(m: Manifest, task_key: dict) -> str:
     try:
-        return m.case.subject.format(**case_key)
+        return m.task.subject.format(**task_key)
     except (KeyError, IndexError, ValueError):
-        return ", ".join(f"{k} {v}" for k, v in case_key.items())
+        return ", ".join(f"{k} {v}" for k, v in task_key.items())
 
 
-def _approved(state: CaseState, m: Manifest) -> list[tuple[dict, dict, str]]:
+def _approved(state: TaskState, m: Manifest) -> list[tuple[dict, dict, str]]:
     """(group, decision, approved explanation) for every approved group."""
     findings = state.get("findings", {})
     groups = {g["group_id"]: g for g in state["groups"]}
@@ -906,14 +906,14 @@ def _approved(state: CaseState, m: Manifest) -> list[tuple[dict, dict, str]]:
             if d["action"] == "approve" and d["group_id"] in groups]
 
 
-def publish_calls(state: CaseState) -> list[tuple[str, dict]]:
-    """(idempotency key, arguments) for every write the case's publish makes:
-    one per approved group, or one for the whole case."""
+def publish_calls(state: TaskState) -> list[tuple[str, dict]]:
+    """(idempotency key, arguments) for every write the task's publish makes:
+    one per approved group, or one for the whole task."""
     m = _manifest(state)
     approval = state.get("publish_approval") or {}
     approved = _approved(state, m)
-    common = {"$case_id": state["case_id"], "$subject": _subject(m, state["case_key"])}
-    if m.publish.per == "case":
+    common = {"$task_id": state["task_id"], "$subject": _subject(m, state["task_key"])}
+    if m.publish.per == "task":
         if not approved:
             return []
         items = {it["item_id"]: it for it in state.get("items", [])}
@@ -926,14 +926,14 @@ def publish_calls(state: CaseState) -> list[tuple[str, dict]]:
                     for g, d, _ in approved]
         sign_off.append({"step": "release", "by": approval.get("approved_by"),
                          "at": approval.get("approved_at", "")})
-        return [(f"{state['case_id']}:case", _publish_args(m.publish.args, state, {
+        return [(f"{state['task_id']}:task", _publish_args(m.publish.args, state, {
             **common, "$approved": sections, "$sign_off": sign_off}))]
-    return [(f"{state['case_id']}:{g['group_id']}", _publish_args(m.publish.args, state, {
+    return [(f"{state['task_id']}:{g['group_id']}", _publish_args(m.publish.args, state, {
                 **common, "$group": g["group_key"], "$comment": comment}))
             for g, _, comment in approved]
 
 
-async def write_back(state: CaseState, released_by: str | None,
+async def write_back(state: TaskState, released_by: str | None,
                      done: frozenset[str] = frozenset()) -> tuple[list[dict], list[str]]:
     """Make the publish writes, skipping those already made (`done` keys).
     Every write carries its idempotency key, so a repeat is the same write."""
@@ -952,29 +952,29 @@ async def write_back(state: CaseState, released_by: str | None,
     return published, failed
 
 
-async def set_publish_outcome(case_id: str, failed: list[str]) -> str:
+async def set_publish_outcome(task_id: str, failed: list[str]) -> str:
     outcome = "published" if not failed else "publish_failed"
     async with get_session() as s:
-        case = await s.get(Case, case_id)
-        case.status, case.outcome = ("completed", outcome) if not failed else ("failed", outcome)
-        case.error = "; ".join(failed) or None
+        task = await s.get(Task, task_id)
+        task.status, task.outcome = ("completed", outcome) if not failed else ("failed", outcome)
+        task.error = "; ".join(failed) or None
         await s.commit()
     return outcome
 
 
-async def publish(state: CaseState) -> dict:
-    """Write the approved results back through the capability's write tool —
-    one call per approved group, or one for the whole case (a report).
+async def publish(state: TaskState) -> dict:
+    """Write the approved results back through the agent's write tool —
+    one call per approved group, or one for the whole task (a report).
     Runs only after a second person released it (publish_approval)."""
     approval = state.get("publish_approval") or {}
     published, failed = await write_back(state, approval.get("approved_by"))
-    outcome = await set_publish_outcome(state["case_id"], failed)
+    outcome = await set_publish_outcome(state["task_id"], failed)
     return {"outcome": outcome, "published": published}
 
 
-async def escalate(state: CaseState) -> dict:
+async def escalate(state: TaskState) -> dict:
     async with get_session() as s:
-        case = await s.get(Case, state["case_id"])
-        case.status, case.outcome, case.error = ESCALATED, ESCALATED, state.get("escalation_reason")
+        task = await s.get(Task, state["task_id"])
+        task.status, task.outcome, task.error = ESCALATED, ESCALATED, state.get("escalation_reason")
         await s.commit()
     return {}

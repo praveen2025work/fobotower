@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 
 import { currentUser } from "../api/client";
-import { useAudit, useCapabilities, useMe, type AuditEvent } from "../api/aof";
+import { useAudit, useAgents, useMe, type AuditEvent } from "../api/aof";
 import SupportGuide from "../components/ops/SupportGuide";
 import StatusBadge from "../components/StatusBadge";
 import { Card, Empty, ErrorState, Loading, PageHeader, formatTime } from "../components/ui";
@@ -24,10 +24,10 @@ function What({ e }: { e: AuditEvent }) {
 
 /** Who did what, on which data — connector calls, sign-offs, releases — within the caller's scope. */
 export default function Audit(): JSX.Element {
-  const [capability, setCapability] = useState<string>("");
+  const [agent, setAgent] = useState<string>("");
   const [kind, setKind] = useState<string>("");
-  const caps = useCapabilities();
-  const events = useAudit(capability || undefined);
+  const caps = useAgents();
+  const events = useAudit(agent || undefined);
   const me = useMe(currentUser());
   const support = !!me.data?.is_admin && Object.keys(me.data?.data_scopes ?? {}).length === 0;
   const rows = (events.data ?? []).filter((e) => !kind || e.kind === kind || (kind === "refused" && e.kind === "tool_call" && !e.allowed));
@@ -39,7 +39,7 @@ export default function Audit(): JSX.Element {
         subtitle="The system of record. Model behaviour (prompts, timings, tokens) is in Phoenix, joined on the task."
         actions={
           <div className="flex min-w-0 flex-wrap gap-2">
-            <select aria-label="Agent" value={capability} onChange={(e) => setCapability(e.target.value)} className="min-w-0 max-w-full rounded-lg border border-surface-300 bg-card px-2 py-1.5 text-sm">
+            <select aria-label="Agent" value={agent} onChange={(e) => setAgent(e.target.value)} className="min-w-0 max-w-full rounded-lg border border-surface-300 bg-card px-2 py-1.5 text-sm">
               <option value="">All agents</option>
               {caps.data?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
@@ -74,7 +74,7 @@ export default function Audit(): JSX.Element {
                   <tr key={`${e.kind}-${e.at}-${i}`}>
                     <td className="whitespace-nowrap px-2 py-2 text-xs text-surface-500">{formatTime(e.at)}</td>
                     <td className="px-2 py-2 text-xs">{e.actor}</td>
-                    <td className="px-2 py-2 text-xs"><Link className="text-primary-700 hover:underline" to={`/cases/${encodeURIComponent(e.case_id)}`}>{e.subject}</Link></td>
+                    <td className="px-2 py-2 text-xs"><Link className="text-primary-700 hover:underline" to={`/tasks/${encodeURIComponent(e.task_id)}`}>{e.subject}</Link></td>
                     <td className="px-2 py-2 text-xs"><What e={e} /></td>
                   </tr>
                 ))}

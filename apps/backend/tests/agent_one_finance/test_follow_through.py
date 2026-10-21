@@ -14,23 +14,23 @@ from tests.agent_one_finance.conftest import CASH, RECON
 CAP, GROUP = "break.investigation", "fobo-prime"
 
 
-async def _approve_all(api, case, user):
-    for g in case["groups"]:
-        res = await api.post(f"/api/cases/{case['case_id']}/decisions", headers=api.as_user(user),
+async def _approve_all(api, task, user):
+    for g in task["groups"]:
+        res = await api.post(f"/api/tasks/{task['task_id']}/decisions", headers=api.as_user(user),
                              json={"group_id": g["group_id"], "action": "approve", "comment": "Agreed",
                                    "confirmed": True, "idempotency_key": uuid.uuid4().hex,
                                    "checklist": [{"id": q["id"], "answer": "yes"}
-                                                 for q in (case.get("review") or {}).get("checklist", [])]})
+                                                 for q in (task.get("review") or {}).get("checklist", [])]})
         assert res.status_code == 201, res.text
-    return (await api.get(f"/api/cases/{case['case_id']}", headers=api.as_user(user))).json()
+    return (await api.get(f"/api/tasks/{task['task_id']}", headers=api.as_user(user))).json()
 
 
 async def _fobo(api, cob):
-    res = await api.post(f"/api/capabilities/{CAP}/cases", headers=api.as_user("frank"),
-                         json={"case_key": {"book": "PRIME-MB-04", "cob": cob}, "team_group": GROUP})
+    res = await api.post(f"/api/agents/{CAP}/tasks", headers=api.as_user("frank"),
+                         json={"task_key": {"book": "PRIME-MB-04", "cob": cob}, "team_group": GROUP})
     assert res.status_code == 201, res.text
-    case = res.json()
-    res = await api.post(f"/api/cases/{case['case_id']}/gates/reason", headers=api.as_user("frank"),
+    task = res.json()
+    res = await api.post(f"/api/tasks/{task['task_id']}/gates/reason", headers=api.as_user("frank"),
                          json={"action": "continue", "idempotency_key": uuid.uuid4().hex})
     assert res.json()["status"] == "awaiting_review", res.text
     return res.json()
@@ -57,10 +57,10 @@ async def test_a_monitor_that_did_not_clear_is_reopened_on_the_next_cob(api, mon
     assert "did not clear" in carried["cause_reason"]
     assert all(not i["carried_verdict"] for n, i in by.items() if n != timing["instrument"])
 
-    earlier = (await api.get(f"/api/cases/{day1['case_id']}", headers=api.as_user("frank"))).json()
+    earlier = (await api.get(f"/api/tasks/{day1['task_id']}", headers=api.as_user("frank"))).json()
     ft = {r["item_id"]: r for r in earlier["follow_through"]["items"]}
     assert ft[timing["item_id"]]["status"] == "still_open"
-    assert ft[timing["item_id"]]["checked_in"] == day2["case_id"]
+    assert ft[timing["item_id"]]["checked_in"] == day2["task_id"]
     # A POST or CORRECT_AND_REPOST is followed too; a break that is gone has cleared.
     assert earlier["follow_through"]["cleared"] >= 1
     assert {r["verdict"] for r in ft.values()} <= {"MONITOR", "POST", "CORRECT_AND_REPOST"}
@@ -70,7 +70,7 @@ def test_an_adjustment_that_did_not_clear_keeps_the_investigation_open():
     import yaml
 
     from agent_one_finance import rules
-    from agent_one_finance.capabilities import seed_files
+    from agent_one_finance.agents import seed_files
     from agent_one_finance.groups import GroupConfig, effective
     base = next(m for m in seed_files() if m.id == CAP)
     raw = yaml.safe_load(open(settings().config_dir / "groups" / CAP / f"{GROUP}.yaml"))
@@ -85,8 +85,8 @@ def test_an_adjustment_that_did_not_clear_keeps_the_investigation_open():
 
 async def test_cash_a_write_off_still_open_the_next_day_is_not_written_off_twice(api):
     async def run(date):
-        res = await api.post(f"/api/capabilities/{RECON}/cases", headers=api.as_user("dan"),
-                             json={"case_key": {"entity": "UK01", "date": date}, "team_group": CASH})
+        res = await api.post(f"/api/agents/{RECON}/tasks", headers=api.as_user("dan"),
+                             json={"task_key": {"entity": "UK01", "date": date}, "team_group": CASH})
         assert res.status_code == 201, res.text
         return res.json()
 
@@ -102,16 +102,16 @@ async def test_cash_a_write_off_still_open_the_next_day_is_not_written_off_twice
     # Day-unique references are not mistaken for yesterday's.
     assert all(not i["carried_verdict"] for i in day2["items"] if i["item_id"] != "TX9001")
 
-    earlier = (await api.get(f"/api/cases/{day1['case_id']}", headers=api.as_user("dan"))).json()
+    earlier = (await api.get(f"/api/tasks/{day1['task_id']}", headers=api.as_user("dan"))).json()
     assert earlier["follow_through"]["still_open"] == 1
 
 
-def test_follow_through_fields_must_be_in_the_case_key():
-    from agent_one_finance.capabilities import seed_files
+def test_follow_through_fields_must_be_in_the_task_key():
+    from agent_one_finance.agents import seed_files
     from agent_one_finance.manifest import Manifest, problems
     base = next(m for m in seed_files() if m.id == RECON)
     bad = Manifest.model_validate({**base.model_dump(), "follow_through": {"series": ["book"], "order_by": "entity"}})
     found = problems(bad)
-    assert "follow_through.series: `book` is not in case.key" in found
+    assert "follow_through.series: `book` is not in task.key" in found
     bad = Manifest.model_validate({**base.model_dump(), "follow_through": {"series": ["entity"], "order_by": "entity"}})
     assert any("cannot also be in series" in p for p in problems(bad))

@@ -1,5 +1,5 @@
 # The FOBO Rates rec group: CATS vs MOTIF for the Rates books (London and New
-# York). The same reconciliation capability and the same FOBO playbook as the
+# York). The same reconciliation agent and the same FOBO playbook as the
 # Prime group (cats-motif) — checks C1–C6, tests FO-1…BO-6, categories,
 # verdict table, the R2 guard — run by a different team with its own:
 #
@@ -11,8 +11,8 @@
 #   schedule               07:15 on business days, after the Rates EOD curves (Prime 06:30)
 #   instructions           Rates-specific: curve datasets and fixings first
 #
-# What it cannot change stays with the capability: the workflow and its gates
-# (validate → review → record), ownership of the capability, retention.
+# What it cannot change stays with the agent: the workflow and its gates
+# (validate → review → record), ownership of the agent, retention.
 group: cats-motif-rates
 name: CATS vs MOTIF — Rates (FOBO)
 description: CATS vs MOTIF for the Rates books (London, New York); same FOBO playbook, Rates thresholds and reviewers, run after the Rates EOD curves.
@@ -21,7 +21,7 @@ owners:
   role: AOF_FOBO_RATES_OWNER
   four_eyes: true
 set:
-  case:
+  task:
     label: CATS vs MOTIF
     item_label: Break
     key: [book, cob]
@@ -51,8 +51,8 @@ set:
     amount_unit: GBP
     display: [instrument, desk, category, side, cause_reason, cats_amount, motif_amount, difference, owner_desk, escalate_to]
   match:
-    left: { tool: cats.positions, args: { book: $case.book, cob: $case.cob } }
-    right: { tool: motif.positions, args: { book: $case.book, cob: $case.cob } }
+    left: { tool: cats.positions, args: { book: $task.book, cob: $task.cob } }
+    right: { tool: motif.positions, args: { book: $task.book, cob: $task.cob } }
     keys: [instrument]
     amount_field: mtm
     tolerance: 1.0
@@ -60,7 +60,7 @@ set:
     right_label: motif
   enrich:
     - tool: motif.break_snapshots
-      args: { book: $case.book, cob: $case.cob }
+      args: { book: $task.book, cob: $task.cob }
       keys: [instrument]
   knowledge:
     entities: [instrument, book]
@@ -195,7 +195,7 @@ set:
         tools: [motif.booking_events]
   # The same instrument breaking again on the same book, COB after COB.
   insights:
-    recurring: { same: [book], lookback_cases: 10, min_runs: 2 }
+    recurring: { same: [book], lookback_tasks: 10, min_runs: 2 }
   # A fix upstream (DO_NOT_POST) or an escalation becomes a ticket for the
   # owning team once the controller has decided — one per group, never twice.
   escalation:

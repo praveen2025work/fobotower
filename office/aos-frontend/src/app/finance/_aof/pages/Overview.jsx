@@ -52,7 +52,7 @@ function OverviewHero({ review, overdue, release }) {
   );
 }
 
-/** Home: what needs me, and how every capability I can see is doing. */
+/** Home: what needs me, and how every agent I can see is doing. */
 export default function Overview() {
   const overview = useOverview();
   const inbox = useInbox();
@@ -134,11 +134,11 @@ export default function Overview() {
             </Card>
 
             <Card title="Agents">
-              {overview.data.capabilities.length === 0 ? (
+              {overview.data.agents.length === 0 ? (
                 <Empty>No agents for your roles.</Empty>
               ) : (
                 <ul className="-my-1 divide-y divide-surface-100">
-                  {[...overview.data.capabilities]
+                  {[...overview.data.agents]
                     .map((c) => {
                       const n = (pre) =>
                         Object.entries(c.statuses)
@@ -150,7 +150,7 @@ export default function Overview() {
                     .map(({ c, waiting, done }) => (
                       <li key={c.id}>
                         <Link
-                          to={`/capabilities/${encodeURIComponent(c.id)}`}
+                          to={`/agents/${encodeURIComponent(c.id)}`}
                           className="group flex items-baseline gap-3 py-2"
                         >
                           <span className="min-w-0 flex-1 truncate text-sm font-medium text-surface-800 group-hover:text-primary-700">

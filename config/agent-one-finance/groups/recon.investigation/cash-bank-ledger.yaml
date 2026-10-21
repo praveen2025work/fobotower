@@ -1,5 +1,5 @@
 # Cash operations' rec group: bank statement vs ledger cash postings.
-# It keeps the capability's defaults and sets only its own write-off limit.
+# It keeps the agent's defaults and sets only its own write-off limit.
 group: cash-bank-ledger
 name: Cash — bank vs ledger
 description: Daily bank statement lines matched to ledger cash postings, per entity.
@@ -8,7 +8,7 @@ owners:
   role: AOF_CASH_RECON_OWNER
   four_eyes: true
 set:
-  case:
+  task:
     label: Bank vs ledger
     summarize_by: [entity]   # the agent's Summary
   policy:

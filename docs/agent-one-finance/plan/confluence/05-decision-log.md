@@ -9,7 +9,7 @@
 | D01 | Environments are UAT and Prod | Agreed | No separate Dev environment is set up for this delivery. | 9 Oct 2026 | *(name)* |
 | D02 | CATS is out of scope | Agreed | FOBO uses MB Rec and MOTIF data. | 9 Oct 2026 | *(name)* |
 | D03 | Adjustments are posted to MOTIF through FAS | Agreed | Only after a reviewer approves and a different person releases; each posted once; read back from MOTIF. | 9 Oct 2026 | *(name)* |
-| D04 | Agent One sessions per capability per case | Agreed (design to sign) | Not per user login; optionally per break group inside a case. Session runs with the case's rights. | 9 Oct 2026 | *(name)* |
+| D04 | Agent One sessions per agent per task | Agreed (design to sign) | Not per user login; optionally per break group inside a task. Session runs with the task's rights. | 9 Oct 2026 | *(name)* |
 | D05 | Diagnostics hosted outside AWS/BCP | Agreed (platform to confirm) | Separate build and deployment from AOF. | 9 Oct 2026 | *(name)* |
 | D06 | Change freeze 11 Dec to 4 Jan | Confirmed | Prod built by 10 Dec; application released on 5 Jan. | 9 Oct 2026 | *(name)* |
 | D07 | Scope and go/no-go owned by the Business | Agreed | Sign-off by the Business (the FOBO controllers' lead, Product Control), Risk, Security and Operations. | 9 Oct 2026 | *(name)* |

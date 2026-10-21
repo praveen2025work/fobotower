@@ -15,7 +15,7 @@ NAMES = ["ACME BANK", "GLOBEX", "INITECH", "UMBRELLA", "STARK"]
 
 
 def test_masking_is_irreversible_and_pseudonyms_round_trip():
-    p = Protector({"iban"}, {"counterparty"}, scope="case-1")
+    p = Protector({"iban"}, {"counterparty"}, scope="task-1")
     data = {"rows": [{"counterparty": "GLOBEX", "iban": "GB00X", "amount": 12.5}]}
     seen = p.protect(data)
     row = seen["rows"][0]
@@ -26,7 +26,7 @@ def test_masking_is_irreversible_and_pseudonyms_round_trip():
     assert "GB00X" not in json.dumps(p.reveal(seen))  # masked stays masked
 
 
-def test_tokens_are_stable_within_a_case_and_differ_between_cases():
+def test_tokens_are_stable_within_a_task_and_differ_between_tasks():
     a1, a2 = Protector(set(), {"counterparty"}, "a"), Protector(set(), {"counterparty"}, "a")
     b = Protector(set(), {"counterparty"}, "b")
     assert a1.token("counterparty", "GLOBEX") == a2.token("counterparty", "GLOBEX")
@@ -65,10 +65,10 @@ class Capturing(StubLlm):
 async def test_the_model_never_sees_counterparty_names_or_accounts_but_tools_get_them(api):
     model = Capturing()
     llm._adapter = model
-    res = await api.post(f"/api/capabilities/{RECON}/cases", json={"case_key": KEY, "team_group": CASH},
+    res = await api.post(f"/api/agents/{RECON}/tasks", json={"task_key": KEY, "team_group": CASH},
                          headers=api.as_user("dan"))
-    case = res.json()
-    assert case["status"] == "awaiting_review", res.text
+    task = res.json()
+    assert task["status"] == "awaiting_review", res.text
 
     sent = json.dumps([r.group for r in model.requests] + model.tool_results, default=str, ensure_ascii=False)
     assert not any(name in sent for name in NAMES), "a real counterparty name reached the model"
@@ -76,14 +76,14 @@ async def test_the_model_never_sees_counterparty_names_or_accounts_but_tools_get
     assert "«COUNTERPARTY:" in sent
 
     # the connector was called with the real name (revealed by the gateway) ...
-    model_calls = [c for c in case["tool_calls"] if c["requested_by"] == "llm"]
+    model_calls = [c for c in task["tool_calls"] if c["requested_by"] == "llm"]
     assert model_calls and all(c["arguments"]["counterparty"] in NAMES for c in model_calls)
     # ... and the audit copy keeps real values minus the masked account numbers
-    match_call = next(c for c in case["tool_calls"] if c["tool"] == "bank.statement")
+    match_call = next(c for c in task["tool_calls"] if c["tool"] == "bank.statement")
     assert all(r["counterparty_account"] == MASK for r in match_call["result"]["rows"])
 
     # reviewers see real names: the model's tokens are re-identified
-    for g in case["groups"]:
+    for g in task["groups"]:
         comment = g["finding"]["comment"]
         assert "«" not in comment and g["group_key"]["counterparty"] in comment
         assert g["finding"]["status"] == "proposed"  # tokens did not trip validation
@@ -92,7 +92,7 @@ async def test_the_model_never_sees_counterparty_names_or_accounts_but_tools_get
 async def test_traces_carry_the_models_view_only(api, spans):
     spans.clear()
     llm._adapter = Capturing()
-    await api.post(f"/api/capabilities/{RECON}/cases", json={"case_key": KEY, "team_group": CASH},
+    await api.post(f"/api/agents/{RECON}/tasks", json={"task_key": KEY, "team_group": CASH},
                    headers=api.as_user("dan"))
     payloads = [v for s in spans.get_finished_spans() if s.name == "mcp.call"
                 for k, v in s.attributes.items() if k in ("input.value", "output.value")]

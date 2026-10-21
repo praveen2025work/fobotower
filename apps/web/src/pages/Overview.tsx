@@ -36,7 +36,7 @@ function OverviewHero({ review, overdue, release }: { review?: number; overdue: 
   );
 }
 
-/** Home: what needs me, and how every capability I can see is doing. */
+/** Home: what needs me, and how every agent I can see is doing. */
 export default function Overview(): JSX.Element {
   const overview = useOverview();
   const inbox = useInbox();
@@ -78,16 +78,16 @@ export default function Overview(): JSX.Element {
             </Card>
 
             <Card title="Agents">
-              {overview.data.capabilities.length === 0 ? (
+              {overview.data.agents.length === 0 ? (
                 <Empty>No agents for your roles.</Empty>
               ) : (
                 <ul className="-my-1 divide-y divide-surface-100">
-                  {[...overview.data.capabilities].map((c) => {
+                  {[...overview.data.agents].map((c) => {
                     const n = (pre: string[]) => Object.entries(c.statuses).filter(([k]) => pre.some((p) => k.startsWith(p))).reduce((a, [, v]) => a + v, 0);
                     return { c, waiting: n(["awaiting", "paused"]), done: n(["completed"]) };
                   }).sort((x, y) => y.waiting - x.waiting).map(({ c, waiting, done }) => (
                     <li key={c.id}>
-                      <Link to={`/capabilities/${encodeURIComponent(c.id)}`} className="group flex items-baseline gap-3 py-2">
+                      <Link to={`/agents/${encodeURIComponent(c.id)}`} className="group flex items-baseline gap-3 py-2">
                         <span className="min-w-0 flex-1 truncate text-sm font-medium text-surface-800 group-hover:text-primary-700">{c.name}</span>
                         <span className="shrink-0 text-xs tabular-nums text-surface-500">
                           {waiting ? <><b className="font-semibold text-surface-800">{waiting}</b> waiting</> : done ? `${done} done` : "–"}

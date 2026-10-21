@@ -3,8 +3,8 @@
 // selected step's settings on the right. Every edit is checked by the server
 // as you go; nothing changes until you submit and a second owner approves.
 //
-// The same editor serves a capability's owners (everything) and a team
-// group's owners (only the capability's `configurable` paths; the rest is
+// The same editor serves an agent's owners (everything) and a team
+// group's owners (only the agent's `configurable` paths; the rest is
 // shown, locked).
 
 import { useEffect, useMemo, useState } from "react";
@@ -19,7 +19,7 @@ import { allowed, changedPaths, get, groupSet, preview, setPath, type Json } fro
 import { SECTIONS, STAGES, STEP_ORDER, stageOf, stagesFor, type Stage } from "./stages";
 import PrepareSteps, { dataSteps } from "./PrepareSteps";
 
-type Mode = { kind: "capability" } | { kind: "group"; config: GroupConfig; configurable: string[] };
+type Mode = { kind: "agent" } | { kind: "group"; config: GroupConfig; configurable: string[] };
 
 function useDebounced<T>(value: T, ms: number): T {
   const [v, setV] = useState(value);
@@ -86,8 +86,8 @@ function switchSource(m: Json, to: "load" | "match"): Json {
   return out;
 }
 
-export default function OrchestratorEditor({ capabilityId, manifest, mode, canEdit }: {
-  capabilityId: string;
+export default function OrchestratorEditor({ agentId, manifest, mode, canEdit }: {
+  agentId: string;
   /** The configuration as it runs today (for a group: merged with its settings). */
   manifest: Json;
   mode: Mode;
@@ -95,13 +95,13 @@ export default function OrchestratorEditor({ capabilityId, manifest, mode, canEd
 }) {
   const platform = usePlatform();
   const [working, setWorking] = useState<Json>(manifest);
-  const [stageId, setStageId] = useState("case");
+  const [stageId, setStageId] = useState("task");
   const [note, setNote] = useState("");
   const [reviewing, setReviewing] = useState(false);
   useEffect(() => setWorking(manifest), [manifest]);
 
   const isGroup = mode.kind === "group";
-  const stages = stagesFor(STAGES.filter((s) => !(isGroup && s.capabilityOnly)), working);
+  const stages = stagesFor(STAGES.filter((s) => !(isGroup && s.agentOnly)), working);
   const stage = stages.find((s) => s.id === stageId) ?? stages[0];
 
   const locked = (path: string): string | null => {
@@ -125,10 +125,10 @@ export default function OrchestratorEditor({ capabilityId, manifest, mode, canEd
   const debounced = useDebounced(working, 500);
   const body = useMemo(() => {
     if (!canEdit) return null;
-    if (mode.kind === "capability") return { manifest: debounced };
+    if (mode.kind === "agent") return { manifest: debounced };
     return { config: { ...mode.config, set: groupSet(mode.config.set as Json, mode.configurable, manifest, debounced) } };
   }, [canEdit, mode, manifest, debounced]);
-  const check = useConfigCheck(capabilityId, body);
+  const check = useConfigCheck(agentId, body);
   const checking = check.isFetching || debounced !== working;
   const problems = check.data?.problems ?? [];
   const byStage = useMemo(() => {
@@ -138,14 +138,14 @@ export default function OrchestratorEditor({ capabilityId, manifest, mode, canEd
   }, [problems]);
 
   const submitCap = useSubmitDraft();
-  const submitGroup = useDraftGroup(capabilityId);
+  const submitGroup = useDraftGroup(agentId);
   const submitting = submitCap.isPending || submitGroup.isPending;
   const submitError = submitCap.error ?? submitGroup.error;
   const done = submitCap.data ? `Version ${submitCap.data.version} drafted. Another owner approves it under Versions or in Authoring.`
     : submitGroup.data ? `Version ${submitGroup.data.version} of this group drafted. Another group owner approves it under Versions.` : null;
   const submit = () => {
     const n = note || `orchestrator: ${[...new Set(changes.map((c) => c.split(".")[0]))].join(", ")}`;
-    if (mode.kind === "capability") submitCap.mutate({ yaml: stringify(working), note: n });
+    if (mode.kind === "agent") submitCap.mutate({ yaml: stringify(working), note: n });
     else submitGroup.mutate({ config: { ...mode.config, set: set! }, note: n });
   };
 

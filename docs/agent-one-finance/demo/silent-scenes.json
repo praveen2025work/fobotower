@@ -14,7 +14,7 @@
  {
   "id": "s03",
   "title": "Overview",
-  "caption": "Everything waiting on you, across every capability",
+  "caption": "Everything waiting on you, across every agent",
   "say": "This is what Frank, a FOBO controller, sees when he logs in: hours saved, what is waiting for his review, what is overdue, and what has been escalated to a person."
  },
  {
@@ -25,9 +25,9 @@
  },
  {
   "id": "s05",
-  "title": "A case",
+  "title": "A task",
   "caption": "FOBO's own playbook decides · unconfirmed thresholds are flagged, not assumed",
-  "say": "In a case, the card at the top says exactly what is needed: three groups to decide, one needs confirmation, one is a judgement call. This redemption break is back office, so FOBO's playbook says post. But the materiality threshold is not confirmed yet, so Agent One Finance asks for his confirmation instead of assuming. He can also see how this break was approved before."
+  "say": "In a task, the card at the top says exactly what is needed: three groups to decide, one needs confirmation, one is a judgement call. This redemption break is back office, so FOBO's playbook says post. But the materiality threshold is not confirmed yet, so Agent One Finance asks for his confirmation instead of assuming. He can also see how this break was approved before."
  },
  {
   "id": "s06",
@@ -43,9 +43,9 @@
  },
  {
   "id": "s08",
-  "title": "Ask about this case",
-  "caption": "Plain-English questions · this case's data only · audited",
-  "say": "Controllers can ask questions in plain English. Answers come only from this case's data, and every lookup is audited."
+  "title": "Ask about this task",
+  "caption": "Plain-English questions · this task's data only · audited",
+  "say": "Controllers can ask questions in plain English. Answers come only from this task's data, and every lookup is audited."
  },
  {
   "id": "s09",

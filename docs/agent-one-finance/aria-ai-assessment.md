@@ -10,7 +10,7 @@ Python half (`eap-core`). Do not pivot aria-ai into Agent One Finance.**
 
 aria-ai is broad and largely working, but it is an *agent* platform (chat
 first, LLM specialists fanned out in parallel) built on four stacks with two
-competing engines. Agent One Finance is a *case/workflow* platform (rules first, the
+competing engines. Agent One Finance is a *task/workflow* platform (rules first, the
 model only for what rules cannot settle, every figure validated, people sign
 off) on one stack that matches the office (Python, LangGraph, Postgres,
 Phoenix, real MCP connectors). The parts of aria-ai that Agent One Finance lacks sit in
@@ -65,11 +65,11 @@ manifests, Prometheus/Grafana.
 | One stack the team can own | Java + Oracle + Node + Python; two engines, convergence undecided | ✗ |
 | Deterministic first, LLM only for the rest; every figure validated | Agents "narrate, never invent figures"; a per-agent `validation_contract` flag; no per-figure grounding check against what tools returned | partial |
 | Human sign-off per group, decisions feed the next run | Approval gates on write tools; precedent memory | partial — different shape, good parts |
-| Capability = config only | Pack = `pack.yaml` (agents, plugins, policies); `brd_to_pack.py` drafts one from a BRD | ✓ strong idea |
+| Agent = config only | Pack = `pack.yaml` (agents, plugins, policies); `brd_to_pack.py` drafts one from a BRD | ✓ strong idea |
 | Central entitlement, data-level scope | Role checks; SSO design docs; no data-scope enforcement on tool calls | partial |
 | Masking of sensitive fields before the model | **Yes** — field masking in `HookEngine.pre_tool`, before prompt and audit | ✓ Agent One Finance lacks this |
 | Approval-gated **write-back** tools | **Yes** — approval queue, pause/resume | ✓ Agent One Finance lacks this |
-| Evaluations | **Yes** — framework, judges, PII-free corpus check, per-pack eval cases | ✓ Agent One Finance lacks this |
+| Evaluations | **Yes** — framework, judges, PII-free corpus check, per-pack eval tasks | ✓ Agent One Finance lacks this |
 
 ## 5. What to take into Agent One Finance
 
@@ -78,22 +78,22 @@ In priority order. Each is small, Python, and already tested in eap-core.
 | # | Take | From (eap-core) | Into Agent One Finance as | Why |
 |---|---|---|---|---|
 | 1 | **Field masking before the model and the audit** | `governance/masking.py`, the mask step of `governance/hooks.py` | a `mask` policy per connector tool in `connectors.yaml`; applied in `gateway.call` before results reach the LLM adapter, the audit row and the span | Bank data in prompts and traces is the first question model-risk will ask |
-| 2 | **BRD → manifest drafting** | `authoring/brd_to_pack.py` (one no-tools LLM turn → YAML → same validator; errors returned, never raised; human gate before load) | `POST /api/capabilities/draft-from-brd` → a **draft** `capability_version` that owners approve | Makes "seamless onboarding" literal: a business team pastes requirements, gets a validated draft manifest |
+| 2 | **BRD → manifest drafting** | `authoring/brd_to_pack.py` (one no-tools LLM turn → YAML → same validator; errors returned, never raised; human gate before load) | `POST /api/agents/draft-from-brd` → a **draft** `agent_version` that owners approve | Makes "seamless onboarding" literal: a business team pastes requirements, gets a validated draft manifest |
 | 3 | **Approval-gated write tools** | `governance/approvals.py`, `engine/run_resume.py` | a `writes:` section on connector tools + a `publish` step after `record` that pauses for a second approver | Write-back (e.g. post a journal, publish commentary) is open question 2 in the design |
-| 4 | **Evals** | `evals/framework.py`, `evals/judges.py`, `evals/pii.py`, pack `evals/` cases | `config/agent-one-finance/capabilities/<id>.evals.yaml` + a runner; datasets from approved decisions | Regression-test a skill or model change before owners approve it |
-| 5 | **Similarity priors** | `memory/precedent.py`, `ports/vector.py` | an optional pgvector search behind `knowledge.similar_decisions` | Today priors match the exact group key; similarity finds "like" cases |
+| 4 | **Evals** | `evals/framework.py`, `evals/judges.py`, `evals/pii.py`, pack `evals/` tasks | `config/agent-one-finance/agents/<id>.evals.yaml` + a runner; datasets from approved decisions | Regression-test a skill or model change before owners approve it |
+| 5 | **Similarity priors** | `memory/precedent.py`, `ports/vector.py` | an optional pgvector search behind `knowledge.similar_decisions` | Today priors match the exact group key; similarity finds "like" tasks |
 
 Also worth reading, not porting yet: the Java `DagExecutor` (leases,
 heartbeats, durable timers) as the reference when Agent One Finance adds scheduled and
-event-opened cases; `platform-ui` pages `PackAuthoring`, `Approvals`, `Audit`,
-`RunConsole` as UX references for the capability builder; the adapter
+event-opened tasks; `platform-ui` pages `PackAuthoring`, `Approvals`, `Audit`,
+`RunConsole` as UX references for the agent builder; the adapter
 **backends** (`fobo-backend`, `recon-engine-backend`, `pnl-lineage-backend`) as
 richer stub data — wrapped as real MCP servers like
 `agent_one_finance/stub_connectors/finance.py`.
 
 ## 6. What not to take
 
-- The agent fan-out as Agent One Finance's core loop — Agent One Finance is case-centric; an agent is
+- The agent fan-out as Agent One Finance's core loop — Agent One Finance is task-centric; an agent is
   what the `reason` step calls, through `AOF_LLM_ADAPTER`.
 - The REST "MCP" adapter protocol — Agent One Finance speaks real MCP.
 - Langfuse — the office standard is Phoenix.
@@ -103,7 +103,7 @@ richer stub data — wrapped as real MCP servers like
 ## 7. If the team still wants one product, not two
 
 Then the direction is **aria-ai's eap-core moves onto Agent One Finance**, not the
-reverse: Agent One Finance's case model, gateway and gates stay; eap-core's masking,
+reverse: Agent One Finance's task model, gateway and gates stay; eap-core's masking,
 approvals, authoring, evals and precedent memory come in (§5); aria-ai's
 specialist agents can be offered as one implementation of
 `AOF_LLM_ADAPTER`. The Java/Oracle platform and agent-runner are retired

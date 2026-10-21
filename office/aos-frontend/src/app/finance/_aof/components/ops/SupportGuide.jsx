@@ -1,7 +1,7 @@
 // Generated from apps/web/src/components/ops/SupportGuide.tsx by apps/web/office/convert.mjs. Office changes to this file are
 // kept by aof_sync.py on the next update; see office/README.md.
-// What platform support sees where case data would be: why it is empty, and
-// what they can do instead. Support holds no data scope, so cases, reviews and
+// What platform support sees where task data would be: why it is empty, and
+// what they can do instead. Support holds no data scope, so tasks, reviews and
 // their audit stay with the business teams.
 
 import { Link } from "../../office/router";

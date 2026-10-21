@@ -1,7 +1,7 @@
 # The FOBO Investigation Skill in Agent One Finance
 
 **Date:** 2026-10-05 · **Source:** [`fobo-investigation-skill-v1.0.md`](fobo-investigation-skill-v1.0.md)
-(the controllers' skill) · **Where it lives:** *Balance Recon Agent* capability, group
+(the controllers' skill) · **Where it lives:** *Balance Recon Agent* agent, group
 *FOBO Prime — MB Rec breaks* (`config/agent-one-finance/groups/break.investigation/fobo-prime.yaml`).
 
 ## The translation in one picture
@@ -44,11 +44,11 @@ rules it must never break.
 | §4 steps 2–5 FO, then BO, then trade level, then Novel | All tests run on every break (negatives kept, so the reviewer sees what was ruled out); the first positive check in order is the cause; nothing found → H Novel | In Agent One Finance (all run rather than stopping early; same result, more evidence) |
 | §4 steps 6–7 classify, decide | Categories and the verdict table | In Agent One Finance |
 | §4 step 8 remediation | Tickets to the owning team on DO_NOT_POST, CORRECT_AND_REPOST and escalations; the model writes the remediation | In Agent One Finance + added now |
-| §4 step 9 end state | `follow_through`: every approved POST, CORRECT & RE-POST and MONITOR is re-tested on the book's next COB. A break that is gone has cleared (shown on the earlier case). One still open after an adjustment → check `ADJUSTMENT_NOT_CLEARED` → U *Adjustment did not clear* → ESCALATE (the investigation stays open). A MONITOR that did not clear → `MONITOR_NOT_CLEARED` → K | In Agent One Finance |
+| §4 step 9 end state | `follow_through`: every approved POST, CORRECT & RE-POST and MONITOR is re-tested on the book's next COB. A break that is gone has cleared (shown on the earlier task). One still open after an adjustment → check `ADJUSTMENT_NOT_CLEARED` → U *Adjustment did not clear* → ESCALATE (the investigation stays open). A MONITOR that did not clear → `MONITOR_NOT_CLEARED` → K | In Agent One Finance |
 | **§5 FO-1…FO-8** | `playbook.tests`, each with `fails_when`, the fields it `needs`, its evidence, `on_fail`; FO-1, FO-2, FO-4, FO-7 hold a POST (`blocks_post`); FO-3 failing requires FO-6 | In Agent One Finance |
 | A test whose evidence is missing | "not run", never passed (§13: "unable to test") | In Agent One Finance |
 | **FO-6 findings A/B/C** | `playbook.findings`: A and B indicate a category and side FO; C proceeds to BO | In Agent One Finance |
-| Worked case (pull factor 1.00 → 0.67) | Finding A → C/FO → DO_NOT_POST, owner CATS support (`tests/agent_one_finance/test_fobo_playbook.py`) | In Agent One Finance |
+| Worked task (pull factor 1.00 → 0.67) | Finding A → C/FO → DO_NOT_POST, owner CATS support (`tests/agent_one_finance/test_fobo_playbook.py`) | In Agent One Finance |
 | **§6 BO-1…BO-6** | `playbook.tests` with side BO | In Agent One Finance |
 | Decision Point 2 — do not post by elimination | As R1; and in `reasoning.skill` | In Agent One Finance + added now |
 | **§7 Trade level** | `cats.trades` and `motif.trades` are the model's tools (quantity, direction, consideration, price, pull factor, settlement), with a *trade-level* specialist that compares them per trade | In Agent One Finance |
@@ -59,7 +59,7 @@ rules it must never break.
 | §8 extended: booked to the wrong instrument, split booking, the same break in several books, a typo'd name in MOTIF | Algorithm steps add the evidence ([algorithms](../guide/algorithms.md)); checks `OFFSET`, `SPLIT_BOOKING`, `SYSTEMIC` (after C1–C6) and `NEAR_MATCH` (before missing side) name categories O, S, Y and N. All judgement, verdict ESCALATE: they rename breaks that were H or M and give the controller and the model the evidence | Added 2026-10-08 |
 | **§9 Categories A–H** | `playbook.categories` A–H with determinism and owning team; plus T (timing), K (aged), W (books not complete), R (rejected posting), J (reapplication) | In Agent One Finance + added now |
 | "Exactly one primary category" | The first positive check; the others are kept on the break as secondary evidence | In Agent One Finance |
-| Category H feeds skill evolution | *Learning from the work* lists H and breaks no check explained (`insights.unexplained`) for the skill's owners, and judgement calls approved unchanged 5× as rule candidates; eval sets replay decided cases on a changed playbook | In Agent One Finance |
+| Category H feeds skill evolution | *Learning from the work* lists H and breaks no check explained (`insights.unexplained`) for the skill's owners, and judgement calls approved unchanged 5× as rule candidates; eval sets replay decided tasks on a changed playbook | In Agent One Finance |
 | **§10 Verdicts** POST / DO NOT POST / ESCALATE / CORRECT & RE-POST | All four in the table; plus MONITOR for timing differences | Added now (CORRECT_AND_REPOST) |
 | **§11 Remediation** | Tickets to the owning team (`escalation`); *Recurring items* for "recurring or systemic"; the model writes who to engage and which preventative control or MB Rec rule to propose | In Agent One Finance + added now |
 | "If an adjustment was posted: BO + adjustments = FO, else stays open" | `follow_through` and `ADJUSTMENT_NOT_CLEARED` (see §4 step 9 above) | In Agent One Finance |
@@ -93,15 +93,15 @@ A field that is missing makes the test that needs it "not run". Nothing is assum
 
 1. ~~Ask for evidence (§13)~~: `requests`. Questions are chased after 2 hours and escalated after
    4, and answers may carry a file. See the [Teams/email recipe](../guide/questions-by-teams-or-email.md).
-2. ~~Late exceptions~~: `case.late_items: follow_up`.
+2. ~~Late exceptions~~: `task.late_items: follow_up`.
 3. ~~Structured output (§12)~~: `reasoning.sections`.
 4. ~~End-state validation (§11, §4 step 9)~~: `follow_through`.
 5. ~~Trade-level tool (§7)~~: `cats.trades`, `motif.trades`.
 6. ~~Category H report~~: *Learning from the work*.
 7. ~~Completion checklist (§14)~~: `review.checklist`.
 
-Each is a platform feature that any capability can use, not something built for FOBO alone.
-See [features by capability](../guide/features-by-capability.md).
+Each is a platform feature that any agent can use, not something built for FOBO alone.
+See [features by agent](../guide/features-by-agent.md).
 
 What remains is for people, not code:
 - Product Control confirms the parameters;
@@ -114,6 +114,6 @@ The skill document stays the authority. When Product Control changes it:
 
 1. Change the matching part of `fobo-prime.yaml`: a check, test, category or verdict-table
    row, or the instructions. Use *Configure* or the YAML.
-2. Run the eval set: replay last month's decided cases on the draft and compare.
-3. A second owner approves the change. New cases use it; past cases keep the version they
+2. Run the eval set: replay last month's decided tasks on the draft and compare.
+3. A second owner approves the change. New tasks use it; past tasks keep the version they
    ran on.

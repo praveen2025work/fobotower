@@ -8,7 +8,7 @@ import { Link } from "../office/router";
 import { recorded } from "../scope";
 
 export default function TaskLink({ id, className, title, children }) {
-  const to = `/cases/${encodeURIComponent(id)}`;
+  const to = `/tasks/${encodeURIComponent(id)}`;
   if (recorded(to))
     return (
       <Link to={to} className={className} title={title}>

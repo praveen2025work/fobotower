@@ -3,8 +3,8 @@
 **Date:** 2026-10-05 · **For:** whoever runs the Agent One Finance webhook and the Teams/Power Automate flows.
 
 A reviewer asks a desk, a trader or Operations for evidence (`requests.targets` on the
-capability or group). Most people asked never open Agent One Finance, so the question reaches them in Teams
-or by email, and their reply comes back into Agent One Finance as the answer. This works for every capability
+agent or group). Most people asked never open Agent One Finance, so the question reaches them in Teams
+or by email, and their reply comes back into Agent One Finance as the answer. This works for every agent
 that has request targets: FOBO Prime, FOBO Rates, or any other team that adds them.
 
 ## What Agent One Finance sends
@@ -16,8 +16,8 @@ carries what a flow needs to collect the reply:
 {
   "kind": "question",                       // or "question_reminder"
   "title": "Question from frank: PRIME-MB-04 · COB 2026-09-24 · Aged break · side not proven",
-  "text": "…", "link": "https://aof.internal.example/cases/…",
-  "case_id": "…", "capability_id": "break.investigation",
+  "text": "…", "link": "https://aof.internal.example/tasks/…",
+  "task_id": "…", "agent_id": "break.investigation",
   "audience_roles": ["PRIME_DESK"], "audience_users": [],
   "request_id": "9f2c…",
   "question": "Was the IRS swap rebooked on Friday?",
@@ -43,7 +43,7 @@ curl -X POST "$ANSWER_URL" \
 ```
 
 With a file (PDF or Excel, at most 10 MB), the bot posts multipart to `answer_with_file_url`. The
-form fields are `answer`, `answered_by` and `file`. Agent One Finance keeps the file as the case's evidence,
+form fields are `answer`, `answered_by` and `file`. Agent One Finance keeps the file as the task's evidence,
 recording who sent it and which question it answered, and lists it on the question.
 
 Then Agent One Finance:
@@ -69,7 +69,7 @@ as `answer`, and send an attachment to `answer_with_file_url`.
 
 ## Chasing
 
-Each capability or group sets these, under *Configure → Human review*:
+Each agent or group sets these, under *Configure → Human review*:
 
 | Setting | FOBO Prime and Rates | Effect |
 |---|---|---|
@@ -81,7 +81,7 @@ Each happens once per question. The scheduler checks every minute.
 
 ## Security
 
-- The event secret lets a bot answer **only** questions. It cannot read cases.
+- The event secret lets a bot answer **only** questions. It cannot read tasks.
 - `answered_by` is recorded as given. Map identities in the flow; do not let responders type it.
 - In Agent One Finance, people asked see only the question and the rows it is about (*Inbox → Questions for
-  you*). They do not see the whole case.
+  you*). They do not see the whole task.

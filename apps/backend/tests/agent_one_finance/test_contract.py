@@ -4,7 +4,7 @@ Product Control's open thresholds), cash and variance commentary alike."""
 
 
 async def test_fobo_primes_contract_names_mb_recs_fields_and_the_thresholds_to_confirm(api):
-    res = await api.get("/api/capabilities/break.investigation/contract?team_group=fobo-prime",
+    res = await api.get("/api/agents/break.investigation/contract?team_group=fobo-prime",
                         headers=api.as_user("frank"))
     assert res.status_code == 200, res.text
     c = res.json()
@@ -21,16 +21,16 @@ async def test_fobo_primes_contract_names_mb_recs_fields_and_the_thresholds_to_c
 
 
 async def test_cash_and_variance_contracts_show_what_aof_computes(api):
-    cash = (await api.get("/api/capabilities/recon.investigation/contract?team_group=cash-bank-ledger",
+    cash = (await api.get("/api/agents/recon.investigation/contract?team_group=cash-bank-ledger",
                           headers=api.as_user("dan"))).json()
     data = {d["field"]: d for d in cash["data"]}
     assert data["difference"]["from"] == "Agent One Finance: the match"
     assert cash["to_confirm"] == []
     assert {p["name"]: p["used_by"] for p in cash["parameters"]}["write_off_limit"] == ["rule small-single-break"]
-    var = (await api.get("/api/capabilities/fin.variance-commentary/contract", headers=api.as_user("carol"))).json()
+    var = (await api.get("/api/agents/fin.variance-commentary/contract", headers=api.as_user("carol"))).json()
     assert {d["field"]: d["from"] for d in var["data"]}["variance"] == "Agent One Finance: actual − budget"
 
 
-async def test_the_contract_is_for_those_who_may_see_the_capability(api):
-    res = await api.get("/api/capabilities/break.investigation/contract", headers=api.as_user("carol"))
+async def test_the_contract_is_for_those_who_may_see_the_agent(api):
+    res = await api.get("/api/agents/break.investigation/contract", headers=api.as_user("carol"))
     assert res.status_code == 403

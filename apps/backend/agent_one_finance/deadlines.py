@@ -1,19 +1,19 @@
-"""When a case is due, and the reminders when it is near or missed.
+"""When a task is due, and the reminders when it is near or missed.
 
-Configured by `case.due` in the manifest (capability or group):
+Configured by `task.due` in the manifest (agent or group):
 
-    case:
+    task:
       due:
-        from: cob            # "opened" (default) or a case-key date field: YYYY-MM-DD,
+        from: cob            # "opened" (default) or a task-key date field: YYYY-MM-DD,
                              # or YYYY-MM (the month's last day)
         business_days: 1     # Monday to Friday
         hours: 0
         at: "11:00"          # time of day (AOF_SCHEDULE_TZ); optional
         warn_hours: 2        # "due soon" this long before
 
-A case is done when it leaves review and release (completed, escalated,
+A task is done when it leaves review and release (completed, escalated,
 failed). The scheduler's leader checks every minute: "due soon" goes to the
-reviewers, "missed" to the reviewers and the owners — each once per case.
+reviewers, "missed" to the reviewers and the owners — each once per task.
 """
 
 import calendar
@@ -25,7 +25,7 @@ from sqlalchemy import select
 from agent_one_finance import notify
 from agent_one_finance.db import get_session
 from agent_one_finance.manifest import Manifest
-from agent_one_finance.models import Case
+from agent_one_finance.models import Task
 from agent_one_finance.scheduler import tz
 
 log = logging.getLogger("agent_one_finance.deadlines")
@@ -38,10 +38,10 @@ def is_open(status: str) -> bool:
     return status in OPEN_STATUSES or status.startswith(GATE_PREFIX)
 
 
-def _base(spec_from: str, case_key: dict, opened_at: datetime) -> datetime:
+def _base(spec_from: str, task_key: dict, opened_at: datetime) -> datetime:
     if spec_from == "opened":
         return opened_at.astimezone(tz())
-    raw = str(case_key.get(spec_from, ""))
+    raw = str(task_key.get(spec_from, ""))
     try:
         d = date.fromisoformat(raw)
     except ValueError:
@@ -58,14 +58,14 @@ def _add_business_days(at: datetime, n: int) -> datetime:
     return at
 
 
-def due_at(m: Manifest, case_key: dict, opened_at: datetime) -> datetime | None:
-    spec = m.case.due
+def due_at(m: Manifest, task_key: dict, opened_at: datetime) -> datetime | None:
+    spec = m.task.due
     if spec is None:
         return None
     try:
-        at = _base(spec.from_, case_key, opened_at)
+        at = _base(spec.from_, task_key, opened_at)
     except (ValueError, TypeError):
-        log.warning("case.due: cannot read %r from %s", spec.from_, case_key)
+        log.warning("task.due: cannot read %r from %s", spec.from_, task_key)
         return None
     at = _add_business_days(at, spec.business_days) + timedelta(hours=spec.hours)
     if spec.at:
@@ -75,7 +75,7 @@ def due_at(m: Manifest, case_key: dict, opened_at: datetime) -> datetime | None:
 
 
 def state(due: datetime | None, status: str, now: datetime, warn_hours: float = 2) -> str | None:
-    """on_time | due_soon | overdue — for open cases with a due date; None otherwise."""
+    """on_time | due_soon | overdue — for open tasks with a due date; None otherwise."""
     if due is None or not is_open(status):
         return None
     if now >= due:
@@ -84,35 +84,35 @@ def state(due: datetime | None, status: str, now: datetime, warn_hours: float = 
 
 
 async def check(now: datetime | None = None) -> list[tuple[str, str]]:
-    """Send each due-soon and missed reminder once. Returns (case_id, kind) sent."""
+    """Send each due-soon and missed reminder once. Returns (task_id, kind) sent."""
     from agent_one_finance.runner import pinned
 
     now = now or datetime.now(tz())
     async with get_session() as s:
-        cases = (await s.execute(select(Case).where(
-            Case.due_at.is_not(None), Case.status.in_(OPEN_STATUSES) | Case.status.startswith(GATE_PREFIX),
-            Case.shadow_of.is_(None),
-            (Case.due_notified.is_(None)) | (Case.due_notified == "soon")))).scalars().all()
+        tasks = (await s.execute(select(Task).where(
+            Task.due_at.is_not(None), Task.status.in_(OPEN_STATUSES) | Task.status.startswith(GATE_PREFIX),
+            Task.shadow_of.is_(None),
+            (Task.due_notified.is_(None)) | (Task.due_notified == "soon")))).scalars().all()
     sent = []
-    for c in cases:
+    for c in tasks:
         m = await pinned(c)
-        st = state(c.due_at, c.status, now, m.case.due.warn_hours if m.case.due else 2)
+        st = state(c.due_at, c.status, now, m.task.due.warn_hours if m.task.due else 2)
         kind = {"overdue": "missed", "due_soon": "soon"}.get(st or "")
         if kind is None or kind == c.due_notified:
             continue
-        what = f"{m.case.label}: {c.subject}"
+        what = f"{m.task.label}: {c.subject}"
         when = c.due_at.astimezone(tz()).strftime("%d %b %H:%M")
         if kind == "soon":
-            await notify.send(capability_id=c.capability_id, case_id=c.case_id, kind="due_soon",
+            await notify.send(agent_id=c.agent_id, task_id=c.task_id, kind="due_soon",
                               title=f"{what} is due {when}", roles=list(m.review.roles))
         else:
-            await notify.send(capability_id=c.capability_id, case_id=c.case_id, kind="overdue",
+            await notify.send(agent_id=c.agent_id, task_id=c.task_id, kind="overdue",
                               title=f"{what} missed its deadline ({when})",
                               roles=list(m.review.roles) + ([m.owners.role] if m.owners.role else []),
                               users=list(m.owners.people))
         async with get_session() as s:
-            row = await s.get(Case, c.case_id)
+            row = await s.get(Task, c.task_id)
             row.due_notified = kind
             await s.commit()
-        sent.append((c.case_id, kind))
+        sent.append((c.task_id, kind))
     return sent

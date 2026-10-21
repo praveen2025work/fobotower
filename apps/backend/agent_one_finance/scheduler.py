@@ -1,13 +1,13 @@
-"""Cases that open themselves: on a schedule, or when another system says so.
+"""Tasks that open themselves: on a schedule, or when another system says so.
 
-Schedule: a capability (or one team's group) sets `case.opens_on: schedule`,
-a cron `case.schedule`, the keys each run opens (`case.schedule_keys`, with
-date templates), and `case.opens_as`, the service user it runs as — an
-account in the entitlements system, so a scheduled case is entitled exactly
-as that account is. Opening is idempotent (one case per key), so a missed or
-repeated tick never opens a case twice.
+Schedule: an agent (or one team's group) sets `task.opens_on: schedule`,
+a cron `task.schedule`, the keys each run opens (`task.schedule_keys`, with
+date templates), and `task.opens_as`, the service user it runs as — an
+account in the entitlements system, so a scheduled task is entitled exactly
+as that account is. Opening is idempotent (one task per key), so a missed or
+repeated tick never opens a task twice.
 
-Event: with `case.events: true`, POST /api/events opens a case (e.g. "the
+Event: with `task.events: true`, POST /api/events opens a task (e.g. "the
 file for UK01 2026-09 has arrived"), authenticated by AOF_EVENT_SECRET.
 
 The loop runs inside the API (AOF_SCHEDULER=on, the default when runs are
@@ -102,28 +102,28 @@ def tz() -> ZoneInfo:
 
 
 async def scheduled() -> list[dict]:
-    """Every schedule in force: capability (or group), cron, next run, keys."""
-    from agent_one_finance import capabilities
+    """Every schedule in force: agent (or group), cron, next run, keys."""
+    from agent_one_finance import agents
     from agent_one_finance import groups as team_groups
 
     out = []
     now = datetime.now(tz())
-    for _, base in await capabilities.all_active():
+    for _, base in await agents.all_active():
         targets = [(None, base)]
         groups = await team_groups.active_groups(base.id)
         if groups:
             targets = [(cfg.group, m) for _, cfg, m in groups]
         for group, m in targets:
-            if m.case.opens_on == "schedule" and m.case.schedule:
-                out.append({"capability_id": m.id, "team_group": group, "schedule": m.case.schedule,
-                            "next_run": next_run(m.case.schedule, now), "opens_as": m.case.opens_as,
-                            "keys": m.case.schedule_keys, "timezone": str(tz())})
+            if m.task.opens_on == "schedule" and m.task.schedule:
+                out.append({"agent_id": m.id, "team_group": group, "schedule": m.task.schedule,
+                            "next_run": next_run(m.task.schedule, now), "opens_as": m.task.opens_as,
+                            "keys": m.task.schedule_keys, "timezone": str(tz())})
     return out
 
 
 async def tick(at: datetime | None = None) -> list[str]:
-    """Open every case due this minute. Returns the case ids opened (or found)."""
-    from agent_one_finance import cases
+    """Open every task due this minute. Returns the task ids opened (or found)."""
+    from agent_one_finance import tasks
     from agent_one_finance.entitlement import entitlements
 
     at = (at or datetime.now(tz())).replace(second=0, microsecond=0)
@@ -134,13 +134,13 @@ async def tick(at: datetime | None = None) -> list[str]:
         try:
             caller = await entitlements().get(s["opens_as"])
         except Exception as e:
-            log.error("schedule %s/%s: cannot act as %s: %s", s["capability_id"], s["team_group"], s["opens_as"], e)
+            log.error("schedule %s/%s: cannot act as %s: %s", s["agent_id"], s["team_group"], s["opens_as"], e)
             continue
         for key in render_keys(s["keys"], at):
             try:
-                opened.append(await cases.open_case(s["capability_id"], key, caller, s["team_group"]))
+                opened.append(await tasks.open_task(s["agent_id"], key, caller, s["team_group"]))
             except Exception as e:  # one bad key never stops the others
-                log.error("schedule %s/%s: %s: %s", s["capability_id"], s["team_group"], key, e)
+                log.error("schedule %s/%s: %s: %s", s["agent_id"], s["team_group"], key, e)
     return opened
 
 
@@ -167,17 +167,17 @@ async def run_forever() -> None:
             if await _lead_this_minute(at):
                 opened = await tick(at)
                 if opened:
-                    log.info("scheduler opened %d case(s)", len(opened))
+                    log.info("scheduler opened %d task(s)", len(opened))
                 from agent_one_finance import deadlines
-                for case_id, kind in await deadlines.check(at):
-                    log.info("deadline reminder %s for %s", kind, case_id)
+                for task_id, kind in await deadlines.check(at):
+                    log.info("deadline reminder %s for %s", kind, task_id)
                 from agent_one_finance import asks
                 for request_id, kind in await asks.chase(at):
                     log.info("question %s %s", request_id, kind)
                 from agent_one_finance import timekeeping
-                for case_id, kind in await timekeeping.check_waits(at):
-                    log.info("case %s %s", case_id, kind)
-                for case_id, clock, kind in await timekeeping.check_clocks(at):
-                    log.info("case %s clock %s %s", case_id, clock, kind)
+                for task_id, kind in await timekeeping.check_waits(at):
+                    log.info("task %s %s", task_id, kind)
+                for task_id, clock, kind in await timekeeping.check_clocks(at):
+                    log.info("task %s clock %s %s", task_id, clock, kind)
         except Exception:
             log.exception("scheduler tick failed")

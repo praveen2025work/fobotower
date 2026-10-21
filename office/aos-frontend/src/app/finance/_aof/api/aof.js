@@ -174,6 +174,8 @@ export function useBulkDecide(taskId) {
         action: v.action,
         comment: v.comment || null,
         review_seconds: v.reviewSeconds ?? null,
+        confirmed: v.confirmed ?? false,
+        checklist: v.checklist ?? null,
         idempotency_key: newIdempotencyKey(),
       }),
     onSuccess: (res) => refresh(res.task),

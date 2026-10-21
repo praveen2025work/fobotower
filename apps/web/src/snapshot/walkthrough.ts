@@ -152,6 +152,14 @@ export const WALKTHROUGH: { title: string; intro: Block[]; examples: Example[]; 
           show: { route: RATES_EMEA, tab: "Summary", highlight: "Proposals across" },
         },
         {
+          title: "Decide many proposals at once",
+          body: [
+            "Tick proposals in this table, or in the **Proposals** list beside it, and decide them together with one explanation (and the sign-off checklist once, where the group has one). **Select every open proposal** ticks them all.",
+            "The review rules still apply to each one: an escalated proposal needs the explanation, and judgement calls (the model's proposals without a verdict) are left out of **Approve** and decided one by one; **Reject** takes them too. The snapshot is read-only, so the decision itself is not saved here.",
+          ],
+          show: { route: RATES_EMEA, tab: "Summary", highlight: "tick proposals to decide them together" },
+        },
+        {
           title: "The model session",
           body: [
             "**Model session** on the Summary says who proposed what: the playbook settled six proposals and the model reasoned three. For the model's proposals it shows the adapter and model, tokens, cost and turns as the adapter reports them, against the agent's cost limit, and every lookup it made.",

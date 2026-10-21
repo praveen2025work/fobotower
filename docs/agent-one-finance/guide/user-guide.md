@@ -261,6 +261,13 @@ Such a task opens on its **Summary** tab:
   side across the region — e.g. *Settlement break · back office*, 128 breaks in 122 books —
   with its verdict, who proposed it (the playbook, a rule or the model) and the decision. One
   decision covers every break in it; the review rules apply as for any proposal.
+- **Deciding many at once**: tick proposals in the Summary's table or in the **Proposals**
+  list (or **Select every open proposal**), write one explanation, and **Approve** or **Reject**
+  them together. Each is still checked on its own: an escalated proposal needs the
+  explanation, a verdict needing confirmation needs the tick, the sign-off checklist is
+  answered once for all, and judgement calls (`review.bulk_exclude`) are left out of Approve
+  and decided one by one — Reject takes them too. The result says what was decided and why
+  anything was left open.
 - **Model session**: which proposals the playbook decided and which the model reasoned; the
   adapter and model; tokens, cost and turns where the adapter reports them, against the
   agent's cost limit; the lookups the model made (and any refused); the tools and specialists

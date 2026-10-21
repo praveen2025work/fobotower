@@ -22,15 +22,16 @@ const words = (field) => field.replace(/_/g, " ");
 const heading = (field) => words(field).replace(/^./, (c) => c.toUpperCase());
 const plural = (count, one) => `${n(count)} ${one}${count === 1 ? "" : "s"}`;
 
-export default function TaskSummary({ taskId, version, onProposal }) {
+/** Ticking proposals to decide together (only for someone who may decide the task). */
+export default function TaskSummary({ taskId, version, onProposal, selection }) {
   const summary = useTaskSummary(taskId, version);
   if (summary.isLoading) return <Loading what="summary" />;
   if (summary.error) return <ErrorState error={summary.error} />;
   if (!summary.data) return null;
-  return <Body s={summary.data} onProposal={onProposal} />;
+  return <Body s={summary.data} onProposal={onProposal} selection={selection} />;
 }
 
-function Body({ s, onProposal }) {
+function Body({ s, onProposal, selection }) {
   const item = s.item_label.toLowerCase();
   // The finest breakdown field the sources cover (book): "300 books read, 151 clean".
   const unitField = [...s.by].reverse().find((f) => s.sources.some((x) => x.distinct[f] !== undefined));
@@ -38,6 +39,8 @@ function Body({ s, onProposal }) {
   const labels = Object.fromEntries(s.proposals.map((p) => [p.group_id, p.label]));
   // Counted per row and proposal when the sources carry it (books), else not shown.
   const last = unitField;
+  const open = selection?.open ?? [];
+  const allPicked = open.length > 0 && open.every((id) => selection?.picked.includes(id));
   return (
     <div className="space-y-4">
       <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Task totals">
@@ -134,7 +137,11 @@ function Body({ s, onProposal }) {
 
       <Card
         title={`Proposals${unitField ? ` across ${plural(s.items.distinct[unitField] ?? 0, words(unitField))}` : ""}`}
-        aside={<span className="text-xs text-surface-500">one decision covers every {item} in it</span>}
+        aside={
+          <span className="text-xs text-surface-500">
+            {selection ? "tick proposals to decide them together · " : ""}one decision covers every {item} in it
+          </span>
+        }
       >
         {s.proposals.length === 0 ? (
           <Empty>No proposals.</Empty>
@@ -143,6 +150,17 @@ function Body({ s, onProposal }) {
             <table className="hx-rows w-full text-left text-sm" aria-label="Proposals across the task">
               <thead className="text-xs text-surface-500">
                 <tr>
+                  {selection && (
+                    <th scope="col" className="w-8 px-2 py-2">
+                      <input
+                        type="checkbox"
+                        aria-label="Select every open proposal"
+                        checked={allPicked}
+                        disabled={!open.length}
+                        onChange={() => selection.setMany(open, !allPicked)}
+                      />
+                    </th>
+                  )}
                   <th scope="col" className="px-2 py-2 font-medium">
                     Proposal
                   </th>
@@ -170,7 +188,22 @@ function Body({ s, onProposal }) {
               </thead>
               <tbody className="divide-y divide-surface-100">
                 {s.proposals.map((p) => (
-                  <tr key={p.group_id} className="hover:bg-surface-50">
+                  <tr
+                    key={p.group_id}
+                    className={clsx("hover:bg-surface-50", selection?.picked.includes(p.group_id) && "bg-accent-50/60")}
+                  >
+                    {selection && (
+                      <td className="px-2 py-1.5">
+                        {open.includes(p.group_id) && (
+                          <input
+                            type="checkbox"
+                            aria-label={`Select ${p.label}`}
+                            checked={selection.picked.includes(p.group_id)}
+                            onChange={() => selection.toggle(p.group_id)}
+                          />
+                        )}
+                      </td>
+                    )}
                     <td className="px-2 py-1.5">
                       <button
                         type="button"
@@ -211,6 +244,7 @@ function Body({ s, onProposal }) {
             </table>
           </div>
         )}
+        {selection?.bar && <div className="mt-3 empty:hidden">{selection.bar}</div>}
       </Card>
 
       <ModelSession m={s.model} />

@@ -157,7 +157,7 @@
   ],
   "files": {
     "src/app/finance/_aof/api/aof.js": {
-      "sha": "cb4d04d96416035c",
+      "sha": "d9c46eb3394161d7",
       "from": "apps/web/src/api/aof.ts"
     },
     "src/app/finance/_aof/api/client.js": {
@@ -316,6 +316,10 @@
       "sha": "61b7c0e002cea0d6",
       "from": "apps/web/src/components/task/RequestsPanel.tsx"
     },
+    "src/app/finance/_aof/components/task/SelectionBar.jsx": {
+      "sha": "6afe25cdec3997ba",
+      "from": "apps/web/src/components/task/SelectionBar.tsx"
+    },
     "src/app/finance/_aof/components/task/SessionTranscript.jsx": {
       "sha": "1394f40c79029312",
       "from": "apps/web/src/components/task/SessionTranscript.tsx"
@@ -341,7 +345,7 @@
       "from": "apps/web/src/components/task/TaskHistory.tsx"
     },
     "src/app/finance/_aof/components/task/TaskSummary.jsx": {
-      "sha": "7edd93c82740c64c",
+      "sha": "b5790d730d150f12",
       "from": "apps/web/src/components/task/TaskSummary.tsx"
     },
     "src/app/finance/_aof/components/ui.jsx": {
@@ -349,7 +353,7 @@
       "from": "apps/web/src/components/ui.tsx"
     },
     "src/app/finance/_aof/finance.css": {
-      "sha": "43cca0d7782f89d2",
+      "sha": "f783e574ad9b8174",
       "from": "apps/web/src/index.css"
     },
     "src/app/finance/_aof/hooks/useIsPhone.js": {
@@ -409,7 +413,7 @@
       "from": "apps/web/src/pages/Overview.tsx"
     },
     "src/app/finance/_aof/pages/TaskWorkspace.jsx": {
-      "sha": "761d8dbb51608767",
+      "sha": "5689bb17bf6b85f6",
       "from": "apps/web/src/pages/TaskWorkspace.tsx"
     },
     "src/app/finance/_aof/queryClient.js": {

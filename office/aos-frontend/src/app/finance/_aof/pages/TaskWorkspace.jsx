@@ -54,6 +54,7 @@ import { ChecklistAnswers, SignOffChecklist, checklistComplete } from "../compon
 import TaskHistory from "../components/task/TaskHistory";
 import SessionTranscript from "../components/task/SessionTranscript";
 import TaskSummary from "../components/task/TaskSummary";
+import SelectionBar from "../components/task/SelectionBar";
 import StatusBadge from "../components/StatusBadge";
 import { DueBadge } from "../components/Urgency";
 import {
@@ -101,6 +102,8 @@ export default function TaskWorkspace() {
   const detail = useTask(taskId);
   const [selected, setSelected] = useState(null);
   const [chosenTab, setTab] = useState(null);
+  // Proposals ticked to decide together, from the list or the Summary.
+  const [picked, setPicked] = useState([]);
   const openedAt = useRef(Date.now());
   // Phones show one pane at a time; wide screens show all three side by side.
   const [pane, setPane] = useState("detail");
@@ -122,6 +125,25 @@ export default function TaskWorkspace() {
     undecided[0] ??
     c.groups[0];
   const decided = c.groups.filter((g) => g.decision).length;
+  const openIds = c.can_decide ? c.groups.filter((g) => !g.decision).map((g) => g.group_id) : [];
+  const ticked = picked.filter((id) => openIds.includes(id));
+  const toggle = (id) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
+  const setMany = (ids, on) =>
+    setPicked((p) => (on ? [...new Set([...p, ...ids])] : p.filter((x) => !ids.includes(x))));
+  const openProposal = (id) => {
+    setSelected(id);
+    setTab("proposal");
+    setPane("detail");
+  };
+  const bar = (
+    <SelectionBar
+      c={c}
+      picked={ticked}
+      onClear={() => setPicked([])}
+      openedAt={openedAt.current}
+      onOpen={openProposal}
+    />
+  );
   // A task its group summarises (every book of a region at once) opens on its Summary.
   const tab = chosenTab ?? ((c.summarize_by ?? []).length > 0 && !selected ? "summary" : "proposal");
   const openQuestions = (c.requests ?? []).filter((r) => r.status === "open").length;
@@ -276,19 +298,39 @@ export default function TaskWorkspace() {
             </span>
           </div>
           {c.can_decide && <BulkApprove c={c} openedAt={openedAt.current} />}
+          {openIds.length > 1 && (
+            <label className="flex items-center gap-2 border-b border-surface-100 px-4 py-1.5 text-xs text-surface-600">
+              <input
+                type="checkbox"
+                checked={openIds.every((id) => ticked.includes(id))}
+                onChange={(e) => setMany(openIds, e.target.checked)}
+              />
+              Select all open ({openIds.length})
+            </label>
+          )}
+          {/* On the Summary the bar sits under its proposals table instead. */}
+          {(tab !== "summary" || pane === "list") && <div className="px-2 pt-2 empty:hidden">{bar}</div>}
           {c.groups.length === 0 && <Empty>{c.status === "running" ? "Working on it…" : "Nothing in scope."}</Empty>}
           <ul className="p-2 lg:overflow-y-auto">
             {c.groups.map((g) => (
-              <li key={g.group_id}>
+              <li key={g.group_id} className="flex items-start gap-1">
+                {c.can_decide && (
+                  <span className="w-5 shrink-0 pt-3 text-center">
+                    {!g.decision && (
+                      <input
+                        type="checkbox"
+                        aria-label={`Select ${g.label}`}
+                        checked={ticked.includes(g.group_id)}
+                        onChange={() => toggle(g.group_id)}
+                      />
+                    )}
+                  </span>
+                )}
                 <button
-                  onClick={() => {
-                    setSelected(g.group_id);
-                    setTab("proposal");
-                    setPane("detail");
-                  }}
+                  onClick={() => openProposal(g.group_id)}
                   aria-current={tab !== "summary" && group?.group_id === g.group_id ? "true" : undefined}
                   className={clsx(
-                    "mb-1 w-full rounded-lg border px-3 py-2 text-left transition-colors",
+                    "mb-1 w-full min-w-0 flex-1 rounded-lg border px-3 py-2 text-left transition-colors",
                     tab !== "summary" && group?.group_id === g.group_id
                       ? "border-accent-400 bg-accent-50/60"
                       : "border-transparent hover:bg-surface-50",
@@ -354,10 +396,8 @@ export default function TaskWorkspace() {
               <TaskSummary
                 taskId={c.task_id}
                 version={`${c.status}:${decided}`}
-                onProposal={(id) => {
-                  setSelected(id);
-                  setTab("proposal");
-                }}
+                onProposal={openProposal}
+                selection={c.can_decide ? { picked: ticked, open: openIds, toggle, setMany, bar } : undefined}
               />
             )}
             {tab === "session" && c.draft?.session && <SessionTranscript session={c.draft.session} />}

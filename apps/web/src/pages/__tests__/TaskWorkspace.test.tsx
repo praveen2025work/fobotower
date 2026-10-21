@@ -128,6 +128,60 @@ describe("TaskWorkspace", () => {
     expect(screen.getByRole("heading", { name: "account 7200" })).toBeInTheDocument();
   });
 
+  it("decides the proposals ticked in the list at once, leaving the one-by-one ones out of Approve", async () => {
+    const judgement = group("6300", { flags: ["judgement"], bulk_blockers: ["judgement"] });
+    const calls = mockApi({
+      "GET /tasks/fin.c1": detail({ groups: [group("6100"), detail().groups[1], judgement] }),
+      "POST /tasks/fin.c1/decisions/bulk": (body: unknown) => ({
+        task: detail(),
+        decided: (body as { group_ids: string[] }).group_ids.map((group_id) => ({ group_id })),
+        refused: [],
+      }),
+    });
+    open();
+    await userEvent.click(await screen.findByRole("checkbox", { name: "Select account 6100" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select account 7200" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select account 6300" }));
+    const bar = screen.getByRole("region", { name: "Selected proposals" });
+    expect(within(bar).getByText("3 selected")).toBeInTheDocument();
+    expect(within(bar).getByText(/decided one by one, so Approve leaves it out/)).toBeInTheDocument();
+    const approve = within(bar).getByRole("button", { name: "Approve 2" });
+    expect(approve).toBeDisabled();                                  // 7200 is escalated: words needed
+    await userEvent.type(within(bar).getByLabelText(/Your explanation for the selected/), "Both checked against the GL");
+    await userEvent.click(approve);
+    await waitFor(() => expect(calls.some((c) => c.method === "POST")).toBe(true));
+    expect(calls.find((c) => c.method === "POST")!.body).toMatchObject({
+      group_ids: ["6100", "7200"], action: "approve", comment: "Both checked against the GL", confirmed: false,
+    });
+  });
+
+  it("rejects every proposal ticked on the Summary, the one-by-one ones included", async () => {
+    const summary = {
+      task_id: "fin.c1", subject: "UK01 · 2026-09", status: "awaiting_review", outcome: null, item_label: "Variance line",
+      unit: "GBP", amount_field: "variance", by: ["account"], sources: [],
+      items: { count: 2, in_proposals: 2, open: 2, distinct: { account: 2 } }, breakdown: [],
+      proposals: detail().groups.map((g) => ({ group_id: g.group_id, label: g.label, items: 1, distinct: {}, status: g.finding!.status,
+        verdict: null, decided_by: "llm:agent-sdk", escalate_to: null, flags: [], decision: null })),
+      model: { decided_by: { llm: 2 }, adapters: [], models: [], groups: [], usage: {}, chat: { answers: 0, usage: {} },
+        limits: { max_cost_usd_per_task: null, max_cost_usd_per_day: null }, lookups: { count: 0, refused: 0, by_tool: {} },
+        tools: [], specialists: [], instructions_chars: 0, skill_session: null },
+    };
+    const calls = mockApi({
+      "GET /tasks/fin.c1": detail({ summarize_by: ["account"] }),
+      "GET /tasks/fin.c1/summary": summary,
+      "POST /tasks/fin.c1/decisions/bulk": { task: detail(), decided: [{ group_id: "6100" }, { group_id: "7200" }], refused: [] },
+    });
+    open();
+    await userEvent.click(await screen.findByRole("checkbox", { name: "Select every open proposal" }));
+    const bar = screen.getByRole("region", { name: "Selected proposals" });
+    const reject = within(bar).getByRole("button", { name: "Reject 2" });
+    expect(reject).toBeDisabled();                                   // a reason is required
+    await userEvent.type(within(bar).getByLabelText(/Your explanation for the selected/), "Wrong period");
+    await userEvent.click(reject);
+    await waitFor(() => expect(calls.some((c) => c.method === "POST")).toBe(true));
+    expect(calls.find((c) => c.method === "POST")!.body).toMatchObject({ group_ids: ["6100", "7200"], action: "reject", comment: "Wrong period" });
+  });
+
   it("shows why a group was escalated", async () => {
     mockApi({ "GET /tasks/fin.c1": detail() });
     open();
@@ -252,7 +306,7 @@ describe("TaskWorkspace", () => {
     expect(screen.getAllByText("Needs confirmation").length).toBeGreaterThan(0);
     const approve = screen.getByRole("button", { name: "Approve" });
     expect(approve).toBeDisabled();
-    await userEvent.click(screen.getByRole("checkbox"));
+    await userEvent.click(screen.getByRole("checkbox", { name: /I confirm this verdict/ }));
     expect(approve).toBeDisabled();                               // words are required too
     await userEvent.type(screen.getByLabelText(/Your explanation/), "Materiality agreed with PC");
     await userEvent.click(approve);

@@ -1741,6 +1741,10 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
   --tw-border-opacity: 1;
   border-color: rgb(var(--c-accent-200) / var(--tw-border-opacity, 1));
 }
+#aof-root .border-accent-300 {
+  --tw-border-opacity: 1;
+  border-color: rgb(var(--c-accent-300) / var(--tw-border-opacity, 1));
+}
 #aof-root .border-accent-400 {
   --tw-border-opacity: 1;
   border-color: rgb(var(--c-accent-400) / var(--tw-border-opacity, 1));
@@ -2590,6 +2594,10 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
 
 #aof-root .last\:border-0:last-child {
   border-width: 0px;
+}
+
+#aof-root .empty\:hidden:empty {
+  display: none;
 }
 
 #aof-root .hover\:border-primary-300:hover {

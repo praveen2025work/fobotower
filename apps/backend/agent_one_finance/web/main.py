@@ -373,6 +373,8 @@ class BulkDecisionIn(BaseModel):
     review_seconds: int | None = Field(default=None, ge=0)
     # One set of checklist answers for every group approved.
     checklist: list[dict] | None = None
+    # The reviewer confirms the verdicts of the groups they selected that need it.
+    confirmed: bool = False
 
 
 @app.post("/api/tasks/{task_id}/decisions/bulk", status_code=201)
@@ -380,7 +382,7 @@ class BulkDecisionIn(BaseModel):
 async def decide_bulk(task_id: str, body: BulkDecisionIn, c: Caller = Depends(caller)) -> dict:
     result = await tasks.bulk_decide(task_id, body.group_ids, body.action, body.comment,
                                      body.idempotency_key, c, review_seconds=body.review_seconds,
-                                     checklist=body.checklist)
+                                     checklist=body.checklist, confirmed=body.confirmed)
     return {**result, "task": await tasks.task_detail(task_id, c)}
 
 

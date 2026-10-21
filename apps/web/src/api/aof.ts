@@ -741,7 +741,15 @@ export function useDeliverEvent(taskId: string) {
 export function useBulkDecide(taskId: string) {
   const refresh = useRefreshTasks();
   return useMutation({
-    mutationFn: (v: { groupIds: string[]; action: "approve" | "reject"; comment: string; reviewSeconds?: number }) =>
+    mutationFn: (v: {
+      groupIds: string[];
+      action: "approve" | "reject";
+      comment: string;
+      reviewSeconds?: number;
+      /** the reviewer confirms the verdicts that need it */
+      confirmed?: boolean;
+      checklist?: ChecklistAnswer[];
+    }) =>
       api.post<{ task: TaskDetail; decided: { group_id: string }[]; refused: { group_id: string; reason: string }[] }>(
         `/tasks/${enc(taskId)}/decisions/bulk`,
         {
@@ -749,6 +757,8 @@ export function useBulkDecide(taskId: string) {
           action: v.action,
           comment: v.comment || null,
           review_seconds: v.reviewSeconds ?? null,
+          confirmed: v.confirmed ?? false,
+          checklist: v.checklist ?? null,
           idempotency_key: newIdempotencyKey(),
         },
       ),

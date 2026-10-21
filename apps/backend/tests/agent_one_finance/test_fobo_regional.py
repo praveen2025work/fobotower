@@ -176,3 +176,31 @@ async def test_each_regional_task_has_its_own_summary(api, events):
     # Rates APAC is a different task with its own summary; Rita (EMEA) cannot read it.
     assert (await api.get(f"/api/tasks/{apac}/summary", headers=api.as_user("rita"))).status_code == 404
     assert (await api.get(f"/api/tasks/{apac}/summary", headers=api.as_user("hana"))).json()["subject"] == f"Rates APAC · COB {COB}"
+
+
+async def test_a_controller_selects_proposals_across_the_region_and_decides_them_at_once(api, events):
+    task_id = await _event(api, RATES, "EMEA")
+    task = await _task(api, task_id, "rita")
+    judgement = [g["group_id"] for g in task["groups"] if "judgement" in g["bulk_blockers"]]
+    others = [g["group_id"] for g in task["groups"] if not g["bulk_blockers"]]
+    escalated = [g for g in others if next(x for x in task["groups"] if x["group_id"] == g)["finding"]["status"] == "escalated"]
+    assert judgement and escalated
+
+    def bulk(group_ids, action, comment=None):
+        return api.post(f"/api/tasks/{task_id}/decisions/bulk", headers=api.as_user("rita"), json={
+            "group_ids": group_ids, "action": action, "comment": comment, "idempotency_key": f"sel-{action}-{len(group_ids)}"})
+
+    # Escalated proposals need the controller's words; without them only the others go through.
+    out = (await bulk(others[:1] + escalated[:1], "approve")).json()
+    assert [d["group_id"] for d in out["decided"]] == [g for g in others[:1] if g not in escalated]
+    assert "explanation" in out["refused"][0]["reason"]
+    # With words: every selected proposal the review rules allow, across all their books;
+    # judgement calls stay for one-by-one review.
+    out = (await bulk(others[1:] + judgement, "approve", "Checked across Rates EMEA; agreed per the playbook.")).json()
+    assert {d["group_id"] for d in out["decided"]} == set(others[1:])
+    assert {r["group_id"] for r in out["refused"]} >= set(judgement)
+    assert all("one-by-one" in r["reason"] for r in out["refused"] if r["group_id"] in judgement)
+    # Rejecting is not held back: the controller rejects the judgement calls with a reason.
+    out = (await bulk(judgement, "reject", "Side not proven; Desk to confirm before any adjustment.")).json()
+    assert {d["group_id"] for d in out["decided"]} == set(judgement)
+    assert out["status"] != "awaiting_review"          # every proposal decided: the run moves on

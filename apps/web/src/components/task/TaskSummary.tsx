@@ -3,7 +3,7 @@
 // down the way its group says (task.summarize_by: desk, product, book), the proposals
 // that cover many books each, and the model session behind them.
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import clsx from "clsx";
 import { Bot, BookOpen, ChevronDown, ChevronRight, Cpu, Database, GitBranch, Layers, User } from "lucide-react";
 
@@ -18,20 +18,32 @@ const words = (field: string) => field.replace(/_/g, " ");
 const heading = (field: string) => words(field).replace(/^./, (c) => c.toUpperCase());
 const plural = (count: number, one: string) => `${n(count)} ${one}${count === 1 ? "" : "s"}`;
 
-export default function TaskSummary({ taskId, version, onProposal }: {
+/** Ticking proposals to decide together (only for someone who may decide the task). */
+export interface Selection {
+  picked: string[];
+  /** the proposals that can be ticked: still open */
+  open: string[];
+  toggle: (groupId: string) => void;
+  setMany: (groupIds: string[], on: boolean) => void;
+  /** what decides the ticked proposals, shown under the proposals table */
+  bar: ReactNode;
+}
+
+export default function TaskSummary({ taskId, version, onProposal, selection }: {
   taskId: string;
   /** changes when the task's decisions do */
   version: string;
   onProposal: (groupId: string) => void;
+  selection?: Selection;
 }) {
   const summary = useTaskSummary(taskId, version);
   if (summary.isLoading) return <Loading what="summary" />;
   if (summary.error) return <ErrorState error={summary.error} />;
   if (!summary.data) return null;
-  return <Body s={summary.data} onProposal={onProposal} />;
+  return <Body s={summary.data} onProposal={onProposal} selection={selection} />;
 }
 
-function Body({ s, onProposal }: { s: TaskSummaryView; onProposal: (groupId: string) => void }) {
+function Body({ s, onProposal, selection }: { s: TaskSummaryView; onProposal: (groupId: string) => void; selection?: Selection }) {
   const item = s.item_label.toLowerCase();
   // The finest breakdown field the sources cover (book): "300 books read, 151 clean".
   const unitField = [...s.by].reverse().find((f) => s.sources.some((x) => x.distinct[f] !== undefined));
@@ -39,6 +51,8 @@ function Body({ s, onProposal }: { s: TaskSummaryView; onProposal: (groupId: str
   const labels = Object.fromEntries(s.proposals.map((p) => [p.group_id, p.label]));
   // Counted per row and proposal when the sources carry it (books), else not shown.
   const last = unitField;
+  const open = selection?.open ?? [];
+  const allPicked = open.length > 0 && open.every((id) => selection?.picked.includes(id));
   return (
     <div className="space-y-4">
       <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Task totals">
@@ -81,7 +95,7 @@ function Body({ s, onProposal }: { s: TaskSummaryView; onProposal: (groupId: str
       )}
 
       <Card title={`Proposals${unitField ? ` across ${plural(s.items.distinct[unitField] ?? 0, words(unitField))}` : ""}`}
-        aside={<span className="text-xs text-surface-500">one decision covers every {item} in it</span>}>
+        aside={<span className="text-xs text-surface-500">{selection ? "tick proposals to decide them together · " : ""}one decision covers every {item} in it</span>}>
         {s.proposals.length === 0 ? (
           <Empty>No proposals.</Empty>
         ) : (
@@ -89,6 +103,12 @@ function Body({ s, onProposal }: { s: TaskSummaryView; onProposal: (groupId: str
             <table className="hx-rows w-full text-left text-sm" aria-label="Proposals across the task">
               <thead className="text-xs text-surface-500">
                 <tr>
+                  {selection && (
+                    <th scope="col" className="w-8 px-2 py-2">
+                      <input type="checkbox" aria-label="Select every open proposal" checked={allPicked} disabled={!open.length}
+                        onChange={() => selection.setMany(open, !allPicked)} />
+                    </th>
+                  )}
                   <th scope="col" className="px-2 py-2 font-medium">Proposal</th>
                   <th scope="col" className="px-2 py-2 text-right font-medium">{s.item_label}s</th>
                   {last && <th scope="col" className="px-2 py-2 text-right font-medium">{heading(last)}s</th>}
@@ -100,7 +120,15 @@ function Body({ s, onProposal }: { s: TaskSummaryView; onProposal: (groupId: str
               </thead>
               <tbody className="divide-y divide-surface-100">
                 {s.proposals.map((p) => (
-                  <tr key={p.group_id} className="hover:bg-surface-50">
+                  <tr key={p.group_id} className={clsx("hover:bg-surface-50", selection?.picked.includes(p.group_id) && "bg-accent-50/60")}>
+                    {selection && (
+                      <td className="px-2 py-1.5">
+                        {open.includes(p.group_id) && (
+                          <input type="checkbox" aria-label={`Select ${p.label}`} checked={selection.picked.includes(p.group_id)}
+                            onChange={() => selection.toggle(p.group_id)} />
+                        )}
+                      </td>
+                    )}
                     <td className="px-2 py-1.5">
                       <button type="button" onClick={() => onProposal(p.group_id)} className="text-left font-medium text-primary-700 hover:underline">{p.label}</button>
                       {p.escalate_to && <span className="ml-2 text-[11px] text-surface-500">owner {p.escalate_to}</span>}
@@ -119,6 +147,7 @@ function Body({ s, onProposal }: { s: TaskSummaryView; onProposal: (groupId: str
             </table>
           </div>
         )}
+        {selection?.bar && <div className="mt-3 empty:hidden">{selection.bar}</div>}
       </Card>
 
       <ModelSession m={s.model} />

@@ -495,11 +495,13 @@ async def decide(task_id: str, group_id: str, action: str, comment: str | None,
 
 async def bulk_decide(task_id: str, group_ids: list[str], action: str, comment: str | None,
                       idempotency_key: str, caller: Caller, review_seconds: int | None = None,
-                      checklist: list[dict] | None = None) -> dict:
-    """The same decision on many groups. Each is checked on its own: an escalated
-    group without a comment is refused while the others go through. Approving
-    in bulk leaves the groups the agent marks for one-by-one review
-    (review.bulk_exclude: e.g. a verdict needing confirmation, a judgement call)."""
+                      checklist: list[dict] | None = None, confirmed: bool = False) -> dict:
+    """The same decision on many groups — "Approve all", or the proposals a reviewer
+    selected. Each is checked on its own: an escalated group without a comment is
+    refused while the others go through. Approving in bulk leaves the groups the
+    agent marks for one-by-one review (review.bulk_exclude: e.g. a verdict needing
+    confirmation, a judgement call); `confirmed` confirms the verdicts of the others
+    that need it."""
     done, refused = [], []
     async with get_session() as s:
         task = await s.get(Task, task_id)
@@ -516,7 +518,7 @@ async def bulk_decide(task_id: str, group_ids: list[str], action: str, comment: 
         try:
             share = round(review_seconds / max(1, len(group_ids))) if review_seconds is not None else None
             r = await decide(task_id, gid, action, comment, f"{idempotency_key}:{gid}", caller,
-                             review_seconds=share, checklist=checklist)
+                             confirmed=confirmed, review_seconds=share, checklist=checklist)
             done.append({"group_id": gid, **r})
         except (TaskError, PermissionError) as e:
             refused.append({"group_id": gid, "reason": str(e)})

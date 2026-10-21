@@ -341,7 +341,7 @@
       "from": "apps/web/src/components/task/TaskHistory.tsx"
     },
     "src/app/finance/_aof/components/task/TaskSummary.jsx": {
-      "sha": "5532364f051e9d8f",
+      "sha": "7edd93c82740c64c",
       "from": "apps/web/src/components/task/TaskSummary.tsx"
     },
     "src/app/finance/_aof/components/ui.jsx": {

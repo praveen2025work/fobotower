@@ -12,7 +12,7 @@ that opens in any browser with no setup. It is read-only and uses recorded dev d
 to your team or open it after the video.
 
 The snapshot, refreshed on 2026-10-21, covers three agents. **Helix FOBO Agent** (CATS vs
-MOTIF for every master book) and **Balance Recon Agent** (the breaks MB Rec's balance
+MOTIF, matched by AOF itself) and **Balance Recon Agent** (the breaks MB Rec's balance
 reconciliation leaves open) come with their tasks and configuration; Month-end accruals is
 configuration only. Business date: COB 20 October.
 
@@ -20,33 +20,27 @@ configuration only. Business date: COB 20 October.
   playbook settles four on its own (MONITOR, two DO NOT POST, a re-post), a person passes the
   tollgate before the model is asked anything, and three judgement calls are left for the
   controller. The task for COB 19 October, signed off, shows the end state.
-- **Helix FOBO Agent: USD swaps (RATES-LDN-01).** The agent matches CATS to MOTIF itself and the
-  same playbook sorts the three differences: one POST, one without a verdict, one novel break
-  escalated to Product Control.
-- **Helix FOBO Agent: a day of 1,240 FI Credit books** in APAC, EMEA and the Americas, with the
-  Rates and Prime books, worked from the agent's **Summary** tab. Most books reconcile clean.
-  APAC is signed off: MOTIF loaded a settlement batch twice, approved once across the region
-  (POST), then the rest. EMEA approved its region-wide problem once (a new GBP issue not yet in
-  MOTIF static data: DO NOT POST, a Technology ticket per book); the rest is still open. The
-  Americas has the same settlement problem and has not started. In the inbox the day is one
-  row that opens the Summary.
+- **Helix FOBO Agent: one task per FOBO group, region and COB.** FOBO's feed sends one event
+  per group, region and COB once its CSV has loaded (`{ group: 500081, group_name: Rates,
+  region: EMEA, cob: 2026-10-20 }`); each event opens one task for every book of that group
+  in that region. Rates EMEA (300 books, 2,796 CATS and 2,755 MOTIF positions) has 216 breaks
+  in 149 books, in nine proposals across the books, and opens on its **Summary** tab: what it
+  read, the breaks by desk, product and book, the proposals, and the model session. Rates APAC
+  (Hana) and FI Credit APAC (Mei) are signed off, FI Credit EMEA has its static-data problem
+  approved by Lars, and Rates EMEA (Rita), Rates AMER (Raj) and FI Credit AMER (Sam) wait for
+  review. Yesterday's Rates EMEA task, signed off, shows the end state.
 
 A **walkthrough** opens beside the console (a full-screen sheet on phones) and explains the
-three examples step by step. Each step's **Show me** opens the page it talks about, picks the
+two examples step by step. Each step's **Show me** opens the page it talks about, picks the
 proposal or tab and points at the spot. Its text is `apps/web/src/snapshot/walkthrough.ts`,
-written for these tasks: task ids stay the same for a book, COB and group, so rebuilding the
-tasks for the same COBs keeps it right; other COBs have other breaks and need its text updated.
+written for these tasks: task ids stay the same for a key and COB in a group, so rebuilding
+the tasks for the same COBs keeps it right; other COBs have other breaks and need its text
+updated.
 
-The snapshot holds a few tasks in full (the examples, and one FI Credit book per region). The
-other FI Credit books are rows of the Summary: they show there, by region, desk and pattern,
-but open only in the live console.
-
-Each task is named after its reconciliation and the master book's product, e.g. "CATS vs MOTIF:
-USD swaps (RATES-LDN-01) · COB 2026-10-20" or "MB Rec breaks: Rates futures (RATES-LDN-04) ·
-COB 2026-10-20"; the cash ledger's are "Bank vs ledger: UK01 · 2026-10-20". The label is the
-team group's `task.label`; the product comes from the reference data
-(`knowledge/fobo-reference.yaml`, each book's `label`), which the subject template reads as
-`{book_label}`. The demo's books hold only their product's instruments from 13 October.
+Each task is named after its reconciliation and what it covers: "CATS vs MOTIF: Rates EMEA ·
+COB 2026-10-20" (the FOBO group's name from the reference data, `knowledge/fobo-books-rates.yaml`,
+then the region) or "MB Rec breaks: Rates futures (RATES-LDN-04) · COB 2026-10-20" (the book's
+product, `knowledge/fobo-reference.yaml`). The label is the team group's `task.label`.
 
 The overview, inbox and notifications count only these agents. The platform pages
 (operations, audit, authoring) are left out; Connectors is in. It is seen as Dana, who can
@@ -85,11 +79,14 @@ To rebuild the snapshot:
    SQL
    ```
 
-2. Run the API on the copy (`AOF_DATABASE_URL=postgresql+asyncpg://fobo:fobo@localhost:5433/fobo_demo`)
-   and `npm run dev`.
-3. Build the tasks: `python build-demo-tasks.py --today 2026-10-20 --examples --fi-credit` (this
-   folder) builds the walkthrough's two tasks and the day before's, then the FI Credit day
-   (about 40 minutes: the API runs four tasks at a time, `AOF_MAX_RUNS`). It opens, runs and decides each
+2. Run the API on the copy (`AOF_DATABASE_URL=postgresql+asyncpg://fobo:fobo@localhost:5433/fobo_demo`,
+   `AOF_EVENT_SECRET=demo`) and `npm run dev`. If the config files changed since the copy, run
+   `python -m agent_one_finance.config_sync` against it and approve the drafts as each agent's
+   or group's owner, so the tasks run on the current configuration.
+3. Build the tasks: `python build-demo-tasks.py --today 2026-10-20 --examples` (this folder)
+   builds the walkthrough's tasks: MB Rec breaks for RATES-LDN-04 with the day before's, and
+   FOBO's events for Rates and FI Credit in EMEA, APAC and the Americas (a few minutes). Start
+   the API with `AOF_EVENT_SECRET=demo` so it takes events. It opens, runs and decides each
    task through the API as the right person. Without `--examples` it builds a full day's work
    for every agent (name agents to build only theirs) and reruns the evals; `--no-sim` then
    leaves out the FOBO skill's curated books, whose COB is fixed at 9 October.
@@ -97,7 +94,7 @@ To rebuild the snapshot:
 
    ```bash
    SNAPSHOT_USER=dana SNAPSHOT_AGENTS=recon.investigation,break.investigation,fin.accruals \
-   SNAPSHOT_TASKS=<one FI Credit task per region> node scripts/capture-snapshot.mjs
+   node scripts/capture-snapshot.mjs
    ```
 
    Add `SNAPSHOT_SCOPE=config` for the agents' configuration only (no tasks; steps 1 to 3 are

@@ -55,7 +55,7 @@ function Body({ s, onProposal }: { s: TaskSummaryView; onProposal: (groupId: str
       </dl>
 
       {s.breakdown.length > 0 && (
-        <Card title={<span className="inline-flex items-center gap-1.5"><Layers size={14} /> By {s.by.map(words).join(" → ")}</span>}
+        <Card title={<span className="inline-flex items-center gap-1.5"><Layers size={14} /> {`By ${s.by.map(words).join(" → ")}`}</span>}
           aside={<span className="text-xs text-surface-500">largest first · open a row for the level below</span>}>
           <div className="overflow-x-auto">
             <table className="hx-rows w-full text-left text-sm" aria-label="Breakdown">

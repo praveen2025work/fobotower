@@ -32,13 +32,41 @@ from agent_one_finance.workflow import build_graph, checkpointer
 log = logging.getLogger("agent_one_finance.runner")
 
 _tasks: set[asyncio.Task] = set()
+_slots: tuple[asyncio.AbstractEventLoop, int, asyncio.Semaphore] | None = None
+
+
+def _slot() -> asyncio.Semaphore:
+    """At most settings().max_runs background runs at once, per event loop."""
+    global _slots
+    loop, n = asyncio.get_running_loop(), max(1, settings().max_runs)
+    if _slots is None or _slots[0] is not loop or _slots[1] != n:
+        _slots = (loop, n, asyncio.Semaphore(n))
+    return _slots[2]
+
+
+async def _in_turn(work):
+    async with _slot():
+        await work
+
+
+# Cases opened on the same capability and group versions share one snapshot: a day of
+# 1,000+ tasks is read without checking the same manifest again for each.
+_pinned_cache: dict[tuple, tuple[dict, Manifest]] = {}
 
 
 async def pinned(case: Case) -> Manifest:
     """The exact manifest the case runs on: its snapshot (capability + group),
     or for older cases the capability version it opened with."""
     if case.manifest:
-        return Manifest.model_validate(case.manifest)
+        key = (case.capability_id, case.manifest_version, case.team_group, case.team_group_version)
+        hit = _pinned_cache.get(key)
+        if hit is not None and hit[0] == case.manifest:     # the very same snapshot
+            return hit[1]
+        m = Manifest.model_validate(case.manifest)
+        if len(_pinned_cache) >= 64:
+            _pinned_cache.pop(next(iter(_pinned_cache)))
+        _pinned_cache[key] = (case.manifest, m)
+        return m
     async with get_session() as s:
         row = await s.get(CapabilityVersion, (case.capability_id, case.manifest_version))
     return Manifest.model_validate(row.manifest)
@@ -262,7 +290,7 @@ async def submit(case_id: str, kind: str = "open", update: dict | None = None) -
     if settings().run_mode == "inline":
         await run_case(case_id, kind, update)
         return
-    task = asyncio.create_task(run_case(case_id, kind, update), name=f"aof:{case_id}")
+    task = asyncio.create_task(_in_turn(run_case(case_id, kind, update)), name=f"aof:{case_id}")
     _tasks.add(task)
     task.add_done_callback(_tasks.discard)
 
@@ -284,7 +312,7 @@ async def submit_job(case_id: str, job, label: str) -> None:
     if settings().run_mode == "inline":
         await run_job(case_id, job, label)
         return
-    task = asyncio.create_task(run_job(case_id, job, label), name=f"aof:{case_id}:{label}")
+    task = asyncio.create_task(_in_turn(run_job(case_id, job, label)), name=f"aof:{case_id}:{label}")
     _tasks.add(task)
     task.add_done_callback(_tasks.discard)
 

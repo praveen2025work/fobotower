@@ -85,7 +85,31 @@ for (const c of caps) {
   groupsOf[c.id] = await api(`/api/capabilities/${enc(c.id)}/groups`).catch(() => []);
   for (const g of groupsOf[c.id]) await visit(`/capabilities/${c.id}/groups/${g.group}`);
 }
-// Every case the console lists (each capability's cases, the inbox), plus
+// Each agent's Summary for every business date it has. A date's run of many tasks
+// (a task per master book: hundreds or thousands) is kept as the summary's rows: the
+// console opens those tasks only from the live service, and the snapshot shows them as
+// text. SNAPSHOT_CASES names any of them to keep in full.
+const RUN = 6;
+const bulk = new Set();
+if (!CONFIG) {
+  for (const c of caps) {
+    const latest = await api(`/api/capabilities/${enc(c.id)}/summary`).catch(() => null);
+    for (const d of latest?.dates ?? []) {
+      const day = await api(`/api/capabilities/${enc(c.id)}/summary?date=${enc(d)}`);
+      data[`/api/capabilities/${enc(c.id)}/summary?date=${enc(d)}`] = { status: 200, body: day };
+      if (d === latest.date) data[`/api/capabilities/${enc(c.id)}/summary`] = { status: 200, body: day };
+      const per = {};
+      for (const t of day.tasks) (per[t.team_group ?? ""] ??= []).push(t.case_id);
+      for (const ids of Object.values(per)) if (ids.length >= RUN) ids.forEach((id) => bulk.add(id));
+    }
+  }
+  // A task the inbox lists on a row of its own (fewer than RUN waiting for one agent,
+  // group and date, as src/pages/Inbox.tsx folds them) opens in full.
+  const runs = {};
+  for (const r of await api("/api/inbox")) (runs[[r.capability_id, r.team_group, r.summary_date, r.action].join("|")] ??= []).push(r.case_id);
+  for (const ids of Object.values(runs)) if (ids.length < RUN) ids.forEach((id) => bulk.delete(id));
+}
+// Every other case the console lists (each capability's cases, the inbox), plus
 // SNAPSHOT_CASES: anything the snapshot links to must open in it.
 const extra = (process.env.SNAPSHOT_CASES ?? "").split(",").filter(Boolean);
 const listed = [];
@@ -93,7 +117,7 @@ if (!CONFIG) {
   for (const c of caps) listed.push(...(await api(`/api/capabilities/${enc(c.id)}/cases`)).map((x) => x.case_id));
   listed.push(...(await api("/api/inbox")).filter((i) => !AGENTS.length || AGENTS.includes(i.capability_id)).map((i) => i.case_id));
 }
-const caseIds = CONFIG ? [] : [...new Set([...extra, ...listed])];
+const caseIds = CONFIG ? [] : [...new Set([...extra, ...listed.filter((id) => !bulk.has(id))])];
 for (const id of caseIds) await visit(`/cases/${id}`);
 for (const path of SCOPE === "all" ? ["/operations", "/authoring", "/audit", "/connectors"] : ["/connectors"]) await visit(path);
 await b.close();
@@ -177,13 +201,21 @@ if (CONFIG) {
 const caseRef = new RegExp(`"((?:${caps.map((c) => c.id.replace(/[.]/g, "\\.")).join("|")})\\.[0-9a-f]{12}(?:\\.f\\d+)?)"`, "g");
 for (let more = !CONFIG; more;) {
   const named = new Set([...JSON.stringify(Object.values(data).map((r) => r.body)).matchAll(caseRef)].map((m) => m[1]));
-  const missing = [...named].filter((id) => !data[`/api/cases/${enc(id)}`]);
+  const missing = [...named].filter((id) => !data[`/api/cases/${enc(id)}`] && !bulk.has(id));
   more = false;
   for (const id of missing) { await recordCase(id); more = more || !!data[`/api/cases/${enc(id)}`]; }
 }
+
+// Notifications and questions about a task kept only as a summary row are left out.
+const kept = (caseId) => !caseId || !!data[`/api/cases/${enc(caseId)}`];
+if (data["/api/notifications"]) {
+  const items = data["/api/notifications"].body.items.filter((n) => kept(n.case_id));
+  data["/api/notifications"].body = { ...data["/api/notifications"].body, items, unread: items.filter((n) => !n.read).length };
+}
+if (data["/api/requests"]) data["/api/requests"].body = data["/api/requests"].body.filter((r) => kept(r.case_id));
 
 // Stored compressed (most of it is run state that repeats); the snapshot unpacks it.
 const json = JSON.stringify({ user: USER, captured_at: new Date().toISOString(), scope: SCOPE, responses: data });
 fs.writeFileSync(OUT, zlib.gzipSync(json, { level: 9 }).toString("base64"));
 const cases = Object.keys(data).filter((k) => /^\/api\/cases\/[^/]+$/.test(k)).length;
-console.log(`captured ${Object.keys(data).length} responses, ${cases} cases (${(json.length / 1e6).toFixed(1)} MB) → src/snapshot/data.b64 (${(fs.statSync(OUT).size / 1e6).toFixed(1)} MB)`);
+console.log(`captured ${Object.keys(data).length} responses, ${cases} cases in full, ${bulk.size} as summary rows (${(json.length / 1e6).toFixed(1)} MB) → src/snapshot/data.b64 (${(fs.statSync(OUT).size / 1e6).toFixed(1)} MB)`);

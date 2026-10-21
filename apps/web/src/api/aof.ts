@@ -457,6 +457,62 @@ export interface InboxRow {
   acting_for?: string | null;
   /** Late items for a key already worked: the day's case. */
   follow_up_of?: string | null;
+  /** The business date the agent's Summary files the task under (its COB, date or period). */
+  summary_date?: string | null;
+}
+
+/** One proposal still open in a task, as the agent's Summary lists it. */
+export interface SummaryProposal {
+  group_id: string;
+  label: string;
+  verdict: string | null;
+  status: string;
+  items: number;
+  amount: number | null;
+  flags: ReviewFlag[];
+  blockers: string[];
+  /** The caller may approve it with others (not held for one-by-one review). */
+  ready: boolean;
+  needs_comment: boolean;
+}
+
+export interface SummaryTask {
+  case_id: string;
+  subject: string;
+  team_group: string | null;
+  status: CaseStatus;
+  outcome: string | null;
+  /** One value per dimension, in the order of `dimensions`. */
+  facts: (string | null)[];
+  items: number;
+  groups: number;
+  settled: number;
+  exposure: number | null;
+  unit: string | null;
+  due_at: string | null;
+  due_state: DueState;
+  can_decide: boolean;
+  open: SummaryProposal[];
+}
+
+/** An agent's business date at a glance: every task, the facts it is grouped by, its open proposals. */
+export interface AgentSummary {
+  capability_id: string;
+  capability_name: string;
+  case_label: string;
+  dates: string[];
+  date: string | null;
+  dimensions: { field: string; label: string }[];
+  groups: { group: string; name: string; case_label: string; checklist: { id: string; label: string; required: boolean }[] }[];
+  tasks: SummaryTask[];
+  totals: Record<string, number>;
+}
+
+export interface SummaryDecisionResult {
+  decided: number;
+  refused: { case_id: string; group_id: string; reason: string }[];
+  refused_count: number;
+  reasons: { reason: string; count: number }[];
 }
 
 export interface Overview {
@@ -524,6 +580,12 @@ export const useCases = (id: string, teamGroup?: string) =>
     queryFn: () =>
       api.get<CaseSummary[]>(`/capabilities/${enc(id)}/cases${teamGroup ? `?team_group=${enc(teamGroup)}` : ""}`),
   });
+export const useSummary = (id: string, date?: string, enabled = true) =>
+  useQuery({
+    queryKey: ["summary", id, date ?? "latest"],
+    queryFn: () => api.get<AgentSummary>(`/capabilities/${enc(id)}/summary${date ? `?date=${enc(date)}` : ""}`),
+    enabled,
+  });
 export const useGroups = (id: string, enabled = true) =>
   useQuery({ queryKey: ["groups", id], queryFn: () => api.get<TeamGroup[]>(`/capabilities/${enc(id)}/groups`), enabled });
 export const useGroup = (id: string, group: string) =>
@@ -555,7 +617,7 @@ function useRefreshCases() {
   const qc = useQueryClient();
   return (detail?: CaseDetail) => {
     if (detail) qc.setQueryData(["case", detail.case_id], detail);
-    for (const key of ["inbox", "overview", "audit", "cases"]) qc.invalidateQueries({ queryKey: [key] });
+    for (const key of ["inbox", "overview", "audit", "cases", "summary"]) qc.invalidateQueries({ queryKey: [key] });
   };
 }
 
@@ -680,6 +742,29 @@ export function useBulkDecide(caseId: string) {
         },
       ),
     onSuccess: (res) => refresh(res.case),
+  });
+}
+
+/** One decision on a pattern of proposals across many tasks; each task checks it as its own would. */
+export function useDecideAcross(capabilityId: string) {
+  const refresh = useRefreshCases();
+  return useMutation({
+    mutationFn: (v: {
+      targets: { case_id: string; group_ids: string[] }[];
+      action: "approve" | "reject";
+      comment: string;
+      reviewSeconds?: number;
+      checklist?: ChecklistAnswer[];
+    }) =>
+      api.post<SummaryDecisionResult>(`/capabilities/${enc(capabilityId)}/summary/decisions`, {
+        targets: v.targets,
+        action: v.action,
+        comment: v.comment || null,
+        review_seconds: v.reviewSeconds ?? null,
+        checklist: v.checklist ?? null,
+        idempotency_key: newIdempotencyKey(),
+      }),
+    onSuccess: () => refresh(),
   });
 }
 

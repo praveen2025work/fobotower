@@ -108,7 +108,7 @@ Each row is built only from the blocks above. The last rows show the same platfo
 | Product control | FOBO break investigation (running) | load breaks, enrich, playbook, tollgate, reason, follow-through | Product control | Tickets to owning teams |
 | Product control | Independent price verification | reference data ×3 vendors, computed fields, recompute vs desk mark, classify, journal entries | Valuation control | Valuation reserves (posted) |
 | Product control | Limit breach investigation | reference data, change over periods, reason, authority tiers, follow-through | Risk, by authority | Temporary excess decision |
-| Financial control | Reconciliation investigation (running) | match two systems, rules, reason, follow-through | Finance operations | Write-offs within limit |
+| Financial control | Helix FOBO Agent (running) | match two systems, rules, reason, follow-through | Finance operations | Write-offs within limit |
 | Financial control | Month-end accruals (running) | period open?, chart and authority data, journal entries, post | Reviewers by authority; controller releases | Journals to the ledger |
 | Financial control | Balance-sheet substantiation | change over periods, risk score, child case per account, attestation, report | Account owners | Sign-off pack |
 | Financial control | Intercompany matching | match several systems, currency, roll-up, journal entries | Both entities' owners | Elimination journals |
@@ -138,8 +138,8 @@ Ten capabilities run on the platform. They use stub connectors here, and have of
 
 | Capability | Area | What it shows |
 | --- | --- | --- |
-| Break investigation (FOBO) | Product control | A full playbook (checks, categories, verdict table, guards); team groups for Prime and Rates; a tollgate before the model; follow-through on the next business day; tickets to owning teams |
-| Reconciliation investigation | Financial control | Agent One Finance matches two systems itself; rules settle write-offs within limit, and nothing is written off twice |
+| Balance Recon Agent (FOBO) | Product control | A full playbook (checks, categories, verdict table, guards); team groups for Prime and Rates; a tollgate before the model; follow-through on the next business day; tickets to owning teams |
+| Helix FOBO Agent | Financial control | Agent One Finance matches two systems itself; rules settle write-offs within limit, and nothing is written off twice |
 | P&L variance commentary | Financial reporting | Commentary in sections, published to the reporting pack after a second person releases it |
 | Report validation | Financial reporting | A workbook matched to GL balances; a PDF report written after release |
 | Payment exceptions | Treasury and payments | The first non-finance capability, built only from data steps; uses the payments team's own risk service |
@@ -147,7 +147,7 @@ Ten capabilities run on the platform. They use stub connectors here, and have of
 | Complaint handling | Beyond Finance | A timeline the model reads; related complaints; the 8-week clock; screening candidates; acknowledgements sent only after approval; redress above the limit reserved for the lead |
 | Control operating test | Finance controls | A reproducible sample; one child case per sample; the parent waits for them all; the control owner attests; a PDF report |
 | Control test — one sample | Finance controls | The operating test's child case: each attribute performed and evidenced, signed off by a tester |
-| Break investigation (skill session) | Product control | The FOBO skill run as one model session per book and COB with MB Rec, MOTIF and CATS tools; figures checked against the tool results; a controller signs off every break |
+| Balance Recon Agent (skill session) | Product control | The FOBO skill run as one model session per book and COB with MB Rec, MOTIF and CATS tools; figures checked against the tool results; a controller signs off every break |
 
 ## How a team adopts it
 

@@ -10,8 +10,8 @@
 # The values below are the defaults a group starts from (the cash setup).
 
 id: recon.investigation
-name: Reconciliation investigation
-description: Match two systems, explain every break, sign off. Each rec group configures its own sources, keys, tolerances, rules and reviewers.
+name: Helix FOBO Agent
+description: Reconciles CATS to MOTIF for every master book (and any other two systems), explains every break, and a controller signs off. Each rec group configures its own sources, keys, tolerances, rules and reviewers.
 
 owners:
   people: [erin]
@@ -77,6 +77,7 @@ configurable:
   - case.item_label
   - case.key
   - case.subject
+  - case.summarize_by
   - case.scopes
   - case.opens_on
   - case.schedule

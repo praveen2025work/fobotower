@@ -1,4 +1,4 @@
-# FOBO Rates on Break investigation: the same capability and the same
+# FOBO Rates on Balance Recon Agent: the same capability and the same
 # controllers' skill as FOBO Prime (fobo-prime.yaml) — MB Rec's breaks, the
 # §8 scenarios, timing, FO-1…BO-6, the verdict table, R2, P1, follow-through,
 # the §12 sections and §14 checklist — run by the Rates team with its own:
@@ -26,6 +26,7 @@ set:
     label: MB Rec breaks
     item_label: Break
     subject: "{book_label} · COB {cob}"
+    summarize_by: [book_business, book_region, book_desk, book_product]   # the agent's Summary
     # A case opens when MB Rec finishes its end-of-day run for a book and posts
     # the COB to POST /api/events — the breaks exist only once MB Rec has
     # reconciled. (The CATS vs MOTIF matching group keeps the 06:30 schedule.)

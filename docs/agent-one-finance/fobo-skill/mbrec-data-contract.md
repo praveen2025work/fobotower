@@ -4,7 +4,7 @@
 parameters), and the FOBO Prime group owners.
 
 Agent One Finance derives this from the configuration (`fobo-prime.yaml`); it is never typed by hand. The
-same list is live in the console: *Capabilities → Break investigation → Groups → FOBO Prime →
+same list is live in the console: *Capabilities → Balance Recon Agent → Groups → FOBO Prime →
 Data and parameters*. For any other capability or group the panel shows its own contract. The
 API is `GET /api/capabilities/{id}/contract?team_group={group}`.
 

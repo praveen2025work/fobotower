@@ -11,7 +11,7 @@ The section-by-section mapping of the skill is in [skill-to-agent-one-finance.md
 
 | Layer | What it holds | Who owns it | FOBO |
 |---|---|---|---|
-| **Capability** | The shape of the work, the same for every team: where breaks come from, which steps run and in what order, the tollgate, the gates, retention, and what a team may change | Agent One Finance team and the capability owner (erin) | *Break investigation* (`break.investigation`) |
+| **Capability** | The shape of the work, the same for every team: where breaks come from, which steps run and in what order, the tollgate, the gates, retention, and what a team may change | Agent One Finance team and the capability owner (erin) | *Balance Recon Agent* (`break.investigation`) |
 | **Team group** | One team's configuration of it: its books, thresholds, playbook (the skill's rules), the model's instructions and tools, reviewers, who may be asked, deadline | That team's owners (frank) | *FOBO Prime — MB Rec breaks* (`fobo-prime`) |
 
 Rates is a second group on the same capability (`fobo-rates`), with its own books, thresholds and
@@ -22,9 +22,9 @@ Both layers are edited in **Capabilities → *name* → Configure**. Each change
 is made. It is live only when a second owner approves it, and past cases keep the version they
 ran on.
 
-## Part 1 — The capability: *Break investigation*
+## Part 1 — The capability: *Balance Recon Agent*
 
-Open *Capabilities → Break investigation → **Configure***. The pipeline is on the left:
+Open *Capabilities → Balance Recon Agent → **Configure***. The pipeline is on the left:
 - a green dot means the step runs;
 - a lock means a gate that is always on;
 - a hand means the run stops for a person.
@@ -52,7 +52,7 @@ remove the tollgate or a gate; it shows locked in the team's view.
 
 ## Part 2 — The team group: *FOBO Prime — MB Rec breaks*
 
-Open *Capabilities → Break investigation → Groups → FOBO Prime*. Settings the capability keeps
+Open *Capabilities → Balance Recon Agent → Groups → FOBO Prime*. Settings the capability keeps
 are shown locked, with a padlock. Everything else is the team's, and these screens are where
 the skill's rules live.
 

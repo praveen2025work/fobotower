@@ -24,6 +24,7 @@ from agent_one_finance.models import (
     PublishApproval,
     ToolCall,
 )
+from agent_one_finance.summary import date_field
 
 
 async def _visible_cases(caller: Caller, **filters) -> list[tuple[Case, Manifest]]:
@@ -70,6 +71,8 @@ def _summary(c: Case, m: Manifest, groups: list[ProposalGroup], decided: set[str
         "case_label": m.case.label, "subject": c.subject, "status": c.status,
         "gate": gate_step(c.status),
         "team_group": c.team_group,
+        # the business date the agent's Summary files it under (summary.date_field)
+        "summary_date": c.case_key.get(f) if (f := date_field(m)) else None,
         # late items for a key already worked (case.late_items: follow_up)
         "follow_up_of": c.follow_up_of,
         "outcome": c.outcome, "opened_at": c.opened_at, "opened_by": c.opened_by,

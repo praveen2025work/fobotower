@@ -84,7 +84,7 @@ A full pass: as **alice**, Capabilities → *P&L variance commentary* → open l
 approve each proposal. As **bob**, the lane is in your Inbox as *Release* → release the
 write-back → it is published. As **carol**, Authoring → paste a BRD → draft → submit; as
 **bob**, approve the draft → a new capability is live. As **frank**, Capabilities →
-*Reconciliation investigation* → Groups shows the two rec groups; open a CATS vs MOTIF rec run for
+*Helix FOBO Agent* → Groups shows the two rec groups; open a CATS vs MOTIF rec run for
 PRIME-MB-01 / 2026-08-03 — each break shows FOBO's six cause checks, its category, side, verdict
 and owning team; a POST is flagged "requires controller confirmation" while the materiality
 threshold is unset; set the threshold in the group's YAML and have **gina** approve it. In any case,

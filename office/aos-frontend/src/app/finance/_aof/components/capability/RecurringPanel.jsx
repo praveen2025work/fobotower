@@ -3,11 +3,11 @@
 // Items that keep coming back (manifest insights.recurring): the same item on
 // the same book / entity, run after run — a root cause to fix upstream.
 
-import { Link } from "../../office/router";
 import { Repeat } from "lucide-react";
 
 import { useRecurring } from "../../api/aof";
 import { Card, Empty, ErrorState, Loading } from "../ui";
+import TaskLink from "../TaskLink";
 
 export default function RecurringPanel({ capabilityId, teamGroup }) {
   const rows = useRecurring(capabilityId, teamGroup);
@@ -50,12 +50,9 @@ export default function RecurringPanel({ capabilityId, teamGroup }) {
                     <span className="rounded bg-orange-100 px-1.5 text-xs font-semibold text-orange-700">{r.runs}</span>
                   </td>
                   <td className="px-2 py-1.5 text-xs">
-                    <Link
-                      to={`/cases/${encodeURIComponent(r.latest_case_id)}`}
-                      className="text-primary-700 hover:underline"
-                    >
+                    <TaskLink id={r.latest_case_id} className="text-primary-700 hover:underline">
                       {r.latest_subject}
-                    </Link>
+                    </TaskLink>
                   </td>
                 </tr>
               ))}

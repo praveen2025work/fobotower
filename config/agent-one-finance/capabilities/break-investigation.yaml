@@ -12,8 +12,8 @@
 # instructions, tollgates' checks and reviewers.
 
 id: break.investigation
-name: Break investigation
-description: Investigate breaks a reconciliation system has already found — explain each, settle what the playbook can, check timing and other sources, a controller signs off.
+name: Balance Recon Agent
+description: Investigates the breaks MB Rec's balance reconciliation has already found — explain each, settle what the playbook can, check timing and other sources, a controller signs off.
 
 owners:
   people: [erin]
@@ -111,6 +111,7 @@ configurable:
   - case.label
   - case.item_label
   - case.subject
+  - case.summarize_by
   - case.opens_on
   - case.schedule
   - case.schedule_keys

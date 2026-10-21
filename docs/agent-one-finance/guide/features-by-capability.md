@@ -8,9 +8,9 @@ written for one team. The matrix shows how each capability in this repository us
 feature, so a new team can see its options.
 
 **Columns:**
-- **FOBO Prime / FOBO Rates**: *Break investigation*, groups `fobo-prime` and `fobo-rates`
+- **FOBO Prime / FOBO Rates**: *Balance Recon Agent*, groups `fobo-prime` and `fobo-rates`
   (MB Rec's breaks).
-- **Cash**: *Reconciliation investigation*, group `cash-bank-ledger` (bank vs ledger, matched by
+- **Cash**: *Helix FOBO Agent*, group `cash-bank-ledger` (bank vs ledger, matched by
   Agent One Finance).
 - **Variance**: *P&L variance commentary*.
 - **Report validation**: *Report validation*.
@@ -94,7 +94,7 @@ The same matrix for the example capabilities built from the step families
    ([runbook](real-model-evals.md)).
 
 A team group may set a feature only if the capability lists it under `configurable`. For
-*Break investigation* and *Reconciliation investigation*, these are listed: `follow_through`,
+*Balance Recon Agent* and *Helix FOBO Agent*, these are listed: `follow_through`,
 `reasoning.sections`, `review.checklist`, `requests` and `insights`.
 
 ## Payment exceptions: the first non-finance capability

@@ -63,6 +63,10 @@ class CaseSpec(Strict):
     #   follow_up  a follow-up case linked to it reads the source again and
     #              takes only the items no case for that key has yet
     late_items: Literal["ignore", "follow_up"] = "ignore"
+    # What the agent's Summary groups a day's tasks by, outermost first: key fields,
+    # or facts the reference data holds about a key value, as in subject — e.g.
+    # [book_business, book_region, book_desk] for thousands of books.
+    summarize_by: list[str] = Field(default_factory=list)
 
 
 class ToolCallSpec(Strict):
@@ -882,6 +886,11 @@ def problems(m: Manifest) -> list[str]:
     for field in m.case.scopes:
         if field not in m.case.key:
             out.append(f"case.scopes: `{field}` is not in case.key")
+    for field in m.case.summarize_by:
+        if field not in m.case.key and not any(field.startswith(f"{k}_") for k in m.case.key):
+            out.append(f"case.summarize_by: `{field}` is neither a key field nor a fact about one (<key field>_<attribute>)")
+        elif field not in m.case.key and not m.knowledge.reference:
+            out.append(f"case.summarize_by: `{field}` is read from reference data; set knowledge.reference")
     if not m.owners.people and not m.owners.role:
         out.append("owners: name at least one person or a role")
     top = set(Manifest.model_fields)

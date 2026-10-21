@@ -24,7 +24,7 @@ and Rates groups then show the same screens for a reconciliation.
 
 | Term | Meaning | Example |
 |---|---|---|
-| **Capability** | A kind of work, written as configuration (a *manifest*) | Accruals review, Reconciliation investigation |
+| **Capability** | A kind of work, written as configuration (a *manifest*) | Accruals review, Helix FOBO Agent |
 | **Team group** | One team's settings for a shared capability | CATS vs MOTIF — Rates |
 | **Case** | One unit of work: one entity and period, or one book and COB | `UK01 accruals · 2026-09` |
 | **Item / group** | Items are the lines in a case; similar items are grouped, and **one decision covers a whole group** | the accrual lines of account 6200 |
@@ -240,9 +240,39 @@ Every lookup is audited, and protected fields stay masked.
 
 ![Run history](img/46-run-history.png)
 
+## 6a. Thousands of tasks a day: the Summary
+
+With a task per master book, one COB is 1,000–2,000 tasks (the demo's Helix FOBO Agent has
+1,240 FI Credit books in APAC, EMEA and the Americas). Nobody opens them one by one. An
+agent's **Summary** tab shows the day in one place:
+
+- **The day's totals**: tasks, how many reconciled clean, how many wait for review, how many
+  are signed off, and the amount still open. Pick another business date at the top.
+- **By business, region, desk or product**: what the agent's groups name in
+  `case.summarize_by` (key fields, or facts the reference data holds about one, such as
+  `book_region`). Click a row to narrow to it: *Region: EMEA*, then by desk, then by product.
+  A chip above the table removes a filter.
+- **The same break across many books**: the open proposals of the tasks shown, grouped by
+  label and verdict — e.g. *Settlement break · back office → POST* in 180 Americas books.
+  **Approve N** approves that pattern in every task at once, with one explanation.
+- **Tasks**: the tasks shown, waiting first, then by open amount, each opening its workspace.
+
+Approving a pattern is not a shortcut around the review rules. Each task checks the
+decision exactly as its own *Approve N straightforward* would:
+
+- only people who may review the task decide it, and maker-checker still applies;
+- proposals held for one-by-one review (`review.bulk_exclude`: a judgement call, a verdict
+  needing confirmation) stay open, and the row says how many and why;
+- an escalated proposal needs the explanation (`review.require_comment`);
+- a group's sign-off checklist is answered once for every proposal approved;
+- the result says how many were approved and why any were left open.
+
+The **inbox** stays short: when six or more tasks of one agent, group and date wait on you,
+they show as one row ("CATS vs MOTIF · 2026-10-20: 312 tasks") that opens the Summary.
+
 ## 7. Team groups: FOBO Prime and Rates
 
-*Reconciliation investigation* is one capability shared by several teams. Each group sets
+*Helix FOBO Agent* is one capability shared by several teams. Each group sets
 only what the capability allows (`configurable`):
 
 - sources;

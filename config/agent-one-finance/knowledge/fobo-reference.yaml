@@ -43,24 +43,45 @@ nodes:
   # Each master book's product, from 2026-10-13 (the stub's books hold one product's
   # instruments from that COB). `label` names the book in task titles: a subject template
   # uses {book_label}, and falls back to the book code before this date.
-  - { id: "book:RATES-LDN-01", kind: book, valid_from: 2026-10-13, attrs: { name: RATES-LDN-01, legal_entity: LE-UK-01, product: "USD swaps", label: "USD swaps (RATES-LDN-01)" } }
-  - { id: "book:RATES-LDN-02", kind: book, valid_from: 2026-10-13, attrs: { name: RATES-LDN-02, legal_entity: LE-UK-01, product: "EUR swaps", label: "EUR swaps (RATES-LDN-02)" } }
-  - { id: "book:RATES-LDN-03", kind: book, valid_from: 2026-10-13, attrs: { name: RATES-LDN-03, legal_entity: LE-UK-01, product: "GBP swaps", label: "GBP swaps (RATES-LDN-03)" } }
-  - { id: "book:RATES-LDN-04", kind: book, valid_from: 2026-10-13, attrs: { name: RATES-LDN-04, legal_entity: LE-UK-01, product: "Rates futures", label: "Rates futures (RATES-LDN-04)" } }
-  - { id: "book:RATES-NY-01", kind: book, valid_from: 2026-10-13, attrs: { name: RATES-NY-01, legal_entity: LE-US-01, product: "US Treasuries", label: "US Treasuries (RATES-NY-01)" } }
-  - { id: "book:RATES-NY-02", kind: book, valid_from: 2026-10-13, attrs: { name: RATES-NY-02, legal_entity: LE-US-01, product: "USD swaptions", label: "USD swaptions (RATES-NY-02)" } }
-  - { id: "book:PRIME-MB-01", kind: book, valid_from: 2026-10-13, attrs: { name: PRIME-MB-01, legal_entity: LE-APAC-01, product: "Govt bonds", label: "Govt bonds (PRIME-MB-01)" } }
-  - { id: "book:PRIME-MB-02", kind: book, valid_from: 2026-10-13, attrs: { name: PRIME-MB-02, legal_entity: LE-APAC-01, product: "FX forwards", label: "FX forwards (PRIME-MB-02)" } }
-  - { id: "book:PRIME-MB-03", kind: book, valid_from: 2026-10-13, attrs: { name: PRIME-MB-03, legal_entity: LE-APAC-01, product: "Credit indices", label: "Credit indices (PRIME-MB-03)" } }
-  - { id: "book:PRIME-MB-04", kind: book, valid_from: 2026-10-13, attrs: { name: PRIME-MB-04, legal_entity: LE-APAC-01, product: "Inflation swaps", label: "Inflation swaps (PRIME-MB-04)" } }
-  - { id: "book:PRIME-MB-05", kind: book, valid_from: 2026-10-13, attrs: { name: PRIME-MB-05, legal_entity: LE-APAC-01, product: "Cross-currency swaps", label: "Cross-currency swaps (PRIME-MB-05)" } }
-  - { id: "book:PRIME-MB-06", kind: book, valid_from: 2026-10-13, attrs: { name: PRIME-MB-06, legal_entity: LE-APAC-01, product: "Money markets", label: "Money markets (PRIME-MB-06)" } }
-  - { id: "book:PRIME-MB-07", kind: book, valid_from: 2026-10-13, attrs: { name: PRIME-MB-07, legal_entity: LE-APAC-01, product: "Govt bonds", label: "Govt bonds (PRIME-MB-07)" } }
-  - { id: "book:PRIME-MB-08", kind: book, valid_from: 2026-10-13, attrs: { name: PRIME-MB-08, legal_entity: LE-APAC-01, product: "FX forwards", label: "FX forwards (PRIME-MB-08)" } }
-  - { id: "book:PRIME-MB-09", kind: book, valid_from: 2026-10-13, attrs: { name: PRIME-MB-09, legal_entity: LE-APAC-01, product: "Credit indices", label: "Credit indices (PRIME-MB-09)" } }
-  - { id: "book:PRIME-MB-10", kind: book, valid_from: 2026-10-13, attrs: { name: PRIME-MB-10, legal_entity: LE-APAC-01, product: "USD swaps", label: "USD swaps (PRIME-MB-10)" } }
-  - { id: "book:PRIME-MB-11", kind: book, valid_from: 2026-10-13, attrs: { name: PRIME-MB-11, legal_entity: LE-APAC-01, product: "EUR swaps", label: "EUR swaps (PRIME-MB-11)" } }
-  - { id: "book:PRIME-MB-12", kind: book, valid_from: 2026-10-13, attrs: { name: PRIME-MB-12, legal_entity: LE-APAC-01, product: "Inflation swaps", label: "Inflation swaps (PRIME-MB-12)" } }
+  - { id: "book:RATES-LDN-01", kind: book, valid_from: 2026-10-13, valid_to: 2026-10-14, attrs: { name: RATES-LDN-01, legal_entity: LE-UK-01, product: "USD swaps", label: "USD swaps (RATES-LDN-01)" } }
+  - { id: "book:RATES-LDN-02", kind: book, valid_from: 2026-10-13, valid_to: 2026-10-14, attrs: { name: RATES-LDN-02, legal_entity: LE-UK-01, product: "EUR swaps", label: "EUR swaps (RATES-LDN-02)" } }
+  - { id: "book:RATES-LDN-03", kind: book, valid_from: 2026-10-13, valid_to: 2026-10-14, attrs: { name: RATES-LDN-03, legal_entity: LE-UK-01, product: "GBP swaps", label: "GBP swaps (RATES-LDN-03)" } }
+  - { id: "book:RATES-LDN-04", kind: book, valid_from: 2026-10-13, valid_to: 2026-10-14, attrs: { name: RATES-LDN-04, legal_entity: LE-UK-01, product: "Rates futures", label: "Rates futures (RATES-LDN-04)" } }
+  - { id: "book:RATES-NY-01", kind: book, valid_from: 2026-10-13, valid_to: 2026-10-14, attrs: { name: RATES-NY-01, legal_entity: LE-US-01, product: "US Treasuries", label: "US Treasuries (RATES-NY-01)" } }
+  - { id: "book:RATES-NY-02", kind: book, valid_from: 2026-10-13, valid_to: 2026-10-14, attrs: { name: RATES-NY-02, legal_entity: LE-US-01, product: "USD swaptions", label: "USD swaptions (RATES-NY-02)" } }
+  - { id: "book:PRIME-MB-01", kind: book, valid_from: 2026-10-13, valid_to: 2026-10-14, attrs: { name: PRIME-MB-01, legal_entity: LE-APAC-01, product: "Govt bonds", label: "Govt bonds (PRIME-MB-01)" } }
+  - { id: "book:PRIME-MB-02", kind: book, valid_from: 2026-10-13, valid_to: 2026-10-14, attrs: { name: PRIME-MB-02, legal_entity: LE-APAC-01, product: "FX forwards", label: "FX forwards (PRIME-MB-02)" } }
+  - { id: "book:PRIME-MB-03", kind: book, valid_from: 2026-10-13, valid_to: 2026-10-14, attrs: { name: PRIME-MB-03, legal_entity: LE-APAC-01, product: "Credit indices", label: "Credit indices (PRIME-MB-03)" } }
+  - { id: "book:PRIME-MB-04", kind: book, valid_from: 2026-10-13, valid_to: 2026-10-14, attrs: { name: PRIME-MB-04, legal_entity: LE-APAC-01, product: "Inflation swaps", label: "Inflation swaps (PRIME-MB-04)" } }
+  - { id: "book:PRIME-MB-05", kind: book, valid_from: 2026-10-13, valid_to: 2026-10-14, attrs: { name: PRIME-MB-05, legal_entity: LE-APAC-01, product: "Cross-currency swaps", label: "Cross-currency swaps (PRIME-MB-05)" } }
+  - { id: "book:PRIME-MB-06", kind: book, valid_from: 2026-10-13, valid_to: 2026-10-14, attrs: { name: PRIME-MB-06, legal_entity: LE-APAC-01, product: "Money markets", label: "Money markets (PRIME-MB-06)" } }
+  - { id: "book:PRIME-MB-07", kind: book, valid_from: 2026-10-13, valid_to: 2026-10-14, attrs: { name: PRIME-MB-07, legal_entity: LE-APAC-01, product: "Govt bonds", label: "Govt bonds (PRIME-MB-07)" } }
+  - { id: "book:PRIME-MB-08", kind: book, valid_from: 2026-10-13, valid_to: 2026-10-14, attrs: { name: PRIME-MB-08, legal_entity: LE-APAC-01, product: "FX forwards", label: "FX forwards (PRIME-MB-08)" } }
+  - { id: "book:PRIME-MB-09", kind: book, valid_from: 2026-10-13, valid_to: 2026-10-14, attrs: { name: PRIME-MB-09, legal_entity: LE-APAC-01, product: "Credit indices", label: "Credit indices (PRIME-MB-09)" } }
+  - { id: "book:PRIME-MB-10", kind: book, valid_from: 2026-10-13, valid_to: 2026-10-14, attrs: { name: PRIME-MB-10, legal_entity: LE-APAC-01, product: "USD swaps", label: "USD swaps (PRIME-MB-10)" } }
+  - { id: "book:PRIME-MB-11", kind: book, valid_from: 2026-10-13, valid_to: 2026-10-14, attrs: { name: PRIME-MB-11, legal_entity: LE-APAC-01, product: "EUR swaps", label: "EUR swaps (PRIME-MB-11)" } }
+  - { id: "book:PRIME-MB-12", kind: book, valid_from: 2026-10-13, valid_to: 2026-10-14, attrs: { name: PRIME-MB-12, legal_entity: LE-APAC-01, product: "Inflation swaps", label: "Inflation swaps (PRIME-MB-12)" } }
+
+  # From 2026-10-14 each book also names its business, region and desk, which an
+  # agent's Summary groups tasks by (case.summarize_by: book_business, book_region…).
+  - { id: "book:RATES-LDN-01", kind: book, valid_from: 2026-10-14, attrs: { name: RATES-LDN-01, legal_entity: LE-UK-01, product: "USD swaps", label: "USD swaps (RATES-LDN-01)", business: Rates, region: EMEA, desk: RATES-LDN } }
+  - { id: "book:RATES-LDN-02", kind: book, valid_from: 2026-10-14, attrs: { name: RATES-LDN-02, legal_entity: LE-UK-01, product: "EUR swaps", label: "EUR swaps (RATES-LDN-02)", business: Rates, region: EMEA, desk: RATES-LDN } }
+  - { id: "book:RATES-LDN-03", kind: book, valid_from: 2026-10-14, attrs: { name: RATES-LDN-03, legal_entity: LE-UK-01, product: "GBP swaps", label: "GBP swaps (RATES-LDN-03)", business: Rates, region: EMEA, desk: RATES-LDN } }
+  - { id: "book:RATES-LDN-04", kind: book, valid_from: 2026-10-14, attrs: { name: RATES-LDN-04, legal_entity: LE-UK-01, product: "Rates futures", label: "Rates futures (RATES-LDN-04)", business: Rates, region: EMEA, desk: RATES-LDN } }
+  - { id: "book:RATES-NY-01", kind: book, valid_from: 2026-10-14, attrs: { name: RATES-NY-01, legal_entity: LE-US-01, product: "US Treasuries", label: "US Treasuries (RATES-NY-01)", business: Rates, region: Americas, desk: RATES-NY } }
+  - { id: "book:RATES-NY-02", kind: book, valid_from: 2026-10-14, attrs: { name: RATES-NY-02, legal_entity: LE-US-01, product: "USD swaptions", label: "USD swaptions (RATES-NY-02)", business: Rates, region: Americas, desk: RATES-NY } }
+  - { id: "book:PRIME-MB-01", kind: book, valid_from: 2026-10-14, attrs: { name: PRIME-MB-01, legal_entity: LE-APAC-01, product: "Govt bonds", label: "Govt bonds (PRIME-MB-01)", business: Prime, region: APAC, desk: APAC-CASH } }
+  - { id: "book:PRIME-MB-02", kind: book, valid_from: 2026-10-14, attrs: { name: PRIME-MB-02, legal_entity: LE-APAC-01, product: "FX forwards", label: "FX forwards (PRIME-MB-02)", business: Prime, region: APAC, desk: APAC-CASH } }
+  - { id: "book:PRIME-MB-03", kind: book, valid_from: 2026-10-14, attrs: { name: PRIME-MB-03, legal_entity: LE-APAC-01, product: "Credit indices", label: "Credit indices (PRIME-MB-03)", business: Prime, region: APAC, desk: APAC-CASH } }
+  - { id: "book:PRIME-MB-04", kind: book, valid_from: 2026-10-14, attrs: { name: PRIME-MB-04, legal_entity: LE-APAC-01, product: "Inflation swaps", label: "Inflation swaps (PRIME-MB-04)", business: Prime, region: APAC, desk: APAC-CASH } }
+  - { id: "book:PRIME-MB-05", kind: book, valid_from: 2026-10-14, attrs: { name: PRIME-MB-05, legal_entity: LE-APAC-01, product: "Cross-currency swaps", label: "Cross-currency swaps (PRIME-MB-05)", business: Prime, region: APAC, desk: APAC-CASH } }
+  - { id: "book:PRIME-MB-06", kind: book, valid_from: 2026-10-14, attrs: { name: PRIME-MB-06, legal_entity: LE-APAC-01, product: "Money markets", label: "Money markets (PRIME-MB-06)", business: Prime, region: APAC, desk: APAC-CASH } }
+  - { id: "book:PRIME-MB-07", kind: book, valid_from: 2026-10-14, attrs: { name: PRIME-MB-07, legal_entity: LE-APAC-01, product: "Govt bonds", label: "Govt bonds (PRIME-MB-07)", business: Prime, region: APAC, desk: APAC-CASH } }
+  - { id: "book:PRIME-MB-08", kind: book, valid_from: 2026-10-14, attrs: { name: PRIME-MB-08, legal_entity: LE-APAC-01, product: "FX forwards", label: "FX forwards (PRIME-MB-08)", business: Prime, region: APAC, desk: APAC-CASH } }
+  - { id: "book:PRIME-MB-09", kind: book, valid_from: 2026-10-14, attrs: { name: PRIME-MB-09, legal_entity: LE-APAC-01, product: "Credit indices", label: "Credit indices (PRIME-MB-09)", business: Prime, region: APAC, desk: APAC-CASH } }
+  - { id: "book:PRIME-MB-10", kind: book, valid_from: 2026-10-14, attrs: { name: PRIME-MB-10, legal_entity: LE-APAC-01, product: "USD swaps", label: "USD swaps (PRIME-MB-10)", business: Prime, region: APAC, desk: APAC-CASH } }
+  - { id: "book:PRIME-MB-11", kind: book, valid_from: 2026-10-14, attrs: { name: PRIME-MB-11, legal_entity: LE-APAC-01, product: "EUR swaps", label: "EUR swaps (PRIME-MB-11)", business: Prime, region: APAC, desk: APAC-CASH } }
+  - { id: "book:PRIME-MB-12", kind: book, valid_from: 2026-10-14, attrs: { name: PRIME-MB-12, legal_entity: LE-APAC-01, product: "Inflation swaps", label: "Inflation swaps (PRIME-MB-12)", business: Prime, region: APAC, desk: APAC-CASH } }
 
 edges:
   - { from: "desk:APAC-CASH",     relation: escalates_to, to: "team:Operations" }

@@ -15,3 +15,10 @@ export function configOnly() {
 export function platformPages() {
   return scope() === "all";
 }
+
+/** Whether a page's data is in the snapshot (always, in the live console): a snapshot
+ *  holds a few tasks in full and the rest only as rows of a summary. `apiPath`: /cases/<id>. */
+export function recorded(apiPath) {
+  const has = globalThis.__aofSnapshotHas;
+  return has ? has(apiPath) : true;
+}

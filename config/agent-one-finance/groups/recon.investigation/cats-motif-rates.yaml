@@ -26,6 +26,7 @@ set:
     item_label: Break
     key: [book, cob]
     subject: "{book_label} · COB {cob}"      # e.g. USD swaps (RATES-LDN-01): the book's reference label
+    summarize_by: [book_business, book_region, book_desk, book_product]   # the agent's Summary
     scopes: { book: book }
     # Each business morning after the Rates EOD curves, open yesterday's COB for
     # every Rates book; MOTIF's

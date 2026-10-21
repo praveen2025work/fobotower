@@ -3,11 +3,11 @@
 // the model proposed that reviewers keep approving unchanged: candidates for
 // a rule or a deterministic category.
 
-import { Link } from "react-router-dom";
 import { Lightbulb } from "lucide-react";
 
 import { useLearning } from "../../api/aof";
 import { Card, ErrorState, Loading } from "../ui";
+import TaskLink from "../TaskLink";
 
 export default function LearningPanel({ capabilityId, teamGroup }: { capabilityId: string; teamGroup?: string }) {
   const q = useLearning(capabilityId, teamGroup);
@@ -32,7 +32,7 @@ export default function LearningPanel({ capabilityId, teamGroup }: { capabilityI
                     <li key={r.case_id + r.item_id} className="flex gap-2">
                       <span className="font-medium text-surface-800">{r.item_id}</span>
                       <span className="min-w-0 flex-1 truncate text-surface-500">{r.why}</span>
-                      <Link to={`/cases/${encodeURIComponent(r.case_id)}`} className="shrink-0 text-primary-700 hover:underline">{r.subject}</Link>
+                      <TaskLink id={r.case_id} className="shrink-0 text-primary-700 hover:underline">{r.subject}</TaskLink>
                     </li>
                   ))}
                 </ul>

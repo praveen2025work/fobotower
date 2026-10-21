@@ -1,7 +1,7 @@
 # The FOBO Investigation Skill in Agent One Finance
 
 **Date:** 2026-10-05 · **Source:** [`fobo-investigation-skill-v1.0.md`](fobo-investigation-skill-v1.0.md)
-(the controllers' skill) · **Where it lives:** *Break investigation* capability, group
+(the controllers' skill) · **Where it lives:** *Balance Recon Agent* capability, group
 *FOBO Prime — MB Rec breaks* (`config/agent-one-finance/groups/break.investigation/fobo-prime.yaml`).
 
 ## The translation in one picture

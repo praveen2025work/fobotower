@@ -10,6 +10,7 @@ import { Bell } from "lucide-react";
 
 import { useMarkRead, useNotifications } from "../api/aof";
 import { formatTime } from "./ui";
+import { recorded } from "../scope";
 
 export default function NotificationBell({ enabled = true }) {
   const notes = useNotifications(enabled);
@@ -64,7 +65,8 @@ export default function NotificationBell({ enabled = true }) {
                   onClick={() => {
                     if (!n.read) mark.mutate([n.notification_id]);
                     setOpen(false);
-                    if (n.case_id) navigate(`/cases/${encodeURIComponent(n.case_id)}`);
+                    if (n.case_id && recorded(`/cases/${encodeURIComponent(n.case_id)}`))
+                      navigate(`/cases/${encodeURIComponent(n.case_id)}`);
                   }}
                   className={clsx(
                     "block w-full border-b border-surface-100 px-3 py-2 text-left hover:bg-surface-50",

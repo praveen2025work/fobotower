@@ -56,7 +56,7 @@ and keeps everything else one click away.
     says what is missing.
 
 14. **Plain words for time and things.** "15 days overdue", not "Overdue 15 days ago"; "1 break",
-    "3 breaks", not "break(s)"; names, not ids ("Break investigation", not `break.investigation`).
+    "3 breaks", not "break(s)"; names, not ids ("Balance Recon Agent", not `break.investigation`).
 
 15. **One card for the decision.** On a case, "Your review" is one line, and the model's finding
     is one card: why a person decides (when escalated), the verdict, then the reasoning.

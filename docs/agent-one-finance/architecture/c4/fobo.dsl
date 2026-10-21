@@ -4,7 +4,7 @@
  * Render with Structurizr Lite:  docker run -it --rm -p 8080:8080 -v $PWD:/usr/local/structurizr structurizr/lite
  * The same views, drawn for reading, are in fobo-c4-architecture.html in this folder.
  */
-workspace "FOBO on Agent One Finance" "Break investigation per named P&L, as configuration on a governed AI framework." {
+workspace "FOBO on Agent One Finance" "Balance Recon Agent per named P&L, as configuration on a governed AI framework." {
 
     model {
         controller = person "FOBO controller" "PC user. Checks the work at the tollgate, decides each group and signs off; a second controller releases postings." "Person"

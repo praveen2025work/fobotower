@@ -59,6 +59,8 @@ export const STAGES: Stage[] = [
       { kind: "text", path: "case.item_label", label: "An item is called", placeholder: "Break" },
       { kind: "list", path: "case.key", label: "A task is identified by", help: "The fields that make one task, e.g. book, cob." },
       { kind: "template", path: "case.subject", label: "Task title", help: "A template over the key, e.g. {book} · COB {cob}; {book_label} uses the book's label from the reference data." },
+      { kind: "list", path: "case.summarize_by", label: "The Summary groups a day's tasks by",
+        help: "Outermost first: key fields, or facts the reference data holds about one, e.g. book_business, book_region, book_desk — for thousands of tasks a day." },
       { kind: "kv", path: "case.scopes", label: "Data scope checks", keyLabel: "Key field", valueLabel: "Entitlement scope", help: "Who may see a task: each key field is checked against the person's data scope." },
       { kind: "select", path: "case.opens_on", label: "Opens", options: [
         { value: "manual", label: "When someone opens it" }, { value: "api", label: "When a system calls the API" },

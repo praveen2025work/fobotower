@@ -18,6 +18,7 @@ import zlib
 
 from mcp.server.mcpserver import MCPServer
 
+from agent_one_finance.stub_connectors import fi_credit as fic
 from agent_one_finance.stub_connectors import fobo_simulation as sim
 
 ACCOUNTS = {
@@ -158,7 +159,8 @@ DESKS = {"UST": "Rates", "BUND": "Rates", "GILT": "Rates", "JGB": "Rates", "IRS"
          "USCPI": "Rates", "UKRPI": "Rates", "EUHICP": "Rates", "XCCY": "Rates",
          "USDJPY": "FX", "AUDUSD": "FX", "USDCHF": "FX",
          "OAT": "Rates", "TIPS": "Rates", "BOBL": "Rates", "USDCAD": "FX", "EURGBP": "FX",
-         "TBILL": "Money markets", "UKTB": "Money markets", "CP": "Money markets", "REPO": "Money markets"}
+         "TBILL": "Money markets", "UKTB": "Money markets", "CP": "Money markets", "REPO": "Money markets",
+         "BOND": "Credit", "CDS": "Credit", "CONV": "Credit"}
 
 # Each master book holds one product, on COBs from PRODUCTS_FROM (earlier COBs keep
 # the mixed books the tests were written against). The products are reference data
@@ -202,6 +204,8 @@ ALL_INSTRUMENTS = sorted({*INSTRUMENTS, *(i for p in PRODUCTS.values() for i in 
 
 def _instruments(book: str, cob: str) -> list[str]:
     """The instruments a book holds on a COB: its product's, or the mixed set before PRODUCTS_FROM."""
+    if fic.is_book(book):
+        return fic.instruments(book, cob)
     product = BOOK_PRODUCTS.get(book)
     return PRODUCTS[product] if product and cob >= PRODUCTS_FROM else INSTRUMENTS
 
@@ -267,9 +271,18 @@ def motif_trades(book: str, cob: str, instrument: str | None = None) -> dict:
 
 def _motif_base(book: str, cob: str) -> list[dict]:
     r = _rng("motif-diff", book, cob)
+    own = not fic.is_book(book) or not fic.clean(book, cob)       # most FI Credit books agree
+    issue = fic.issue_instrument(book, cob) if fic.is_book(book) else None
     rows = []
     for row in _fo_positions(book, cob):
+        if issue and row["instrument"] == issue[0]:
+            if issue[1] == "settle":                               # the batch loaded twice in MOTIF
+                rows.append({**row, "mtm": round(row["mtm"] + _rng("fic-settle-amt", book, cob).uniform(2_000, 40_000), 2)})
+            continue                                               # static: MOTIF cannot book it yet
         roll = r.random()
+        if not own:
+            rows.append(row)
+            continue
         if roll < 0.10:
             continue                                         # not booked in MOTIF yet
         if roll < 0.22:
@@ -291,7 +304,7 @@ RATES_BOOKS = ["RATES-LDN-01", "RATES-LDN-02", "RATES-LDN-03", "RATES-LDN-04", "
 
 @functools.lru_cache(maxsize=4096)
 def _scenario(book: str, cob: str) -> dict:
-    if cob < SCENARIOS_FROM:
+    if cob < SCENARIOS_FROM or fic.is_book(book):
         return {}
     fo = {p["instrument"]: p for p in _fo_positions(book, cob)}
     base = {p["instrument"]: p for p in _motif_base(book, cob)}
@@ -364,8 +377,11 @@ def break_snapshots(book: str, cob: str) -> dict:
         return {"rows": sim.snapshots(book)}
     rows = []
     scenario = _scenario_instruments(book, cob)
+    issue = fic.issue_instrument(book, cob) if fic.is_book(book) else None
     for ins in _instruments(book, cob):
         cause = None if ins in scenario else _rng("cause", book, cob, ins).choice(CAUSES)
+        if issue and ins == issue[0]:
+            cause = {"static": "C2", "settle": "C6"}[issue[1]]
         rows.append({
             "instrument": ins,
             "fo_booking_ts": f"{cob}T23:41:00Z" if cause == "C1" else f"{cob}T17:05:00Z",
@@ -503,7 +519,8 @@ def bond_metadata(instrument: str) -> dict:
     amortising or not, and whether static data exists at all."""
     found = sim.bond_metadata(instrument)
     if found is None:
-        found = {"instrument": instrument, "isin": None, "static_present": instrument in ALL_INSTRUMENTS,
+        found = {"instrument": instrument, "isin": None,
+                 "static_present": instrument in ALL_INSTRUMENTS or instrument in fic.INSTRUMENTS,
                  "amortising": False}
     return {"rows": [found]}
 

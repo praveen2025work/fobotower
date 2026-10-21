@@ -40,6 +40,35 @@ async def test_opening_answers_at_once_and_the_run_finishes_in_the_background(ap
     assert after["status"] == "awaiting_review" and after["groups"]
 
 
+async def test_many_tasks_opened_at_once_run_a_few_at_a_time(api, monkeypatch):
+    # A feed can open a task for each of 1,000+ books in a minute; each run holds a
+    # database connection, so only AOF_MAX_RUNS go at once and the rest wait their turn.
+    background = dataclasses.replace(settings(), run_mode="background", max_runs=2)
+    monkeypatch.setattr(runner, "settings", lambda: background)
+    running, most = 0, 0
+    real = runner.run_case
+
+    async def counted(*args, **kwargs):
+        nonlocal running, most
+        running += 1
+        most = max(most, running)
+        try:
+            await real(*args, **kwargs)
+        finally:
+            running -= 1
+    monkeypatch.setattr(runner, "run_case", counted)
+    opened = []
+    for entity in ["UK01", "US01", "DE01", "FR01", "JP01"]:
+        res = await api.post(f"/api/capabilities/{VARIANCE}/cases", headers=api.as_user("bob"),
+                             json={"case_key": {"entity": entity, "period": "2026-09"}})
+        assert res.status_code == 201, res.text
+        opened.append(res.json()["case_id"])
+    await runner.drain()
+    assert most == 2
+    for cid in opened:
+        assert (await api.get(f"/api/cases/{cid}", headers=api.as_user("bob"))).json()["status"] == "awaiting_review"
+
+
 async def test_a_run_left_running_by_a_stopped_server_is_finished_on_startup(api):
     case = await _open(api)
     async with get_session() as s:      # as if the server died mid-review-resume

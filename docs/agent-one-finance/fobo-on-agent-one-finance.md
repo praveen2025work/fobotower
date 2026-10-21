@@ -15,7 +15,7 @@ platform when the team is ready, and other rec groups get the same machinery.
 | Worked examples (Prime vs Rates) | [`examples.md`](examples.md) |
 
 **In the office, the breaks come from MB Rec,** which has already reconciled CATS to MOTIF.
-That setup is *Break investigation* with the `fobo-prime` group: it reads MB Rec's open breaks
+That setup is *Balance Recon Agent* with the `fobo-prime` group: it reads MB Rec's open breaks
 (`load`), adds timing checks and a tollgate for the desk's input, and never re-matches. See
 [Configure it: FOBO on MB Rec's breaks](guide/configure-fobo-mb-rec.md). The run below is the
 matching variant (`recon.investigation`), for where Agent One Finance itself must match the two
@@ -69,7 +69,7 @@ Status: **Same** = the same rule, now as Agent One Finance configuration ·
 
 ## Changing FOBO's rules on Agent One Finance
 
-1. As a CATS vs MOTIF owner (frank, gina), open *Capabilities → Reconciliation investigation →
+1. As a CATS vs MOTIF owner (frank, gina), open *Capabilities → Helix FOBO Agent →
    Groups → CATS vs MOTIF*.
 2. Edit the YAML — e.g. set `policy.materiality_threshold.value` once Product Control confirms
    it — and submit.

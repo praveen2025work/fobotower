@@ -42,7 +42,7 @@ check. Code: `propose_checks` in `insights.py`.
 
 ## How FOBO uses them
 
-*Break investigation* (shared by FOBO Prime and FOBO Rates) runs these steps between loading
+*Balance Recon Agent* (shared by FOBO Prime and FOBO Rates) runs these steps between loading
 MB Rec's breaks and the playbook:
 
 | Step | Type | Reads | For |

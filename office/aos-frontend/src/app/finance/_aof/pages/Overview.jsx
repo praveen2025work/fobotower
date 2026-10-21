@@ -129,7 +129,7 @@ export default function Overview() {
                 (inbox.data.length === 0 ? (
                   <Empty>Nothing is waiting on you.</Empty>
                 ) : (
-                  <InboxTable rows={urgentFirst.slice(0, 8)} />
+                  <InboxTable rows={urgentFirst} limit={8} />
                 ))}
             </Card>
 

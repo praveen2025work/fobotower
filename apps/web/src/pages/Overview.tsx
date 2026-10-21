@@ -74,7 +74,7 @@ export default function Overview(): JSX.Element {
             <Card title="My inbox" className="xl:col-span-2" aside={<Link to="/inbox" className="text-xs font-medium text-primary-600 hover:underline">Open inbox</Link>}>
               {inbox.isLoading && <Loading what="inbox" />}
               {inbox.error && <ErrorState error={inbox.error} />}
-              {inbox.data && (inbox.data.length === 0 ? <Empty>Nothing is waiting on you.</Empty> : <InboxTable rows={urgentFirst.slice(0, 8)} />)}
+              {inbox.data && (inbox.data.length === 0 ? <Empty>Nothing is waiting on you.</Empty> : <InboxTable rows={urgentFirst} limit={8} />)}
             </Card>
 
             <Card title="Agents">

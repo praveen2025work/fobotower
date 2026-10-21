@@ -20,11 +20,11 @@ Agent One Finance should do that part, and **never re-match the positions**.
 
 | | |
 |---|---|
-| **Capability** | *Break investigation* (`break.investigation`). It reads the breaks another system found. |
+| **Capability** | *Balance Recon Agent* (`break.investigation`). It reads the breaks another system found. |
 | **Team group** | *FOBO Prime — MB Rec breaks* (`fobo-prime`). FOBO's playbook, timing rules, tools and reviewers. |
 | **Steps** | read MB Rec's breaks → join snapshots → desk and team as of the COB → playbook (timing first) → group → **tollgate: a controller approves and adds what the desk said** → rules, then the model → draft → validate → review → record |
 
-Use *Reconciliation investigation* (with `match`) only where no system has reconciled the
+Use *Helix FOBO Agent* (with `match`) only where no system has reconciled the
 data yet, as for cash bank vs ledger.
 
 Everything below is done in the console, under **Capabilities**. Each change is checked as
@@ -60,7 +60,7 @@ In dev, both are served by a stub (`agent_one_finance/stub_connectors/finance.py
 
 ## Step 2 — The capability: read the breaks, stop for a controller
 
-*Capabilities → Break investigation → **Configure***. This is done by erin, a capability
+*Capabilities → Balance Recon Agent → **Configure***. This is done by erin, a capability
 owner.
 
 **Get the items** — choose *One system* and **`mbrec.breaks`**, with `book = $case.book` and
@@ -84,7 +84,7 @@ deadline. The capability's *Owners* step lists them under "Team groups may set".
 
 ## Step 3 — The FOBO Prime group: timing, sources, the desk
 
-*Capabilities → Break investigation → Groups → FOBO Prime — MB Rec breaks*. This is done by
+*Capabilities → Balance Recon Agent → Groups → FOBO Prime — MB Rec breaks*. This is done by
 frank, a group owner. Settings the capability keeps are shown locked.
 
 **Playbook: checks and verdicts.** Timing comes first, because the first positive check is

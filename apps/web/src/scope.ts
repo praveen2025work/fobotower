@@ -13,3 +13,10 @@ export function configOnly(): boolean {
 export function platformPages(): boolean {
   return scope() === "all";
 }
+
+/** Whether a page's data is in the snapshot (always, in the live console): a snapshot
+ *  holds a few tasks in full and the rest only as rows of a summary. `apiPath`: /cases/<id>. */
+export function recorded(apiPath: string): boolean {
+  const has = (globalThis as { __aofSnapshotHas?: (path: string) => boolean }).__aofSnapshotHas;
+  return has ? has(apiPath) : true;
+}

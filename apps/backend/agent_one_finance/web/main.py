@@ -16,7 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
-from agent_one_finance import asks, authoring, capabilities, cases, chat, controls, devtools, evals, evidence, knowledge, notify, retention, review, runner, scheduler, views
+from agent_one_finance import asks, authoring, capabilities, cases, chat, controls, devtools, evals, evidence, knowledge, notify, retention, review, runner, scheduler, summary, views
 from agent_one_finance import groups as team_groups
 from agent_one_finance.config import settings
 from agent_one_finance.entitlement import Caller, EntitlementError, StubEntitlement, entitlements
@@ -110,6 +110,8 @@ def _errors(fn):
         except review.ReviewError as e:
             raise HTTPException(422, str(e)) from e
         except asks.AskError as e:
+            raise HTTPException(422, str(e)) from e
+        except summary.SummaryError as e:
             raise HTTPException(422, str(e)) from e
     return wrapped
 
@@ -314,6 +316,35 @@ async def list_cases(capability_id: str, team_group: str | None = None, limit: i
                      offset: int = 0, c: Caller = Depends(caller)) -> list[dict]:
     return await cases.list_cases(capability_id, c, team_group,
                                   limit=max(1, min(limit, 1000)), offset=max(0, offset))
+
+
+@app.get("/api/capabilities/{capability_id}/summary")
+@_errors
+async def day_summary(capability_id: str, date: str | None = None, c: Caller = Depends(caller)) -> dict:
+    return await summary.day(capability_id, c, date)
+
+
+class SummaryTarget(BaseModel):
+    case_id: str = Field(max_length=128)
+    group_ids: list[str] = Field(min_length=1, max_length=1000)
+
+
+class SummaryDecisionIn(BaseModel):
+    targets: list[SummaryTarget] = Field(min_length=1, max_length=5000)
+    action: str
+    comment: str | None = None
+    idempotency_key: str = Field(min_length=8, max_length=64)
+    review_seconds: int | None = Field(default=None, ge=0)
+    checklist: list[dict] | None = None
+
+
+@app.post("/api/capabilities/{capability_id}/summary/decisions", status_code=201)
+@_errors
+async def decide_across(capability_id: str, body: SummaryDecisionIn, c: Caller = Depends(caller)) -> dict:
+    """One decision on a pattern of proposals across many tasks, each checked as its own task would be."""
+    return await summary.decide(capability_id, [t.model_dump() for t in body.targets], body.action, body.comment,
+                                body.idempotency_key, c, review_seconds=body.review_seconds,
+                                checklist=body.checklist)
 
 
 class OpenIn(BaseModel):

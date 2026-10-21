@@ -1,9 +1,10 @@
-// The walkthrough a snapshot opens with: two FOBO tasks explained step by step, each
-// step able to open the part of the screen it talks about. Written for the tasks in
-// this recording (COB 20 October 2026); task ids are stable for a book, COB and group.
+// The walkthrough a snapshot opens with: two FOBO tasks and a day of FI Credit books,
+// explained step by step, each step able to open the part of the screen it talks about.
+// Written for the tasks in this recording (COB 20 October 2026); task ids are stable for
+// a book, COB and group.
 
 export interface Target {
-  route: string;          // the page, e.g. /cases/<id>
+  route: string;          // the page, e.g. /cases/<id>, or /capabilities/<id>?tab=summary
   tab?: string;           // a tab to open on it, by its name
   proposal?: string;      // a proposal to select in a task, by the start of its label
   highlight?: string;     // text to point at once there
@@ -27,17 +28,19 @@ export interface Example {
 const BREAKS = "/cases/break.investigation.8b88909bb786";
 const BREAKS_YESTERDAY = "/cases/break.investigation.bb1aad48b02d";
 const REC = "/cases/recon.investigation.65bc19fe320f";
+const SUMMARY = "/capabilities/recon.investigation?tab=summary&date=2026-10-20";
+const AMERICAS_BOOK = "/cases/recon.investigation.2dcaf3e010f8";     // FI Credit Americas · CDX (FIC-AMER-0385)
 
 export const WALKTHROUGH: { title: string; intro: Block[]; examples: Example[]; outro: Block[] } = {
-  title: "Two FOBO tasks, step by step",
+  title: "FOBO on two agents, step by step",
   intro: [
-    "The inbox holds two tasks for COB 20 October. Each step below explains one part of a task; **Show me** opens it on the screen.",
-    "The snapshot is read-only: you can look at everything, but nothing can be approved or changed.",
+    "**Balance Recon Agent** investigates the breaks MB Rec's balance reconciliation leaves open. **Helix FOBO Agent** reconciles CATS to MOTIF for every master book: here, the FI Credit books in APAC, EMEA and the Americas, and the Rates and Prime books.",
+    "Each step below explains one part; **Show me** opens it on the screen. The snapshot is read-only: you can look at everything, but nothing can be approved or changed.",
   ],
   examples: [
     {
-      title: "MB Rec breaks: Rates futures (RATES-LDN-04)",
-      subtitle: "The FOBO use case. MB Rec has already matched CATS to MOTIF; AOF investigates the breaks its rules could not clear.",
+      title: "Balance Recon Agent: Rates futures (RATES-LDN-04)",
+      subtitle: "MB Rec has already reconciled CATS to MOTIF; the agent investigates the breaks its rules could not clear.",
       steps: [
         {
           title: "One task per master book and COB",
@@ -107,8 +110,8 @@ export const WALKTHROUGH: { title: string; intro: Block[]; examples: Example[]; 
       ],
     },
     {
-      title: "CATS vs MOTIF: USD swaps (RATES-LDN-01)",
-      subtitle: "The reconciliation agent. Here AOF matches the two systems itself, for a reconciliation MB Rec does not run.",
+      title: "Helix FOBO Agent: USD swaps (RATES-LDN-01)",
+      subtitle: "Here the agent matches CATS to MOTIF itself, one task per master book and COB.",
       steps: [
         {
           title: "AOF does the matching",
@@ -140,6 +143,67 @@ export const WALKTHROUGH: { title: string; intro: Block[]; examples: Example[]; 
             "The **CATS vs MOTIF — Rates** group sets the sources, keys, tolerance, playbook and reviewers for these books. Every change is a new version that another owner approves; the history is under **Versions**.",
           ],
           show: { route: "/capabilities/recon.investigation/groups/cats-motif-rates" },
+        },
+      ],
+    },
+    {
+      title: "Helix FOBO Agent: a day of 1,240 FI Credit books",
+      subtitle: "A task per master book is too many to open one by one. The Summary shows the day by region, desk and product, and decides the same break across many books once.",
+      steps: [
+        {
+          title: "The day at a glance",
+          body: [
+            "COB 20 October is **1,258 tasks** for this agent: 1,240 FI Credit books in APAC, EMEA and the Americas, 12 Prime and 6 Rates. 794 reconciled clean (CATS and MOTIF agree on every position), 203 are signed off and 261 wait for review.",
+          ],
+          show: { route: SUMMARY, highlight: "waiting for review" },
+        },
+        {
+          title: "By region, then desk and product",
+          body: [
+            "Group by **Region**: APAC is signed off (its controllers start first), EMEA is part way, the Americas has not started. Click a region to see its desks, then a desk to see its products; the chip above the table goes back.",
+            "Business, region, desk and product come from the reference data, as the task titles do.",
+          ],
+          show: { route: SUMMARY, tab: "Region" },
+        },
+        {
+          title: "The same break across many books",
+          body: [
+            "Each row is one proposal found in many books:",
+            [
+              "**APAC**: MOTIF loaded a settlement batch twice. **Settlement break → POST** in 92 books, approved once by Mei from here; the rest of APAC was then decided book by book.",
+              "**EMEA**: a new GBP issue is not in MOTIF static data yet. **Data quality break → DO NOT POST** in 91 books, approved once by Lars, with a Technology ticket for each book.",
+              "**The Americas**: the same settlement problem in **155 books**, still to approve. The top row counts them with EMEA's own settlement breaks; click **Americas** in the table above to see its books alone.",
+            ],
+          ],
+          show: { route: SUMMARY, highlight: "The same break across many books" },
+        },
+        {
+          title: "Approve once, checked in every task",
+          body: [
+            "**Approve** asks for one explanation and a tick that the pattern is the same everywhere. Each task then checks the decision as its own Approve would: judgement calls (a side not proven) and anything else held for one-by-one review stay open, and the result says how many and why.",
+          ],
+          show: { route: SUMMARY, highlight: "Approve " },
+        },
+        {
+          title: "Every row is a full task",
+          body: [
+            "This Americas CDX book has the settlement break (POST), a trade booking break the desk must fix (DO NOT POST) and one judgement call. The snapshot holds one book per region in full; the others open in the live console.",
+          ],
+          show: { route: AMERICAS_BOOK, proposal: "Settlement break" },
+        },
+        {
+          title: "The inbox stays short",
+          body: [
+            "The 260 FI Credit books still waiting are one inbox row, which opens this summary. The examples above stay as rows of their own.",
+          ],
+          show: { route: "/inbox", highlight: "Work them by region, desk or pattern" },
+        },
+        {
+          title: "Configured once for every book",
+          body: [
+            "The **CATS vs MOTIF — FI Credit** group: MOTIF's end-of-day feed opens a task for each book (there is no list of books to keep), the same FOBO playbook sorts the breaks, FI Credit controllers sign off, and **The Summary groups a day's tasks by** names business, region, desk and product.",
+          ],
+          show: { route: "/capabilities/recon.investigation/groups/cats-motif-fi-credit" },
         },
       ],
     },

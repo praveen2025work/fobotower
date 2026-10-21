@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import clsx from "clsx";
 import { Play, Plus } from "lucide-react";
 
@@ -8,6 +8,7 @@ import { Users } from "lucide-react";
 import { useCapabilities, useCapability, useCases, useGroups, useOpenCase, type Manifest, type TeamGroup } from "../api/aof";
 import EvalsPanel from "../components/capability/EvalsPanel";
 import RecurringPanel from "../components/capability/RecurringPanel";
+import SummaryPanel from "../components/capability/SummaryPanel";
 import LearningPanel from "../components/capability/LearningPanel";
 import DataContractPanel from "../components/capability/DataContractPanel";
 import FlowDiagram from "../components/capability/FlowDiagram";
@@ -16,8 +17,10 @@ import OrchestratorEditor from "../components/orchestrator/OrchestratorEditor";
 import StatusBadge from "../components/StatusBadge";
 import { Card, Empty, ErrorState, Fold, Loading, PageHeader, formatTime } from "../components/ui";
 import { configOnly } from "../scope";
+import TaskLink from "../components/TaskLink";
 
-type Tab = "groups" | "cases" | "configure" | "flow" | "evals" | "versions";
+type Tab = "summary" | "groups" | "cases" | "configure" | "flow" | "evals" | "versions";
+const TABS: Tab[] = ["summary", "cases", "groups", "configure", "flow", "evals", "versions"];
 
 export default function CapabilityDetail(): JSX.Element {
   const { id = "" } = useParams();
@@ -25,11 +28,18 @@ export default function CapabilityDetail(): JSX.Element {
   const caps = useCapabilities();
   const groups = useGroups(id);
   const hasGroups = (groups.data?.length ?? 0) > 0;
-  const [chosen, setTab] = useState<Tab | null>(null);
-  // What most visitors come for: the tasks. Owners go to Groups or Configure when they need to.
+  const [params] = useSearchParams();
+  const [chosen, setTab] = useState<Tab | null>(TABS.find((t) => t === params.get("tab")) ?? null);
+  // What most visitors come for: the day's work, summarised (a task per book is thousands
+  // a day), then the tasks themselves. Owners go to Groups or Configure when they need to.
   // A config-only snapshot has no tasks or evals, so it opens on Configure.
   const config = configOnly();
-  const tab: Tab = chosen ?? (config ? "configure" : "cases");
+  const tab: Tab = chosen ?? (config ? "configure" : "summary");
+  // A link to another tab of the same agent (?tab=summary&date=…) switches to it.
+  useEffect(() => {
+    const asked = TABS.find((t) => t === params.get("tab"));
+    if (asked) setTab(asked);
+  }, [params]);
 
   if (cap.isLoading) return <Loading what="agent" />;
   if (cap.error) return <ErrorState error={cap.error} />;
@@ -49,8 +59,8 @@ export default function CapabilityDetail(): JSX.Element {
         <button type="button" onClick={() => setTab("flow")} className="font-medium text-primary-700 hover:underline">see how a task runs</button>
       </p>
       <div className="mb-4 flex max-w-full overflow-x-auto rounded-lg border border-surface-200 bg-card p-1 sm:inline-flex" role="tablist">
-        {(["cases", ...(hasGroups ? ["groups"] : []), "configure", "flow", "evals", "versions"] as Tab[])
-          .filter((t) => !config || (t !== "cases" && t !== "evals")).map((t) => (
+        {TABS.filter((t) => t !== "groups" || hasGroups)
+          .filter((t) => !config || (t !== "summary" && t !== "cases" && t !== "evals")).map((t) => (
           <button
             key={t}
             role="tab"
@@ -62,6 +72,7 @@ export default function CapabilityDetail(): JSX.Element {
           </button>
         ))}
       </div>
+      {tab === "summary" && <SummaryPanel key={params.get("date") ?? ""} capabilityId={id} initialDate={params.get("date") ?? undefined} />}
       {tab === "groups" && <GroupsTab id={id} groups={groups.data ?? []} configurable={m.configurable} />}
       {tab === "cases" && <CasesTab id={id} manifest={m} groups={groups.data ?? []} />}
       {tab === "cases" && (
@@ -238,7 +249,7 @@ function CasesTab({ id, manifest, groups }: { id: string; manifest: Manifest; gr
         <ul className="divide-y divide-surface-100">
           {cases.data?.map((c) => (
             <li key={c.case_id}>
-              <Link to={`/cases/${encodeURIComponent(c.case_id)}`} className="flex items-center justify-between gap-2 px-1 py-2.5 text-sm hover:bg-surface-50">
+              <TaskLink id={c.case_id} className="flex items-center justify-between gap-2 px-1 py-2.5 text-sm hover:bg-surface-50">
                 <span>
                   <span className="font-medium text-surface-800">{c.subject}</span>
                   {c.team_group && <span className="ml-2 rounded bg-primary-50 px-1.5 py-0.5 text-[10px] font-medium text-primary-700">{names[c.team_group] ?? c.team_group}</span>}
@@ -247,7 +258,7 @@ function CasesTab({ id, manifest, groups }: { id: string; manifest: Manifest; gr
                   {formatTime(c.opened_at)} · {c.opened_by}
                   <StatusBadge status={c.status} />
                 </span>
-              </Link>
+              </TaskLink>
             </li>
           ))}
         </ul>

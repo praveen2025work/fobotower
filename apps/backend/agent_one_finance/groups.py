@@ -13,6 +13,7 @@ validated by the same checks as any manifest — and keeps that merged manifest
 as its own record.
 """
 
+import logging
 from datetime import datetime, timezone
 from typing import Any
 
@@ -26,6 +27,8 @@ from agent_one_finance.db import get_session
 from agent_one_finance.entitlement import Caller
 from agent_one_finance.manifest import Manifest, Owners, problems
 from agent_one_finance.models import GroupVersion
+
+log = logging.getLogger("agent_one_finance.groups")
 
 SEED_USER = "system:seed"
 
@@ -127,6 +130,10 @@ def is_group_owner(caller: Caller, cfg: GroupConfig) -> bool:
 
 # ---------- storage ----------
 
+def _from_file(capability_id: str) -> Manifest | None:
+    return next((m for m in capabilities.seed_files() if m.id == capability_id), None)
+
+
 async def seed() -> list[str]:
     seeded = []
     root = settings().config_dir / "groups"
@@ -142,6 +149,12 @@ async def seed() -> list[str]:
                     # Only a new group is seeded (and checked) from its file; a
                     # live group changes through drafts (agent_one_finance.config_sync).
                     _, found = effective(base, cfg)
+                    if found and not effective(_from_file(capability_id) or base, cfg)[1]:
+                        # Valid on the capability's file, which is not approved yet: it
+                        # waits, and config_sync drafts it once that version is live.
+                        log.warning("%s/%s waits for a newer %s version: %s", capability_id, cfg.group,
+                                    capability_id, "; ".join(found[:3]))
+                        continue
                     if found:
                         raise GroupError(f"{capability_id}/{cfg.group}: invalid group", found)
                     s.add(GroupVersion(capability_id=capability_id, group_id=cfg.group, version=1,

@@ -20,13 +20,16 @@ import json
 from datetime import date, datetime, time, timedelta, timezone
 
 import yaml
-from sqlalchemy import and_, delete, select
+from sqlalchemy import and_, delete, insert, select
 
 from agent_one_finance.config import settings
 from agent_one_finance.db import get_session
 from agent_one_finance.models import KgEdge, KgNode
 
 EPOCH = datetime(2000, 1, 1, tzinfo=timezone.utc)
+# What `record` writes; the reference loader leaves these alone.
+LEARNED_KINDS = ("subject", "decision", "entity")
+LEARNED_RELATIONS = ("explains", "concerns")
 
 
 def subject_id(group_key: dict) -> str:
@@ -139,7 +142,8 @@ def _when(v) -> datetime | None:
 
 async def seed_reference() -> list[str]:
     """Load config/agent-one-finance/knowledge/*.yaml. Each node and edge version is keyed
-    by its valid_from, so loading again adds only what is new."""
+    by its valid_from, so loading again adds only what is new — and closes a version
+    the file now closes (valid_to set where it was open), which is how a change lands."""
     loaded = []
     folder = settings().config_dir / "knowledge"
     if not folder.exists():
@@ -149,19 +153,34 @@ async def seed_reference() -> list[str]:
         ns = doc["namespace"]
         default_from = _when(doc.get("valid_from")) or EPOCH
         async with get_session() as s:
+            nodes = {(n.node_id, n.valid_from): n for n in (await s.execute(select(KgNode).where(
+                KgNode.namespace == ns, KgNode.kind.notin_(LEARNED_KINDS)))).scalars()}
+            new = {}
             for n in doc.get("nodes", []):
                 vf = _when(n.get("valid_from")) or default_from
-                if await s.get(KgNode, (ns, n["id"], vf)) is None:
-                    s.add(KgNode(namespace=ns, node_id=n["id"], kind=n.get("kind", "thing"),
-                                 attrs=n.get("attrs", {}), valid_from=vf,
-                                 valid_to=_when(n.get("valid_to"))))
-            await s.flush()
+                row = nodes.get((n["id"], vf))
+                if row is None:
+                    new[(n["id"], vf)] = {"namespace": ns, "node_id": n["id"], "kind": n.get("kind", "thing"),
+                                          "attrs": n.get("attrs", {}), "valid_from": vf,
+                                          "valid_to": _when(n.get("valid_to"))}
+                elif row.valid_to is None and n.get("valid_to"):
+                    row.valid_to = _when(n["valid_to"])
+            if new:
+                await s.execute(insert(KgNode), list(new.values()))
+            edges = {(e.from_id, e.relation, e.to_id, e.valid_from): e for e in (await s.execute(select(KgEdge).where(
+                KgEdge.namespace == ns, KgEdge.relation.notin_(LEARNED_RELATIONS)))).scalars()}
+            new = {}
             for e in doc.get("edges", []):
                 vf = _when(e.get("valid_from")) or default_from
-                if await s.get(KgEdge, (ns, e["from"], e["relation"], e["to"], vf)) is None:
-                    s.add(KgEdge(namespace=ns, from_id=e["from"], relation=e["relation"], to_id=e["to"],
-                                 attrs=e.get("attrs", {}), valid_from=vf,
-                                 valid_to=_when(e.get("valid_to"))))
+                row = edges.get((e["from"], e["relation"], e["to"], vf))
+                if row is None:
+                    new[(e["from"], e["relation"], e["to"], vf)] = {
+                        "namespace": ns, "from_id": e["from"], "relation": e["relation"], "to_id": e["to"],
+                        "attrs": e.get("attrs", {}), "valid_from": vf, "valid_to": _when(e.get("valid_to"))}
+                elif row.valid_to is None and e.get("valid_to"):
+                    row.valid_to = _when(e["valid_to"])
+            if new:
+                await s.execute(insert(KgEdge), list(new.values()))
             await s.commit()
         loaded.append(ns)
     return loaded

@@ -1,4 +1,4 @@
-# FOBO Prime on Break investigation: the breaks come from MB Rec, which has
+# FOBO Prime on Balance Recon Agent: the breaks come from MB Rec, which has
 # already reconciled CATS (front office) to MOTIF (back office). Agent One Finance does the
 # manual part a controller does today:
 #
@@ -25,6 +25,7 @@ set:
     label: MB Rec breaks
     item_label: Break
     subject: "{book_label} · COB {cob}"
+    summarize_by: [book_business, book_region, book_desk, book_product]   # the agent's Summary
     # A case opens when MB Rec finishes its end-of-day run for a book and posts
     # the COB to POST /api/events — the breaks exist only once MB Rec has
     # reconciled. (The CATS vs MOTIF matching group keeps the 06:30 schedule.)

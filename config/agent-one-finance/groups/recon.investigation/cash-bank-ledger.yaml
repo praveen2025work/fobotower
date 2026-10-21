@@ -10,6 +10,7 @@ owners:
 set:
   case:
     label: Bank vs ledger
+    summarize_by: [entity]   # the agent's Summary
   policy:
     write_off_limit: { value: 100, unit: GBP }
   # Follow-through: each approved break is checked on the next day's run for

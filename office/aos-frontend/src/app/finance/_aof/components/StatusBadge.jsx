@@ -23,6 +23,7 @@ const STATUS_STYLES = {
   proposed: "bg-surface-100 text-surface-700 border-surface-200",
   escalated: "bg-orange-100 text-orange-700 border-orange-200",
   completed: "bg-green-100 text-green-700 border-green-200",
+  clean: "bg-surface-100 text-surface-500 border-surface-200", // a task with nothing to reconcile
   published: "bg-green-100 text-green-700 border-green-200",
   approve: "bg-green-100 text-green-700 border-green-200",
   reject: "bg-red-100 text-red-700 border-red-200",

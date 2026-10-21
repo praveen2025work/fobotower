@@ -15,7 +15,7 @@ investigation console still runs beside Agent One Finance (below). On Agent One 
 | Finance area | Running on Agent One Finance today |
 |---|---|
 | Product control | FOBO break investigation (Prime, Rates) |
-| Financial control | Reconciliation investigation, month-end accruals, control operating test |
+| Financial control | Helix FOBO Agent, month-end accruals, control operating test |
 | Financial reporting | P&L variance commentary, report validation |
 | Treasury and payments operations | Payment exceptions |
 

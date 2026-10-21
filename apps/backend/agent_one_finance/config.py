@@ -75,6 +75,7 @@ class AofSettings:
     proxy_secret_header: str
     entitlement_webhook_secret: str | None
     run_mode: str
+    max_runs: int
     console_url: str
     scheduler: bool
     event_secret: str | None
@@ -116,6 +117,9 @@ def settings() -> AofSettings:
         entitlement_webhook_secret=env("AOF_ENTITLEMENT_WEBHOOK_SECRET") or None,
         # background: case runs leave the request path; inline: they finish first.
         run_mode=env("AOF_RUN_MODE") or "background",
+        # Background runs going at once; the rest wait their turn (a feed can open a task
+        # for each of 1,000+ books in a minute). Each run holds a database connection.
+        max_runs=int(env("AOF_MAX_RUNS") or 4),
         # The schedule loop runs in the API (on by default when runs are in the background).
         scheduler=(env("AOF_SCHEDULER") or ("on" if (env("AOF_RUN_MODE") or "background") == "background" else "off")) == "on",
         # Other systems open cases with POST /api/events, sending this secret.

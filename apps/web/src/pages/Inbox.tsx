@@ -1,24 +1,94 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import clsx from "clsx";
-import { UserCheck } from "lucide-react";
+import { Layers, UserCheck } from "lucide-react";
 
 import { currentUser } from "../api/client";
 import { useInbox, type InboxRow } from "../api/aof";
 import DelegationPanel from "../components/DelegationPanel";
 import QuestionsForYou from "../components/QuestionsForYou";
+import TaskLink from "../components/TaskLink";
 import { useIsPhone } from "../hooks/useIsPhone";
 import StatusBadge from "../components/StatusBadge";
 import { DueBadge, ageText, urgency } from "../components/Urgency";
 import { Card, Empty, ErrorState, Loading, PageHeader, formatTime, formatValue } from "../components/ui";
 
+/** Many tasks of one agent, group and business date waiting on the same person (a task per
+ *  master book is hundreds a COB): one row that opens the agent's Summary, where they are
+ *  worked by region, desk or pattern. */
+export interface InboxRun {
+  key: string;
+  capability_id: string;
+  capability_name: string;
+  case_label: string;
+  date: string;
+  action: InboxRow["action"];
+  rows: InboxRow[];
+}
+
+const RUN = 6;
+
+export function collapseRuns(rows: InboxRow[]): (InboxRow | InboxRun)[] {
+  const runs = new Map<string, InboxRow[]>();
+  for (const r of rows) {
+    if (!r.summary_date || r.acting_for) continue;
+    const key = [r.capability_id, r.team_group ?? "", r.summary_date, r.action].join("|");
+    runs.set(key, [...(runs.get(key) ?? []), r]);
+  }
+  const out: (InboxRow | InboxRun)[] = [];
+  const placed = new Set<string>();
+  for (const r of rows) {
+    const key = [r.capability_id, r.team_group ?? "", r.summary_date, r.action].join("|");
+    const run = r.summary_date && !r.acting_for ? runs.get(key) : undefined;
+    if (!run || run.length < RUN) out.push(r);
+    else if (!placed.has(key)) {
+      placed.add(key);
+      out.push({ key, capability_id: r.capability_id, capability_name: r.capability_name, case_label: r.case_label,
+                 date: r.summary_date!, action: r.action, rows: run });
+    }
+  }
+  return out;
+}
+
+const isRun = (e: InboxRow | InboxRun): e is InboxRun => "rows" in e;
+const summaryLink = (run: InboxRun) =>
+  `/capabilities/${encodeURIComponent(run.capability_id)}?tab=summary&date=${encodeURIComponent(run.date)}`;
+
+function runTotals(run: InboxRun) {
+  const open = run.rows.reduce((a, r) => a + r.groups - r.decided, 0);
+  const groups = run.rows.reduce((a, r) => a + r.groups, 0);
+  const escalated = run.rows.reduce((a, r) => a + r.escalated, 0);
+  const exposure = run.rows.reduce((a, r) => a + (r.exposure ?? 0), 0);
+  const first = [...run.rows].sort((a, b) => urgency(a) - urgency(b))[0];
+  return { open, groups, escalated, exposure, unit: run.rows.find((r) => r.unit)?.unit, first };
+}
+
+function RunText({ run }: { run: InboxRun }) {
+  return (
+    <>
+      <span className="inline-flex items-center gap-1"><Layers size={13} className="shrink-0" /> {run.case_label} · {run.date}: {run.rows.length.toLocaleString("en-GB")} tasks</span>
+      <span className="block text-xs font-normal text-surface-500">Work them by region, desk or pattern in the summary</span>
+    </>
+  );
+}
+
 /** Phones: one card per case — what it is, what it needs, how urgent. */
 function InboxCards({ rows }: { rows: InboxRow[] }) {
   return (
     <ul className="divide-y divide-surface-100">
-      {rows.map((r) => (
+      {collapseRuns(rows).map((r) => isRun(r) ? (
+        <li key={r.key}>
+          <Link to={summaryLink(r)} className="block py-3 active:bg-surface-50">
+            <div className="flex items-start justify-between gap-2">
+              <span className="min-w-0 font-medium leading-snug text-primary-700"><RunText run={r} /></span>
+              <StatusBadge status={r.action} />
+            </div>
+            <div className="mt-1.5 text-xs text-surface-600">{runTotals(r).open.toLocaleString("en-GB")} of {runTotals(r).groups.toLocaleString("en-GB")} to decide · {r.capability_name}</div>
+          </Link>
+        </li>
+      ) : (
         <li key={r.case_id}>
-          <Link to={`/cases/${encodeURIComponent(r.case_id)}`} className="block py-3 active:bg-surface-50">
+          <TaskLink id={r.case_id} className="block py-3 active:bg-surface-50">
             <div className="flex items-start justify-between gap-2">
               <span className="min-w-0 font-medium leading-snug text-primary-700">
                 {r.subject}
@@ -40,7 +110,7 @@ function InboxCards({ rows }: { rows: InboxRow[] }) {
                 <span className="tabular-nums text-surface-700">{formatValue(r.exposure)}{r.unit ? ` ${r.unit}` : ""} at stake</span>
               )}
             </div>
-          </Link>
+          </TaskLink>
         </li>
       ))}
     </ul>
@@ -66,10 +136,11 @@ export function WhatsLeft({ r }: { r: InboxRow }) {
   );
 }
 
-export function InboxTable({ rows }: { rows: InboxRow[] }) {
+export function InboxTable({ rows, limit }: { rows: InboxRow[]; limit?: number }) {
   const money = rows.some((r) => r.exposure != null);
   const phone = useIsPhone();
-  if (phone) return <InboxCards rows={rows} />;
+  const entries = collapseRuns(rows).slice(0, limit);
+  if (phone) return <InboxCards rows={entries.flatMap((e) => (isRun(e) ? e.rows : [e]))} />;
   return (
     <>
     <div className="overflow-x-auto">
@@ -85,13 +156,15 @@ export function InboxTable({ rows }: { rows: InboxRow[] }) {
           </tr>
         </thead>
         <tbody className="divide-y divide-surface-100">
-          {rows.map((r) => (
+          {entries.map((r) => isRun(r) ? (
+            <RunRow key={r.key} run={r} money={money} />
+          ) : (
             <tr key={r.case_id} className="hover:bg-surface-50">
               <td className="px-2 py-2"><StatusBadge status={r.action} /></td>
               <td className="min-w-[14rem] px-2 py-2">
-                <Link to={`/cases/${encodeURIComponent(r.case_id)}`} className="font-medium text-primary-700 hover:underline">
+                <TaskLink id={r.case_id} className="font-medium text-primary-700 hover:underline">
                   {r.case_label}: {r.subject}
-                </Link>
+                </TaskLink>
                 {r.follow_up_of && !/late items/i.test(r.subject) && (
                   <Link to={`/cases/${encodeURIComponent(r.follow_up_of)}`} title="Late items for a book and date already worked — see the day's task"
                     className="ml-2 rounded bg-surface-100 px-1.5 py-0.5 text-[10px] font-semibold text-surface-800 hover:underline">late items</Link>
@@ -118,6 +191,31 @@ export function InboxTable({ rows }: { rows: InboxRow[] }) {
       </table>
     </div>
     </>
+  );
+}
+
+function RunRow({ run, money }: { run: InboxRun; money: boolean }) {
+  const t = runTotals(run);
+  return (
+    <tr className="hover:bg-surface-50">
+      <td className="px-2 py-2"><StatusBadge status={run.action} /></td>
+      <td className="min-w-[14rem] px-2 py-2">
+        <Link to={summaryLink(run)} className="font-medium text-primary-700 hover:underline"><RunText run={run} /></Link>
+      </td>
+      <td className="px-2 py-2 text-surface-600">{run.capability_name}</td>
+      <td className="px-2 py-2 text-xs text-surface-600">
+        <span className="inline-flex flex-wrap items-center gap-1.5">
+          <span>{t.open.toLocaleString("en-GB")} of {t.groups.toLocaleString("en-GB")} to decide</span>
+          {t.escalated > 0 && <span className="rounded bg-orange-100 px-1.5 py-0.5 text-[10px] font-semibold text-orange-800">{t.escalated} escalated</span>}
+        </span>
+      </td>
+      {money && (
+        <td className="whitespace-nowrap px-2 py-2 text-right text-xs tabular-nums text-surface-700">
+          {t.exposure ? `${formatValue(Math.round(t.exposure))}${t.unit ? ` ${t.unit}` : ""}` : "—"}
+        </td>
+      )}
+      <td className="px-2 py-2 text-xs text-surface-500"><DueBadge dueAt={t.first.due_at} state={t.first.due_state} compact /></td>
+    </tr>
   );
 }
 

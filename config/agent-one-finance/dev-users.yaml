@@ -52,6 +52,18 @@ users:
     name: Raj (FOBO Rates controller, all Rates books; CATS vs MOTIF Rates owner)
     roles: [FOBO_RATES_CONTROLLER, AOF_FOBO_RATES_OWNER]
     data_scopes: { book: [RATES-LDN-01, RATES-LDN-02, RATES-LDN-03, RATES-LDN-04, RATES-NY-01, RATES-NY-02] }
+  mei:
+    name: Mei (FOBO FI Credit controller, APAC books; CATS vs MOTIF FI Credit owner)
+    roles: [FOBO_FIC_CONTROLLER, AOF_FOBO_FIC_OWNER]
+    data_scopes: { book: ["*"] }
+  lars:
+    name: Lars (FOBO FI Credit controller, EMEA books; CATS vs MOTIF FI Credit owner)
+    roles: [FOBO_FIC_CONTROLLER, AOF_FOBO_FIC_OWNER]
+    data_scopes: { book: ["*"] }
+  sam:
+    name: Sam (FOBO FI Credit controller, Americas books)
+    roles: [FOBO_FIC_CONTROLLER]
+    data_scopes: { book: ["*"] }
   paula:
     name: Paula (Payments Operations lead; payment exceptions owner)
     roles: [PAYMENTS_OPS, PAYMENTS_LEAD, AOF_PAYMENTS_OWNER]
@@ -86,9 +98,10 @@ users:
     data_scopes: { entity: ["*"] }
   dana:
     name: Dana (Head of Finance Operations; demo view across every team)
-    roles: [FIN_REVIEWER, FIN_CONTROLLER, CASH_OPS, FOBO_CONTROLLER, FOBO_RATES_CONTROLLER, PAYMENTS_OPS, PAYMENTS_LEAD,
-            COMPLAINTS_LEAD, CONTROL_OWNER, AOF_FIN_VARCOMM_OWNER, AOF_CASH_RECON_OWNER, AOF_RECON_OWNER,
-            AOF_FOBO_RECON_OWNER, AOF_FOBO_RATES_OWNER, AOF_PAYMENTS_OWNER, AOF_COMPLAINTS_OWNER, AOF_CONTROLS_OWNER]
+    roles: [FIN_REVIEWER, FIN_CONTROLLER, CASH_OPS, FOBO_CONTROLLER, FOBO_RATES_CONTROLLER, FOBO_FIC_CONTROLLER, PAYMENTS_OPS,
+            PAYMENTS_LEAD, COMPLAINTS_LEAD, CONTROL_OWNER, AOF_FIN_VARCOMM_OWNER, AOF_CASH_RECON_OWNER, AOF_RECON_OWNER,
+            AOF_FOBO_RECON_OWNER, AOF_FOBO_RATES_OWNER, AOF_FOBO_FIC_OWNER, AOF_PAYMENTS_OWNER, AOF_COMPLAINTS_OWNER,
+            AOF_CONTROLS_OWNER]
     data_scopes: { entity: ["*"], book: ["*"], named_pnl: ["*"] }
   pat:
     name: Pat (Agent One Finance platform support — switches, connectors; sees no case data)
@@ -96,7 +109,8 @@ users:
     data_scopes: {}
   aof-scheduler:
     name: Agent One Finance scheduler (service account — opens scheduled and event cases, never decides)
-    roles: [FIN_PREPARER, CASH_OPS, FOBO_CONTROLLER, FOBO_RATES_CONTROLLER, PAYMENTS_OPS, COMPLAINTS_HANDLER, CONTROL_TESTER]
+    roles: [FIN_PREPARER, CASH_OPS, FOBO_CONTROLLER, FOBO_RATES_CONTROLLER, FOBO_FIC_CONTROLLER, PAYMENTS_OPS, COMPLAINTS_HANDLER,
+            CONTROL_TESTER]
     data_scopes: { entity: ["*"], book: ["*"], named_pnl: ["*"] }
   viewer:
     name: Viewer (no Agent One Finance roles)

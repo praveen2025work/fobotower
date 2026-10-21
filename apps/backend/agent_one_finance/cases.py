@@ -68,10 +68,11 @@ def scope_clause(caller: Caller):
 
 async def visible_cases(caller: Caller, *, capability_id: str | None = None,
                         team_group: str | None = None, statuses: tuple[str, ...] | None = None,
-                        limit: int | None = None, offset: int = 0) -> list[tuple[Case, Manifest]]:
+                        limit: int | None = None, offset: int = 0, where=None) -> list[tuple[Case, Manifest]]:
     """Cases the caller may see, newest first. Capability and data scope are
-    filtered in the database; the exact per-case check (`may_see_case`, on the
-    manifest each case ran on) still runs on what comes back."""
+    filtered in the database (and `where`, any further SQL condition); the exact
+    per-case check (`may_see_case`, on the manifest each case ran on) still runs
+    on what comes back."""
     from agent_one_finance import groups as team_groups
 
     caps = [m.id for _, m in await capabilities.all_active()
@@ -82,6 +83,8 @@ async def visible_cases(caller: Caller, *, capability_id: str | None = None,
                                Case.shadow_of.is_(None))     # trial runs are never on anyone's desk
     if team_group:
         query = query.where(Case.team_group == team_group)
+    if where is not None:
+        query = query.where(where)
     if statuses:
         # "paused_before_*" = waiting at any tollgate
         exact = [x for x in statuses if not x.endswith("*")]

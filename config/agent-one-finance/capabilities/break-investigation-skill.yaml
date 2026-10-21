@@ -18,7 +18,7 @@
 # MB Rec chooses which one a book uses by the capability_id in its event.
 
 id: break.investigation.skill
-name: Break investigation (skill session)
+name: Balance Recon Agent (skill session)
 description: FOBO's skill run as one model session per book and COB, with MB Rec, MOTIF and CATS tools; a controller signs off every break.
 
 owners:

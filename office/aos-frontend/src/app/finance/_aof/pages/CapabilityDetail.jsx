@@ -1,7 +1,7 @@
 // Generated from apps/web/src/pages/CapabilityDetail.tsx by apps/web/office/convert.mjs. Office changes to this file are
 // kept by aof_sync.py on the next update; see office/README.md.
-import { useState } from "react";
-import { Link, useNavigate, useParams } from "../office/router";
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useParams, useSearchParams } from "../office/router";
 import clsx from "clsx";
 import { Play, Plus } from "lucide-react";
 
@@ -10,6 +10,7 @@ import { Users } from "lucide-react";
 import { useCapabilities, useCapability, useCases, useGroups, useOpenCase } from "../api/aof";
 import EvalsPanel from "../components/capability/EvalsPanel";
 import RecurringPanel from "../components/capability/RecurringPanel";
+import SummaryPanel from "../components/capability/SummaryPanel";
 import LearningPanel from "../components/capability/LearningPanel";
 import DataContractPanel from "../components/capability/DataContractPanel";
 import FlowDiagram from "../components/capability/FlowDiagram";
@@ -18,6 +19,9 @@ import OrchestratorEditor from "../components/orchestrator/OrchestratorEditor";
 import StatusBadge from "../components/StatusBadge";
 import { Card, Empty, ErrorState, Fold, Loading, PageHeader, formatTime } from "../components/ui";
 import { configOnly } from "../scope";
+import TaskLink from "../components/TaskLink";
+
+const TABS = ["summary", "cases", "groups", "configure", "flow", "evals", "versions"];
 
 export default function CapabilityDetail() {
   const { id = "" } = useParams();
@@ -25,11 +29,18 @@ export default function CapabilityDetail() {
   const caps = useCapabilities();
   const groups = useGroups(id);
   const hasGroups = (groups.data?.length ?? 0) > 0;
-  const [chosen, setTab] = useState(null);
-  // What most visitors come for: the tasks. Owners go to Groups or Configure when they need to.
+  const [params] = useSearchParams();
+  const [chosen, setTab] = useState(TABS.find((t) => t === params.get("tab")) ?? null);
+  // What most visitors come for: the day's work, summarised (a task per book is thousands
+  // a day), then the tasks themselves. Owners go to Groups or Configure when they need to.
   // A config-only snapshot has no tasks or evals, so it opens on Configure.
   const config = configOnly();
-  const tab = chosen ?? (config ? "configure" : "cases");
+  const tab = chosen ?? (config ? "configure" : "summary");
+  // A link to another tab of the same agent (?tab=summary&date=…) switches to it.
+  useEffect(() => {
+    const asked = TABS.find((t) => t === params.get("tab"));
+    if (asked) setTab(asked);
+  }, [params]);
 
   if (cap.isLoading) return <Loading what="agent" />;
   if (cap.error) return <ErrorState error={cap.error} />;
@@ -62,8 +73,8 @@ export default function CapabilityDetail() {
         className="mb-4 flex max-w-full overflow-x-auto rounded-lg border border-surface-200 bg-card p-1 sm:inline-flex"
         role="tablist"
       >
-        {["cases", ...(hasGroups ? ["groups"] : []), "configure", "flow", "evals", "versions"]
-          .filter((t) => !config || (t !== "cases" && t !== "evals"))
+        {TABS.filter((t) => t !== "groups" || hasGroups)
+          .filter((t) => !config || (t !== "summary" && t !== "cases" && t !== "evals"))
           .map((t) => (
             <button
               key={t}
@@ -79,6 +90,9 @@ export default function CapabilityDetail() {
             </button>
           ))}
       </div>
+      {tab === "summary" && (
+        <SummaryPanel key={params.get("date") ?? ""} capabilityId={id} initialDate={params.get("date") ?? undefined} />
+      )}
       {tab === "groups" && <GroupsTab id={id} groups={groups.data ?? []} configurable={m.configurable} />}
       {tab === "cases" && <CasesTab id={id} manifest={m} groups={groups.data ?? []} />}
       {tab === "cases" && (
@@ -307,8 +321,8 @@ function CasesTab({ id, manifest, groups }) {
         <ul className="divide-y divide-surface-100">
           {cases.data?.map((c) => (
             <li key={c.case_id}>
-              <Link
-                to={`/cases/${encodeURIComponent(c.case_id)}`}
+              <TaskLink
+                id={c.case_id}
                 className="flex items-center justify-between gap-2 px-1 py-2.5 text-sm hover:bg-surface-50"
               >
                 <span>
@@ -323,7 +337,7 @@ function CasesTab({ id, manifest, groups }) {
                   {formatTime(c.opened_at)} · {c.opened_by}
                   <StatusBadge status={c.status} />
                 </span>
-              </Link>
+              </TaskLink>
             </li>
           ))}
         </ul>

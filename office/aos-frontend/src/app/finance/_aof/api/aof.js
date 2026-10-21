@@ -15,6 +15,8 @@ import { api, newIdempotencyKey, upload } from "./client";
 /** A question to a desk, a trader or Operations, and its answer. */
 /** An open question addressed to the viewer, with just the rows it is about. */
 /** A report the case's publish step wrote (e.g. a PDF), served by the API. */
+/** One proposal still open in a task, as the agent's Summary lists it. */
+/** An agent's business date at a glance: every task, the facts it is grouped by, its open proposals. */
 const enc = encodeURIComponent;
 
 export const useMe = (user) => useQuery({ queryKey: ["me", user], queryFn: () => api.get("/me"), enabled: !!user });
@@ -28,6 +30,12 @@ export const useCases = (id, teamGroup) =>
   useQuery({
     queryKey: ["cases", id, teamGroup ?? "all"],
     queryFn: () => api.get(`/capabilities/${enc(id)}/cases${teamGroup ? `?team_group=${enc(teamGroup)}` : ""}`),
+  });
+export const useSummary = (id, date, enabled = true) =>
+  useQuery({
+    queryKey: ["summary", id, date ?? "latest"],
+    queryFn: () => api.get(`/capabilities/${enc(id)}/summary${date ? `?date=${enc(date)}` : ""}`),
+    enabled,
   });
 export const useGroups = (id, enabled = true) =>
   useQuery({ queryKey: ["groups", id], queryFn: () => api.get(`/capabilities/${enc(id)}/groups`), enabled });
@@ -59,7 +67,7 @@ function useRefreshCases() {
   const qc = useQueryClient();
   return (detail) => {
     if (detail) qc.setQueryData(["case", detail.case_id], detail);
-    for (const key of ["inbox", "overview", "audit", "cases"]) qc.invalidateQueries({ queryKey: [key] });
+    for (const key of ["inbox", "overview", "audit", "cases", "summary"]) qc.invalidateQueries({ queryKey: [key] });
   };
 }
 
@@ -172,6 +180,23 @@ export function useBulkDecide(caseId) {
         idempotency_key: newIdempotencyKey(),
       }),
     onSuccess: (res) => refresh(res.case),
+  });
+}
+
+/** One decision on a pattern of proposals across many tasks; each task checks it as its own would. */
+export function useDecideAcross(capabilityId) {
+  const refresh = useRefreshCases();
+  return useMutation({
+    mutationFn: (v) =>
+      api.post(`/capabilities/${enc(capabilityId)}/summary/decisions`, {
+        targets: v.targets,
+        action: v.action,
+        comment: v.comment || null,
+        review_seconds: v.reviewSeconds ?? null,
+        checklist: v.checklist ?? null,
+        idempotency_key: newIdempotencyKey(),
+      }),
+    onSuccess: () => refresh(),
   });
 }
 

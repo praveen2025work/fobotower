@@ -262,6 +262,17 @@ Source of truth: `apps/backend/agent_one_finance/manifest.py` (Pydantic; unknown
 already has a case opens a follow-up case (`<case>.f<n>`, `follow_up_of` set). Its `load` takes
 only the items no case for that key has yet. With nothing new, it closes as `no_new_items`.
 
+`case.summarize_by`: what the agent's **Summary** tab groups a day's tasks by, outermost
+first — key fields, or facts the reference data holds about one (`<key field>_<attribute>`,
+as in `case.subject`), e.g. `[book_business, book_region, book_desk, book_product]`. The
+reference data must carry those attributes (`knowledge/fobo-books-fi-credit.yaml` does for the
+FI Credit books). The Summary reads it from the group's current version, so changing it
+regroups past days too; it never changes how a task runs. `GET
+/api/capabilities/{id}/summary?date=` returns the day's tasks with those facts and their open
+proposals; `POST /api/capabilities/{id}/summary/decisions` decides `[{case_id, group_ids}]`
+across tasks, each through the task's own bulk decision (every review rule applies, and what
+is refused comes back with its reason).
+
 ### items, match, compare, enrich
 
 | Spec | Fields |
@@ -617,6 +628,7 @@ Every setting comes from the environment, read once in `agent_one_finance/config
 | `AOF_TRUSTED_PROXY_SECRET` | — | refuse requests not from the proxy |
 | `AOF_ENTITLEMENT_WEBHOOK_SECRET` | — | enables entitlement invalidation |
 | `AOF_RUN_MODE` | background | background · inline |
+| `AOF_MAX_RUNS` | 4 | background runs at once; the rest wait their turn (each holds a database connection) |
 | `AOF_SCHEDULER` / `AOF_SCHEDULE_TZ` | on / UTC | schedule loop |
 | `AOF_EVENT_SECRET` | — | enables `POST /api/events` |
 | `AOF_ADMIN_ROLE` | AOF_PLATFORM_ADMIN | platform support |

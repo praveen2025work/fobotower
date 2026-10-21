@@ -1591,6 +1591,9 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
 #aof-root .gap-y-1 {
   row-gap: 0.25rem;
 }
+#aof-root .gap-y-2 {
+  row-gap: 0.5rem;
+}
 #aof-root :is(.space-y-0\.5 > :not([hidden]) ~ :not([hidden])) {
   --tw-space-y-reverse: 0;
   margin-top: calc(0.125rem * calc(1 - var(--tw-space-y-reverse)));
@@ -1771,6 +1774,10 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
   --tw-border-opacity: 1;
   border-color: rgb(var(--c-primary-400) / var(--tw-border-opacity, 1));
 }
+#aof-root .border-primary-500 {
+  --tw-border-opacity: 1;
+  border-color: rgb(var(--c-primary-500) / var(--tw-border-opacity, 1));
+}
 #aof-root .border-primary-600 {
   --tw-border-opacity: 1;
   border-color: rgb(var(--c-primary-600) / var(--tw-border-opacity, 1));
@@ -1814,8 +1821,15 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
   --tw-bg-opacity: 1;
   background-color: rgb(var(--c-accent-50) / var(--tw-bg-opacity, 1));
 }
+#aof-root .bg-accent-50\/40 {
+  background-color: rgb(var(--c-accent-50) / 0.4);
+}
 #aof-root .bg-accent-50\/60 {
   background-color: rgb(var(--c-accent-50) / 0.6);
+}
+#aof-root .bg-accent-500 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(var(--c-accent-500) / var(--tw-bg-opacity, 1));
 }
 #aof-root .bg-black\/50 {
   background-color: rgb(0 0 0 / 0.5);
@@ -2615,6 +2629,11 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
   background-color: rgb(var(--c-nav-hover) / var(--tw-bg-opacity, 1));
 }
 
+#aof-root .hover\:bg-primary-100:hover {
+  --tw-bg-opacity: 1;
+  background-color: rgb(var(--c-primary-100) / var(--tw-bg-opacity, 1));
+}
+
 #aof-root .hover\:bg-primary-50:hover {
   --tw-bg-opacity: 1;
   background-color: rgb(var(--c-primary-50) / var(--tw-bg-opacity, 1));
@@ -2705,6 +2724,10 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
 
 #aof-root .disabled\:opacity-30:disabled {
   opacity: 0.3;
+}
+
+#aof-root .disabled\:opacity-40:disabled {
+  opacity: 0.4;
 }
 
 #aof-root .disabled\:opacity-50:disabled {

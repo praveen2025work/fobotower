@@ -1,7 +1,7 @@
 """Build the demo cases the console snapshot is recorded from, dated around a day you choose.
 
     python build-demo-cases.py --today 2026-10-15 [--api http://localhost:8300] [--no-sim] [capability ...]
-    python build-demo-cases.py --today 2026-10-20 --examples
+    python build-demo-cases.py --today 2026-10-20 --examples [--fi-credit]
 
 Run it against a dev stack whose database has the capabilities but no cases (see README.md,
 "To rebuild the snapshot"). Every case is opened, run and decided through the API the way
@@ -13,11 +13,21 @@ keep it. Name capabilities to build only those.
 --examples builds only the two tasks the snapshot's walkthrough explains (src/snapshot/walkthrough.ts
 in apps/web), each with the previous COB's task for the same book signed off: MB Rec breaks for
 RATES-LDN-04 and CATS vs MOTIF for RATES-LDN-01, reviewed by Rita.
+
+--fi-credit opens CATS vs MOTIF for every FI Credit book on today's COB (about 1,200, from
+the reference data), plus the other Rates and Prime books, and works them as the teams
+would by mid-morning in London, from the agent's Summary: APAC signed off (its region-wide
+settlement problem approved once, then the rest), EMEA's region-wide static-data problem
+approved once and the rest still open, the Americas not started. Rates and Prime are
+signed off except the walkthrough's USD swaps task.
 """
 import argparse
 import datetime as dt
 import json
+import re
 import time
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 import urllib.error
 import urllib.request
 import uuid
@@ -129,6 +139,79 @@ def drive(cap, group, key, target, opener="aof-scheduler", decider="frank", publ
     return cid
 
 
+FIC_BOOKS = Path(__file__).resolve().parents[3] / "config/agent-one-finance/knowledge/fobo-books-fi-credit.yaml"
+RECON = "recon.investigation"
+
+
+def fi_credit_books() -> list[tuple[str, str]]:
+    """(book, region) for every FI Credit book in the reference data."""
+    return [m.groups() for m in re.finditer(r'id: "book:(FIC-[A-Z]+-\d+)".*?region: ([A-Za-z]+)', FIC_BOOKS.read_text())]
+
+
+def open_many(group: str, keys: list[dict], workers: int = 8) -> None:
+    """Open many tasks at once, as MOTIF's end-of-day feed would book by book."""
+    with ThreadPoolExecutor(workers) as pool:
+        results = list(pool.map(lambda k: call("POST", f"/api/capabilities/{RECON}/cases", "aof-scheduler",
+                                               {"case_key": k, "team_group": group}), keys))
+    failed = [(k, s, out) for k, (s, out) in zip(keys, results) if s not in (200, 201)]
+    for k, s, out in failed[:5]:
+        print(f"  ! {k}: open -> {s} {json.dumps(out)[:200]}")
+    print(f"  opened {len(keys) - len(failed)} of {len(keys)} in {group}")
+
+
+def summary_day(cob: str, user: str) -> dict:
+    """The agent's Summary for the COB once no task is still running."""
+    while True:
+        _, day = call("GET", f"/api/capabilities/{RECON}/summary?date={cob}", user)
+        if not [t for t in day["tasks"] if t["status"] in ("running", "queued")]:
+            return day
+        time.sleep(3)
+
+
+def approve_patterns(day: dict, user: str, region: str, comments: dict[str, str], only: str | None = None) -> None:
+    """Approve each pattern of ready proposals in a region at once, from the Summary."""
+    at = [d["field"] for d in day["dimensions"]].index("book_region")
+    patterns: dict[tuple, dict[str, list[str]]] = {}
+    for t in day["tasks"]:
+        if t["facts"][at] != region:
+            continue
+        for g in t["open"]:
+            if g["ready"] and (only is None or g["label"] == only):
+                patterns.setdefault((g["label"], g["verdict"]), {}).setdefault(t["case_id"], []).append(g["group_id"])
+    for (label, verdict), targets in patterns.items():
+        comment = comments.get(label) or f"Checked across {region}: {verdict or 'no verdict'} per the playbook."
+        s, out = call("POST", f"/api/capabilities/{RECON}/summary/decisions", user, {
+            "targets": [{"case_id": c, "group_ids": g} for c, g in targets.items()], "action": "approve",
+            "comment": comment, "idempotency_key": f"s-{uuid.uuid4().hex[:24]}", "review_seconds": 240})
+        print(f"  {region} {label} -> {verdict}: {s} approved {out.get('decided')}, left {out.get('refused_count')}")
+
+
+def books_day(cob: str) -> None:
+    books = fi_credit_books()
+    open_many("cats-motif-fi-credit", [{"book": b, "cob": cob} for b, _ in books])
+    # The other Rates and Prime books, signed off; the walkthrough's USD swaps task stays waiting.
+    for b in ["RATES-LDN-02", "RATES-LDN-03", "RATES-LDN-04", "RATES-NY-01", "RATES-NY-02"]:
+        drive(RECON, "cats-motif-rates", {"book": b, "cob": cob}, "done", decider="raj")
+    for n in range(1, 13):
+        drive(RECON, "cats-motif", {"book": f"PRIME-MB-{n:02d}", "cob": cob}, "done", decider="frank")
+    day = summary_day(cob, "mei")
+    # APAC works first: the settlement batch MOTIF loaded twice is one decision for the
+    # region, then every other proposal; what the playbook holds back, one by one.
+    approve_patterns(day, "mei", "APAC", {"Settlement break · back office":
+                     "APAC: MOTIF's settlement batch was loaded twice; Operations is reversing the duplicate. POST."})
+    day = summary_day(cob, "mei")
+    at = [d["field"] for d in day["dimensions"]].index("book_region")
+    for t in day["tasks"]:
+        if t["open"] and t["facts"][at] == "APAC":
+            decide_all(settle(t["case_id"], "mei"), "mei")
+    # EMEA: the new GBP issue not yet in MOTIF static data, in every GBP corporates book.
+    approve_patterns(summary_day(cob, "lars"), "lars", "EMEA", {"Data quality break · back office":
+                     "EMEA: the new Vodafone 2039 issue is not in MOTIF static data yet; Technology is setting it up. DO NOT POST."},
+                     only="Data quality break · back office")
+    final = summary_day(cob, "dana")
+    print("  tasks by status:", final["totals"])
+
+
 def main():
     global API, T, Y, MONTH, PREV_MONTH
     p = argparse.ArgumentParser()
@@ -136,6 +219,8 @@ def main():
     p.add_argument("--api", default=API)
     p.add_argument("--no-sim", action="store_true", help="leave out the FOBO skill's curated books (their COB is fixed)")
     p.add_argument("--examples", action="store_true", help="only the walkthrough's two tasks and the day before's")
+    p.add_argument("--fi-credit", action="store_true", help="with --examples: every FI Credit book on today's COB, "
+                   "worked from the Summary by region")
     p.add_argument("only", nargs="*", help="capabilities to build (default: all)")
     a = p.parse_args()
     today = dt.date.fromisoformat(a.today)
@@ -150,6 +235,8 @@ def main():
             ("recon.investigation", "cats-motif-rates", {"book": "RATES-LDN-01", "cob": T}, "review"),
         ]:
             drive(cap, group, key, target, decider="rita")
+        if a.fi_credit:
+            books_day(T)
         return
     plan = []
     prime = [f"PRIME-MB-{n:02d}" for n in range(1, 7)]

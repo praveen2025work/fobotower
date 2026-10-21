@@ -39,6 +39,7 @@ export function installSnapshot(snap: Snapshot, apiBase = "/api"): void {
     /* storage unavailable: the app falls back to its default user */
   }
   (globalThis as { __aofSnapshotScope?: string }).__aofSnapshotScope = snap.scope ?? "all";
+  (globalThis as { __aofSnapshotHas?: (path: string) => boolean }).__aofSnapshotHas = (path) => `${apiBase}${path}` in snap.responses;
   const real = window.fetch.bind(window);
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url, location.href);

@@ -25,3 +25,24 @@ it("says when nothing is waiting", async () => {
   renderAt("/inbox", "/inbox", <InboxPage />);
   expect(await screen.findByText("Nothing is waiting on you.")).toBeInTheDocument();
 });
+
+it("folds many tasks of one agent and COB into one row that opens the agent's summary", async () => {
+  const row = (n: number) => ({
+    case_id: `recon.${n}`, capability_id: "recon.investigation", capability_name: "Helix FOBO Agent", case_label: "CATS vs MOTIF",
+    subject: `FI Credit APAC · Asia IG bonds (FIC-APAC-${n}) · COB 2026-10-20`, status: "awaiting_review",
+    opened_at: "2026-10-21T06:00:00Z", opened_by: "aof-scheduler", groups: 2, proposed: 2, escalated: n === 1 ? 1 : 0,
+    decided: 0, action: "review", team_group: "cats-motif-fi-credit", summary_date: "2026-10-20", exposure: 1000, unit: "GBP",
+  });
+  mockApi({
+    "GET /inbox": [
+      ...Array.from({ length: 7 }, (_, i) => row(i + 1)),
+      { ...row(99), case_id: "rates.1", team_group: "cats-motif-rates", subject: "USD swaps (RATES-LDN-01) · COB 2026-10-20" },
+    ],
+  });
+  renderAt("/inbox", "/inbox", <InboxPage />);
+  const run = await screen.findByRole("link", { name: /CATS vs MOTIF · 2026-10-20: 7 tasks/ });
+  expect(run).toHaveAttribute("href", "/capabilities/recon.investigation?tab=summary&date=2026-10-20");
+  expect(screen.getByText("14 of 14 to decide")).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "CATS vs MOTIF: USD swaps (RATES-LDN-01) · COB 2026-10-20" })).toHaveAttribute("href", "/cases/rates.1");
+  expect(screen.queryByText(/FIC-APAC-3\)/)).not.toBeInTheDocument();
+});

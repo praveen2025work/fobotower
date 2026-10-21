@@ -18,7 +18,7 @@ part: sources, keys, thresholds, playbook, instructions, reviewers and schedule.
 sees only its own books and cases, and only its own owners approve changes to its group.
 
 ```
-Reconciliation investigation (capability: workflow, gates, retention)
+Helix FOBO Agent (capability: workflow, gates, retention)
 ├── CATS vs MOTIF — Prime (FOBO)   frank, gina   · PRIME-MB-01…06
 ├── CATS vs MOTIF — Rates (FOBO)   rita, raj     · RATES-LDN-01…04, RATES-NY-01/02
 ├── Cash — bank vs ledger          dan           · cash accounts

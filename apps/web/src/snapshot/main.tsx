@@ -65,7 +65,7 @@ if (typeof DecompressionStream === "undefined") {
           <HashRouter>
             <App />
             <Banner capturedAt={snap.captured_at} />
-            {snap.scope === "agents" && <Walkthrough recorded={(route) => `/api${route}` in snap.responses} />}
+            {snap.scope === "agents" && <Walkthrough recorded={(route) => `/api${route.split("?")[0]}` in snap.responses} />}
           </HashRouter>
         </QueryClientProvider>
       </React.StrictMode>,

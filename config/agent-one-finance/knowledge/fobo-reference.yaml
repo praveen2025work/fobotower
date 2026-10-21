@@ -62,8 +62,7 @@ nodes:
   - { id: "book:PRIME-MB-11", kind: book, valid_from: 2026-10-13, valid_to: 2026-10-14, attrs: { name: PRIME-MB-11, legal_entity: LE-APAC-01, product: "EUR swaps", label: "EUR swaps (PRIME-MB-11)" } }
   - { id: "book:PRIME-MB-12", kind: book, valid_from: 2026-10-13, valid_to: 2026-10-14, attrs: { name: PRIME-MB-12, legal_entity: LE-APAC-01, product: "Inflation swaps", label: "Inflation swaps (PRIME-MB-12)" } }
 
-  # From 2026-10-14 each book also names its business, region and desk, which an
-  # agent's Summary groups tasks by (task.summarize_by: book_business, book_region…).
+  # From 2026-10-14 each book also names its business, region and desk.
   - { id: "book:RATES-LDN-01", kind: book, valid_from: 2026-10-14, attrs: { name: RATES-LDN-01, legal_entity: LE-UK-01, product: "USD swaps", label: "USD swaps (RATES-LDN-01)", business: Rates, region: EMEA, desk: RATES-LDN } }
   - { id: "book:RATES-LDN-02", kind: book, valid_from: 2026-10-14, attrs: { name: RATES-LDN-02, legal_entity: LE-UK-01, product: "EUR swaps", label: "EUR swaps (RATES-LDN-02)", business: Rates, region: EMEA, desk: RATES-LDN } }
   - { id: "book:RATES-LDN-03", kind: book, valid_from: 2026-10-14, attrs: { name: RATES-LDN-03, legal_entity: LE-UK-01, product: "GBP swaps", label: "GBP swaps (RATES-LDN-03)", business: Rates, region: EMEA, desk: RATES-LDN } }

@@ -1,13 +1,14 @@
-# FI Credit master books in APAC, EMEA and the Americas, in FOBO's reference data
-# (the namespace of fobo-reference.yaml): each book's business, region, desk and
-# product, and the label tasks are named by — e.g. "FI Credit APAC · Asia IG bonds
-# (FIC-APAC-0001)". Generated from the stub's books by
-# apps/backend/scripts/write_fi_credit_books.py; do not edit by hand.
+# FI Credit master books (FOBO group 500082) in APAC, EMEA and the Americas, in
+# FOBO's reference data (the namespace of fobo-reference.yaml): the group and its name,
+# each book's business, region, desk and product, and the label it is named by — e.g.
+# "FI Credit APAC · Australia corporates (FIC-APAC-0001)". Generated from the stub's books by
+# apps/backend/scripts/write_fobo_books.py; do not edit by hand.
 
 namespace: fobo-reference
 valid_from: 2026-10-13
 
 nodes:
+  - { id: "group:500082", kind: fobo_group, attrs: { name: FI Credit, business: FI Credit } }
   - { id: "team:FI Credit desk", kind: team, attrs: { name: FI Credit desk } }
   - { id: "desk:FIC-AMER-CDS", kind: desk, attrs: { name: FIC-AMER-CDS, business: FI Credit, region: Americas, owner_team: FI Credit desk } }
   - { id: "desk:FIC-AMER-CONV", kind: desk, attrs: { name: FIC-AMER-CONV, business: FI Credit, region: Americas, owner_team: FI Credit desk } }

@@ -12,6 +12,9 @@ import { api, newIdempotencyKey, upload } from "./client";
 /** One sign-off checklist question, with what Agent One Finance already knows (review.checklist). */
 /** One entry of a skill session's conversation (the `agent` step). */
 /** The skill session that produced the task's results. */
+/** One row of a task's Summary breakdown (a desk, a product in it, a book in that), with the rows a level down. */
+/** Who decided what on a task, and the model session behind it. */
+/** GET /tasks/{id}/summary: what a task read and found, broken down by task.summarize_by. */
 /** A question to a desk, a trader or Operations, and its answer. */
 /** An open question addressed to the viewer, with just the rows it is about. */
 /** A report the task's publish step wrote (e.g. a PDF), served by the API. */
@@ -23,7 +26,7 @@ export const useOverview = () => useQuery({ queryKey: ["overview"], queryFn: () 
 export const useInbox = () => useQuery({ queryKey: ["inbox"], queryFn: () => api.get("/inbox") });
 export const useAgents = () => useQuery({ queryKey: ["agents"], queryFn: () => api.get("/agents") });
 export const useAgent = (id) => useQuery({ queryKey: ["agent", id], queryFn: () => api.get(`/agents/${enc(id)}`) });
-export const useCases = (id, teamGroup) =>
+export const useTasks = (id, teamGroup) =>
   useQuery({
     queryKey: ["tasks", id, teamGroup ?? "all"],
     queryFn: () => api.get(`/agents/${enc(id)}/tasks${teamGroup ? `?team_group=${enc(teamGroup)}` : ""}`),
@@ -36,12 +39,15 @@ export const useGroup = (id, group) =>
     queryFn: () => api.get(`/agents/${enc(id)}/groups/${enc(group)}`),
   });
 /** A task; while its run is in progress the view polls until it pauses or ends. */
-export const useCase = (taskId) =>
+export const useTask = (taskId) =>
   useQuery({
     queryKey: ["task", taskId],
     queryFn: () => api.get(`/tasks/${enc(taskId)}`),
     refetchInterval: (q) => (q.state.data?.status === "running" ? 1500 : false),
   });
+/** A task's Summary tab; `version` changes when its decisions do, so the counts follow. */
+export const useTaskSummary = (taskId, version) =>
+  useQuery({ queryKey: ["task-summary", taskId, version], queryFn: () => api.get(`/tasks/${enc(taskId)}/summary`) });
 export const useMessages = (taskId) =>
   useQuery({ queryKey: ["messages", taskId], queryFn: () => api.get(`/tasks/${enc(taskId)}/messages`) });
 export const useHistory = (taskId, enabled = true) =>

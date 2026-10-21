@@ -1,16 +1,16 @@
-// The walkthrough a snapshot opens with: two FOBO tasks and a day of FI Credit books,
-// explained step by step, each step able to open the part of the screen it talks about.
-// Written for the tasks in this recording (COB 20 October 2026); task ids are stable for
-// a book, COB and group.
+// The walkthrough a snapshot opens with: two FOBO examples explained step by step, each
+// step able to open the part of the screen it talks about. Written for the tasks in this
+// recording (COB 20 October 2026); task ids are stable for a key (a book, or a FOBO group
+// and region) with its COB and group.
 
 export interface Target {
-  route: string;          // the page, e.g. /tasks/<id>, or /agents/<id>?tab=summary
+  route: string;          // the page, e.g. /tasks/<id> or /agents/<id>/groups/<group>
   tab?: string;           // a tab to open on it, by its name
   proposal?: string;      // a proposal to select in a task, by the start of its label
   highlight?: string;     // text to point at once there
 }
 
-// A paragraph, or a list of points. **Bold** marks what the screen shows.
+// A paragraph, or a list of points. **Bold** marks what the screen shows, `code` a configuration or event field.
 export type Block = string | string[];
 
 export interface Step {
@@ -27,12 +27,14 @@ export interface Example {
 
 const BREAKS = "/tasks/break.investigation.8b88909bb786";
 const BREAKS_YESTERDAY = "/tasks/break.investigation.bb1aad48b02d";
-const REC = "/tasks/recon.investigation.65bc19fe320f";
+const RATES_EMEA = "/tasks/recon.investigation.ec76a453e8fe";
+const RATES_EMEA_YESTERDAY = "/tasks/recon.investigation.57f816f79cb1";
+const RATES_APAC = "/tasks/recon.investigation.a7b2e1297686";
 
 export const WALKTHROUGH: { title: string; intro: Block[]; examples: Example[]; outro: Block[] } = {
   title: "FOBO on two agents, step by step",
   intro: [
-    "**Balance Recon Agent** investigates the breaks MB Rec's balance reconciliation leaves open. **Helix FOBO Agent** reconciles CATS to MOTIF for every master book: here, the FI Credit books in APAC, EMEA and the Americas, and the Rates and Prime books.",
+    "**Balance Recon Agent** investigates the breaks MB Rec's balance reconciliation leaves open. **Helix FOBO Agent** reconciles CATS to MOTIF itself: here one task per FOBO group, region and COB, opened by FOBO's feed — Rates and FI Credit, each in EMEA, APAC and the Americas.",
     "Each step below explains one part; **Show me** opens it on the screen. The snapshot is read-only: you can look at everything, but nothing can be approved or changed.",
   ],
   examples: [
@@ -108,39 +110,75 @@ export const WALKTHROUGH: { title: string; intro: Block[]; examples: Example[]; 
       ],
     },
     {
-      title: "Helix FOBO Agent: USD swaps (RATES-LDN-01)",
-      subtitle: "Here the agent matches CATS to MOTIF itself, one task per master book and COB.",
+      title: "Helix FOBO Agent: Rates EMEA, one task for 300 books",
+      subtitle: "FOBO's feed sends one event per group, region and COB; each opens one task that reconciles every book of that region.",
       steps: [
         {
-          title: "AOF does the matching",
+          title: "Three events, three Rates tasks",
           body: [
-            "AOF reads CATS (front office) and MOTIF (back office) positions for the USD swaps book and compares them instrument by instrument, with a 0.50 tolerance. Three instruments differ.",
+            "When FOBO's CSV for a group and region has loaded, its feed sends one event: `{ group: 500081, group_name: Rates, region: EMEA, cob: 2026-10-20 }`. Rates EMEA, Rates APAC and Rates AMER are three events and three tasks; FI Credit has its own three.",
+            "The task is named from the reference data, which knows group 500081 as Rates. Each region has its own breaks, proposals, sign-off and Summary, and only that region's controllers see it.",
           ],
-          show: { route: REC, highlight: "USD swaps (RATES-LDN-01)" },
+          show: { route: RATES_EMEA, highlight: "Rates EMEA · COB 2026-10-20" },
         },
         {
-          title: "The same playbook sorts the breaks",
+          title: "The Summary: what it read and found",
           body: [
-            "**IRS 5Y USD**: MOTIF holds two entries with the same settlement reference. **Settlement break → POST**: adjust MOTIF. Owner: Operations.",
+            "A regional task opens on its **Summary**. AOF read 2,796 CATS and 2,755 MOTIF positions for the 300 Rates EMEA books and matched them by book and instrument.",
+            "216 breaks in 149 books; the other 151 books reconciled clean. The tiles show the gross and net amount and how many breaks are still to decide.",
           ],
-          show: { route: REC, proposal: "Settlement break" },
+          show: { route: RATES_EMEA, tab: "Summary", highlight: "300 books" },
         },
         {
-          title: "The model where the rules stop",
+          title: "By desk, then product, then book",
           body: [
+            "The group sets `task.summarize_by: [book_desk, book_product, book]`; the `resolve` step looks up each break's desk and product in the reference data, as of the COB.",
+            "Open a desk to see its products, a product to see its books. Each row shows its breaks, amounts, what is still open and which proposals its breaks are in.",
+          ],
+          show: { route: RATES_EMEA, tab: "Summary", highlight: "By book desk" },
+        },
+        {
+          title: "Proposals across the books",
+          body: [
+            "The playbook groups breaks by category and side across the whole region, so one decision covers every book with the same cause:",
             [
-              "**SOFR OIS 1Y**: a fee or funding amount on one side only. A trade booking break, but the side is not proven, so there is no verdict: the controller decides. Owner: Desk.",
-              "**IRS 2Y USD**: 85,216.04 that no cause check explains. **Novel break → escalated** to Product Control.",
+              "**Settlement break · back office**: 128 breaks in 122 books, MOTIF holding two entries with the same settlement reference. The verdict table says POST, but some of the 128 fail validation tests FO-1 and FO-2, so the playbook holds the POST and **escalates** the group to Operations.",
+              "**Trade booking break · front office**: 21 breaks in 19 books waiting for desk confirmation. **DO NOT POST**. Owner: Desk.",
+              "**Data quality break · back office**: 16 breaks in 15 books whose instrument does not resolve in MOTIF static data. **DO NOT POST**. Owner: Technology.",
+              "**Novel break**: 7 breaks no cause check explains. The model read the region's booking events and **escalated** them to Product Control.",
             ],
+            "Where the side is not proven, the model writes a proposal without a verdict and the controller decides. Click a proposal to open it with its breaks.",
           ],
-          show: { route: REC, proposal: "Novel break" },
+          show: { route: RATES_EMEA, tab: "Summary", highlight: "Proposals across" },
+        },
+        {
+          title: "The model session",
+          body: [
+            "**Model session** on the Summary says who proposed what: the playbook settled six proposals and the model reasoned three. For the model's proposals it shows the adapter and model, tokens, cost and turns as the adapter reports them, against the agent's cost limit, and every lookup it made.",
+            "The model is offered `motif.group_booking_events`, scoped to the task's FOBO group and region, and a **booking-events** specialist it can hand the trawl to. In this snapshot the model is a fixed stand-in that reports no usage; in the office the same card shows the real model's figures.",
+          ],
+          show: { route: RATES_EMEA, tab: "Summary", highlight: "Model session" },
+        },
+        {
+          title: "Each region is its own task",
+          body: [
+            "Rates APAC is a separate task with its own Summary: Hana, the Rates APAC controller, has signed it off. Rates EMEA waits for Rita, Rates AMER for Raj.",
+          ],
+          show: { route: RATES_APAC, tab: "Summary" },
+        },
+        {
+          title: "Signed off",
+          body: [
+            "Yesterday's Rates EMEA task is signed off: every proposal decided, escalations raised as tickets for the owning teams, and its record, Excel export and evidence pack kept.",
+          ],
+          show: { route: RATES_EMEA_YESTERDAY, tab: "Summary" },
         },
         {
           title: "The configuration behind it",
           body: [
-            "The **CATS vs MOTIF — Rates** group sets the sources, keys, tolerance, playbook and reviewers for these books. Every change is a new version that another owner approves; the history is under **Versions**.",
+            "The **CATS vs MOTIF — by FOBO group and region** group sets the key (`group`, `region`, `cob`), the data scopes (FOBO group and region), the regional CATS and MOTIF reads, the playbook and the reviewers. Every change is a new version that another owner approves.",
           ],
-          show: { route: "/agents/recon.investigation/groups/cats-motif-rates" },
+          show: { route: "/agents/recon.investigation/groups/cats-vs-motif" },
         },
       ],
     },

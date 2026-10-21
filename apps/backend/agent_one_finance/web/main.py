@@ -334,6 +334,15 @@ async def get_task(task_id: str, c: Caller = Depends(caller)) -> dict:
     return await tasks.task_detail(task_id, c)
 
 
+@app.get("/api/tasks/{task_id}/summary")
+@_errors
+async def get_task_summary(task_id: str, c: Caller = Depends(caller)) -> dict:
+    """The task's Summary tab: sources read, its items broken down by task.summarize_by,
+    its proposals across them, and the model session behind it."""
+    from agent_one_finance import summary
+    return await summary.task_summary(task_id, c)
+
+
 class DecisionIn(BaseModel):
     group_id: str
     action: str
@@ -917,7 +926,7 @@ async def platform(c: Caller = Depends(caller)) -> dict:
                         "classification": spec.classification,
                         "tools": [{"name": f"{cid}.{t}", "description": ts.description,
                                    "access": ts.access,
-                                   "scope": ts.scope.model_dump() if ts.scope else None}
+                                   "scope": ([r.model_dump() for r in ts.scope_rules()] or None)}
                                   for t, ts in spec.tools.items()]}
                        for cid, spec in reg.connectors.items()],
         "llm": llm().name,

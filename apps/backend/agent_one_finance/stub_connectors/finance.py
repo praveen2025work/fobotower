@@ -18,7 +18,7 @@ import zlib
 
 from mcp.server.mcpserver import MCPServer
 
-from agent_one_finance.stub_connectors import fi_credit as fic
+from agent_one_finance.stub_connectors import fobo_books
 from agent_one_finance.stub_connectors import fobo_simulation as sim
 
 ACCOUNTS = {
@@ -158,7 +158,7 @@ DESKS = {"UST": "Rates", "BUND": "Rates", "GILT": "Rates", "JGB": "Rates", "IRS"
          "ESTR": "Rates", "SONIA": "Rates", "EURIBOR": "Rates", "BASIS": "Rates", "SWPTN": "Rates",
          "USCPI": "Rates", "UKRPI": "Rates", "EUHICP": "Rates", "XCCY": "Rates",
          "USDJPY": "FX", "AUDUSD": "FX", "USDCHF": "FX",
-         "OAT": "Rates", "TIPS": "Rates", "BOBL": "Rates", "USDCAD": "FX", "EURGBP": "FX",
+         "OAT": "Rates", "TIPS": "Rates", "BOBL": "Rates", "USDCAD": "FX", "EURGBP": "FX", "TONA": "Rates", "ACGB": "Rates",
          "TBILL": "Money markets", "UKTB": "Money markets", "CP": "Money markets", "REPO": "Money markets",
          "BOND": "Credit", "CDS": "Credit", "CONV": "Credit"}
 
@@ -204,8 +204,8 @@ ALL_INSTRUMENTS = sorted({*INSTRUMENTS, *(i for p in PRODUCTS.values() for i in 
 
 def _instruments(book: str, cob: str) -> list[str]:
     """The instruments a book holds on a COB: its product's, or the mixed set before PRODUCTS_FROM."""
-    if fic.is_book(book):
-        return fic.instruments(book, cob)
+    if fobo_books.is_book(book):
+        return fobo_books.instruments(book, cob)
     product = BOOK_PRODUCTS.get(book)
     return PRODUCTS[product] if product and cob >= PRODUCTS_FROM else INSTRUMENTS
 
@@ -271,13 +271,14 @@ def motif_trades(book: str, cob: str, instrument: str | None = None) -> dict:
 
 def _motif_base(book: str, cob: str) -> list[dict]:
     r = _rng("motif-diff", book, cob)
-    own = not fic.is_book(book) or not fic.clean(book, cob)       # most FI Credit books agree
-    issue = fic.issue_instrument(book, cob) if fic.is_book(book) else None
+    regional = fobo_books.is_book(book)
+    own = not regional or not fobo_books.clean(book, cob)          # most regional books agree
+    issue = fobo_books.issue_instrument(book, cob) if regional else None
     rows = []
     for row in _fo_positions(book, cob):
         if issue and row["instrument"] == issue[0]:
             if issue[1] == "settle":                               # the batch loaded twice in MOTIF
-                rows.append({**row, "mtm": round(row["mtm"] + _rng("fic-settle-amt", book, cob).uniform(2_000, 40_000), 2)})
+                rows.append({**row, "mtm": round(row["mtm"] + fobo_books.settle_amount(book, cob), 2)})
             continue                                               # static: MOTIF cannot book it yet
         roll = r.random()
         if not own:
@@ -304,7 +305,7 @@ RATES_BOOKS = ["RATES-LDN-01", "RATES-LDN-02", "RATES-LDN-03", "RATES-LDN-04", "
 
 @functools.lru_cache(maxsize=4096)
 def _scenario(book: str, cob: str) -> dict:
-    if cob < SCENARIOS_FROM or fic.is_book(book):
+    if cob < SCENARIOS_FROM or fobo_books.is_book(book):
         return {}
     fo = {p["instrument"]: p for p in _fo_positions(book, cob)}
     base = {p["instrument"]: p for p in _motif_base(book, cob)}
@@ -377,7 +378,7 @@ def break_snapshots(book: str, cob: str) -> dict:
         return {"rows": sim.snapshots(book)}
     rows = []
     scenario = _scenario_instruments(book, cob)
-    issue = fic.issue_instrument(book, cob) if fic.is_book(book) else None
+    issue = fobo_books.issue_instrument(book, cob) if fobo_books.is_book(book) else None
     for ins in _instruments(book, cob):
         cause = None if ins in scenario else _rng("cause", book, cob, ins).choice(CAUSES)
         if issue and ins == issue[0]:
@@ -520,9 +521,56 @@ def bond_metadata(instrument: str) -> dict:
     found = sim.bond_metadata(instrument)
     if found is None:
         found = {"instrument": instrument, "isin": None,
-                 "static_present": instrument in ALL_INSTRUMENTS or instrument in fic.INSTRUMENTS,
+                 "static_present": instrument in ALL_INSTRUMENTS or instrument in fobo_books.INSTRUMENTS,
                  "amortising": False}
     return {"rows": [found]}
+
+
+# ---------- One FOBO group in one region: every master book at once ----------
+# FOBO's feed sends one event per group, region and COB (Rates EMEA); the task
+# reads every book of that group in that region (fobo_books.py) in one call each.
+
+def cats_group_positions(group: str, region: str, cob: str) -> dict:
+    """Front-office (CATS) end-of-day positions and MTM for every master book of a FOBO
+    group (e.g. 500081 Rates) in a region (EMEA, APAC, AMER) on a COB; each row names its book."""
+    return {"rows": [p for book in fobo_books.books_in(group, region) for p in _fo_positions(book, cob)]}
+
+
+def motif_group_positions(group: str, region: str, cob: str) -> dict:
+    """Back-office (MOTIF) positions and MTM for every master book of a FOBO group in a
+    region on a COB; each row names its book."""
+    return {"rows": [p for book in fobo_books.books_in(group, region) for p in motif_positions(book, cob)["rows"]]}
+
+
+def _differ(book: str, cob: str) -> set[str]:
+    """The instruments CATS and MOTIF differ on for a book and COB."""
+    fo = {r["instrument"]: r["mtm"] for r in _fo_positions(book, cob)}
+    bo = {r["instrument"]: r["mtm"] for r in motif_positions(book, cob)["rows"]}
+    return {i for i in fo.keys() | bo.keys() if fo.get(i) != bo.get(i)}
+
+
+def motif_group_break_snapshots(group: str, region: str, cob: str) -> dict:
+    """Dated FO/BO snapshots (booking time, mapping, curves, components, versions,
+    adjustments) for the positions of a FOBO group's books in a region where CATS and
+    MOTIF differ on the COB; one row per book and instrument."""
+    rows = []
+    for book in fobo_books.books_in(group, region):
+        differ = _differ(book, cob)
+        rows += [{"book": book, **r} for r in break_snapshots(book, cob)["rows"] if r["instrument"] in differ]
+    return {"rows": rows}
+
+
+def motif_group_booking_events(group: str, region: str, cob: str, book: str | None = None,
+                               instrument: str | None = None) -> dict:
+    """Back-office booking and amendment events behind the breaks of a FOBO group's books
+    in a region on a COB (optionally one book, or one instrument); each row names its book."""
+    books = [b for b in fobo_books.books_in(group, region) if book in (None, b)]
+    rows = []
+    for b in books:
+        if book is None and not _differ(b, cob):
+            continue                                   # a book with no break has nothing to explain
+        rows += [{"book": b, **r} for r in booking_events(b, cob, instrument=instrument)["rows"]]
+    return {"rows": rows}
 
 
 def build_secref() -> MCPServer:
@@ -537,6 +585,7 @@ def build_cats() -> MCPServer:
     server.add_tool(cats_positions, name="positions", description=cats_positions.__doc__)
     server.add_tool(cats_trades, name="trades", description=cats_trades.__doc__)
     server.add_tool(cats_pnl_components, name="pnl_components", description=cats_pnl_components.__doc__)
+    server.add_tool(cats_group_positions, name="group_positions", description=cats_group_positions.__doc__)
     return server
 
 
@@ -549,6 +598,11 @@ def build_motif() -> MCPServer:
     server.add_tool(motif_pnl_components, name="pnl_components", description=motif_pnl_components.__doc__)
     server.add_tool(break_snapshots_named_pnl, name="break_snapshots_named_pnl",
                     description=break_snapshots_named_pnl.__doc__)
+    server.add_tool(motif_group_positions, name="group_positions", description=motif_group_positions.__doc__)
+    server.add_tool(motif_group_break_snapshots, name="group_break_snapshots",
+                    description=motif_group_break_snapshots.__doc__)
+    server.add_tool(motif_group_booking_events, name="group_booking_events",
+                    description=motif_group_booking_events.__doc__)
     return server
 
 

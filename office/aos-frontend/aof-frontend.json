@@ -86,6 +86,7 @@
     "Clock",
     "Clock3",
     "Cog",
+    "Cpu",
     "Database",
     "Download",
     "ExternalLink",
@@ -156,7 +157,7 @@
   ],
   "files": {
     "src/app/finance/_aof/api/aof.js": {
-      "sha": "cd678a8d4ac9d077",
+      "sha": "cb4d04d96416035c",
       "from": "apps/web/src/api/aof.ts"
     },
     "src/app/finance/_aof/api/client.js": {
@@ -296,7 +297,7 @@
       "from": "apps/web/src/components/orchestrator/paths.ts"
     },
     "src/app/finance/_aof/components/orchestrator/stages.js": {
-      "sha": "3462d5dba86f81f0",
+      "sha": "39bbedb8e8f58a04",
       "from": "apps/web/src/components/orchestrator/stages.ts"
     },
     "src/app/finance/_aof/components/task/DataSetsPanel.jsx": {
@@ -339,12 +340,16 @@
       "sha": "87ac3c76b67b21d2",
       "from": "apps/web/src/components/task/TaskHistory.tsx"
     },
+    "src/app/finance/_aof/components/task/TaskSummary.jsx": {
+      "sha": "5532364f051e9d8f",
+      "from": "apps/web/src/components/task/TaskSummary.tsx"
+    },
     "src/app/finance/_aof/components/ui.jsx": {
       "sha": "170394352495df9a",
       "from": "apps/web/src/components/ui.tsx"
     },
     "src/app/finance/_aof/finance.css": {
-      "sha": "1bdabb4536ac94ab",
+      "sha": "43cca0d7782f89d2",
       "from": "apps/web/src/index.css"
     },
     "src/app/finance/_aof/hooks/useIsPhone.js": {
@@ -368,7 +373,7 @@
       "from": "apps/web/office/templates/router.js"
     },
     "src/app/finance/_aof/pages/AgentDetail.jsx": {
-      "sha": "5cf18e8de8c1b5c2",
+      "sha": "a34484168ac50d43",
       "from": "apps/web/src/pages/AgentDetail.tsx"
     },
     "src/app/finance/_aof/pages/Agents.jsx": {
@@ -384,7 +389,7 @@
       "from": "apps/web/src/pages/Authoring.tsx"
     },
     "src/app/finance/_aof/pages/Connectors.jsx": {
-      "sha": "d03c5dcf8f935d3d",
+      "sha": "7a16fe8492962089",
       "from": "apps/web/src/pages/Connectors.tsx"
     },
     "src/app/finance/_aof/pages/GroupDetail.jsx": {
@@ -404,7 +409,7 @@
       "from": "apps/web/src/pages/Overview.tsx"
     },
     "src/app/finance/_aof/pages/TaskWorkspace.jsx": {
-      "sha": "24b1afb03200dc74",
+      "sha": "761d8dbb51608767",
       "from": "apps/web/src/pages/TaskWorkspace.tsx"
     },
     "src/app/finance/_aof/queryClient.js": {

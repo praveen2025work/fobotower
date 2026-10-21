@@ -1,7 +1,7 @@
 """Build the demo tasks the console snapshot is recorded from, dated around a day you choose.
 
     python build-demo-tasks.py --today 2026-10-15 [--api http://localhost:8300] [--no-sim] [agent ...]
-    python build-demo-tasks.py --today 2026-10-20 --examples [--fi-credit]
+    python build-demo-tasks.py --today 2026-10-20 --examples
 
 Run it against a dev stack whose database has the agents but no tasks (see README.md,
 "To rebuild the snapshot"). Every task is opened, run and decided through the API the way
@@ -10,24 +10,19 @@ COB in progress (some at the tollgate, some waiting for review), month-end items
 previous month. The FOBO skill's curated books exist only on their own COB, so those tasks
 keep it. Name agents to build only those.
 
---examples builds only the two tasks the snapshot's walkthrough explains (src/snapshot/walkthrough.ts
-in apps/web), each with the previous COB's task for the same book signed off: MB Rec breaks for
-RATES-LDN-04 and CATS vs MOTIF for RATES-LDN-01, reviewed by Rita.
-
---fi-credit opens CATS vs MOTIF for every FI Credit book on today's COB (about 1,200, from
-the reference data), plus the other Rates and Prime books, and works them as the teams
-would by mid-morning in London, from the agent's Summary: APAC signed off (its region-wide
-settlement problem approved once, then the rest), EMEA's region-wide static-data problem
-approved once and the rest still open, the Americas not started. Rates and Prime are
-signed off except the walkthrough's USD swaps task.
+--examples builds the tasks the snapshot's walkthrough explains (src/snapshot/walkthrough.ts
+in apps/web): MB Rec breaks for RATES-LDN-04 (the previous COB's task signed off, today's
+waiting for Rita), and CATS vs MOTIF by FOBO group and region, opened the way FOBO's feed
+opens them: one event per group, region and COB ("FOBO CSV loaded") for Rates and FI Credit
+in EMEA, APAC and the Americas. By mid-morning in London Rates APAC and FI Credit APAC are
+signed off, FI Credit EMEA has its static-data problem approved and the rest open, and Rates
+EMEA (yesterday's signed off), Rates AMER and FI Credit AMER wait for review. The API must
+take events: start it with AOF_EVENT_SECRET set, and pass the same value (--event-secret).
 """
 import argparse
 import datetime as dt
 import json
-import re
 import time
-from concurrent.futures import ThreadPoolExecutor
-from pathlib import Path
 import urllib.error
 import urllib.request
 import uuid
@@ -48,8 +43,8 @@ def month_before(day: dt.date) -> str:
     return (day.replace(day=1) - dt.timedelta(days=1)).strftime("%Y-%m")
 
 
-def call(method, path, user, body=None):
-    req = urllib.request.Request(API + path, method=method, headers={"X-AOF-User": user, "Content-Type": "application/json"},
+def call(method, path, user, body=None, headers=None):
+    req = urllib.request.Request(API + path, method=method, headers={"X-AOF-User": user, "Content-Type": "application/json", **(headers or {})},
                                  data=json.dumps(body).encode() if body is not None else None)
     try:
         with urllib.request.urlopen(req, timeout=120) as r:
@@ -93,7 +88,11 @@ def drive(cap, group, key, target, opener="aof-scheduler", decider="frank", publ
     if s not in (200, 201):
         print(f"  ! {cap} {key}: open -> {s} {json.dumps(c)[:300]}")
         return None
-    cid = c["task_id"]
+    return work(c["task_id"], target, decider, publisher, key)
+
+
+def work(cid, target, decider="frank", publisher="rhea", key=None):
+    """Take an opened task as far as `target`: natural, tollgate, review, publish or done."""
     for _ in range(12):
         c = settle(cid, decider)
         st = c["status"]
@@ -135,108 +134,76 @@ def drive(cap, group, key, target, opener="aof-scheduler", decider="frank", publ
             continue
         break
     c = settle(cid, decider)
-    print(f"  {cid:<44} {json.dumps(key):<60} {c['status']}")
+    print(f"  {cid:<44} {json.dumps(key) if key else c['subject']:<60} {c['status']}")
     return cid
 
 
-FIC_BOOKS = Path(__file__).resolve().parents[3] / "config/agent-one-finance/knowledge/fobo-books-fi-credit.yaml"
-RECON = "recon.investigation"
+RECON, REGIONAL = "recon.investigation", "cats-vs-motif"
+GROUPS = {"500081": "Rates", "500082": "FI Credit"}
+EVENT_SECRET = "demo"
 
 
-def fi_credit_books() -> list[tuple[str, str]]:
-    """(book, region) for every FI Credit book in the reference data."""
-    return [m.groups() for m in re.finditer(r'id: "book:(FIC-[A-Z]+-\d+)".*?region: ([A-Za-z]+)', FIC_BOOKS.read_text())]
+def event(group: str, region: str, cob: str) -> str | None:
+    """FOBO's feed: its CSV for one group, region and COB has loaded."""
+    s, out = call("POST", "/api/events", "aof-scheduler", {
+        "agent_id": RECON, "team_group": REGIONAL, "event": "FOBO CSV loaded",
+        "task_key": {"group": int(group), "group_name": GROUPS[group], "region": region, "cob": cob}},
+        headers={"X-AOF-Event-Secret": EVENT_SECRET})
+    if s not in (200, 201):
+        print(f"  ! event {GROUPS[group]} {region} {cob}: {s} {json.dumps(out)[:300]}")
+        return None
+    return out["task_id"]
 
 
-def open_many(group: str, keys: list[dict], workers: int = 8) -> None:
-    """Open many tasks at once, as MOTIF's end-of-day feed would book by book."""
-    with ThreadPoolExecutor(workers) as pool:
-        results = list(pool.map(lambda k: call("POST", f"/api/agents/{RECON}/tasks", "aof-scheduler",
-                                               {"task_key": k, "team_group": group}), keys))
-    failed = [(k, s, out) for k, (s, out) in zip(keys, results) if s not in (200, 201)]
-    for k, s, out in failed[:5]:
-        print(f"  ! {k}: open -> {s} {json.dumps(out)[:200]}")
-    print(f"  opened {len(keys) - len(failed)} of {len(keys)} in {group}")
+def approve(c: dict, user: str, label: str, comment: str) -> None:
+    """Approve one proposal of a task, as its reviewer would from its Summary."""
+    g = next(g for g in c["groups"] if g["label"] == label and not g.get("decision"))
+    s, out = call("POST", f"/api/tasks/{c['task_id']}/decisions", user, {
+        "group_id": g["group_id"], "action": "approve", "comment": comment, "confirmed": True,
+        "idempotency_key": f"d-{uuid.uuid4()}", "review_seconds": 240})
+    print(f"  {c['subject']}: {label} approved -> {s}")
 
 
-def summary_day(cob: str, user: str) -> dict:
-    """The agent's Summary for the COB once no task is still running."""
-    while True:
-        _, day = call("GET", f"/api/agents/{RECON}/summary?date={cob}", user)
-        if not [t for t in day["tasks"] if t["status"] in ("running", "queued")]:
-            return day
-        time.sleep(3)
-
-
-def approve_patterns(day: dict, user: str, region: str, comments: dict[str, str], only: str | None = None) -> None:
-    """Approve each pattern of ready proposals in a region at once, from the Summary."""
-    at = [d["field"] for d in day["dimensions"]].index("book_region")
-    patterns: dict[tuple, dict[str, list[str]]] = {}
-    for t in day["tasks"]:
-        if t["facts"][at] != region:
-            continue
-        for g in t["open"]:
-            if g["ready"] and (only is None or g["label"] == only):
-                patterns.setdefault((g["label"], g["verdict"]), {}).setdefault(t["task_id"], []).append(g["group_id"])
-    for (label, verdict), targets in patterns.items():
-        comment = comments.get(label) or f"Checked across {region}: {verdict or 'no verdict'} per the playbook."
-        s, out = call("POST", f"/api/agents/{RECON}/summary/decisions", user, {
-            "targets": [{"task_id": c, "group_ids": g} for c, g in targets.items()], "action": "approve",
-            "comment": comment, "idempotency_key": f"s-{uuid.uuid4().hex[:24]}", "review_seconds": 240})
-        print(f"  {region} {label} -> {verdict}: {s} approved {out.get('decided')}, left {out.get('refused_count')}")
-
-
-def books_day(cob: str) -> None:
-    books = fi_credit_books()
-    open_many("cats-motif-fi-credit", [{"book": b, "cob": cob} for b, _ in books])
-    # The other Rates and Prime books, signed off; the walkthrough's USD swaps task stays waiting.
-    for b in ["RATES-LDN-02", "RATES-LDN-03", "RATES-LDN-04", "RATES-NY-01", "RATES-NY-02"]:
-        drive(RECON, "cats-motif-rates", {"book": b, "cob": cob}, "done", decider="raj")
-    for n in range(1, 13):
-        drive(RECON, "cats-motif", {"book": f"PRIME-MB-{n:02d}", "cob": cob}, "done", decider="frank")
-    day = summary_day(cob, "mei")
-    # APAC works first: the settlement batch MOTIF loaded twice is one decision for the
-    # region, then every other proposal; what the playbook holds back, one by one.
-    approve_patterns(day, "mei", "APAC", {"Settlement break · back office":
-                     "APAC: MOTIF's settlement batch was loaded twice; Operations is reversing the duplicate. POST."})
-    day = summary_day(cob, "mei")
-    at = [d["field"] for d in day["dimensions"]].index("book_region")
-    for t in day["tasks"]:
-        if t["open"] and t["facts"][at] == "APAC":
-            decide_all(settle(t["task_id"], "mei"), "mei")
-    # EMEA: the new GBP issue not yet in MOTIF static data, in every GBP corporates book.
-    approve_patterns(summary_day(cob, "lars"), "lars", "EMEA", {"Data quality break · back office":
-                     "EMEA: the new Vodafone 2039 issue is not in MOTIF static data yet; Technology is setting it up. DO NOT POST."},
-                     only="Data quality break · back office")
-    final = summary_day(cob, "dana")
-    print("  tasks by status:", final["totals"])
+def regional_day(today: str, yesterday: str) -> None:
+    """One task per FOBO group, region and COB, each worked by its own controllers."""
+    rates_emea_before = event("500081", "EMEA", yesterday)
+    if rates_emea_before:
+        work(rates_emea_before, "done", decider="rita")
+    ids = {(g, r): event(g, r, today) for g in GROUPS for r in ("APAC", "EMEA", "AMER")}
+    for (g, r), cid in ids.items():
+        if cid:
+            print(f"  {cid:<44} {GROUPS[g]} {r} {today}: {settle(cid, 'dana')['status']}")
+    # APAC works first: Hana signs off Rates APAC, Mei FI Credit APAC.
+    work(ids[("500081", "APAC")], "done", decider="hana")
+    work(ids[("500082", "APAC")], "done", decider="mei")
+    # EMEA: Lars approves the region's static-data problem, one decision for every book.
+    fic_emea = settle(ids[("500082", "EMEA")], "lars")
+    if any(g["label"] == "Data quality break · back office" for g in fic_emea["groups"]):
+        approve(fic_emea, "lars", "Data quality break · back office",
+                "EMEA: a new issue not yet set up in MOTIF static data, in every book of the product; "
+                "Technology is setting it up. DO NOT POST.")
 
 
 def main():
-    global API, T, Y, MONTH, PREV_MONTH
+    global API, T, Y, MONTH, PREV_MONTH, EVENT_SECRET
     p = argparse.ArgumentParser()
     p.add_argument("--today", default=dt.date.today().isoformat(), help="the COB of today's tasks (default: today)")
     p.add_argument("--api", default=API)
     p.add_argument("--no-sim", action="store_true", help="leave out the FOBO skill's curated books (their COB is fixed)")
-    p.add_argument("--examples", action="store_true", help="only the walkthrough's two tasks and the day before's")
-    p.add_argument("--fi-credit", action="store_true", help="with --examples: every FI Credit book on today's COB, "
-                   "worked from the Summary by region")
+    p.add_argument("--examples", action="store_true", help="only the walkthrough's tasks: MB Rec breaks for one book, "
+                   "and CATS vs MOTIF by FOBO group and region from FOBO's events")
+    p.add_argument("--event-secret", default=EVENT_SECRET, help="the API's AOF_EVENT_SECRET, for FOBO's events")
     p.add_argument("only", nargs="*", help="agents to build (default: all)")
     a = p.parse_args()
     today = dt.date.fromisoformat(a.today)
     API, T, Y = a.api.rstrip("/"), today.isoformat(), business_day_before(today).isoformat()
+    EVENT_SECRET = a.event_secret
     MONTH, PREV_MONTH = month_before(today), month_before(today.replace(day=1) - dt.timedelta(days=1))
     only = a.only
     if a.examples:
-        for cap, group, key, target in [
-            ("break.investigation", "fobo-rates", {"book": "RATES-LDN-04", "cob": Y}, "done"),
-            ("recon.investigation", "cats-motif-rates", {"book": "RATES-LDN-01", "cob": Y}, "done"),
-            ("break.investigation", "fobo-rates", {"book": "RATES-LDN-04", "cob": T}, "review"),
-            ("recon.investigation", "cats-motif-rates", {"book": "RATES-LDN-01", "cob": T}, "review"),
-        ]:
-            drive(cap, group, key, target, decider="rita")
-        if a.fi_credit:
-            books_day(T)
+        for key, target in [({"book": "RATES-LDN-04", "cob": Y}, "done"), ({"book": "RATES-LDN-04", "cob": T}, "review")]:
+            drive("break.investigation", "fobo-rates", key, target, decider="rita")
+        regional_day(T, Y)
         return
     plan = []
     prime = [f"PRIME-MB-{n:02d}" for n in range(1, 7)]

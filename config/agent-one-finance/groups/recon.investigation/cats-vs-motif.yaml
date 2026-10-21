@@ -1,77 +1,95 @@
-# The FOBO FI Credit rec group: CATS vs MOTIF for the FI Credit books in APAC,
-# EMEA and the Americas — about 1,200 master books, one task per book and COB.
-# The same reconciliation agent and FOBO playbook as Prime (cats-motif) and
-# Rates (cats-motif-rates) — checks C1–C6, tests FO-1…BO-6, categories, verdict
-# table, the R2 guard — run by the FI Credit controllers with their own:
+# The FOBO regional rec group: CATS vs MOTIF for every master book of a FOBO
+# group in a region — Rates (FOBO group 500081) and FI Credit (500082), each in
+# EMEA, APAC and the Americas. FOBO's feed sends one event per group, region and
+# COB when its CSV has loaded, and each event opens one task:
 #
-#   books and data scope   FIC-APAC-…, FIC-EMEA-…, FIC-AMER-… (reference data:
-#                          knowledge/fobo-books-fi-credit.yaml; scope: book)
-#   owners and reviewers   mei and lars (AOF_FOBO_FIC_OWNER); FOBO_FIC_CONTROLLER signs off,
-#                          each region's controllers working their own books
-#   opening                MOTIF's end-of-day feed opens a task for each book as it lands,
-#                          region by region (POST /api/events) — no list of books here
+#   POST /api/events
+#   { "agent_id": "recon.investigation", "team_group": "cats-vs-motif",
+#     "task_key": { "group": 500081, "group_name": "Rates", "region": "EMEA", "cob": "2026-10-08" },
+#     "event": "FOBO CSV loaded" }
+#
+# opens "Rates EMEA · COB 2026-10-08", which reconciles all of Rates EMEA's books
+# (about 300) at once. Rates APAC and Rates AMER are their own tasks, each with its
+# own breaks, proposals, sign-off and Summary tab.
+#
+# The same reconciliation agent and FOBO playbook as Prime (cats-motif) and the
+# per-book Rates group (cats-motif-rates) — checks C1–C6, tests FO-1…BO-6,
+# categories, verdict table, the R2 guard — with its own:
+#
+#   tasks and data scope   one per FOBO group, region and COB; a controller sees the
+#                          groups and regions they hold (scopes: fobo_group, region)
+#   sources                CATS and MOTIF for every book of the group in the region
+#                          (cats.group_positions, motif.group_positions); each break
+#                          names its book, matched on book and instrument
+#   names                  the group's name from the reference data (group:500081 is
+#                          Rates), else the event's group_name
+#   proposals              by category and side across every book of the region, so one
+#                          decision covers e.g. the settlement batch loaded twice in 60 books
+#   summary                the task's Summary tab breaks its breaks down by desk, product
+#                          and book (task.summarize_by), with the books read and the
+#                          model session
+#   owners and reviewers   raj (Rates) and mei (FI Credit); FOBO_RATES_CONTROLLER and
+#                          FOBO_FIC_CONTROLLER sign off, each within their own group and region
 #   thresholds             1.00 MTM tolerance; materiality and posting policy confirmed
 #                          by Product Control, so a POST is not flagged for confirmation
-#   summary                the agent's Summary groups the day's tasks by business, region,
-#                          desk and product (task.summarize_by), where the controllers
-#                          approve a pattern across many books at once
 #
 # What it cannot change stays with the agent: the workflow and its gates
 # (validate → review → record), ownership of the agent, retention.
-group: cats-motif-fi-credit
-name: CATS vs MOTIF — FI Credit (FOBO)
-description: CATS vs MOTIF for the FI Credit books in APAC, EMEA and the Americas; same FOBO playbook, opened per book by MOTIF's end-of-day feed, summarised by region and desk.
+group: cats-vs-motif
+name: CATS vs MOTIF — by FOBO group and region
+description: CATS vs MOTIF for every book of a FOBO group (Rates, FI Credit) in a region, one task per group, region and COB opened by FOBO's feed; same FOBO playbook, proposals across the region's books.
 owners:
-  people: [mei, lars]
-  role: AOF_FOBO_FIC_OWNER
+  people: [raj, mei]
   four_eyes: true
 set:
   task:
     label: CATS vs MOTIF
     item_label: Break
-    key: [book, cob]
-    subject: "{book_label} · COB {cob}"      # e.g. FI Credit APAC · Asia IG bonds (FIC-APAC-0001)
-    scopes: { book: book }
-    # MOTIF's end-of-day feed opens one task per book and COB as each book lands
+    key: [group, region, cob]
+    subject: "{group_name} {region} · COB {cob}"      # e.g. Rates EMEA · COB 2026-10-08
+    scopes: { group: fobo_group, region: region }
+    # FOBO's feed opens one task per group, region and COB as its CSV loads
     # (POST /api/events), APAC first, then EMEA, then the Americas.
     opens_on: event
     events: true
     opens_as: aof-scheduler
-    # The Summary tab groups the day's tasks by these facts the reference data
-    # holds about each book.
-    summarize_by: [book_business, book_region, book_desk, book_product]
+    # The Summary tab breaks the task's breaks down by these item fields: the
+    # book's desk and product (set by `resolve` from reference data), then the book.
+    summarize_by: [book_desk, book_product, book]
     # Signed off by 18:00 on the business day after the COB; reviewers are
     # reminded two hours before, owners told if it is missed.
     due: { from: cob, business_days: 1, at: "18:00", warn_hours: 2 }
   items:
-    id_field: instrument
+    id_field: item_id
     amount_field: difference
     amount_unit: GBP
-    display: [instrument, desk, category, side, cause_reason, cats_amount, motif_amount, difference, owner_desk, escalate_to]
+    display: [book, instrument, book_desk, category, side, cause_reason, cats_amount, motif_amount, difference, escalate_to]
   match:
-    left: { tool: cats.positions, args: { book: $task.book, cob: $task.cob } }
-    right: { tool: motif.positions, args: { book: $task.book, cob: $task.cob } }
-    keys: [instrument]
+    left: { tool: cats.group_positions, args: { group: $task.group, region: $task.region, cob: $task.cob } }
+    right: { tool: motif.group_positions, args: { group: $task.group, region: $task.region, cob: $task.cob } }
+    keys: [book, instrument]
     amount_field: mtm
     tolerance: 1.0
     left_label: cats
     right_label: motif
   enrich:
-    - tool: motif.break_snapshots
-      args: { book: $task.book, cob: $task.cob }
-      keys: [instrument]
+    - tool: motif.group_break_snapshots
+      args: { group: $task.group, region: $task.region, cob: $task.cob }
+      keys: [book, instrument]
   knowledge:
     entities: [instrument, book]
     reference: fobo-reference
     as_of: cob
     priors_lookback_days: 180         # FOBO: prior resolutions from the last 180 days
   resolve:
+    - { node: "book:{book}", path: [], take: desk, as: book_desk }
+    - { node: "book:{book}", path: [], take: product, as: book_product }
     - { node: "book:{book}", path: [belongs_to], as: owner_desk }
     - { node: "book:{book}", path: [belongs_to, escalates_to], as: owner_team }
   # Rule P1: a threshold Product Control has not confirmed stays null.
   policy:
     materiality_threshold: { value: 10000, unit: GBP }   # confirmed by Product Control
-    posting_policy_reference: { value: PC-FIC-2026-02 }
+    posting_policy_reference: { value: PC-FOBO-2026-04 }
     mtm_market_movement_tolerance: { value: null, unit: GBP }      # FO-4
     calculation_reasonable_tolerance: { value: null, unit: GBP }   # FO-6
   playbook:
@@ -172,29 +190,31 @@ set:
   rules: []
   reasoning:
     skill: |
-      You are a FOBO FI Credit controller's assistant reconciling CATS (front office)
-      to MOTIF (back office) for FI Credit books (bonds, CDS and indices). Check
-      static data and settlement first: most FI Credit breaks are a new issue not
-      yet set up in MOTIF or a settlement booked twice. The playbook has already classified each break; the
-      ones you see are judgement calls (corporate actions, novel breaks) or
-      breaks whose side is not proven. Use the booking events to find why the
-      systems differ — late booking, price amendment, FX fixing, cancel/rebook
-      — and propose a verdict: POST (adjust MOTIF), DO_NOT_POST (fix upstream)
-      or ESCALATE. Never assume FO is correct. Cite only figures from the
-      tools or the breaks; escalate if the events do not explain the difference.
-    tools: [motif.booking_events]
+      You are a FOBO controller's assistant reconciling CATS (front office) to
+      MOTIF (back office) for every book of one FOBO group (Rates or FI Credit)
+      in one region. Each break names its book; a group of breaks can span many
+      books with the same cause, such as a new issue not yet in MOTIF static data
+      or a settlement batch loaded twice. The playbook has already classified
+      each break; the ones you see are judgement calls (corporate actions, novel
+      breaks) or breaks whose side is not proven. Use the booking events of the
+      books involved to find why the systems differ — late booking, price
+      amendment, FX fixing, cancel/rebook — and propose a verdict: POST (adjust
+      MOTIF), DO_NOT_POST (fix upstream) or ESCALATE. Never assume FO is correct.
+      Cite only figures from the tools or the breaks; escalate if the events do
+      not explain the difference.
+    tools: [motif.group_booking_events]
     # A subagent the model can hand the booking-event trawl to.
     specialists:
       - name: booking-events
-        description: Reads MOTIF booking and amendment events for a book and finds the ones behind a break
+        description: Reads MOTIF booking and amendment events for the region's books and finds the ones behind a break
         instructions: |
-          Given a book, COB and the breaks, read the booking events and return the
-          events (type, instrument, amount, time) that explain each break, or say
-          that none do. Do not conclude a verdict.
-        tools: [motif.booking_events]
-  # The same instrument breaking again on the same book, COB after COB.
+          Given the group, region, COB and the breaks, read the booking events of the
+          books involved and return the events (book, type, instrument, amount, time)
+          that explain each break, or say that none do. Do not conclude a verdict.
+        tools: [motif.group_booking_events]
+  # The same break (book and instrument) again in the same group and region, COB after COB.
   insights:
-    recurring: { same: [book], lookback_tasks: 10, min_runs: 2 }
+    recurring: { same: [group, region], lookback_tasks: 10, min_runs: 2 }
   # A fix upstream (DO_NOT_POST) or an escalation becomes a ticket for the
   # owning team once the controller has decided — one per group, never twice.
   escalation:
@@ -211,5 +231,5 @@ set:
     bulk_exclude: [confirmation, judgement]
     confirm: tick_and_comment
     allow_delegation: true
-    roles: [FOBO_FIC_CONTROLLER]
+    roles: [FOBO_RATES_CONTROLLER, FOBO_FIC_CONTROLLER]
     require_comment: [reject, escalated]

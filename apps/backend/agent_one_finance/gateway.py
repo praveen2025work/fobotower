@@ -48,13 +48,18 @@ class ScopeRule(Strict):
 
 class ToolSpec(Strict):
     description: str = ""
-    scope: ScopeRule | None = None
+    # The data scope(s) a call must be within: one rule, or several that all hold
+    # (e.g. a FOBO group and a region).
+    scope: ScopeRule | list[ScopeRule] | None = None
     # write tools change a bank system: never offered to the model, callable
     # only by the `publish` step after a second person approved it
     access: Literal["read", "write"] = "read"
     # write tools: the argument that carries Agent One Finance's idempotency key, so the
     # system can treat a repeated write as the same write
     idempotency_arg: str | None = None
+
+    def scope_rules(self) -> list[ScopeRule]:
+        return [] if self.scope is None else self.scope if isinstance(self.scope, list) else [self.scope]
 
 
 class ConnectorSpec(Strict):
@@ -207,12 +212,14 @@ async def call(ctx: CallContext, qualified_tool: str, arguments: dict,
                      or await controls.off_reason("agent", ctx.agent_id)):
             denied = why
         elif found[2].scope is not None:
-            rule = found[2].scope
-            value = arguments.get(rule.arg)
-            if value is None:
-                denied = f"{qualified_tool} needs `{rule.arg}` (its data scope)"
-            elif not ctx.caller.may_see(rule.key, value):
-                denied = f"{ctx.caller.user_id} is not entitled to {rule.key}={value}"
+            for rule in found[2].scope_rules():
+                value = arguments.get(rule.arg)
+                if value is None:
+                    denied = f"{qualified_tool} needs `{rule.arg}` (its data scope)"
+                elif not ctx.caller.may_see(rule.key, value):
+                    denied = f"{ctx.caller.user_id} is not entitled to {rule.key}={value}"
+                if denied:
+                    break
         if denied:
             sp.set_attribute("aof.allowed", False)
             await _record(**base, allowed=False, denied_reason=denied)

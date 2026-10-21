@@ -78,8 +78,8 @@ export const STAGES = [
       {
         kind: "list",
         path: "task.summarize_by",
-        label: "The Summary groups a day's tasks by",
-        help: "Outermost first: key fields, or facts the reference data holds about one, e.g. book_business, book_region, book_desk — for thousands of tasks a day.",
+        label: "A task's Summary breaks its items down by",
+        help: "Item fields, outermost first, e.g. book_desk, book_product, book — for a task that covers every book of a region. A task with these opens on its Summary tab.",
       },
       {
         kind: "kv",

@@ -71,7 +71,7 @@ async def build_context() -> dict:
         for name, t in spec.tools.items():
             q = f"{cid}.{name}"
             tools.append({"name": q, "description": t.description, "access": t.access,
-                          "data_scope_arg": t.scope.arg if t.scope else None,
+                          "data_scope_arg": next((r.arg for r in t.scope_rules()), None),
                           "input_schema": await gateway.tool_schema(q)})
     example_path = settings().config_dir / "agents" / "fin-variance-commentary.yaml"
     return {

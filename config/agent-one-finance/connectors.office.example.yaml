@@ -34,6 +34,10 @@ connectors:
       positions: { description: "End-of-day FO positions and MTM per book and COB", scope: { arg: book, key: book } }
       trades:    { description: "FO trades per book and COB (skill §7 trade level)", scope: { arg: book, key: book } }
       pnl_components: { description: "FO PnL decomposed per instrument (position, price, pull factor, MTM, trading PnL, redemption PnL)", scope: { arg: book, key: book } }
+      # FOBO's regional feed (cats-vs-motif): every book of a FOBO group in a region, from the
+      # CSV FOBO loads per group, region and COB; each row names its book.
+      group_positions: { description: "FO positions and MTM for every book of a FOBO group in a region and COB",
+                         scope: [{ arg: group, key: fobo_group }, { arg: region, key: region }] }
 
   # MB Rec: the breaks FOBO investigates, already reconciled (break.investigation).
   mbrec:
@@ -62,6 +66,12 @@ connectors:
       break_snapshots: { description: "Dated FO/BO snapshots per instrument", scope: { arg: book, key: book } }
       trades:          { description: "BO trades per book and COB (skill §7 trade level)", scope: { arg: book, key: book } }
       pnl_components:  { description: "BO PnL decomposed per instrument (position, accounting price, factor, settlement, cash, journal)", scope: { arg: book, key: book } }
+      group_positions:       { description: "BO positions and MTM for every book of a FOBO group in a region and COB",
+                               scope: [{ arg: group, key: fobo_group }, { arg: region, key: region }] }
+      group_break_snapshots: { description: "FO/BO snapshots for the positions that differ, per book and instrument",
+                               scope: [{ arg: group, key: fobo_group }, { arg: region, key: region }] }
+      group_booking_events:  { description: "Booking and amendment events behind the region's breaks; each row names its book",
+                               scope: [{ arg: group, key: fobo_group }, { arg: region, key: region }] }
 
   # Security reference: corporate actions and bond metadata (skill FO-6, FO-7, §8 static).
   secref:

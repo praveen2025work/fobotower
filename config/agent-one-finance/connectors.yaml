@@ -188,6 +188,10 @@ connectors:
       pnl_components:
         description: FO PnL decomposed per instrument (position, price, pull factor, MTM, trading PnL, redemption PnL, holiday carry)
         scope: { arg: book, key: book }
+      # FOBO's regional feed: every book of one FOBO group (500081 Rates) in one region.
+      group_positions:
+        description: End-of-day FO positions and MTM for every book of a FOBO group in a region and COB; each row names its book
+        scope: [{ arg: group, key: fobo_group }, { arg: region, key: region }]
 
   mbrec:
     name: MB Rec — reconciled breaks (stub)
@@ -237,6 +241,15 @@ connectors:
       break_snapshots_named_pnl:
         description: The FO/BO snapshots of every master book in a named P&L, one row per book and instrument
         scope: { arg: named_pnl, key: named_pnl }
+      group_positions:
+        description: End-of-day BO positions and MTM for every book of a FOBO group in a region and COB; each row names its book
+        scope: [{ arg: group, key: fobo_group }, { arg: region, key: region }]
+      group_break_snapshots:
+        description: FO/BO snapshots for the positions that differ, in every book of a FOBO group in a region; one row per book and instrument
+        scope: [{ arg: group, key: fobo_group }, { arg: region, key: region }]
+      group_booking_events:
+        description: Booking and amendment events behind the breaks of a FOBO group's books in a region (one book or instrument optional); each row names its book
+        scope: [{ arg: group, key: fobo_group }, { arg: region, key: region }]
       trades:
         description: BO trades per book and COB (quantity, direction, consideration, price, pull factor, settlement)
         scope: { arg: book, key: book }

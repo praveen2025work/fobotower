@@ -113,6 +113,7 @@ const get = async (path) => {
 const recordTask = async (id) => {
   const base = `/api/tasks/${enc(id)}`;
   await get(base);
+  await get(`${base}/summary`);
   await get(`${base}/messages`);
   for (const step of (await get(`${base}/history`)) ?? []) await get(`${base}/history/${enc(step.checkpoint_id)}`);
   await get(`${base}/export.xlsx`);

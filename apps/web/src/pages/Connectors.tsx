@@ -31,7 +31,7 @@ export default function Connectors(): JSX.Element {
                       <StatusBadge status={t.access} />
                       {t.scope && (
                         <span className="inline-flex items-center gap-1 text-[11px] text-surface-500">
-                          <Lock size={10} /> scoped by {t.scope.arg} → {t.scope.key}
+                          <Lock size={10} /> scoped by {t.scope.map((r) => `${r.arg} → ${r.key}`).join(", ")}
                         </span>
                       )}
                       <span className="w-full text-xs text-surface-500">{t.description}</span>

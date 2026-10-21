@@ -5,7 +5,7 @@ import { Play, Plus } from "lucide-react";
 
 import { Users } from "lucide-react";
 
-import { useAgents, useAgent, useCases, useGroups, useOpenTask, type Manifest, type TeamGroup } from "../api/aof";
+import { useAgents, useAgent, useTasks, useGroups, useOpenTask, type Manifest, type TeamGroup } from "../api/aof";
 import EvalsPanel from "../components/agent/EvalsPanel";
 import RecurringPanel from "../components/agent/RecurringPanel";
 import LearningPanel from "../components/agent/LearningPanel";
@@ -158,7 +158,7 @@ function TasksTab({ id, manifest, groups }: { id: string; manifest: Manifest; gr
   const openable = groups.filter((g) => g.can_open);
   const [group, setGroup] = useState<string>(openable[0]?.group ?? "");
   const [filter, setFilter] = useState<string>("");
-  const tasks = useCases(id, filter || undefined);
+  const tasks = useTasks(id, filter || undefined);
   const open = useOpenTask(id);
   const navigate = useNavigate();
   const chosen = groups.find((g) => g.group === group);

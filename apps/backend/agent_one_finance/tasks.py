@@ -135,10 +135,12 @@ async def _resolve(agent_id: str, team_group: str | None,
     return version, group_version, m
 
 
-async def subject_facts(m: Manifest, key: dict) -> dict:
+async def subject_facts(m: Manifest, key: dict, given: dict | None = None) -> dict:
     """What a subject template may use besides the key: `{<field>_<fact>}`, a fact the
-    reference data holds about a key value (`{book_label}` for book PRIME-MB-01), as of
-    the task's business date. A fact it does not hold shows the key value itself."""
+    reference data holds about a key value (`{book_label}` for book PRIME-MB-01, or
+    `{group_name}` for FOBO group 500081), as of the task's business date. A fact it
+    does not hold is taken from what the opener sent with the key (an event's
+    `group_name`), else shows the key value itself."""
     wanted = [f for f in template_fields(m.task.subject or "") if f not in key]
     fields = {k for k in key for f in wanted if f.startswith(f"{k}_")}
     if not fields:
@@ -153,7 +155,7 @@ async def subject_facts(m: Manifest, key: dict) -> dict:
     for f in wanted:
         k = next((k for k in fields if f.startswith(f"{k}_")), None)
         if k and f not in facts:
-            facts[f] = key[k]
+            facts[f] = str((given or {}).get(f) or key[k])
     return facts
 
 
@@ -188,7 +190,7 @@ async def open_task(agent_id: str, task_key: dict, caller: Caller,
     await _not_switched_off(agent_id, team_group)
     key = _check_key(m, task_key, caller)
     root = task_id_for(agent_id, {**key, "__group": team_group} if team_group else key)
-    facts = await subject_facts(m, key)
+    facts = await subject_facts(m, key, task_key)
     async with get_session() as s:
         if (existing := await _latest_attempt(s, root)) is not None:
             if not (late and m.task.late_items == "follow_up"):
@@ -728,6 +730,18 @@ async def list_tasks(agent_id: str, caller: Caller, team_group: str | None = Non
         caller, agent_id=agent_id, team_group=team_group, limit=limit, offset=offset)]
 
 
+SHOWN_ROWS = 100      # rows of a tool's result a task page shows; the audit record keeps every row
+
+
+def _shown(result):
+    """A tool result as the task page shows it: a source read for a whole region
+    (thousands of positions) is cut to its first rows, and says so."""
+    rows = result.get("rows") if isinstance(result, dict) else None
+    if isinstance(rows, list) and len(rows) > SHOWN_ROWS:
+        return {**result, "rows": rows[:SHOWN_ROWS], "rows_shown": SHOWN_ROWS}
+    return result
+
+
 def _documents(task_id: str, calls: list[ToolCall]) -> list[dict]:
     """Reports this task's publish step wrote (a write tool's receipt that names a document)."""
     out = []
@@ -845,6 +859,7 @@ async def task_detail(task_id: str, caller: Caller) -> dict:
             or bool((st := gate_step(task.status)) and may_pass_gate(caller, m, st))),
         "draft": task.draft,
         "labels": {"task": m.task.label, "item": m.task.item_label, "agent": m.name},
+        "summarize_by": m.task.summarize_by,
         "steps": m.steps, "pause_before": m.pause_before,
         "columns": m.items.display or sorted({k for it in items for k in it.payload}),
         "items": [{"item_id": it.item_id, "in_scope": it.item_id in in_group,
@@ -878,7 +893,7 @@ async def task_detail(task_id: str, caller: Caller) -> dict:
                         "arguments": c.arguments, "allowed": c.allowed,
                         "denied_reason": c.denied_reason, "row_count": c.row_count,
                         "error": c.error, "latency_ms": c.latency_ms, "called_at": c.called_at,
-                        "result": c.result} for c in calls],
+                        "result": _shown(c.result)} for c in calls],
         "documents": _documents(task_id, calls) + await _reports(task_id),
         "evidence": evidence_rows,
         "can_decide": (may_decide and task.status == "awaiting_review"

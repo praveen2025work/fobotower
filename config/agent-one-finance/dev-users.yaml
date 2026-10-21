@@ -45,25 +45,30 @@ users:
     roles: [FOBO_CONTROLLER, AOF_FOBO_RECON_OWNER]
     data_scopes: { book: [PRIME-MB-01], named_pnl: [PRIME-FINANCING-EMEA] }
   rita:
-    name: Rita (FOBO Rates controller, London books; CATS vs MOTIF Rates owner)
+    name: Rita (FOBO Rates controller, London books and Rates EMEA; CATS vs MOTIF Rates owner)
     roles: [FOBO_RATES_CONTROLLER, AOF_FOBO_RATES_OWNER]
-    data_scopes: { book: [RATES-LDN-01, RATES-LDN-02, RATES-LDN-03, RATES-LDN-04] }
+    data_scopes: { book: [RATES-LDN-01, RATES-LDN-02, RATES-LDN-03, RATES-LDN-04], fobo_group: ["500081"], region: [EMEA] }
   raj:
-    name: Raj (FOBO Rates controller, all Rates books; CATS vs MOTIF Rates owner)
+    name: Raj (FOBO Rates controller, all Rates books and regions; CATS vs MOTIF Rates and regional owner)
     roles: [FOBO_RATES_CONTROLLER, AOF_FOBO_RATES_OWNER]
-    data_scopes: { book: [RATES-LDN-01, RATES-LDN-02, RATES-LDN-03, RATES-LDN-04, RATES-NY-01, RATES-NY-02] }
+    data_scopes: { book: [RATES-LDN-01, RATES-LDN-02, RATES-LDN-03, RATES-LDN-04, RATES-NY-01, RATES-NY-02],
+                   fobo_group: ["500081"], region: ["*"] }
+  hana:
+    name: Hana (FOBO Rates controller, Rates APAC)
+    roles: [FOBO_RATES_CONTROLLER]
+    data_scopes: { fobo_group: ["500081"], region: [APAC] }
   mei:
-    name: Mei (FOBO FI Credit controller, APAC books; CATS vs MOTIF FI Credit owner)
-    roles: [FOBO_FIC_CONTROLLER, AOF_FOBO_FIC_OWNER]
-    data_scopes: { book: ["*"] }
-  lars:
-    name: Lars (FOBO FI Credit controller, EMEA books; CATS vs MOTIF FI Credit owner)
-    roles: [FOBO_FIC_CONTROLLER, AOF_FOBO_FIC_OWNER]
-    data_scopes: { book: ["*"] }
-  sam:
-    name: Sam (FOBO FI Credit controller, Americas books)
+    name: Mei (FOBO FI Credit controller, FI Credit APAC; CATS vs MOTIF regional owner)
     roles: [FOBO_FIC_CONTROLLER]
-    data_scopes: { book: ["*"] }
+    data_scopes: { fobo_group: ["500082"], region: [APAC] }
+  lars:
+    name: Lars (FOBO FI Credit controller, FI Credit EMEA)
+    roles: [FOBO_FIC_CONTROLLER]
+    data_scopes: { fobo_group: ["500082"], region: [EMEA] }
+  sam:
+    name: Sam (FOBO FI Credit controller, FI Credit Americas)
+    roles: [FOBO_FIC_CONTROLLER]
+    data_scopes: { fobo_group: ["500082"], region: [AMER] }
   paula:
     name: Paula (Payments Operations lead; payment exceptions owner)
     roles: [PAYMENTS_OPS, PAYMENTS_LEAD, AOF_PAYMENTS_OWNER]
@@ -100,9 +105,9 @@ users:
     name: Dana (Head of Finance Operations; demo view across every team)
     roles: [FIN_REVIEWER, FIN_CONTROLLER, CASH_OPS, FOBO_CONTROLLER, FOBO_RATES_CONTROLLER, FOBO_FIC_CONTROLLER, PAYMENTS_OPS,
             PAYMENTS_LEAD, COMPLAINTS_LEAD, CONTROL_OWNER, AOF_FIN_VARCOMM_OWNER, AOF_CASH_RECON_OWNER, AOF_RECON_OWNER,
-            AOF_FOBO_RECON_OWNER, AOF_FOBO_RATES_OWNER, AOF_FOBO_FIC_OWNER, AOF_PAYMENTS_OWNER, AOF_COMPLAINTS_OWNER,
+            AOF_FOBO_RECON_OWNER, AOF_FOBO_RATES_OWNER, AOF_PAYMENTS_OWNER, AOF_COMPLAINTS_OWNER,
             AOF_CONTROLS_OWNER]
-    data_scopes: { entity: ["*"], book: ["*"], named_pnl: ["*"] }
+    data_scopes: { entity: ["*"], book: ["*"], named_pnl: ["*"], fobo_group: ["*"], region: ["*"] }
   pat:
     name: Pat (Agent One Finance platform support — switches, connectors; sees no task data)
     roles: [AOF_PLATFORM_ADMIN]
@@ -111,7 +116,7 @@ users:
     name: Agent One Finance scheduler (service account — opens scheduled and event tasks, never decides)
     roles: [FIN_PREPARER, CASH_OPS, FOBO_CONTROLLER, FOBO_RATES_CONTROLLER, FOBO_FIC_CONTROLLER, PAYMENTS_OPS, COMPLAINTS_HANDLER,
             CONTROL_TESTER]
-    data_scopes: { entity: ["*"], book: ["*"], named_pnl: ["*"] }
+    data_scopes: { entity: ["*"], book: ["*"], named_pnl: ["*"], fobo_group: ["*"], region: ["*"] }
   viewer:
     name: Viewer (no Agent One Finance roles)
     roles: []

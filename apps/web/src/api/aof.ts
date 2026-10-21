@@ -275,7 +275,77 @@ export interface SessionInfo {
   transcript: SessionTurn[];
 }
 
+/** One row of a task's Summary breakdown (a desk, a product in it, a book in that), with the rows a level down. */
+export interface SummaryRow {
+  field: string;
+  value: string;
+  items: number;
+  net?: number;
+  gross?: number;
+  /** distinct values of the deeper fields, e.g. { book: 82 } */
+  distinct: Record<string, number>;
+  proposals: { group_id: string; items: number }[];
+  open: number;
+  children: SummaryRow[];
+}
+
+export interface ModelUsage {
+  input_tokens?: number;
+  output_tokens?: number;
+  cost_usd?: number;
+  turns?: number;
+  duration_ms?: number;
+}
+
+/** Who decided what on a task, and the model session behind it. */
+export interface ModelSessionInfo {
+  decided_by: Record<string, number>;
+  adapters: string[];
+  models: string[];
+  groups: ({ group_id: string; label: string; model: string | null; status: string | null; reason: string | null; session_id?: string } & ModelUsage)[];
+  usage: ModelUsage;
+  chat: { answers: number; usage: ModelUsage };
+  limits: { max_cost_usd_per_task: number | null; max_cost_usd_per_day: number | null };
+  lookups: { count: number; refused: number; by_tool: Record<string, number> };
+  tools: string[];
+  specialists: { name: string; description: string; tools: string[] }[];
+  instructions_chars: number;
+  skill_session: (ModelUsage & { adapter?: string; model?: string; skill_file?: string; results?: number; failure?: string; session_id?: string }) | null;
+}
+
+/** GET /tasks/{id}/summary: what a task read and found, broken down by task.summarize_by. */
+export interface TaskSummaryView {
+  task_id: string;
+  subject: string;
+  status: string;
+  outcome: string | null;
+  item_label: string;
+  unit: string | null;
+  amount_field: string | null;
+  by: string[];
+  sources: { tool: string; step: string; arguments: Record<string, unknown>; rows: number | null; distinct: Record<string, number>; without_items: Record<string, number> }[];
+  items: { count: number; in_proposals: number; open: number; net?: number; gross?: number; distinct: Record<string, number> };
+  breakdown: SummaryRow[];
+  proposals: {
+    group_id: string;
+    label: string;
+    items: number;
+    net?: number;
+    gross?: number;
+    distinct: Record<string, number>;
+    status: string | null;
+    verdict: string | null;
+    decided_by: string | null;
+    escalate_to: string | null;
+    flags: ReviewFlag[];
+    decision: { action: string; by: string; at: string } | null;
+  }[];
+  model: ModelSessionInfo;
+}
+
 export interface TaskDetail extends TaskSummary {
+  /** what the Summary tab breaks the task's items down by (task.summarize_by); empty = not summarised */
+  summarize_by?: string[];
   draft: { headline: string; summary?: string; skipped_steps?: string[]; session?: SessionInfo } | null;
   labels: { task: string; item: string; agent?: string };
   steps: string[];
@@ -498,7 +568,7 @@ export interface Platform {
     name: string;
     transport: string;
     classification: string;
-    tools: { name: string; description: string; access: "read" | "write"; scope: { arg: string; key: string } | null }[];
+    tools: { name: string; description: string; access: "read" | "write"; scope: { arg: string; key: string }[] | null }[];
   }[];
   llm: string;
   entitlement: string;
@@ -518,7 +588,7 @@ export const useAgents = () =>
   useQuery({ queryKey: ["agents"], queryFn: () => api.get<AgentSummary[]>("/agents") });
 export const useAgent = (id: string) =>
   useQuery({ queryKey: ["agent", id], queryFn: () => api.get<AgentDetail>(`/agents/${enc(id)}`) });
-export const useCases = (id: string, teamGroup?: string) =>
+export const useTasks = (id: string, teamGroup?: string) =>
   useQuery({
     queryKey: ["tasks", id, teamGroup ?? "all"],
     queryFn: () =>
@@ -532,12 +602,15 @@ export const useGroup = (id: string, group: string) =>
     queryFn: () => api.get<TeamGroupDetail>(`/agents/${enc(id)}/groups/${enc(group)}`),
   });
 /** A task; while its run is in progress the view polls until it pauses or ends. */
-export const useCase = (taskId: string) =>
+export const useTask = (taskId: string) =>
   useQuery({
     queryKey: ["task", taskId],
     queryFn: () => api.get<TaskDetail>(`/tasks/${enc(taskId)}`),
     refetchInterval: (q) => (q.state.data?.status === "running" ? 1500 : false),
   });
+/** A task's Summary tab; `version` changes when its decisions do, so the counts follow. */
+export const useTaskSummary = (taskId: string, version: string) =>
+  useQuery({ queryKey: ["task-summary", taskId, version], queryFn: () => api.get<TaskSummaryView>(`/tasks/${enc(taskId)}/summary`) });
 export const useMessages = (taskId: string) =>
   useQuery({ queryKey: ["messages", taskId], queryFn: () => api.get<TaskMessage[]>(`/tasks/${enc(taskId)}/messages`) });
 export const useHistory = (taskId: string, enabled = true) =>

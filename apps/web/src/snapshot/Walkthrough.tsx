@@ -88,8 +88,19 @@ async function show(t: Target, navigate: NavigateFunction) {
   flash(spots);
 }
 
+/** **Bold** for what the screen shows, `code` for configuration and event fields. */
 function Text({ text }: { text: string }) {
-  return <>{text.split("**").map((part, i) => (i % 2 ? <strong key={i} className="font-semibold text-surface-900">{part}</strong> : part))}</>;
+  return (
+    <>
+      {text.split("`").map((chunk, j) =>
+        j % 2 ? (
+          <code key={j} className="rounded bg-surface-100 px-1 font-mono text-[0.85em] text-surface-800">{chunk}</code>
+        ) : (
+          chunk.split("**").map((part, i) => (i % 2 ? <strong key={`${j}-${i}`} className="font-semibold text-surface-900">{part}</strong> : part))
+        ),
+      )}
+    </>
+  );
 }
 
 function Blocks({ blocks }: { blocks: Block[] }) {

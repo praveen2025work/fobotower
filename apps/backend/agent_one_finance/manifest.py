@@ -63,9 +63,9 @@ class TaskSpec(Strict):
     #   follow_up  a follow-up task linked to it reads the source again and
     #              takes only the items no task for that key has yet
     late_items: Literal["ignore", "follow_up"] = "ignore"
-    # What the agent's Summary groups a day's tasks by, outermost first: key fields,
-    # or facts the reference data holds about a key value, as in subject — e.g.
-    # [book_business, book_region, book_desk] for thousands of books.
+    # What a task's Summary tab breaks its items down by, outermost first: item
+    # fields, e.g. [book_desk, book_product, book] for a task that reconciles every
+    # book of a region at once (the `resolve` step sets book_desk from reference data).
     summarize_by: list[str] = Field(default_factory=list)
 
 
@@ -886,11 +886,6 @@ def problems(m: Manifest) -> list[str]:
     for field in m.task.scopes:
         if field not in m.task.key:
             out.append(f"task.scopes: `{field}` is not in task.key")
-    for field in m.task.summarize_by:
-        if field not in m.task.key and not any(field.startswith(f"{k}_") for k in m.task.key):
-            out.append(f"task.summarize_by: `{field}` is neither a key field nor a fact about one (<key field>_<attribute>)")
-        elif field not in m.task.key and not m.knowledge.reference:
-            out.append(f"task.summarize_by: `{field}` is read from reference data; set knowledge.reference")
     if not m.owners.people and not m.owners.role:
         out.append("owners: name at least one person or a role")
     top = set(Manifest.model_fields)

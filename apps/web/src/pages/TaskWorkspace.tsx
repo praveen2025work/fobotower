@@ -33,7 +33,7 @@ import {
 import { download } from "../api/client";
 import {
   useBulkDecide,
-  useCase,
+  useTask,
   useDecide,
   useLegalHold,
   useReinvestigate,
@@ -57,6 +57,7 @@ import { TaskLinks, GroupSteps } from "../components/task/StepsV2";
 import { ChecklistAnswers, SignOffChecklist, checklistComplete } from "../components/task/SignOffChecklist";
 import TaskHistory from "../components/task/TaskHistory";
 import SessionTranscript from "../components/task/SessionTranscript";
+import TaskSummary from "../components/task/TaskSummary";
 import StatusBadge from "../components/StatusBadge";
 import { DueBadge } from "../components/Urgency";
 import { Empty, ErrorState, Fold, Loading, WorkflowStepper, currentStep, formatTime, formatValue, useRemembered } from "../components/ui";
@@ -79,6 +80,7 @@ function DecidedBy({ by }: { by: string }) {
 
 const TABS = [
   { id: "proposal", label: "Proposal" },
+  { id: "summary", label: "Summary" },
   { id: "session", label: "Model session" },
   { id: "ask", label: "Ask about this task" },
   { id: "history", label: "Run history" },
@@ -86,9 +88,9 @@ const TABS = [
 
 export default function TaskWorkspace(): JSX.Element {
   const { taskId = "" } = useParams();
-  const detail = useCase(taskId);
+  const detail = useTask(taskId);
   const [selected, setSelected] = useState<string | null>(null);
-  const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("proposal");
+  const [chosenTab, setTab] = useState<(typeof TABS)[number]["id"] | null>(null);
   const openedAt = useRef(Date.now());
   // Phones show one pane at a time; wide screens show all three side by side.
   const [pane, setPane] = useState<"list" | "detail" | "task">("detail");
@@ -106,6 +108,8 @@ export default function TaskWorkspace(): JSX.Element {
     c.groups.find((g) => g.group_id === selected) ??
     firstWith("escalated") ?? firstWith("confirmation") ?? firstWith("judgement") ?? undecided[0] ?? c.groups[0];
   const decided = c.groups.filter((g) => g.decision).length;
+  // A task its group summarises (every book of a region at once) opens on its Summary.
+  const tab = chosenTab ?? ((c.summarize_by ?? []).length > 0 && !selected ? "summary" : "proposal");
   const openQuestions = (c.requests ?? []).filter((r) => r.status === "open").length;
 
   return (
@@ -227,10 +231,10 @@ export default function TaskWorkspace(): JSX.Element {
                     setTab("proposal");
                     setPane("detail");
                   }}
-                  aria-current={group?.group_id === g.group_id ? "true" : undefined}
+                  aria-current={tab !== "summary" && group?.group_id === g.group_id ? "true" : undefined}
                   className={clsx(
                     "mb-1 w-full rounded-lg border px-3 py-2 text-left transition-colors",
-                    group?.group_id === g.group_id ? "border-accent-400 bg-accent-50/60" : "border-transparent hover:bg-surface-50",
+                    tab !== "summary" && group?.group_id === g.group_id ? "border-accent-400 bg-accent-50/60" : "border-transparent hover:bg-surface-50",
                     !g.decision && g.finding?.status === "escalated" && "border-l-4 border-l-orange-400",
                   )}
                 >
@@ -273,6 +277,16 @@ export default function TaskWorkspace(): JSX.Element {
           <div className="p-3 sm:p-5">
             {tab === "proposal" &&
               (group ? <ProposalPanel key={group.group_id} c={c} group={group} /> : <Empty>Select a proposal.</Empty>)}
+            {tab === "summary" && (
+              <TaskSummary
+                taskId={c.task_id}
+                version={`${c.status}:${decided}`}
+                onProposal={(id) => {
+                  setSelected(id);
+                  setTab("proposal");
+                }}
+              />
+            )}
             {tab === "session" && c.draft?.session && <SessionTranscript session={c.draft.session} />}
             {tab === "ask" && <TaskChat taskId={c.task_id} />}
             {tab === "history" && <TaskHistory key={c.status} taskId={c.task_id} />}

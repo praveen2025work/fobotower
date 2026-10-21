@@ -240,35 +240,34 @@ Every lookup is audited, and protected fields stay masked.
 
 ![Run history](img/46-run-history.png)
 
-## 6a. Thousands of tasks a day: the Summary
+## 6a. A task for a whole region: the Summary tab
 
-With a task per master book, one COB is 1,000–2,000 tasks (the demo's Helix FOBO Agent has
-1,240 FI Credit books in APAC, EMEA and the Americas). Nobody opens them one by one. An
-agent's **Summary** tab shows the day in one place:
+FOBO's feed sends one event per FOBO group, region and COB once its CSV has loaded — Rates
+EMEA, Rates APAC, Rates AMER, and the same for FI Credit. Each event opens one task (the
+**CATS vs MOTIF — by FOBO group and region** group) that reconciles every book of that group in
+that region: Rates EMEA is about 300 books and 2,800 positions a side. Each region is its own
+task, with its own breaks, proposals, sign-off and Summary, worked by that region's controllers
+(a controller sees only the groups and regions in their data scope).
 
-- **The day's totals**: tasks, how many reconciled clean, how many wait for review, how many
-  are signed off, and the amount still open. Pick another business date at the top.
-- **By business, region, desk or product**: what the agent's groups name in
-  `task.summarize_by` (key fields, or facts the reference data holds about one, such as
-  `book_region`). Click a row to narrow to it: *Region: EMEA*, then by desk, then by product.
-  A chip above the table removes a filter.
-- **The same break across many books**: the open proposals of the tasks shown, grouped by
-  label and verdict — e.g. *Settlement break · back office → POST* in 180 Americas books.
-  **Approve N** approves that pattern in every task at once, with one explanation.
-- **Tasks**: the tasks shown, waiting first, then by open amount, each opening its workspace.
+Such a task opens on its **Summary** tab:
 
-Approving a pattern is not a shortcut around the review rules. Each task checks the
-decision exactly as its own *Approve N straightforward* would:
+- **Totals**: the rows read from CATS and MOTIF and the books they cover; the breaks and the
+  books they are in, and how many books reconciled clean; the gross and net amount; how many
+  breaks are still to decide, in how many open proposals.
+- **By desk → product → book**: what the group names in `task.summarize_by`. Open a desk to
+  see its products, a product to see its books; each row shows its breaks, amounts, what is
+  still open and the proposals its breaks are in. A proposal chip opens that proposal.
+- **Proposals across the books**: each proposal covers every break with the same category and
+  side across the region — e.g. *Settlement break · back office*, 128 breaks in 122 books —
+  with its verdict, who proposed it (the playbook, a rule or the model) and the decision. One
+  decision covers every break in it; the review rules apply as for any proposal.
+- **Model session**: which proposals the playbook decided and which the model reasoned; the
+  adapter and model; tokens, cost and turns where the adapter reports them, against the
+  agent's cost limit; the lookups the model made (and any refused); the tools and specialists
+  it was offered; and a skill session, if the agent ran one.
 
-- only people who may review the task decide it, and maker-checker still applies;
-- proposals held for one-by-one review (`review.bulk_exclude`: a judgement call, a verdict
-  needing confirmation) stay open, and the row says how many and why;
-- an escalated proposal needs the explanation (`review.require_comment`);
-- a group's sign-off checklist is answered once for every proposal approved;
-- the result says how many were approved and why any were left open.
-
-The **inbox** stays short: when six or more tasks of one agent, group and date wait on you,
-they show as one row ("CATS vs MOTIF · 2026-10-20: 312 tasks") that opens the Summary.
+Tasks for one book (the Prime and per-book Rates groups) keep the Proposal tab as the place
+they open on; their Summary shows the same parts for that one book.
 
 ## 7. Team groups: FOBO Prime and Rates
 

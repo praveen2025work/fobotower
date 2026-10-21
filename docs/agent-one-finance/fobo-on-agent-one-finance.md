@@ -9,9 +9,9 @@ platform when the team is ready, and other rec groups get the same machinery.
 
 | What | Where |
 |---|---|
-| The FOBO rec groups (CATS vs MOTIF) | Prime: `config/agent-one-finance/groups/recon.investigation/cats-motif.yaml` · Rates: `cats-motif-rates.yaml` |
-| FOBO's reference lineage (books → desks → teams) | `config/agent-one-finance/knowledge/fobo-reference.yaml` |
-| Behaviour tests | `apps/backend/tests/agent_one_finance/test_fobo_playbook.py` |
+| The FOBO rec groups (CATS vs MOTIF) | Per book: Prime `config/agent-one-finance/groups/recon.investigation/cats-motif.yaml`, Rates `cats-motif-rates.yaml` · By FOBO group and region (one task per group, region and COB, opened by FOBO's feed): `cats-vs-motif.yaml` |
+| FOBO's reference lineage (books → desks → teams) | `config/agent-one-finance/knowledge/fobo-reference.yaml`; the Rates and FI Credit books by region, and the FOBO groups' names: `fobo-books-rates.yaml`, `fobo-books-fi-credit.yaml` |
+| Behaviour tests | `apps/backend/tests/agent_one_finance/test_fobo_playbook.py`, `test_fobo_regional.py` |
 | Worked examples (Prime vs Rates) | [`examples.md`](examples.md) |
 
 **In the office, the breaks come from MB Rec,** which has already reconciled CATS to MOTIF.

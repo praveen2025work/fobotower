@@ -44,7 +44,7 @@ async def test_a_group_only_shows_its_tasks_to_its_own_people(api):
     assert fobo["task_id"] not in {c["task_id"] for c in dan_listed}
     # a FOBO controller sees the agent through their group
     caps = {c["id"]: c for c in (await api.get("/api/agents", headers=api.as_user("frank"))).json()}
-    assert {g["group"] for g in caps[RECON]["groups"]} == {CASH, FOBO, "cats-motif-rates", "cats-motif-fi-credit"}
+    assert {g["group"] for g in caps[RECON]["groups"]} == {CASH, FOBO, "cats-motif-rates", "cats-vs-motif"}
 
 
 async def test_an_agent_with_groups_needs_one_to_open_a_task(api):

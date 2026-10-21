@@ -262,16 +262,24 @@ Source of truth: `apps/backend/agent_one_finance/manifest.py` (Pydantic; unknown
 already has a task opens a follow-up task (`<task>.f<n>`, `follow_up_of` set). Its `load` takes
 only the items no task for that key has yet. With nothing new, it closes as `no_new_items`.
 
-`task.summarize_by`: what the agent's **Summary** tab groups a day's tasks by, outermost
-first — key fields, or facts the reference data holds about one (`<key field>_<attribute>`,
-as in `task.subject`), e.g. `[book_business, book_region, book_desk, book_product]`. The
-reference data must carry those attributes (`knowledge/fobo-books-fi-credit.yaml` does for the
-FI Credit books). The Summary reads it from the group's current version, so changing it
-regroups past days too; it never changes how a task runs. `GET
-/api/agents/{id}/summary?date=` returns the day's tasks with those facts and their open
-proposals; `POST /api/agents/{id}/summary/decisions` decides `[{task_id, group_ids}]`
-across tasks, each through the task's own bulk decision (every review rule applies, and what
-is refused comes back with its reason).
+`task.summarize_by`: what a task's **Summary** tab breaks its items down by, outermost first —
+item fields, e.g. `[book_desk, book_product, book]` for a task that reconciles every book of a
+region at once (the `resolve` step sets `book_desk` and `book_product` from the reference data:
+`{ node: "book:{book}", path: [], take: desk, as: book_desk }`). A task whose group sets it opens
+on its Summary. It never changes how a task runs. `GET /api/tasks/{id}/summary` returns:
+
+- `sources`: each read of the task's data (the `match` or `load` tool), its rows, and how many
+  values of each breakdown field it covered and how many of those have no item (300 books read,
+  151 clean);
+- `items`: count, net and gross amount, how many are still to decide, distinct values per field;
+- `breakdown`: one row per value of the first field (a desk) with its items, amounts, open count
+  and the proposals its items are in, and the rows a level down (its products, then books);
+- `proposals`: each proposal with its items, amounts, how many books (or other field values) it
+  covers, verdict, who proposed it and the decision;
+- `model`: who proposed what (playbook, rule, model), the adapter and model, tokens, cost and
+  turns where the adapter reports them, the agent's cost limits, the lookups the model made
+  (and any refused), the tools and specialists it was offered, a skill session if the agent ran
+  one, and the answers given under *Ask about this task*.
 
 ### items, match, compare, enrich
 
@@ -575,12 +583,16 @@ connectors:
       balances:     { description: ..., scope: { arg: entity, key: entity } }
       post_journal: { description: ..., scope: { arg: entity, key: entity },
                       access: write, idempotency_arg: idempotency_key }
+  motif:
+    tools:
+      # Several rules that must all hold: a FOBO group and a region.
+      group_positions: { description: ..., scope: [{ arg: group, key: fobo_group }, { arg: region, key: region }] }
 ```
 
 Every call (`gateway.call`) is checked and recorded in order:
 
 1. The tool must be in the allow-list and used by this agent.
-2. The scope argument must be inside the caller's entitlements.
+2. Each scope argument must be inside the caller's entitlements (every rule, when there are several).
 3. A write tool is callable only by `publish` after release, never by the model.
 4. Pseudonymized values are reversed for the connector.
 5. One `aof_tool_call` row is written: allowed or refused, rows, time, error.

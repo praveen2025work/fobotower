@@ -2,7 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { TaskDetail, Group } from "../../api/aof";
+import type { TaskDetail, Group, TaskSummaryView } from "../../api/aof";
 import { mockApi, renderAt } from "../../test/render";
 import TaskWorkspace from "../TaskWorkspace";
 
@@ -79,6 +79,53 @@ describe("TaskWorkspace", () => {
     const evidence = fold.parentElement!;
     expect(within(evidence).getByText("gl.balances")).toBeInTheDocument();          // task-wide load
     expect(within(evidence).queryByText(/refused/)).not.toBeInTheDocument();        // 7200's refusal is not 6100's
+  });
+
+  it("opens a regional task on its Summary: what it read, by desk, product and book, its proposals and the model session", async () => {
+    const summary: TaskSummaryView = {
+      task_id: "fin.c1", subject: "Rates EMEA · COB 2026-10-20", status: "awaiting_review", outcome: null,
+      item_label: "Break", unit: "GBP", amount_field: "difference", by: ["book_desk", "book_product", "book"],
+      sources: [
+        { tool: "cats.group_positions", step: "match", arguments: {}, rows: 2796, distinct: { book: 300 }, without_items: { book: 151 } },
+        { tool: "motif.group_positions", step: "match", arguments: {}, rows: 2755, distinct: { book: 300 }, without_items: { book: 151 } },
+      ],
+      items: { count: 216, in_proposals: 216, open: 216, net: -1642339.56, gross: 16838817.66, distinct: { book_desk: 4, book_product: 6, book: 149 } },
+      breakdown: [{
+        field: "book_desk", value: "RATES-EMEA-EUR", items: 125, net: -97094, gross: 9357288, distinct: { book_product: 2, book: 82 },
+        proposals: [{ group_id: "6100", items: 72 }], open: 125,
+        children: [{ field: "book_product", value: "EUR swaps", items: 80, net: -284638, gross: 5198270, distinct: { book: 48 }, proposals: [{ group_id: "6100", items: 42 }], open: 80,
+          children: [{ field: "book", value: "RATES-EMEA-0017", items: 4, net: 71312, gross: 1148179, distinct: {}, proposals: [], open: 4, children: [] }] }],
+      }],
+      proposals: [{ group_id: "7200", label: "account 7200", items: 128, net: -2759313, gross: 4558908, distinct: { book_desk: 4, book_product: 6, book: 122 },
+        status: "escalated", verdict: "ESCALATE", decided_by: "playbook", escalate_to: "Operations", flags: ["escalated"], decision: null }],
+      model: {
+        decided_by: { playbook: 6, llm: 3 }, adapters: ["agent-sdk"], models: ["claude-opus-5-5"],
+        groups: [{ group_id: "6100", label: "account 6100", model: "claude-opus-5-5", status: "proposed", reason: null, input_tokens: 5200, output_tokens: 640, cost_usd: 0.0123, turns: 3 }],
+        usage: { input_tokens: 5200, output_tokens: 640, cost_usd: 0.0123, turns: 3 }, chat: { answers: 0, usage: {} },
+        limits: { max_cost_usd_per_task: 2, max_cost_usd_per_day: null },
+        lookups: { count: 3, refused: 0, by_tool: { "motif.group_booking_events": 3 } },
+        tools: ["motif.group_booking_events"], specialists: [{ name: "booking-events", description: "Reads booking events", tools: ["motif.group_booking_events"] }],
+        instructions_chars: 838, skill_session: null,
+      },
+    };
+    mockApi({ "GET /tasks/fin.c1": detail({ summarize_by: ["book_desk", "book_product", "book"] }), "GET /tasks/fin.c1/summary": summary });
+    open();
+    const totals = await screen.findByLabelText("Task totals");
+    expect(within(totals).getByText("2,796 / 2,755")).toBeInTheDocument();
+    expect(within(totals).getByText(/300 books ·/)).toBeInTheDocument();
+    expect(within(totals).getByText("in 149 books · 151 clean")).toBeInTheDocument();
+    const table = screen.getByRole("table", { name: "Breakdown" });
+    await userEvent.click(within(table).getByRole("button", { name: /RATES-EMEA-EUR/ }));
+    await userEvent.click(within(table).getByRole("button", { name: /EUR swaps/ }));
+    expect(within(table).getByText("RATES-EMEA-0017")).toBeInTheDocument();
+    const session = screen.getByLabelText("Model session");
+    expect(within(session).getByText("6 by the playbook · 3 by the model")).toBeInTheDocument();
+    expect(within(session).getByText(/5,200 in \/ 640 out tokens · \$0.0123 · 3 turns/)).toBeInTheDocument();
+    expect(within(session).getByText("$2 a task")).toBeInTheDocument();
+    expect(within(session).getByText("motif.group_booking_events ×3")).toBeInTheDocument();
+    // A proposal in the summary opens it.
+    await userEvent.click(within(screen.getByRole("table", { name: "Proposals across the task" })).getByRole("button", { name: "account 7200" }));
+    expect(screen.getByRole("heading", { name: "account 7200" })).toBeInTheDocument();
   });
 
   it("shows why a group was escalated", async () => {
